@@ -29,8 +29,7 @@
         <div class="navbar">
             <!-- Logo with custom icon -->
             <div class="logo">
-             <img src="Assets/Logo.png" alt="Logo" class="brand-logo">
-    Intelli<span>Fit</span>
+                <div class="logo-icon"></div> Intelli<span>Fit</span>
             </div>
             <!-- Navigation links with role badge and logout button -->
             <div class="nav-links flex items-center">
@@ -46,10 +45,8 @@
         <div class="auth-container">
             <!-- Logo for auth screen -->
             <div class="logo" style="justify-content: center; margin-bottom: 20px; font-size: 2rem;">
-            <img src="Assets/Logo.png" alt="Logo" class="brand-logo" style="width:50px; height:50px; margin-right:8px;">
-            Intelli<span>Fit</span>
+                <div class="logo-icon" style="transform: scale(1.5);"></div> Intelli<span>Fit</span>
             </div>
-
             
             <!-- Role Switcher Buttons -->
             <div class="role-switcher">
@@ -164,11 +161,11 @@
                     <div class="card-header"><h2 class="card-title">Update Body Measurements</h2></div>
                     <!-- InBody Form -->
                     <form onsubmit="handleInBodySubmit(event)" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-                       <input type="number" placeholder="Weight (kg)" min="1" required>
-                       <input type="number" placeholder="Muscle Mass (kg)" min="1" required>
-                       <input type="number" placeholder="Fat Percentage (%)" min="1" required>
-                       <input type="number" placeholder="Visceral Fat Level" min="1" required>
-                       <button type="submit" class="btn btn-primary" style="grid-column: span 2;">Submit Data</button>
+                        <input type="number" placeholder="Weight (kg)" required>
+                        <input type="number" placeholder="Muscle Mass (kg)" required>
+                        <input type="number" placeholder="Fat Percentage (%)" required>
+                        <input type="number" placeholder="Visceral Fat Level" required>
+                        <button type="submit" class="btn btn-primary" style="grid-column: span 2;">Submit Data</button>
                     </form>
                     <!-- History Table -->
                     <div style="margin-top:2rem;">
