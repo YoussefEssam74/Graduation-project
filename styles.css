@@ -1,0 +1,906 @@
+/* --- CSS VARIABLES & RESET --- */
+:root {
+    /* Brand Colors */
+    --primary-blue: #0b4fd4;
+    --primary-lime: #a3e221;
+    --primary-light: #f5fee3;
+    
+    /* Secondary Colors */
+    --secondary-pale-green: #dcee7e;
+    --secondary-black: #000000;
+    
+    /* Functional Colors */
+    --text-dark: #1a1a1a;
+    --text-light: #ffffff;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-800: #1f2937;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warning: #f59e0b;
+
+    --font-main: 'Montserrat', sans-serif;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--gray-100);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    font-family: var(--font-main);
+    transition: all 0.2s ease;
+}
+
+input, select, textarea {
+    font-family: var(--font-main);
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+}
+
+/* --- UTILITY CLASSES --- */
+.hidden { display: none !important; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.text-primary { color: var(--primary-blue); }
+.text-lime { color: var(--primary-lime); }
+.font-bold { font-weight: 700; }
+.w-full { width: 100%; }
+.mb-4 { margin-bottom: 1rem; }
+
+/* --- BUTTON STYLES --- */
+.btn {
+    padding: 10px 24px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-blue);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #083b9e;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: var(--primary-lime);
+    color: var(--secondary-black);
+}
+.btn-secondary:hover {
+    background-color: #8cc41b;
+}
+
+.btn-outline {
+    border: 2px solid var(--primary-blue);
+    color: var(--primary-blue);
+    background: transparent;
+}
+.btn-outline:hover {
+    background-color: var(--primary-blue);
+    color: white;
+}
+
+.btn-danger {
+    background-color: var(--danger);
+    color: white;
+}
+
+/* --- HEADER --- */
+header {
+    background-color: white;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Mimicking the geometric logo shape with CSS for demo */
+.logo-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--primary-blue);
+    clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%);
+    position: relative;
+}
+.logo-icon::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 50%; height: 50%;
+    background: white;
+}
+
+.logo span {
+    color: var(--primary-lime);
+}
+
+.nav-links button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    margin-left: 20px;
+    color: var(--gray-800);
+    font-weight: 500;
+}
+
+.nav-links button:hover {
+    color: var(--primary-blue);
+}
+
+/* --- AUTH SECTION --- */
+#auth-section {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, #000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-container {
+    background: white;
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.role-switcher {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.role-btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+    background: var(--gray-100);
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+.role-btn.active {
+    background: var(--primary-blue);
+    color: white;
+    opacity: 1;
+    border-color: var(--primary-blue);
+}
+
+/* --- DASHBOARD LAYOUT --- */
+.main-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+}
+
+/* Sidebar */
+.sidebar {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    height: fit-content;
+}
+
+.user-profile {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.user-avatar {
+    width: 80px;
+    height: 80px;
+    background-color: var(--secondary-pale-green);
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--primary-blue);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 5px;
+    border-radius: var(--radius-md);
+    color: var(--gray-800);
+    font-weight: 500;
+    background: transparent;
+    text-align: left;
+}
+
+.menu-item.active, .menu-item:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-blue);
+}
+
+/* Content Area */
+.content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--gray-100);
+    padding-bottom: 1rem;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Specific Styles for Coach/Reception Tables */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.data-table th, .data-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-100);
+}
+.data-table th {
+    color: var(--gray-800);
+    font-weight: 600;
+    background: var(--gray-100);
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.status-active { background: #dcfce7; color: #166534; }
+.status-inactive { background: #fee2e2; color: #991b1b; }
+.status-pending { background: #fef9c3; color: #854d0e; }
+
+/* Plan Creator Styles */
+.plan-creator-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-container {
+        grid-template-columns: 1fr;
+    }
+    .sidebar { display: none; }
+    .navbar { flex-direction: column; }
+    .plan-creator-grid { grid-template-columns: 1fr; }
+}/* =====================================
+   CSS VARIABLES & RESET
+   ===================================== */
+
+/* Define all color variables here for easy theme changes */
+:root {
+    /* Brand Colors */
+    --primary-blue: #0b4fd4;       /* Main blue color for accents */
+    --primary-lime: #a3e221;       /* Lime for highlights */
+    --primary-light: #f5fee3;      /* Light background */
+    
+    /* Secondary Colors */
+    --secondary-pale-green: #dcee7e;  /* Pale green for avatars */
+    --secondary-black: #000000;       /* Black for text */
+    
+    /* Functional Colors */
+    --text-dark: #1a1a1a;          /* Dark text */
+    --text-light: #ffffff;         /* Light text */
+    --gray-100: #f3f4f6;           /* Light gray background */
+    --gray-200: #e5e7eb;           /* Borders */
+    --gray-800: #1f2937;           /* Dark gray */
+    --danger: #ef4444;             /* Red for errors */
+    --success: #22c55e;            /* Green for success */
+    --warning: #f59e0b;            /* Yellow for warnings */
+
+    /* Fonts and Sizes */
+    --font-main: 'Montserrat', sans-serif;  /* Main font family */
+    --radius-md: 12px;             /* Medium border radius */
+    --radius-lg: 20px;             /* Large border radius */
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);  /* Default shadow */
+}
+
+/* Reset styles for consistent layout across browsers */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body base styles */
+body {
+    font-family: var(--font-main);
+    background-color: var(--gray-100);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* Button base styles */
+button {
+    cursor: pointer;
+    border: none;
+    font-family: var(--font-main);
+    transition: all 0.2s ease;
+}
+
+/* Input, Select, Textarea base styles */
+input, select, textarea {
+    font-family: var(--font-main);
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Focus styles for form elements */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+}
+
+/* =====================================
+   UTILITY CLASSES (Reusable helpers)
+   ===================================== */
+.hidden { display: none !important; }  /* Hide elements */
+.flex { display: flex; }               /* Flexbox display */
+.flex-col { flex-direction: column; }  /* Column direction */
+.items-center { align-items: center; } /* Center align items */
+.justify-between { justify-content: space-between; } /* Space between */
+.justify-center { justify-content: center; } /* Center justify */
+.gap-2 { gap: 0.5rem; }                /* Small gap */
+.gap-4 { gap: 1rem; }                  /* Medium gap */
+.text-primary { color: var(--primary-blue); } /* Primary text color */
+.text-lime { color: var(--primary-lime); }   /* Lime text color */
+.font-bold { font-weight: 700; }       /* Bold font */
+.w-full { width: 100%; }               /* Full width */
+.mb-4 { margin-bottom: 1rem; }         /* Bottom margin */
+
+/* =====================================
+   BUTTON STYLES (Different button types)
+   ===================================== */
+/* Base button class */
+.btn {
+    padding: 10px 24px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Small button variant */
+.btn-sm {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+}
+
+/* Primary button (blue) */
+.btn-primary {
+    background-color: var(--primary-blue);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #083b9e;
+    transform: translateY(-1px);
+}
+
+/* Secondary button (lime) */
+.btn-secondary {
+    background-color: var(--primary-lime);
+    color: var(--secondary-black);
+}
+.btn-secondary:hover {
+    background-color: #8cc41b;
+}
+
+/* Outline button */
+.btn-outline {
+    border: 2px solid var(--primary-blue);
+    color: var(--primary-blue);
+    background: transparent;
+}
+.btn-outline:hover {
+    background-color: var(--primary-blue);
+    color: white;
+}
+
+/* Danger button (red) */
+.btn-danger {
+    background-color: var(--danger);
+    color: white;
+}
+
+/* =====================================
+   HEADER STYLES
+   ===================================== */
+header {
+    background-color: white;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+/* Navbar container */
+.navbar {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Logo styles */
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Custom logo icon (geometric shape) */
+.logo-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--primary-blue);
+    clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%);
+    position: relative;
+}
+.logo-icon::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 50%; height: 50%;
+    background: white;
+}
+
+/* Span in logo for color change */
+.logo span {
+    color: var(--primary-lime);
+}
+
+/* Nav links buttons */
+.nav-links button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    margin-left: 20px;
+    color: var(--gray-800);
+    font-weight: 500;
+}
+
+/* Hover for nav buttons */
+.nav-links button:hover {
+    color: var(--primary-blue);
+}
+
+/* =====================================
+   AUTH SECTION STYLES (Login Page)
+   ===================================== */
+#auth-section {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, #000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* Auth container box */
+.auth-container {
+    background: white;
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+/* Role switcher buttons container */
+.role-switcher {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+/* Individual role buttons */
+.role-btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+    background: var(--gray-100);
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+.role-btn.active {
+    background: var(--primary-blue);
+    color: white;
+    opacity: 1;
+    border-color: var(--primary-blue);
+}
+
+/* =====================================
+   DASHBOARD LAYOUT STYLES (Common for all roles)
+   ===================================== */
+/* Main container for dashboard */
+.main-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+}
+
+/* Sidebar styles */
+.sidebar {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    height: fit-content;
+}
+
+/* User profile in sidebar */
+.user-profile {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+/* Avatar circle */
+.user-avatar {
+    width: 80px;
+    height: 80px;
+    background-color: var(--secondary-pale-green);
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--primary-blue);
+}
+
+/* Menu items in sidebar */
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 5px;
+    border-radius: var(--radius-md);
+    color: var(--gray-800);
+    font-weight: 500;
+    background: transparent;
+    text-align: left;
+}
+
+/* Active/Hover state for menu items */
+.menu-item.active, .menu-item:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-blue);
+}
+
+/* Content area container */
+.content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Card component (used in tabs) */
+.card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
+}
+
+/* Card header */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--gray-100);
+    padding-bottom: 1rem;
+}
+
+/* Card title */
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* =====================================
+   TABLE STYLES (For clients, history, etc.)
+   ===================================== */
+/* Data table base */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Table cells */
+.data-table th, .data-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+/* Table headers */
+.data-table th {
+    color: var(--gray-800);
+    font-weight: 600;
+    background: var(--gray-100);
+}
+
+/* Status badges (e.g., Active, Inactive) */
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.status-active { background: #dcfce7; color: #166534; } /* Green for active */
+.status-inactive { background: #fee2e2; color: #991b1b; } /* Red for inactive */
+.status-pending { background: #fef9c3; color: #854d0e; } /* Yellow for pending */
+
+/* =====================================
+   FORM GRID STYLES (For plans, registration)
+   ===================================== */
+/* Grid for form fields */
+.plan-creator-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Modal overlay (if used for popups) */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+/* Modal box */
+.modal {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* =====================================
+   RESPONSIVE ADJUSTMENTS
+   ===================================== */
+/* Media query for small screens */
+@media (max-width: 768px) {
+    .main-container {
+        grid-template-columns: 1fr;  /* Stack sidebar and content */
+    }
+    .sidebar { display: none; }    /* Hide sidebar on mobile */
+    .navbar { flex-direction: column; } /* Stack navbar */
+    .plan-creator-grid { grid-template-columns: 1fr; } /* Stack form grid */
+}
+
+/* =====================================
+   MEMBER-SPECIFIC STYLES (Add new features here)
+   ===================================== */
+/* Machine grid for booking */
+.machine-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+/* Individual machine card */
+.machine-card {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: transform 0.2s;
+}
+.machine-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow);
+}
+
+/* Machine image placeholder */
+.machine-img {
+    height: 120px;
+    background: var(--gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-800);
+}
+
+/* Machine info section */
+.machine-info {
+    padding: 1rem;
+}
+
+/* Chat interface container */
+.chat-interface {
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+}
+
+/* Chat messages area */
+.chat-messages {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background-color: #fafafa;
+}
+
+/* Individual message bubbles */
+.message {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 15px;
+    font-size: 0.95rem;
+}
+.message.ai {
+    background-color: white;
+    border: 1px solid var(--gray-200);
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+}
+.message.user {
+    background-color: var(--primary-blue);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+}
+
+/* Chat input area */
+.chat-input-area {
+    padding: 1rem;
+    border-top: 1px solid var(--gray-200);
+    display: flex;
+    gap: 10px;
+    background: white;
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+}
