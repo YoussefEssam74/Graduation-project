@@ -37,6 +37,11 @@ body {
     color: var(--text-dark);
     line-height: 1.6;
 }
+.brand-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
 
 button {
     cursor: pointer;
@@ -169,6 +174,17 @@ header {
 
 .logo span {
     color: var(--primary-lime);
+}
+
+#user-role-badge {
+    margin-left: 40px !important;  /* gives breathing room */
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    gap: 800px; 
 }
 
 .nav-links button {
@@ -573,6 +589,13 @@ header {
 /* Span in logo for color change */
 .logo span {
     color: var(--primary-lime);
+}
+
+/* Nav links container */
+.nav-links {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
 }
 
 /* Nav links buttons */
