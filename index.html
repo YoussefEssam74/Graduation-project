@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Metadata and Title -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliFit - Smart Gym Management</title>
+    
+    <!-- Google Fonts Preconnect and Link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- External Libraries -->
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Analytics Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS File Link -->
+    <!-- NOTE: If you want to edit styles, go to styles.css -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- HEADER SECTION (Common for all roles after login) -->
+    <!-- This header is hidden initially and shown after login -->
+    <header id="app-header" class="hidden">
+        <div class="navbar">
+            <!-- Logo with custom icon -->
+            <div class="logo">
+             <img src="Assets/Logo.png" alt="Logo" class="brand-logo">
+    Intelli<span>Fit</span>
+            </div>
+            <!-- Navigation links with role badge and logout button -->
+            <div class="nav-links flex items-center">
+                <span id="user-role-badge" style="margin-right: 10px; font-size: 0.8rem; background: var(--gray-800); color: white; padding: 4px 8px; border-radius: 4px;">MEMBER</span>
+                <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- AUTHENTICATION SCREEN (Login Page) -->
+    <!-- This is the initial screen shown before login -->
+    <section id="auth-section">
+        <div class="auth-container">
+            <!-- Logo for auth screen -->
+            <div class="logo" style="justify-content: center; margin-bottom: 20px; font-size: 2rem;">
+            <img src="Assets/Logo.png" alt="Logo" class="brand-logo" style="width:50px; height:50px; margin-right:8px;">
+            Intelli<span>Fit</span>
+            </div>
+
+            
+            <!-- Role Switcher Buttons -->
+            <div class="role-switcher">
+                <button class="role-btn active" onclick="selectRole('member')">Member</button>
+                <button class="role-btn" onclick="selectRole('coach')">Coach</button>
+                <button class="role-btn" onclick="selectRole('reception')">Reception</button>
+            </div>
+
+            <!-- Login Form Title (Changes based on role) -->
+            <h2 id="login-title">Member Login</h2>
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <input type="email" placeholder="Email Address" value="user@intellifit.com" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" placeholder="Password" value="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Sign In</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- MEMBER DASHBOARD SECTION -->
+    <!-- Hidden initially, shown after member login -->
+    <section id="dashboard-member" class="main-container hidden">
+        <!-- Sidebar for Member -->
+        <aside class="sidebar">
+            <!-- User Profile Info -->
+            <div class="user-profile">
+                <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+                <h3>Jane Doe</h3>
+                <p class="text-primary">Premium Member</p>
+                <!-- Token Display (Updated dynamically via JS) -->
+                <div style="margin-top:10px; font-size:0.9rem; font-weight:bold;">Tokens: <span id="member-token-display">120</span></div>
+            </div>
+            <!-- Navigation Menu for Member -->
+            <nav>
+                <button class="menu-item active" onclick="switchTab('member', 'overview')"><i class="fa-solid fa-chart-pie"></i> Overview</button>
+                <button class="menu-item" onclick="switchTab('member', 'booking')"><i class="fa-solid fa-calendar-check"></i> Book Equipment</button>
+                <button class="menu-item" onclick="switchTab('member', 'ai-coach')"><i class="fa-solid fa-robot"></i> AI Coach</button>
+                <button class="menu-item" onclick="switchTab('member', 'inbody')"><i class="fa-solid fa-weight-scale"></i> InBody Data</button>
+            </nav>
+        </aside>
+        
+        <!-- Main Content Area for Member Tabs -->
+        <main class="content-area">
+            <!-- TAB: Overview (Progress Stats + Chart) -->
+            <div id="member-overview" class="tab-content">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">Your Progress</h2></div>
+                    <!-- Stats Grid -->
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div style="background:#f5fee3; padding:1.5rem; border-radius:12px; text-align:center;">
+                            <h3>78.5 kg</h3><p>Current Weight</p>
+                        </div>
+                        <div style="background:#e0f2fe; padding:1.5rem; border-radius:12px; text-align:center;">
+                            <h3>18.5 %</h3><p>Body Fat</p>
+                        </div>
+                        <div style="background:#f3f4f6; padding:1.5rem; border-radius:12px; text-align:center;">
+                            <h3>Premium</h3><p>Plan Status</p>
+                        </div>
+                    </div>
+                    <!-- Progress Chart Container -->
+                    <div style="margin-top: 2rem; height: 250px;">
+                        <canvas id="memberProgressChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Booking Equipment -->
+            <div id="member-booking" class="tab-content hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Book Equipment</h2>
+                        <span class="status-badge status-active">Cost: 5 Tokens</span>
+                    </div>
+                    <!-- Machine List (Injected via JS) -->
+                    <div class="machine-grid" id="machine-list-container">
+                        <!-- Machines will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: AI Coach Chat -->
+            <div id="member-ai-coach" class="tab-content hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">AI Personal Coach</h2>
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <div style="width:10px; height:10px; background:#a3e221; border-radius:50%;"></div> Online
+                        </div>
+                    </div>
+                    <!-- Chat Interface -->
+                    <div class="chat-interface">
+                        <!-- Chat Messages Container -->
+                        <div class="chat-messages" id="chat-box">
+                            <div class="message ai">Hi Jane! Based on your last InBody scan, let's focus on protein intake today. Need a workout plan?</div>
+                        </div>
+                        <!-- Chat Input Area -->
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input" placeholder="Ask me anything..." style="margin-bottom:0;" onkeypress="handleChatKey(event)">
+                            <button class="btn btn-primary" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: InBody Data Update -->
+            <div id="member-inbody" class="tab-content hidden">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">Update Body Measurements</h2></div>
+                    <!-- InBody Form -->
+                    <form onsubmit="handleInBodySubmit(event)" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                       <input type="number" placeholder="Weight (kg)" min="1" required>
+                       <input type="number" placeholder="Muscle Mass (kg)" min="1" required>
+                       <input type="number" placeholder="Fat Percentage (%)" min="1" required>
+                       <input type="number" placeholder="Visceral Fat Level" min="1" required>
+                       <button type="submit" class="btn btn-primary" style="grid-column: span 2;">Submit Data</button>
+                    </form>
+                    <!-- History Table -->
+                    <div style="margin-top:2rem;">
+                        <h3>History</h3>
+                        <table class="data-table">
+                            <thead><tr><th>Date</th><th>Weight</th><th>Muscle</th><th>Fat %</th></tr></thead>
+                            <tbody>
+                                <tr><td>Oct 24</td><td>78.5</td><td>34.2</td><td>18.5</td></tr>
+                                <tr><td>Sep 24</td><td>79.2</td><td>33.8</td><td>19.2</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- COACH DASHBOARD SECTION -->
+    <!-- Hidden initially, shown after coach login -->
+    <section id="dashboard-coach" class="main-container hidden">
+        <!-- Sidebar for Coach -->
+        <aside class="sidebar">
+            <!-- Coach Profile Info -->
+            <div class="user-profile">
+                <div class="user-avatar" style="background-color: #e0f2fe; color: #0369a1;"><i class="fa-solid fa-stopwatch"></i></div>
+                <h3>Coach Mike</h3>
+                <p class="text-primary">Senior Trainer</p>
+            </div>
+            <!-- Navigation Menu for Coach -->
+            <nav>
+                <button class="menu-item active" onclick="switchTab('coach', 'clients')"><i class="fa-solid fa-users"></i> My Clients</button>
+                <button class="menu-item" onclick="switchTab('coach', 'workout-builder')"><i class="fa-solid fa-dumbbell"></i> Workout Builder</button>
+                <button class="menu-item" onclick="switchTab('coach', 'diet-builder')"><i class="fa-solid fa-carrot"></i> Nutrition Plans</button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area for Coach Tabs -->
+        <main class="content-area">
+            <!-- TAB: Clients List -->
+            <div id="coach-clients" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Assigned Clients</h2>
+                        <button class="btn btn-outline btn-sm"><i class="fa-solid fa-plus"></i> Add New</button>
+                    </div>
+                    <!-- Clients Table -->
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Goal</th>
+                                <th>Last InBody</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <!-- Clients injected via JS -->
+                        <tbody id="coach-client-list">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: Workout Builder -->
+            <div id="coach-workout-builder" class="tab-content hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Create Workout Plan</h2>
+                    </div>
+                    <!-- Workout Form -->
+                    <form onsubmit="submitPlan(event, 'Workout')">
+                        <label>Select Client</label>
+                        <select id="workout-client-select">
+                            <option>Jane Doe</option>
+                            <option>Ahmed Ali</option>
+                        </select>
+                        
+                        <!-- Grid for Workout Days -->
+                        <div class="plan-creator-grid">
+                            <div>
+                                <label>Day 1 Focus</label>
+                                <input type="text" placeholder="e.g., Chest & Triceps">
+                                <label>Exercises (Comma separated)</label>
+                                <textarea rows="3" placeholder="Bench Press, Pushups..."></textarea>
+                            </div>
+                            <div>
+                                <label>Day 2 Focus</label>
+                                <input type="text" placeholder="e.g., Back & Biceps">
+                                <label>Exercises</label>
+                                <textarea rows="3" placeholder="Pullups, Rows..."></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Assign Plan</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- TAB: Diet Builder -->
+            <div id="coach-diet-builder" class="tab-content hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Create Nutrition Plan</h2>
+                    </div>
+                    <!-- Diet Form -->
+                    <form onsubmit="submitPlan(event, 'Nutrition')">
+                        <label>Select Client</label>
+                        <select>
+                            <option>Jane Doe</option>
+                            <option>Ahmed Ali</option>
+                        </select>
+                        <label>Daily Calorie Target</label>
+                        <input type="number" placeholder="e.g., 2500">
+                        
+                        <label>Macro Split</label>
+                        <div class="flex gap-4">
+                            <input type="text" placeholder="Protein (g)">
+                            <input type="text" placeholder="Carbs (g)">
+                            <input type="text" placeholder="Fats (g)">
+                        </div>
+                        
+                        <label>Notes/Meal Suggestions</label>
+                        <textarea rows="4"></textarea>
+                        <button type="submit" class="btn btn-secondary">Send Diet Plan</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- RECEPTION DASHBOARD SECTION -->
+    <!-- Hidden initially, shown after reception login -->
+    <section id="dashboard-reception" class="main-container hidden">
+        <!-- Sidebar for Reception -->
+        <aside class="sidebar">
+            <!-- Reception Profile Info -->
+            <div class="user-profile">
+                <div class="user-avatar" style="background-color: #fef3c7; color: #b45309;"><i class="fa-solid fa-headset"></i></div>
+                <h3>Sarah Frontdesk</h3>
+                <p class="text-primary">Receptionist</p>
+            </div>
+            <!-- Navigation Menu for Reception -->
+            <nav>
+                <button class="menu-item active" onclick="switchTab('reception', 'live')"><i class="fa-solid fa-eye"></i> Live Gym Status</button>
+                <button class="menu-item" onclick="switchTab('reception', 'register')"><i class="fa-solid fa-user-plus"></i> Register Member</button>
+                <button class="menu-item" onclick="switchTab('reception', 'subscriptions')"><i class="fa-solid fa-credit-card"></i> Subscriptions</button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area for Reception Tabs -->
+        <main class="content-area">
+            <!-- TAB: Live Gym Status -->
+            <div id="reception-live" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Currently in Gym</h2>
+                        <span class="status-badge status-active">Occupancy: 45/100</span>
+                    </div>
+                    <!-- Active Members Table -->
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Member</th>
+                                <th>Check-in Time</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Jane Doe</strong></td>
+                                <td>10:15 AM</td>
+                                <td><span class="status-badge status-active">Active</span></td>
+                                <td><button class="btn btn-outline btn-sm">Check Out</button></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mark Smith</strong></td>
+                                <td>10:30 AM</td>
+                                <td><span class="status-badge status-active">Active</span></td>
+                                <td><button class="btn btn-outline btn-sm">Check Out</button></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Laila Johnson</strong></td>
+                                <td>11:00 AM</td>
+                                <td><span class="status-badge status-active">Active</span></td>
+                                <td><button class="btn btn-outline btn-sm">Check Out</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: Register New Member -->
+            <div id="reception-register" class="tab-content hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">New Member Registration</h2>
+                    </div>
+                    <!-- Registration Form -->
+                    <form onsubmit="registerMember(event)">
+                        <!-- Form Grid -->
+                        <div class="plan-creator-grid">
+                            <div>
+                                <label>Full Name</label>
+                                <input type="text" required>
+                            </div>
+                            <div>
+                                <label>Email</label>
+                                <input type="l" required>
+                            </div>
+                            <div>
+                                <label>Phone Number</label>
+                                <input type="tel" required>
+                            </div>
+                            <div>
+                                <label>Date of Birth</label>
+                                <input type="date" required>
+                            </div>
+                        </div>
+                        <!-- Subscription Select -->
+                        <label>Initial Subscription Plan</label>
+                        <select>
+                            <option>Basic (10 Tokens)</option>
+                            <option>Premium (Unlimited)</option>
+                            <option>Pay-as-you-go</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Register & Print QR</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB: Manage Subscriptions -->
+            <div id="reception-subscriptions" class="tab-content hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Manage Subscriptions</h2>
+                    </div>
+                    <!-- Search Bar -->
+                    <div style="display:flex; gap:10px; margin-bottom:1rem;">
+                        <input type="text" placeholder="Search member by ID or Name..." style="margin-bottom:0;">
+                        <button class="btn btn-secondary"><i class="fa-solid fa-search"></i></button>
+                    </div>
+                    <!-- Example Subscription Card -->
+                    <div class="card" style="background:#f9fafb; border:1px dashed #ccc;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <div>
+                                <h4>Ahmed Ali</h4>
+                                <p>ID: #99281</p>
+                                <p style="color:red;">Expired 2 days ago</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-primary btn-sm" onclick="alert('Renewed!')">Renew Membership</button>
+                                <br><br>
+                                <button class="btn btn-outline btn-sm" onclick="alert('Tokens Added!')">Add Tokens</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- Custom JavaScript File Link -->
+    <!-- NOTE: If you want to edit scripts, go to script.js -->
+    <script src="script.js"></script>
+</body>
+</html>
