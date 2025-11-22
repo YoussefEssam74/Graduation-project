@@ -7,10 +7,11 @@ const appState = {
     currentUserRole: 'member', // Default role: 'member', 'coach', or 'reception'
      user: {
         tokens: 120   // starting token count
-    },clients: [                 // List of clients for coach (edit or add more)
-        { name: "Jane Doe", goal: "Weight Loss", lastScan: "Oct 24", status: "Active" },
-        { name: "Ahmed Ali", goal: "Muscle Gain", lastScan: "Oct 20", status: "Pending Plan" },
-        { name: "Sarah Connor", goal: "Endurance", lastScan: "Oct 22", status: "Active" }
+    },
+    clients: [                 // List of clients for coach (edit or add more)
+        { name: "Jane Doe", goal: "Weight Loss", lastScan: "24/10/2025", status: "Active" },
+        { name: "Ahmed Ali", goal: "Muscle Gain", lastScan: "20/10/2025", status: "Pending Plan" },
+        { name: "Sarah Connor", goal: "Endurance", lastScan: "22/10/2025", status: "Active" }
     ]
 };
 
@@ -113,6 +114,98 @@ function submitPlan(e, type) {
     e.preventDefault(); // Prevent reload
     alert(`${type} Plan assigned successfully to client!`);
     switchTab('coach', 'clients'); // Return to clients tab
+}
+
+// Format date to day/month/year
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+// Open Add Client Modal
+function openAddClientModal() {
+    document.getElementById('addClientModal').style.display = 'flex';
+}
+
+// Close Add Client Modal
+function closeAddClientModal() {
+    document.getElementById('addClientModal').style.display = 'none';
+    document.getElementById('addClientForm').reset();
+}
+
+// Handle Add Client Form Submission
+function handleAddClient(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('clientName').value.trim();
+    const goal = document.getElementById('clientGoal').value;
+    const currentDate = new Date();
+    const formattedDate = formatDate(currentDate);
+    
+    // Add new client to the array
+    appState.clients.push({
+        name: name,
+        goal: goal,
+        lastScan: formattedDate,
+        status: "Pending Plan"
+    });
+    
+    // Re-render the client list
+    renderCoachClientList();
+    
+    // Close modal and show success message
+    closeAddClientModal();
+    alert(`Client "${name}" added successfully!`);
+}
+
+// Format date to day/month/year
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+// Open Add Client Modal
+function openAddClientModal() {
+    document.getElementById('addClientModal').style.display = 'flex';
+}
+
+// Close Add Client Modal
+function closeAddClientModal() {
+    document.getElementById('addClientModal').style.display = 'none';
+    document.getElementById('addClientForm').reset();
+}
+
+// Handle Add Client Form Submission
+function handleAddClient(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('clientName').value.trim();
+    const goal = document.getElementById('clientGoal').value;
+    const lastScanInput = document.getElementById('clientLastScan').value;
+    const status = document.getElementById('clientStatus').value;
+    
+    // Convert date from YYYY-MM-DD to DD/MM/YYYY
+    const dateObj = new Date(lastScanInput);
+    const formattedDate = formatDate(dateObj);
+    
+    // Add new client to the array
+    appState.clients.push({
+        name: name,
+        goal: goal,
+        lastScan: formattedDate,
+        status: status
+    });
+    
+    // Re-render the client list
+    renderCoachClientList();
+    
+    // Close modal and show success message
+    closeAddClientModal();
+    alert(`Client "${name}" added successfully!`);
 }
 
 // =====================================
