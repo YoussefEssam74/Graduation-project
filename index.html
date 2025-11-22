@@ -20,6 +20,7 @@
     <!-- Custom CSS File Link -->
     <!-- NOTE: If you want to edit styles, go to styles.css -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="Assets/Logo.png">
 </head>
 <body>
 
@@ -212,7 +213,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Assigned Clients</h2>
-                        <button class="btn btn-outline btn-sm"><i class="fa-solid fa-plus"></i> Add New</button>
+                        <button class="btn btn-outline btn-sm" onclick="openAddClientModal()"><i class="fa-solid fa-plus"></i> Add New</button>
                     </div>
                     <!-- Clients Table -->
                     <table class="data-table">
@@ -241,7 +242,8 @@
                     <!-- Workout Form -->
                     <form onsubmit="submitPlan(event, 'Workout')">
                         <label>Select Client</label>
-                        <select id="workout-client-select">
+                        <select id="workout-client-select" required>
+                            <option value="">-- Select a client --</option>
                             <option>Jane Doe</option>
                             <option>Ahmed Ali</option>
                         </select>
@@ -250,15 +252,15 @@
                         <div class="plan-creator-grid">
                             <div>
                                 <label>Day 1 Focus</label>
-                                <input type="text" placeholder="e.g., Chest & Triceps">
+                                <input type="text" placeholder="e.g., Chest & Triceps" required>
                                 <label>Exercises (Comma separated)</label>
-                                <textarea rows="3" placeholder="Bench Press, Pushups..."></textarea>
+                                <textarea rows="3" placeholder="Bench Press, Pushups..." required></textarea>
                             </div>
                             <div>
                                 <label>Day 2 Focus</label>
-                                <input type="text" placeholder="e.g., Back & Biceps">
+                                <input type="text" placeholder="e.g., Back & Biceps" required>
                                 <label>Exercises</label>
-                                <textarea rows="3" placeholder="Pullups, Rows..."></textarea>
+                                <textarea rows="3" placeholder="Pullups, Rows..." required></textarea>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary">Assign Plan</button>
@@ -275,22 +277,23 @@
                     <!-- Diet Form -->
                     <form onsubmit="submitPlan(event, 'Nutrition')">
                         <label>Select Client</label>
-                        <select>
+                        <select required>
+                            <option value="">-- Select a client --</option>
                             <option>Jane Doe</option>
                             <option>Ahmed Ali</option>
                         </select>
                         <label>Daily Calorie Target</label>
-                        <input type="number" placeholder="e.g., 2500">
+                        <input type="number" placeholder="e.g., 2500" required min="1">
                         
                         <label>Macro Split</label>
                         <div class="flex gap-4">
-                            <input type="text" placeholder="Protein (g)">
-                            <input type="text" placeholder="Carbs (g)">
-                            <input type="text" placeholder="Fats (g)">
+                            <input type="text" placeholder="Protein (g)" required>
+                            <input type="text" placeholder="Carbs (g)" required>
+                            <input type="text" placeholder="Fats (g)" required>
                         </div>
                         
                         <label>Notes/Meal Suggestions</label>
-                        <textarea rows="4"></textarea>
+                        <textarea rows="4" required></textarea>
                         <button type="submit" class="btn btn-secondary">Send Diet Plan</button>
                     </form>
                 </div>
@@ -429,6 +432,49 @@
             </div>
         </main>
     </section>
+
+    <!-- Add Client Modal -->
+    <div id="addClientModal" class="modal" style="display: none;">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h3>Add New Client</h3>
+                <button class="modal-close" onclick="closeAddClientModal()">&times;</button>
+            </div>
+            <form id="addClientForm" onsubmit="handleAddClient(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="clientName" placeholder="Enter client name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Goal</label>
+                        <select id="clientGoal" required>
+                            <option value="">Select a goal</option>
+                            <option value="Weight Loss">Weight Loss</option>
+                            <option value="Muscle Gain">Muscle Gain</option>
+                            <option value="Endurance">Endurance</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="clientLastScan" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Plan</label>
+                        <select id="clientStatus" required>
+                            <option value="Pending Plan">Pending Plan</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeAddClientModal()" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Add Client</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Custom JavaScript File Link -->
     <!-- NOTE: If you want to edit scripts, go to script.js -->
