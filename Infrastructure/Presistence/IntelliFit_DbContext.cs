@@ -52,6 +52,9 @@ public class IntelliFit_DbContext : DbContext
     public DbSet<WearableDevice> WearableDevices { get; set; } = null!;
     public DbSet<HeartRateData> HeartRateData { get; set; } = null!;
 
+    // Progress Tracking
+    public DbSet<ProgressMilestone> ProgressMilestones { get; set; } = null!;
+
     // Communication
     public DbSet<Notification> Notifications { get; set; } = null!;
     public IntelliFit_DbContext(DbContextOptions<IntelliFit_DbContext> options) : base(options)
@@ -81,6 +84,7 @@ public class IntelliFit_DbContext : DbContext
         modelBuilder.Entity<Notification>().HasKey(x => x.NotificationID);
         modelBuilder.Entity<NutritionPlan>().HasKey(x => x.PlanID);
         modelBuilder.Entity<Payment>().HasKey(x => x.PaymentID);
+        modelBuilder.Entity<ProgressMilestone>().HasKey(x => x.MilestoneID);
         modelBuilder.Entity<SafetyIncident>().HasKey(x => x.IncidentID);
         modelBuilder.Entity<SubscriptionPlan>().HasKey(x => x.PlanID);
         modelBuilder.Entity<TokenTransaction>().HasKey(x => x.TransactionID);
