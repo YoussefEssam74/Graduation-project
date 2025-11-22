@@ -12,7 +12,10 @@ public abstract class User
     public Gender Gender { get; set; }
     public string FitnessGoal { get; set; } = string.Empty;
     public int TokenBalance { get; set; }
-    public string SubscriptionPlan { get; set; } = string.Empty;
+    public int? SubscriptionPlanID { get; set; }
     public DateTime CreatedAt { get; set; }
     public UserRole Role { get; set; }
+
+    // Navigation Properties
+    public virtual SubscriptionPlan? SubscriptionPlan { get; set; }
 }

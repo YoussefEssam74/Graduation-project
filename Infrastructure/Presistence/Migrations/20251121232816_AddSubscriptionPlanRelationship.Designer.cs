@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Presistence;
 
@@ -11,9 +12,11 @@ using Presistence;
 namespace Presistence.Migrations
 {
     [DbContext(typeof(IntelliFit_DbContext))]
-    partial class IntelliFit_DbContextModelSnapshot : ModelSnapshot
+    [Migration("20251121232816_AddSubscriptionPlanRelationship")]
+    partial class AddSubscriptionPlanRelationship
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -848,37 +851,6 @@ namespace Presistence.Migrations
                     b.ToTable("Payments");
                 });
 
-            modelBuilder.Entity("DomainLayer.Models.ProgressMilestone", b =>
-                {
-                    b.Property<int>("MilestoneID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MilestoneID"));
-
-                    b.Property<DateTime>("AchievedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsAIGenerated")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("UserID")
-                        .HasColumnType("int");
-
-                    b.HasKey("MilestoneID");
-
-                    b.HasIndex("UserID");
-
-                    b.ToTable("ProgressMilestones");
-                });
-
             modelBuilder.Entity("DomainLayer.Models.RecommendedExercise", b =>
                 {
                     b.Property<int>("RecommendedExerciseId")
@@ -1694,17 +1666,6 @@ namespace Presistence.Migrations
                 });
 
             modelBuilder.Entity("DomainLayer.Models.Payment", b =>
-                {
-                    b.HasOne("DomainLayer.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DomainLayer.Models.ProgressMilestone", b =>
                 {
                     b.HasOne("DomainLayer.Models.User", "User")
                         .WithMany()
