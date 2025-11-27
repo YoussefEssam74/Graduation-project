@@ -131,6 +131,12 @@ namespace IntelliFit.Infrastructure.Persistence
             {
                 entity.HasKey(e => e.MemberId);
                 entity.HasIndex(e => e.UserId).IsUnique();
+
+                // FK to SubscriptionPlan
+                entity.HasOne(e => e.SubscriptionPlan)
+                    .WithMany()
+                    .HasForeignKey(e => e.SubscriptionPlanId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // CoachProfile Configuration
@@ -150,6 +156,7 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // UserSubscription Configuration
+            // NOTE: Database has CHECK constraint: chk_subscription_has_payment (PaymentId IS NOT NULL)
             modelBuilder.Entity<UserSubscription>(entity =>
             {
                 entity.HasKey(e => e.SubscriptionId);
@@ -164,10 +171,11 @@ namespace IntelliFit.Infrastructure.Persistence
                     .HasForeignKey(e => e.PlanId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                // Subscriptions reference payments via PaymentId
                 entity.HasOne(e => e.Payment)
-                    .WithOne(p => p.Subscription)
-                    .HasForeignKey<UserSubscription>(e => e.PaymentId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .WithMany()
+                    .HasForeignKey(e => e.PaymentId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // TokenPackage Configuration
@@ -223,6 +231,9 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // Booking Configuration
+            // NOTE: Database has CHECK constraints enforcing:
+            //   - chk_booking_xor: (EquipmentId IS NOT NULL XOR CoachId IS NOT NULL)
+            //   - chk_booking_type_match: BookingType matches FK reference
             modelBuilder.Entity<Booking>(entity =>
             {
                 entity.HasKey(e => e.BookingId);
@@ -434,6 +445,9 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // AiProgramGeneration Configuration
+            // NOTE: Database has CHECK constraints enforcing:
+            //   - chk_ai_program_xor: (WorkoutPlanId IS NOT NULL XOR NutritionPlanId IS NOT NULL)
+            //   - chk_program_type_match: ProgramType matches plan reference
             modelBuilder.Entity<AiProgramGeneration>(entity =>
             {
                 entity.HasKey(e => e.GenerationId);

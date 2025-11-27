@@ -3,6 +3,7 @@ using System;
 using IntelliFit.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Presistence.Migrations
 {
     [DbContext(typeof(IntelliFitDbContext))]
-    partial class IntelliFitDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251127213512_FixColumnNaming")]
+    partial class FixColumnNaming
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -825,8 +828,6 @@ namespace Presistence.Migrations
 
                     b.HasKey("MemberId");
 
-                    b.HasIndex("SubscriptionPlanId");
-
                     b.HasIndex("UserId")
                         .IsUnique();
 
@@ -1033,6 +1034,9 @@ namespace Presistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubscriptionId")
                         .HasColumnType("integer");
 
                     b.Property<string>("TransactionReference")
@@ -1369,7 +1373,8 @@ namespace Presistence.Migrations
 
                     b.HasKey("SubscriptionId");
 
-                    b.HasIndex("PaymentId");
+                    b.HasIndex("PaymentId")
+                        .IsUnique();
 
                     b.HasIndex("PlanId");
 
@@ -1853,18 +1858,11 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.MemberProfile", b =>
                 {
-                    b.HasOne("IntelliFit.Domain.Models.SubscriptionPlan", "SubscriptionPlan")
-                        .WithMany()
-                        .HasForeignKey("SubscriptionPlanId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
                         .WithOne("MemberProfile")
                         .HasForeignKey("IntelliFit.Domain.Models.MemberProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("SubscriptionPlan");
 
                     b.Navigation("User");
                 });
@@ -1956,9 +1954,9 @@ namespace Presistence.Migrations
             modelBuilder.Entity("IntelliFit.Domain.Models.UserSubscription", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.Payment", "Payment")
-                        .WithMany()
-                        .HasForeignKey("PaymentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .WithOne("Subscription")
+                        .HasForeignKey("IntelliFit.Domain.Models.UserSubscription", "PaymentId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("IntelliFit.Domain.Models.SubscriptionPlan", "Plan")
                         .WithMany("UserSubscriptions")
@@ -2124,6 +2122,11 @@ namespace Presistence.Migrations
                     b.Navigation("AiGenerations");
 
                     b.Navigation("MealsList");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.Payment", b =>
+                {
+                    b.Navigation("Subscription");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.ProgressMilestone", b =>
