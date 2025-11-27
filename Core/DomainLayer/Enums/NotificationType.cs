@@ -1,13 +1,15 @@
-namespace DomainLayer.Enums;
-
-public enum NotificationType
+namespace IntelliFit.Domain.Enums
 {
-    BookingReminder,
-    MaintenanceAlert,
-    PaymentDue,
-    WorkoutComplete,
-    MilestoneAchieved,
-    CoachMessage,
-    SystemAlert,
-    PromotionalOffer
+
+    public enum NotificationType
+    {
+        BookingReminder,
+        MaintenanceAlert,
+        PaymentDue,
+        WorkoutComplete,
+        MilestoneAchieved,
+        CoachMessage,
+        SystemAlert,
+        PromotionalOffer
+    }
 }

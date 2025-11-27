@@ -1,10 +1,12 @@
-namespace DomainLayer.Enums;
-
-public enum SubscriptionStatus
+namespace IntelliFit.Domain.Enums
 {
-    Active,
-    Expired,
-    Cancelled,
-    Suspended,
-    PendingPayment
+
+    public enum SubscriptionStatus
+    {
+        Active,
+        Expired,
+        Cancelled,
+        Suspended,
+        PendingPayment
+    }
 }
