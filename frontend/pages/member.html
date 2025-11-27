@@ -1,0 +1,110 @@
+<section id="dashboard-member" class="main-container">
+    <!-- Sidebar for Member -->
+    <aside class="sidebar">
+        <!-- User Profile Info -->
+        <div class="user-profile">
+            <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+            <h3>Jane Doe</h3>
+            <p class="text-primary">Premium Member</p>
+            <!-- Token Display (Updated dynamically via JS) -->
+            <div style="margin-top:10px; font-size:0.9rem; font-weight:bold;">Tokens: <span id="member-token-display">120</span></div>
+        </div>
+        <!-- Navigation Menu for Member -->
+        <nav>
+            <button class="menu-item active" onclick="switchTab('member', 'overview')"><i class="fa-solid fa-chart-pie"></i> Overview</button>
+            <button class="menu-item" onclick="switchTab('member', 'booking')"><i class="fa-solid fa-calendar-check"></i> Book Equipment</button>
+            <button class="menu-item" onclick="switchTab('member', 'ai-coach')"><i class="fa-solid fa-robot"></i> AI Coach</button>
+            <button class="menu-item" onclick="switchTab('member', 'inbody')"><i class="fa-solid fa-weight-scale"></i> InBody Data</button>
+        </nav>
+    </aside>
+    
+    <!-- Main Content Area for Member Tabs -->
+    <main class="content-area">
+        <!-- TAB: Overview (Progress Stats + Chart) -->
+        <div id="member-overview" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Your Progress</h2></div>
+                <!-- Stats Grid -->
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div style="background:#f5fee3; padding:1.5rem; border-radius:12px; text-align:center;">
+                        <h3>78.5 kg</h3><p>Current Weight</p>
+                    </div>
+                    <div style="background:#e0f2fe; padding:1.5rem; border-radius:12px; text-align:center;">
+                        <h3>18.5 %</h3><p>Body Fat</p>
+                    </div>
+                    <div style="background:#f3f4f6; padding:1.5rem; border-radius:12px; text-align:center;">
+                        <h3>Premium</h3><p>Plan Status</p>
+                    </div>
+                </div>
+                <!-- Progress Chart Container -->
+                <div style="margin-top: 2rem; height: 250px;">
+                    <canvas id="memberProgressChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Booking Equipment -->
+        <div id="member-booking" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Book Equipment</h2>
+                    <span class="status-badge status-active">Cost: 5 Tokens</span>
+                </div>
+                <!-- Machine List (Injected via JS) -->
+                <div class="machine-grid" id="machine-list-container">
+                    <!-- Machines will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: AI Coach Chat -->
+        <div id="member-ai-coach" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">AI Personal Coach</h2>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <div style="width:10px; height:10px; background:#a3e221; border-radius:50%;"></div> Online
+                    </div>
+                </div>
+                <!-- Chat Interface -->
+                <div class="chat-interface">
+                    <!-- Chat Messages Container -->
+                    <div class="chat-messages" id="chat-box">
+                        <div class="message ai">Hi Jane! Based on your last InBody scan, let's focus on protein intake today. Need a workout plan?</div>
+                    </div>
+                    <!-- Chat Input Area -->
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Ask me anything..." style="margin-bottom:0;" onkeypress="handleChatKey(event)">
+                        <button class="btn btn-primary" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: InBody Data Update -->
+        <div id="member-inbody" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Update Body Measurements</h2></div>
+                <!-- InBody Form -->
+                <form onsubmit="handleInBodySubmit(event)" style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                   <input type="number" placeholder="Weight (kg)" min="1" required>
+                   <input type="number" placeholder="Muscle Mass (kg)" min="1" required>
+                   <input type="number" placeholder="Fat Percentage (%)" min="1" required>
+                   <input type="number" placeholder="Visceral Fat Level" min="1" required>
+                   <button type="submit" class="btn btn-primary" style="grid-column: span 2;">Submit Data</button>
+                </form>
+                <!-- History Table -->
+                <div style="margin-top:2rem;">
+                    <h3>History</h3>
+                    <table class="data-table">
+                        <thead><tr><th>Date</th><th>Weight</th><th>Muscle</th><th>Fat %</th></tr></thead>
+                        <tbody>
+                            <tr><td>Oct 24</td><td>78.5</td><td>34.2</td><td>18.5</td></tr>
+                            <tr><td>Sep 24</td><td>79.2</td><td>33.8</td><td>19.2</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</section>

@@ -1,0 +1,122 @@
+@import "variables.css";
+@import "layout.css";
+@import "components.css";
+
+/* HEADER */
+header {
+    background-color: white;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.navbar {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Mimicking the geometric logo shape with CSS for demo */
+.logo-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--primary-blue);
+    clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 100%);
+    position: relative;
+}
+.logo-icon::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 50%; height: 50%;
+    background: white;
+}
+
+.logo span {
+    color: var(--primary-lime);
+}
+
+#user-role-badge {
+    margin-left: 40px !important;  /* gives breathing room */
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    gap: 800px; 
+}
+
+.nav-links button {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    margin-left: 20px;
+    color: var(--gray-800);
+    font-weight: 500;
+}
+
+.nav-links button:hover {
+    color: var(--primary-blue);
+}
+
+/* AUTH SECTION */
+#auth-section {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary-blue) 0%, #000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-container {
+    background: white;
+    padding: 2.5rem;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.role-switcher {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.role-btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+    background: var(--gray-100);
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+.role-btn.active {
+    background: var(--primary-blue);
+    color: white;
+    opacity: 1;
+    border-color: var(--primary-blue);
+}
+
+.brand-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}

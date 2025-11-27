@@ -1,0 +1,31 @@
+:root {
+    /* Brand Colors */
+    --primary-blue: #0b4fd4;
+    --primary-lime: #a3e221;
+    --primary-light: #f5fee3;
+    
+    /* Secondary Colors */
+    --secondary-pale-green: #dcee7e;
+    --secondary-black: #000000;
+    
+    /* Functional Colors */
+    --text-dark: #1a1a1a;
+    --text-light: #ffffff;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-800: #1f2937;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warning: #f59e0b;
+
+    --font-main: 'Montserrat', sans-serif;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}

@@ -1,0 +1,109 @@
+<section id="dashboard-coach" class="main-container">
+    <!-- Sidebar for Coach -->
+    <aside class="sidebar">
+        <!-- Coach Profile Info -->
+        <div class="user-profile">
+            <div class="user-avatar" style="background-color: #e0f2fe; color: #0369a1;"><i class="fa-solid fa-stopwatch"></i></div>
+            <h3>Coach Mike</h3>
+            <p class="text-primary">Senior Trainer</p>
+        </div>
+        <!-- Navigation Menu for Coach -->
+        <nav>
+            <button class="menu-item active" onclick="switchTab('coach', 'clients')"><i class="fa-solid fa-users"></i> My Clients</button>
+            <button class="menu-item" onclick="switchTab('coach', 'workout-builder')"><i class="fa-solid fa-dumbbell"></i> Workout Builder</button>
+            <button class="menu-item" onclick="switchTab('coach', 'diet-builder')"><i class="fa-solid fa-carrot"></i> Nutrition Plans</button>
+        </nav>
+    </aside>
+
+    <!-- Main Content Area for Coach Tabs -->
+    <main class="content-area">
+        <!-- TAB: Clients List -->
+        <div id="coach-clients" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Assigned Clients</h2>
+                    <button class="btn btn-outline btn-sm"><i class="fa-solid fa-plus"></i> Add New</button>
+                </div>
+                <!-- Clients Table -->
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Goal</th>
+                            <th>Last InBody</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <!-- Clients injected via JS -->
+                    <tbody id="coach-client-list">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB: Workout Builder -->
+        <div id="coach-workout-builder" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Create Workout Plan</h2>
+                </div>
+                <!-- Workout Form -->
+                <form onsubmit="submitPlan(event, 'Workout')">
+                    <label>Select Client</label>
+                    <select id="workout-client-select">
+                        <option>Jane Doe</option>
+                        <option>Ahmed Ali</option>
+                    </select>
+                    
+                    <!-- Grid for Workout Days -->
+                    <div class="plan-creator-grid">
+                        <div>
+                            <label>Day 1 Focus</label>
+                            <input type="text" placeholder="e.g., Chest & Triceps">
+                            <label>Exercises (Comma separated)</label>
+                            <textarea rows="3" placeholder="Bench Press, Pushups..."></textarea>
+                        </div>
+                        <div>
+                            <label>Day 2 Focus</label>
+                            <input type="text" placeholder="e.g., Back & Biceps">
+                            <label>Exercises</label>
+                            <textarea rows="3" placeholder="Pullups, Rows..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Assign Plan</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- TAB: Diet Builder -->
+        <div id="coach-diet-builder" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Create Nutrition Plan</h2>
+                </div>
+                <!-- Diet Form -->
+                <form onsubmit="submitPlan(event, 'Nutrition')">
+                    <label>Select Client</label>
+                    <select>
+                        <option>Jane Doe</option>
+                        <option>Ahmed Ali</option>
+                    </select>
+                    <label>Daily Calorie Target</label>
+                    <input type="number" placeholder="e.g., 2500">
+                    
+                    <label>Macro Split</label>
+                    <div class="flex gap-4">
+                        <input type="text" placeholder="Protein (g)">
+                        <input type="text" placeholder="Carbs (g)">
+                        <input type="text" placeholder="Fats (g)">
+                    </div>
+                    
+                    <label>Notes/Meal Suggestions</label>
+                    <textarea rows="4"></textarea>
+                    <button type="submit" class="btn btn-secondary">Send Diet Plan</button>
+                </form>
+            </div>
+        </div>
+    </main>
+</section>

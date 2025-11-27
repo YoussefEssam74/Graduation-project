@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Metadata and Title -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntelliFit - Smart Gym Management</title>
+    
+    <!-- Google Fonts Preconnect and Link -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- External Libraries -->
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Analytics Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS File Link -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+    <!-- HEADER SECTION (Common for all roles after login) -->
+    <!-- This header is hidden initially and shown after login -->
+    <header id="app-header" class="hidden">
+        <div class="navbar">
+            <!-- Logo with custom icon -->
+            <div class="logo">
+             <img src="Assets/Logo.png" alt="Logo" class="brand-logo">
+                IntelliFit
+            </div>
+            <!-- Navigation links with role badge and logout button -->
+            <div class="nav-links flex items-center">
+                <span id="user-role-badge" class="role-badge">Member</span>
+                <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- AUTHENTICATION SCREEN (Login Page) -->
+    <!-- This is the initial screen shown before login -->
+    <section id="auth-section">
+        <div class="auth-container">
+            <!-- Logo for auth screen -->
+            <div class="logo" style="justify-content: center; margin-bottom: 20px; font-size: 2rem;">
+            <img src="Assets/Logo.png" alt="Logo" class="brand-logo">
+            IntelliFit
+            </div>
+
+            
+            <!-- Role Switcher Buttons -->
+            <div class="role-switcher">
+                <button class="role-btn active" onclick="selectRole(this, 'member')">Member</button>
+                <button class="role-btn" onclick="selectRole(this, 'coach')">Coach</button>
+                <button class="role-btn" onclick="selectRole(this, 'reception')">Reception</button>
+            </div>
+
+            <!-- Login Form Title (Changes based on role) -->
+            <h2 id="login-title">Member Login</h2>
+            <!-- Login Form -->
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <input type="email" placeholder="Email Address" value="user@intellifit.com" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" placeholder="Password" value="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Sign In</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Placeholder for dynamic dashboard load -->
+    <div id="dashboard-container"></div>
+
+    
+    <!-- Custom JavaScript File Link -->
+    <script src="state.js"></script>
+    <script src="auth.js"></script>
+    <script src="utils.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

@@ -5,14 +5,13 @@ USE IntelliFitDb;
 SELECT  *
 FROM Users u
 LEFT JOIN SubscriptionPlans sp ON u.SubscriptionPlanID = sp.PlanID
-WHERE u.Name = 'Ahmed Hassan';
+;
 
 
 
 SELECT *
 FROM Payments p
 INNER JOIN Users u ON p.UserID = u.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY p.PaymentDate;
 
 
@@ -32,7 +31,6 @@ SELECT *
 FROM Bookings b
 INNER JOIN Users u ON b.UserID = u.UserId
 INNER JOIN Equipments e ON b.EquipmentID = e.EquipmentID
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY b.StartTime DESC;
 
 
@@ -41,7 +39,6 @@ PRINT '2.3: Token Transaction History';
 SELECT *
 FROM TokenTransactions tt
 INNER JOIN Users u ON tt.UserID = u.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY tt.CreatedAt DESC;
 
 
@@ -60,7 +57,6 @@ FROM WorkoutSessions ws
 INNER JOIN Users u ON ws.UserID = u.UserId
 INNER JOIN Equipments e ON ws.EquipmentID = e.EquipmentID
 LEFT JOIN Users c ON ws.CoachID = c.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY ws.StartTime DESC;
 
 
@@ -71,7 +67,6 @@ FROM HeartRateData hr
 INNER JOIN WearableDevices wd ON hr.DeviceID = wd.DeviceID
 INNER JOIN Users u ON wd.UserID = u.UserId
 LEFT JOIN WorkoutSessions ws ON hr.SessionID = ws.SessionID
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY hr.Timestamp DESC;
 
 
@@ -82,7 +77,6 @@ FROM ExerciseFormAnalyses efa
 INNER JOIN WorkoutSessions ws ON efa.SessionID = ws.SessionID
 INNER JOIN Users u ON ws.UserID = u.UserId
 INNER JOIN AI_Agents ai ON efa.AI_ID = ai.AI_ID
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY efa.CreatedAt DESC;
 
 
@@ -91,7 +85,6 @@ PRINT '3.4: Member Progress Milestones';
 SELECT *
 FROM ProgressMilestones pm
 INNER JOIN Users u ON pm.UserID = u.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY pm.AchievedAt DESC;
 
 
@@ -112,7 +105,6 @@ SELECT
     CASE WHEN sp.HasAIFeatures = 1 THEN 'Enabled' ELSE 'Disabled' END AS AIAccess
 FROM Users u
 LEFT JOIN SubscriptionPlans sp ON u.SubscriptionPlanID = sp.PlanID
-WHERE u.Name = 'Ahmed Hassan'
 
 UNION ALL
 
@@ -121,12 +113,11 @@ SELECT
     u.Name,
     NULL AS Age,
     NULL AS Gender,
-    CAST(COUNT(ws.SessionID) AS VARCHAR) + ' sessions completed',
+    CAST(COUNT(ws.SessionID) AS VARCHAR) + ' sessions completed' AS FitnessGoal,
     NULL AS Subscription,
-    CAST(AVG(ws.CaloriesBurned) AS VARCHAR) + ' avg calories'
+    CAST(AVG(ws.CaloriesBurned) AS VARCHAR) + ' avg calories' AS AIAccess
 FROM Users u
 LEFT JOIN WorkoutSessions ws ON u.UserId = ws.UserID
-WHERE u.Name = 'Ahmed Hassan'
 GROUP BY u.Name
 
 UNION ALL
@@ -134,13 +125,14 @@ UNION ALL
 SELECT 
     'Latest InBody Data' AS DataSource,
     u.Name,
-    CAST(ibm.Weight AS VARCHAR) + ' kg',
-    CAST(ibm.FatPercentage AS VARCHAR) + '% body fat',
-    CAST(ibm.MuscleMass AS VARCHAR) + ' kg muscle'
+    NULL AS Age,
+    CAST(ibm.Weight AS VARCHAR) + ' kg' AS Gender,
+    CAST(ibm.FatPercentage AS VARCHAR) + '% body fat' AS FitnessGoal,
+    CAST(ibm.MuscleMass AS VARCHAR) + ' kg muscle' AS Subscription,
+    NULL AS AIAccess
 FROM Users u
 LEFT JOIN InBodyMeasurements ibm ON u.UserId = ibm.UserID
-WHERE u.Name = 'Ahmed Hassan'
-  AND ibm.InBodyID = (SELECT TOP 1 InBodyID FROM InBodyMeasurements WHERE UserID = u.UserId ORDER BY CreatedAt DESC);
+WHERE ibm.InBodyID = (SELECT TOP 1 InBodyID FROM InBodyMeasurements WHERE UserID = u.UserId ORDER BY CreatedAt DESC);
 
 
 -- 4.2: View AI-generated workout recommendation
@@ -153,7 +145,6 @@ FROM WorkoutRecommendations wr
 INNER JOIN Users u ON wr.UserID = u.UserId
 INNER JOIN AI_Agents ai ON wr.AI_ID = ai.AI_ID
 LEFT JOIN Users c ON wr.ReviewedByCoachID = c.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY wr.GeneratedAt DESC;
 
 
@@ -171,8 +162,7 @@ FROM WorkoutRecommendations wr
 INNER JOIN Users u ON wr.UserID = u.UserId
 INNER JOIN RecommendedExercises re ON wr.RecommendationID = re.WorkoutRecommendationId
 INNER JOIN Exercises e ON re.ExerciseId = e.ExerciseID
-WHERE u.Name = 'Ahmed Hassan'
-  AND wr.RecommendationID = (SELECT TOP 1 RecommendationID FROM WorkoutRecommendations WHERE UserID = u.UserId ORDER BY GeneratedAt DESC)
+WHERE wr.RecommendationID = (SELECT TOP 1 RecommendationID FROM WorkoutRecommendations ORDER BY GeneratedAt DESC)
 ORDER BY re.[Order];
 
 
@@ -187,7 +177,6 @@ SELECT
 FROM AIQueryLogs aq
 INNER JOIN Users u ON aq.UserID = u.UserId
 INNER JOIN AI_Agents ai ON aq.AI_ID = ai.AI_ID
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY aq.CreatedAt DESC;
 
 
@@ -207,7 +196,6 @@ LEFT JOIN WorkoutRecommendations wr ON c.UserId = wr.ReviewedByCoachID AND wr.Ap
 LEFT JOIN NutritionPlans np ON c.UserId = np.ReviewedByCoachID AND np.ApprovalStatus = 0
 LEFT JOIN MemberCoachSubscriptions mcs ON c.UserId = mcs.CoachID AND mcs.Status = 0
 WHERE c.UserType = 'Coach'
-  AND c.Name = 'Khaled Mostafa'
 GROUP BY c.Name;
 
 
@@ -245,7 +233,6 @@ INNER JOIN Users u ON mwp.UserID = u.UserId
 LEFT JOIN WorkoutPlanTemplates wpt ON mwp.TemplateID = wpt.TemplateID
 LEFT JOIN Users coach ON mwp.AssignedByCoachID = coach.UserId
 LEFT JOIN AI_Agents ai ON mwp.GeneratedByAI_ID = ai.AI_ID
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY mwp.StartDate DESC;
 
 
@@ -257,32 +244,29 @@ SELECT
     u.FitnessGoal AS Detail2,
     CAST(u.TokenBalance AS VARCHAR) + ' tokens' AS Detail3
 FROM Users u
-WHERE u.Name = 'Ahmed Hassan'
 
 UNION ALL
 
 SELECT 
-    'Latest InBody',
+    'Latest InBody' AS Section,
     u.Name,
-    CAST(ibm.Weight AS VARCHAR) + ' kg',
-    CAST(ibm.FatPercentage AS VARCHAR) + '% fat',
-    CAST(ibm.MuscleMass AS VARCHAR) + ' kg muscle'
+    CAST(ibm.Weight AS VARCHAR) + ' kg' AS Detail1,
+    CAST(ibm.FatPercentage AS VARCHAR) + '% fat' AS Detail2,
+    CAST(ibm.MuscleMass AS VARCHAR) + ' kg muscle' AS Detail3
 FROM Users u
 LEFT JOIN InBodyMeasurements ibm ON u.UserId = ibm.UserID
-WHERE u.Name = 'Ahmed Hassan'
-  AND ibm.InBodyID = (SELECT TOP 1 InBodyID FROM InBodyMeasurements WHERE UserID = u.UserId ORDER BY CreatedAt DESC)
+WHERE ibm.InBodyID = (SELECT TOP 1 InBodyID FROM InBodyMeasurements WHERE UserID = u.UserId ORDER BY CreatedAt DESC)
 
 UNION ALL
 
 SELECT 
-    'Workout Stats',
+    'Workout Stats' AS Section,
     u.Name,
-    CAST(COUNT(ws.SessionID) AS VARCHAR) + ' sessions',
-    CAST(AVG(ws.CaloriesBurned) AS VARCHAR) + ' avg cal',
-    CAST(SUM(ws.DurationMinutes) AS VARCHAR) + ' total mins'
+    CAST(COUNT(ws.SessionID) AS VARCHAR) + ' sessions' AS Detail1,
+    CAST(AVG(ws.CaloriesBurned) AS VARCHAR) + ' avg cal' AS Detail2,
+    CAST(SUM(ws.DurationMinutes) AS VARCHAR) + ' total mins' AS Detail3
 FROM Users u
 LEFT JOIN WorkoutSessions ws ON u.UserId = ws.UserID
-WHERE u.Name = 'Ahmed Hassan'
 GROUP BY u.Name;
 
 
@@ -303,7 +287,6 @@ FROM NutritionPlans np
 INNER JOIN Users u ON np.UserID = u.UserId
 INNER JOIN AI_Agents ai ON np.AI_ID = ai.AI_ID
 LEFT JOIN Users c ON np.ReviewedByCoachID = c.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY np.GeneratedAt DESC;
 
 
@@ -323,8 +306,7 @@ FROM NutritionPlans np
 INNER JOIN Users u ON np.UserID = u.UserId
 INNER JOIN Meals m ON np.PlanID = m.NutritionPlanId
 LEFT JOIN MealIngredients mi ON m.MealId = mi.MealId
-WHERE u.Name = 'Ahmed Hassan'
-  AND np.PlanID = (SELECT TOP 1 PlanID FROM NutritionPlans WHERE UserID = u.UserId ORDER BY GeneratedAt DESC)
+WHERE np.PlanID = (SELECT TOP 1 PlanID FROM NutritionPlans ORDER BY GeneratedAt DESC)
 GROUP BY np.PlanName, m.MealId, m.Name, m.MealType, m.Calories, 
          m.ProteinGrams, m.CarbsGrams, m.FatsGrams
 ORDER BY 
@@ -352,8 +334,7 @@ INNER JOIN NutritionPlans np ON m.NutritionPlanId = np.PlanID
 INNER JOIN Users u ON np.UserID = u.UserId
 INNER JOIN MealIngredients mi ON m.MealId = mi.MealId
 INNER JOIN Ingredients i ON mi.IngredientId = i.IngredientId
-WHERE u.Name = 'Ahmed Hassan'
-  AND np.PlanID = (SELECT TOP 1 PlanID FROM NutritionPlans WHERE UserID = u.UserId ORDER BY GeneratedAt DESC)
+WHERE np.PlanID = (SELECT TOP 1 PlanID FROM NutritionPlans ORDER BY GeneratedAt DESC)
 ORDER BY m.MealId, i.Name;
 
 
@@ -372,8 +353,7 @@ SELECT
 FROM NutritionPlans np
 INNER JOIN Users u ON np.UserID = u.UserId
 LEFT JOIN Meals m ON np.PlanID = m.NutritionPlanId
-WHERE u.Name = 'Ahmed Hassan'
-  AND np.PlanID = (SELECT TOP 1 PlanID FROM NutritionPlans WHERE UserID = u.UserId ORDER BY GeneratedAt DESC)
+WHERE np.PlanID = (SELECT TOP 1 PlanID FROM NutritionPlans ORDER BY GeneratedAt DESC)
 GROUP BY np.PlanName, np.DailyCalories, np.ProteinGrams, np.CarbsGrams, np.FatsGrams;
 
 
@@ -392,8 +372,7 @@ SELECT
     sp.TokensIncluded AS MonthlyTokens,
     sp.PlanName
 FROM Users u
-LEFT JOIN SubscriptionPlans sp ON u.SubscriptionPlanID = sp.PlanID
-WHERE u.Name = 'Ahmed Hassan';
+LEFT JOIN SubscriptionPlans sp ON u.SubscriptionPlanID = sp.PlanID;
 
 
 -- 7.2: Token purchase transaction
@@ -409,8 +388,7 @@ SELECT
 FROM TokenTransactions tt
 INNER JOIN Users u ON tt.UserID = u.UserId
 LEFT JOIN Users r ON tt.ReceptionistID = r.UserId
-WHERE u.Name = 'Ahmed Hassan'
-  AND tt.Type = 0  -- 0 = Purchase
+WHERE tt.Type = 0  -- 0 = Purchase
 ORDER BY tt.CreatedAt DESC;
 
 
@@ -426,7 +404,6 @@ SELECT
     p.Status
 FROM Payments p
 INNER JOIN Users u ON p.UserID = u.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY p.PaymentDate DESC;
 
 
@@ -441,7 +418,6 @@ SELECT
     u.TokenBalance AS CurrentBalance
 FROM Users u
 LEFT JOIN TokenTransactions tt ON u.UserId = tt.UserID
-WHERE u.Name = 'Ahmed Hassan'
 GROUP BY u.Name, u.TokenBalance;
 
 
@@ -453,14 +429,13 @@ GROUP BY u.Name, u.TokenBalance;
 
 -- 8.1: Latest InBody measurement
 PRINT '8.1: Latest InBody Scan Results';
-SELECT TOP 1
+SELECT 
     ibm.*,
     u.Name AS MemberName,
     r.Name AS RecordedByReceptionist
 FROM InBodyMeasurements ibm
 INNER JOIN Users u ON ibm.UserID = u.UserId
 LEFT JOIN Users r ON ibm.ReceptionistID = r.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY ibm.CreatedAt DESC;
 
 
@@ -480,7 +455,6 @@ SELECT
     ibm.MuscleMass - LAG(ibm.MuscleMass) OVER (ORDER BY ibm.CreatedAt) AS MuscleGain
 FROM InBodyMeasurements ibm
 INNER JOIN Users u ON ibm.UserID = u.UserId
-WHERE u.Name = 'Ahmed Hassan'
 ORDER BY ibm.CreatedAt DESC;
 
 
@@ -495,7 +469,6 @@ SELECT
 FROM Users r
 LEFT JOIN InBodyMeasurements ibm ON r.UserId = ibm.ReceptionistID
 WHERE r.UserType = 'Receptionist'
-  AND r.Name = 'Hana Salem'
 GROUP BY r.Name;
 
 
@@ -515,8 +488,6 @@ SELECT
 FROM MemberCoachSubscriptions mcs
 INNER JOIN Users m ON mcs.UserID = m.UserId
 INNER JOIN Users c ON mcs.CoachID = c.UserId
-WHERE m.Name = 'Ahmed Hassan'
-  AND c.Name = 'Khaled Mostafa'
 ORDER BY mcs.StartDate DESC;
 
 
@@ -531,9 +502,7 @@ FROM WorkoutSessions ws
 INNER JOIN Users m ON ws.UserID = m.UserId
 INNER JOIN Users c ON ws.CoachID = c.UserId
 INNER JOIN Equipments e ON ws.EquipmentID = e.EquipmentID
-WHERE m.Name = 'Ahmed Hassan'
-  AND c.Name = 'Khaled Mostafa'
-  AND ws.IsSupervisedByCoach = 1
+WHERE ws.IsSupervisedByCoach = 1
 ORDER BY ws.StartTime DESC;
 
 
@@ -550,8 +519,7 @@ FROM WorkoutSessions ws
 INNER JOIN Users c ON ws.CoachID = c.UserId
 INNER JOIN Users m ON ws.UserID = m.UserId
 INNER JOIN Equipments e ON ws.EquipmentID = e.EquipmentID
-WHERE c.Name = 'Khaled Mostafa'
-  AND CAST(ws.StartTime AS DATE) = CAST(GETDATE() AS DATE)
+WHERE CAST(ws.StartTime AS DATE) = CAST(GETDATE() AS DATE)
 ORDER BY ws.StartTime;
 
 
@@ -569,7 +537,6 @@ LEFT JOIN MemberCoachSubscriptions mcs ON c.UserId = mcs.CoachID
 LEFT JOIN WorkoutSessions ws ON c.UserId = ws.CoachID AND ws.IsSupervisedByCoach = 1
 LEFT JOIN CoachReviews cr ON c.UserId = cr.CoachID
 WHERE c.UserType = 'Coach'
-  AND c.Name = 'Khaled Mostafa'
 GROUP BY c.Name;
 
 
@@ -746,8 +713,6 @@ FROM CoachReviews cr
 INNER JOIN Users m ON cr.UserID = m.UserId
 INNER JOIN Users c ON cr.CoachID = c.UserId
 LEFT JOIN MemberCoachSubscriptions mcs ON m.UserId = mcs.UserID AND c.UserId = mcs.CoachID
-WHERE m.Name = 'Ahmed Hassan'
-  AND c.Name = 'Khaled Mostafa'
 ORDER BY cr.ReviewDate DESC;
 
 
@@ -764,7 +729,6 @@ SELECT
 FROM Users c
 LEFT JOIN CoachReviews cr ON c.UserId = cr.CoachID
 WHERE c.UserType = 'Coach'
-  AND c.Name = 'Khaled Mostafa'
 GROUP BY c.Name;
 
 
@@ -778,7 +742,6 @@ SELECT TOP 5
 FROM CoachReviews cr
 INNER JOIN Users m ON cr.UserID = m.UserId
 INNER JOIN Users c ON cr.CoachID = c.UserId
-WHERE c.Name = 'Khaled Mostafa'
 ORDER BY cr.ReviewDate DESC;
 
 
@@ -827,5 +790,6 @@ FROM WorkoutRecommendations WHERE MONTH(GeneratedAt) = MONTH(GETDATE())
 UNION ALL
 SELECT 'High Churn Risk Members', CAST(COUNT(*) AS VARCHAR)
 FROM ChurnPredictions WHERE RiskLevel = 2;
+
 
 
