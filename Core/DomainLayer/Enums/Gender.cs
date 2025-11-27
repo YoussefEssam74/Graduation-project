@@ -1,9 +1,10 @@
-namespace DomainLayer.Enums;
-
-public enum Gender
+namespace IntelliFit.Domain.Enums
 {
-    Male,
-    Female,
-    Other,
-    PreferNotToSay
+    public enum GenderType
+    {
+        Male,
+        Female,
+        Other,
+        PreferNotToSay
+    }
 }
