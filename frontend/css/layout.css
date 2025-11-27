@@ -1,0 +1,109 @@
+body {
+    font-family: var(--font-main);
+    background-color: var(--gray-100);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.text-primary { color: var(--primary-blue); }
+.text-lime { color: var(--primary-lime); }
+.font-bold { font-weight: 700; }
+.w-full { width: 100%; }
+.mb-4 { margin-bottom: 1rem; }
+
+/* DASHBOARD LAYOUT */
+.main-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+}
+
+/* Sidebar */
+.sidebar {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    height: fit-content;
+}
+
+.user-profile {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.user-avatar {
+    width: 80px;
+    height: 80px;
+    background-color: var(--secondary-pale-green);
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--primary-blue);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 5px;
+    border-radius: var(--radius-md);
+    color: var(--gray-800);
+    font-weight: 500;
+    background: transparent;
+    text-align: left;
+}
+
+.menu-item.active, .menu-item:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-blue);
+}
+
+/* Content Area */
+.content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+/* Plan Creator Styles */
+.plan-creator-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-container {
+        grid-template-columns: 1fr;
+    }
+    .sidebar { display: none; }
+    .navbar { flex-direction: column; }
+    .plan-creator-grid { grid-template-columns: 1fr; }
+}
+
+/* Member-Specific Layout */
+.machine-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
