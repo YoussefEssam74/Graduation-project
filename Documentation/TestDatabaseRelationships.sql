@@ -1,241 +1,235 @@
 -- ===============================================
 -- DATABASE RELATIONSHIP & INTEGRITY TEST QUERIES
--- IntelliFit Smart Gym System
+-- IntelliFit Smart Gym System (PostgreSQL)
 -- Tests all foreign keys, cascades, and constraints
 -- Created: November 22, 2025
+-- Updated: November 28, 2025 for PostgreSQL
 -- ===============================================
 
-USE IntelliFitDb;
-GO
+-- Connect to intellifit_db database
+\c intellifit_db
 
-PRINT '========================================';
-PRINT 'STARTING DATABASE RELATIONSHIP TESTS';
-PRINT '========================================';
-PRINT '';
+\echo '========================================'
+\echo 'STARTING DATABASE RELATIONSHIP TESTS'
+\echo '========================================'
+\echo ''
 
 -- ===============================================
--- SECTION 1: USER INHERITANCE (TPH) TESTS
--- Tests Table Per Hierarchy for User/Admin/Coach/Receptionist
+-- SECTION 1: USER & PROFILE RELATIONSHIPS
+-- Tests users, member_profiles, coach_profiles relationships
 -- ===============================================
-PRINT '--- SECTION 1: User Inheritance (TPH) Tests ---';
-PRINT '';
+\echo '--- SECTION 1: User & Profile Relationships ---'
+\echo ''
 
--- 1.1: Verify User table has UserType discriminator column
-PRINT '1.1: Checking UserType discriminator column exists...';
+-- 1.1: Verify User table structure
+\echo '1.1: Checking users table columns...'
 SELECT 
-    COLUMN_NAME, 
-    DATA_TYPE, 
-    IS_NULLABLE 
-FROM INFORMATION_SCHEMA.COLUMNS 
-WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'UserType';
-GO
+    column_name, 
+    data_type, 
+    is_nullable 
+FROM information_schema.columns 
+WHERE table_name = 'users' AND table_schema = 'public'
+ORDER BY ordinal_position;
 
--- 1.2: Count users by type (TPH inheritance)
-PRINT '1.2: Count users by UserType...';
+-- 1.2: Count users by role (0=Member, 1=Coach, 2=Admin)
+\echo '1.2: Count users by Role...'
 SELECT 
-    UserType,
-    COUNT(*) AS UserCount
-FROM Users
-GROUP BY UserType;
-GO
+    "Role",
+    CASE 
+        WHEN "Role" = 0 THEN 'Member'
+        WHEN "Role" = 1 THEN 'Coach'
+        WHEN "Role" = 2 THEN 'Admin'
+        ELSE 'Unknown'
+    END as role_name,
+    COUNT(*) AS user_count
+FROM users
+GROUP BY "Role"
+ORDER BY "Role";
 
--- 1.3: Verify all user types have correct Role enum values
-PRINT '1.3: Verify UserType matches Role...';
+-- 1.3: Users with their member profiles
+\echo '1.3: Users with member profiles...'
 SELECT 
-    UserType,
-    Role,
-    COUNT(*) AS Count
-FROM Users
-GROUP BY UserType, Role
-ORDER BY UserType;
-GO
+    u."UserId",
+    u."Name",
+    u."Email",
+    u."Role",
+    mp."FitnessGoal",
+    mp."CurrentWeight",
+    mp."Height"
+FROM users u
+LEFT JOIN member_profiles mp ON u."UserId" = mp."UserId"
+WHERE u."Role" = 0 -- Members only
+ORDER BY u."UserId";
 
--- 1.4: Test User -> SubscriptionPlan relationship (nullable FK)
-PRINT '1.4: Users with subscription plans...';
+-- 1.4: Users with their coach profiles
+\echo '1.4: Users with coach profiles...'
 SELECT 
-    u.UserId,
-    u.Name,
-    u.UserType,
-    u.SubscriptionPlanID,
-    sp.PlanName,
-    sp.MonthlyFee
-FROM Users u
-LEFT JOIN SubscriptionPlans sp ON u.SubscriptionPlanID = sp.PlanID
-ORDER BY u.UserType, u.UserId;
-GO
+    u."UserId",
+    u."Name",
+    u."Email",
+    cp."CoachId",
+    cp."Specialization",
+    cp."ExperienceYears",
+    cp."Rating"
+FROM users u
+INNER JOIN coach_profiles cp ON u."UserId" = cp."UserId"
+WHERE u."Role" = 1 -- Coaches only
+ORDER BY cp."CoachId";
 
--- 1.5: Find orphaned users (SubscriptionPlanID pointing to non-existent plans)
-PRINT '1.5: Checking for orphaned User->SubscriptionPlan FKs...';
-SELECT 
-    u.UserId,
-    u.Name,
-    u.SubscriptionPlanID AS InvalidPlanID
-FROM Users u
-WHERE u.SubscriptionPlanID IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM SubscriptionPlans sp WHERE sp.PlanID = u.SubscriptionPlanID);
-GO
+-- 1.5: Find orphaned profiles (profiles without valid user)
+\echo '1.5: Checking for orphaned profile FKs...'
+SELECT 'Orphaned MemberProfile' AS issue_type, mp."UserId"
+FROM member_profiles mp
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u."UserId" = mp."UserId")
+UNION ALL
+SELECT 'Orphaned CoachProfile' AS issue_type, cp."UserId"
+FROM coach_profiles cp
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u."UserId" = cp."UserId");
 
 -- ===============================================
 -- SECTION 2: EQUIPMENT & BOOKING RELATIONSHIPS
--- Tests Equipment connections to Bookings, WorkoutSessions, MaintenanceLogs, etc.
+-- Tests equipment, equipment_categories, bookings relationships
 -- ===============================================
-PRINT '';
-PRINT '--- SECTION 2: Equipment & Booking Relationships ---';
-PRINT '';
+\echo ''
+\echo '--- SECTION 2: Equipment & Booking Relationships ---'
+\echo ''
 
--- 2.1: Equipment -> Bookings relationship
-PRINT '2.1: Equipment with their bookings...';
+-- 2.1: Equipment with their categories and booking counts
+\echo '2.1: Equipment with categories and bookings...'
 SELECT 
-    e.EquipmentID,
-    e.Name AS EquipmentName,
-    e.Status,
-    COUNT(b.BookingID) AS TotalBookings
-FROM Equipments e
-LEFT JOIN Bookings b ON e.EquipmentID = b.EquipmentID
-GROUP BY e.EquipmentID, e.Name, e.Status
-ORDER BY TotalBookings DESC;
-GO
+    e."EquipmentId",
+    e."Name" AS equipment_name,
+    ec."CategoryName",
+    e."Status", -- 0=Available, 1=InUse, 2=UnderMaintenance
+    COUNT(b."BookingId") AS total_bookings
+FROM equipment e
+LEFT JOIN equipment_categories ec ON e."CategoryId" = ec."CategoryId"
+LEFT JOIN bookings b ON e."EquipmentId" = b."EquipmentId"
+GROUP BY e."EquipmentId", e."Name", ec."CategoryName", e."Status"
+ORDER BY total_bookings DESC;
 
--- 2.2: Test Booking -> User + Equipment (both required FKs)
-PRINT '2.2: Bookings with User and Equipment details...';
+-- 2.2: Bookings with User and Equipment details
+\echo '2.2: Bookings with User and Equipment details...'
 SELECT 
-    b.BookingID,
-    u.Name AS UserName,
-    e.Name AS EquipmentName,
-    b.StartTime,
-    b.EndTime,
-    b.Status,
-    b.TokensDeducted
-FROM Bookings b
-INNER JOIN Users u ON b.UserID = u.UserId
-INNER JOIN Equipments e ON b.EquipmentID = e.EquipmentID
-ORDER BY b.StartTime DESC;
-GO
+    b."BookingId",
+    u."Name" AS user_name,
+    e."Name" AS equipment_name,
+    b."StartTime",
+    b."EndTime",
+    b."BookingStatus" -- 0=Pending, 1=Confirmed, 2=InProgress, 3=Completed, 4=Cancelled
+FROM bookings b
+INNER JOIN users u ON b."UserId" = u."UserId"
+LEFT JOIN equipment e ON b."EquipmentId" = e."EquipmentId"
+ORDER BY b."StartTime" DESC
+LIMIT 20;
 
 -- 2.3: Find orphaned Bookings (invalid User or Equipment FK)
-PRINT '2.3: Checking for orphaned Booking FKs...';
-SELECT 'Invalid UserID' AS IssueType, b.* 
-FROM Bookings b
-WHERE NOT EXISTS (SELECT 1 FROM Users u WHERE u.UserId = b.UserID)
+\echo '2.3: Checking for orphaned Booking FKs...'
+SELECT 'Invalid UserId' AS issue_type, b."BookingId", b."UserId"
+FROM bookings b
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u."UserId" = b."UserId")
 UNION ALL
-SELECT 'Invalid EquipmentID' AS IssueType, b.* 
-FROM Bookings b
-WHERE NOT EXISTS (SELECT 1 FROM Equipments e WHERE e.EquipmentID = b.EquipmentID);
-GO
-
--- 2.4: Equipment -> WorkoutSessions relationship
-PRINT '2.4: Equipment usage in workout sessions...';
-SELECT 
-    e.EquipmentID,
-    e.Name AS EquipmentName,
-    COUNT(ws.SessionID) AS TotalSessions,
-    SUM(ws.DurationMinutes) AS TotalMinutesUsed,
-    AVG(ws.CaloriesBurned) AS AvgCaloriesBurned
-FROM Equipments e
-LEFT JOIN WorkoutSessions ws ON e.EquipmentID = ws.EquipmentID
-GROUP BY e.EquipmentID, e.Name
-ORDER BY TotalMinutesUsed DESC;
-GO
-
--- 2.5: Equipment -> MaintenanceLogs relationship
-PRINT '2.5: Equipment maintenance history...';
-SELECT 
-    e.EquipmentID,
-    e.Name AS EquipmentName,
-    e.LastMaintenanceDate,
-    e.NextMaintenanceDate,
-    COUNT(ml.MaintenanceID) AS MaintenanceRecords
-FROM Equipments e
-LEFT JOIN MaintenanceLogs ml ON e.EquipmentID = ml.EquipmentID
-GROUP BY e.EquipmentID, e.Name, e.LastMaintenanceDate, e.NextMaintenanceDate
-ORDER BY e.EquipmentID;
-GO
+SELECT 'Invalid EquipmentId' AS issue_type, b."BookingId", b."EquipmentId"
+FROM bookings b
+WHERE b."EquipmentId" IS NOT NULL 
+  AND NOT EXISTS (SELECT 1 FROM equipment e WHERE e."EquipmentId" = b."EquipmentId");
 
 -- ===============================================
 -- SECTION 3: WORKOUT SYSTEM RELATIONSHIPS
--- Tests Exercise, WorkoutPlanTemplate, TemplateExercise, MemberWorkoutPlan
+-- Tests exercises, workout_plans, workout_logs, workout_templates
 -- ===============================================
-PRINT '';
-PRINT '--- SECTION 3: Workout System Relationships ---';
-PRINT '';
+\echo ''
+\echo '--- SECTION 3: Workout System Relationships ---'
+\echo ''
 
--- 3.1: WorkoutPlanTemplate -> TemplateExercise -> Exercise chain
-PRINT '3.1: Workout templates with their exercises...';
+-- 3.1: Workout templates with their exercises
+\echo '3.1: Workout templates with exercises...'
 SELECT 
-    wpt.TemplateID,
-    wpt.TemplateName,
-    COUNT(te.ExerciseID) AS TotalExercises,
-    STRING_AGG(e.Name, ', ') AS ExerciseNames
-FROM WorkoutPlanTemplates wpt
-LEFT JOIN TemplateExercises te ON wpt.TemplateID = te.TemplateID
-LEFT JOIN Exercises e ON te.ExerciseID = e.ExerciseID
-GROUP BY wpt.TemplateID, wpt.TemplateName
-ORDER BY wpt.TemplateID;
-GO
+    wt."TemplateId",
+    wt."TemplateName",
+    wt."DifficultyLevel",
+    u."Name" AS created_by_coach,
+    COUNT(wte."ExerciseId") AS total_exercises,
+    string_agg(e."Name", ', ') AS exercise_names
+FROM workout_templates wt
+LEFT JOIN workout_template_exercises wte ON wt."TemplateId" = wte."TemplateId"
+LEFT JOIN exercises e ON wte."ExerciseId" = e."ExerciseId"
+LEFT JOIN coach_profiles cp ON wt."CreatedByCoachId" = cp."CoachId"
+LEFT JOIN users u ON cp."UserId" = u."UserId"
+GROUP BY wt."TemplateId", wt."TemplateName", wt."DifficultyLevel", u."Name"
+ORDER BY wt."TemplateId";
 
--- 3.2: MemberWorkoutPlan relationships (User, Template, Coach, AI)
-PRINT '3.2: Member workout plans with all relationships...';
+-- 3.2: Workout plans with their relationships
+\echo '3.2: Workout plans with User and Coach...'
 SELECT 
-    mwp.PlanInstanceID,
-    u.Name AS MemberName,
-    wpt.TemplateName,
-    c.Name AS AssignedByCoach,
-    ai.ModelName AS GeneratedByAI,
-    mwp.PlanSource,
-    mwp.Status,
-    mwp.StartDate,
-    mwp.EndDate
-FROM MemberWorkoutPlans mwp
-INNER JOIN Users u ON mwp.UserID = u.UserId
-LEFT JOIN WorkoutPlanTemplates wpt ON mwp.TemplateID = wpt.TemplateID
-LEFT JOIN Users c ON mwp.AssignedByCoachID = c.UserId
-LEFT JOIN AI_Agents ai ON mwp.GeneratedByAI_ID = ai.AI_ID
-ORDER BY mwp.StartDate DESC;
-GO
+    wp."PlanId",
+    wp."PlanName",
+    u."Name" AS member_name,
+    c."Name" AS coach_name,
+    wp."Status",
+    wp."StartDate",
+    wp."EndDate"
+FROM workout_plans wp
+INNER JOIN users u ON wp."UserId" = u."UserId"
+LEFT JOIN coach_profiles cp ON wp."GeneratedByCoachId" = cp."CoachId"
+LEFT JOIN users c ON cp."UserId" = c."UserId"
+ORDER BY wp."StartDate" DESC
+LIMIT 20;
 
--- 3.3: Find orphaned MemberWorkoutPlans
-PRINT '3.3: Checking for orphaned MemberWorkoutPlan FKs...';
-SELECT 'Invalid UserID' AS IssueType, mwp.* 
-FROM MemberWorkoutPlans mwp
-WHERE NOT EXISTS (SELECT 1 FROM Users u WHERE u.UserId = mwp.UserID)
-UNION ALL
-SELECT 'Invalid TemplateID' AS IssueType, mwp.* 
-FROM MemberWorkoutPlans mwp
-WHERE mwp.TemplateID IS NOT NULL 
-  AND NOT EXISTS (SELECT 1 FROM WorkoutPlanTemplates wpt WHERE wpt.TemplateID = mwp.TemplateID)
-UNION ALL
-SELECT 'Invalid CoachID' AS IssueType, mwp.* 
-FROM MemberWorkoutPlans mwp
-WHERE mwp.AssignedByCoachID IS NOT NULL 
-  AND NOT EXISTS (SELECT 1 FROM Users u WHERE u.UserId = mwp.AssignedByCoachID AND u.UserType = 'Coach')
-UNION ALL
-SELECT 'Invalid AI_ID' AS IssueType, mwp.* 
-FROM MemberWorkoutPlans mwp
-WHERE mwp.GeneratedByAI_ID IS NOT NULL 
-  AND NOT EXISTS (SELECT 1 FROM AI_Agents ai WHERE ai.AI_ID = mwp.GeneratedByAI_ID);
-GO
-
--- 3.4: Exercises not used in any template
-PRINT '3.4: Unused exercises (not in any template)...';
+-- 3.3: Workout plan exercises
+\echo '3.3: Workout plan exercises...'
 SELECT 
-    e.ExerciseID,
-    e.Name,
-    e.Category,
-    e.DifficultyLevel
-FROM Exercises e
-WHERE NOT EXISTS (SELECT 1 FROM TemplateExercises te WHERE te.ExerciseID = e.ExerciseID);
-GO
+    wp."PlanName",
+    e."Name" AS exercise_name,
+    wpe."Sets",
+    wpe."Reps",
+    wpe."DayNumber",
+    wpe."OrderInDay"
+FROM workout_plan_exercises wpe
+INNER JOIN workout_plans wp ON wpe."WorkoutPlanId" = wp."PlanId"
+INNER JOIN exercises e ON wpe."ExerciseId" = e."ExerciseId"
+ORDER BY wp."PlanId", wpe."DayNumber", wpe."OrderInDay"
+LIMIT 50;
+
+-- 3.4: Workout logs by member
+\echo '3.4: Recent workout logs...'
+SELECT 
+    wl."LogId",
+    u."Name" AS member_name,
+    wl."WorkoutDate",
+    wl."DurationMinutes",
+    wl."CaloriesBurned",
+    wl."Completed"
+FROM workout_logs wl
+INNER JOIN users u ON wl."UserId" = u."UserId"
+ORDER BY wl."WorkoutDate" DESC
+LIMIT 20;
+
+-- 3.5: Exercises not used in any workout plan
+\echo '3.5: Unused exercises...'
+SELECT 
+    e."ExerciseId",
+    e."Name",
+    e."Category",
+    e."MuscleGroup",
+    e."DifficultyLevel"
+FROM exercises e
+WHERE NOT EXISTS (
+    SELECT 1 FROM workout_plan_exercises wpe 
+    WHERE wpe."ExerciseId" = e."ExerciseId"
+)
+AND e."IsActive" = true;
 
 -- ===============================================
 -- SECTION 4: NUTRITION SYSTEM RELATIONSHIPS
--- Tests NutritionPlan, Meal, MealIngredient, Ingredient chain
+-- Tests nutrition_plans, meals, meal_ingredients, ingredients
 -- ===============================================
-PRINT '';
-PRINT '--- SECTION 4: Nutrition System Relationships ---';
-PRINT '';
+\echo ''
+\echo '--- SECTION 4: Nutrition System Relationships ---'
+\echo ''
 
--- 4.1: NutritionPlan -> User, AI_Agent, Coach relationships
-PRINT '4.1: Nutrition plans with their relationships...';
+-- 4.1: Nutrition plans with their relationships
+\echo '4.1: Nutrition plans with User and Coach...'
 SELECT 
     np.PlanID,
     np.PlanName,

@@ -13,7 +13,6 @@ namespace IntelliFit.Domain.Models
         public string PaymentType { get; set; } = null!;
         public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
         public string? TransactionReference { get; set; }
-        public int? SubscriptionId { get; set; }
         public int? PackageId { get; set; }
         public string? InvoiceNumber { get; set; }
         public string? InvoiceUrl { get; set; }
@@ -22,10 +21,8 @@ namespace IntelliFit.Domain.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-
         // Navigation properties
         public virtual User User { get; set; } = null!;
-        public virtual UserSubscription? Subscription { get; set; }
         public virtual TokenPackage? Package { get; set; }
     }
 }
