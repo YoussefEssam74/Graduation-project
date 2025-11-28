@@ -12,6 +12,10 @@ interface AuthContextType {
   login: (email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
+  // modify token balance by a signed integer (positive to add, negative to deduct)
+  adjustTokens: (amount: number) => void;
+  // convenience: deduct tokens (positive number -> decreases balance)
+  deductTokens: (amount?: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -122,6 +126,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push(roleRoutes[role]);
   };
 
+  const adjustTokens = (amount: number) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const newBalance = Math.max(0, (prev.tokenBalance ?? 0) + amount);
+      const updated = { ...prev, tokenBalance: newBalance } as User;
+      if (typeof window !== 'undefined') localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const deductTokens = (amount: number = 1) => {
+    adjustTokens(-Math.abs(amount));
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -142,6 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         token,
         isAuthenticated: !!user,
+        adjustTokens,
+        deductTokens,
         isLoading,
         login,
         logout,
