@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { UserResource } from "@clerk/types";
 import ProfileHeader from "@/components/ProfileHeader";
 import NoFitnessPlan from "@/components/NoFitnessPlan";
 import CornerElements from "@/components/CornerElements";
@@ -15,20 +16,63 @@ import {
 } from "@/components/ui/accordion";
 
 const ProfilePage = () => {
-  const user = { id: "demo-user", firstName: "Youssef", emailAddresses: [{ emailAddress: "demo@intellifit.com" }], imageUrl: "" };
-  const userId = user?.id as string;
+  // Minimal mock shaped to satisfy ProfileHeader which expects Clerk's UserResource
+  const user = ({
+    id: "demo-user",
+    firstName: "Youssef",
+    fullName: "Youssef Ahmed",
+    primaryEmailAddress: { emailAddress: "demo@intellifit.com" },
+    imageUrl: "",
+  } as unknown) as UserResource;
+  const userId = (user?.id ?? "") as string;
 
-  // Mock data
+  // Mock data — use the same structure the page expects (workoutPlan / dietPlan)
   const allPlans = [
     {
       _id: "1",
       isActive: true,
       type: "both",
-      programName: "Muscle Building Program",
+      name: "Muscle Building Program",
+      // keep programData for backwards compatibility / debugging
       programData: JSON.stringify({
         workout: { name: "4-Day Split", duration: "12 weeks", exercises: ["Bench Press", "Squats", "Deadlifts"] },
         diet: { calories: 2400, protein: 180, carbs: 250, fats: 60 }
       }),
+      // explicit structures used by the UI
+      workoutPlan: {
+        schedule: ["Mon", "Tue", "Thu", "Fri"],
+        exercises: [
+          {
+            day: "Day 1",
+            routines: [
+              { name: "Bench Press", sets: 4, reps: 8, description: "Focus on chest and triceps" },
+              { name: "Incline Dumbbell Press", sets: 3, reps: 10 }
+            ],
+          },
+          {
+            day: "Day 2",
+            routines: [
+              { name: "Squats", sets: 4, reps: 6, description: "Heavy compound quad work" },
+              { name: "Lunges", sets: 3, reps: 10 }
+            ],
+          },
+          {
+            day: "Day 3",
+            routines: [
+              { name: "Deadlift", sets: 3, reps: 5, description: "Posterior chain focus" },
+              { name: "Barbell Row", sets: 3, reps: 8 }
+            ],
+          }
+        ],
+      },
+      dietPlan: {
+        dailyCalories: 2400,
+        meals: [
+          { name: "Breakfast", foods: ["Oats", "Eggs", "Banana"] },
+          { name: "Lunch", foods: ["Chicken breast", "Rice", "Veggies"] },
+          { name: "Dinner", foods: ["Salmon", "Quinoa", "Salad"] }
+        ]
+      },
       _creationTime: Date.now() - 7 * 24 * 60 * 60 * 1000
     }
   ];
@@ -117,13 +161,13 @@ const ProfilePage = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-4">
                       <CalendarIcon className="h-4 w-4 text-primary" />
-                      <span className="font-mono text-sm text-muted-foreground">
-                        SCHEDULE: {currentPlan.workoutPlan.schedule.join(", ")}
-                      </span>
+                        <span className="font-mono text-sm text-muted-foreground">
+                          SCHEDULE: {currentPlan?.workoutPlan?.schedule?.length ? currentPlan.workoutPlan.schedule.join(", ") : "—"}
+                        </span>
                     </div>
 
                     <Accordion type="multiple" className="space-y-4">
-                      {currentPlan.workoutPlan.exercises.map((exerciseDay, index) => (
+                      {(currentPlan.workoutPlan?.exercises ?? []).map((exerciseDay, index) => (
                         <AccordionItem
                           key={index}
                           value={exerciseDay.day}
@@ -180,14 +224,14 @@ const ProfilePage = () => {
                         DAILY CALORIE TARGET
                       </span>
                       <div className="font-mono text-xl text-primary">
-                        {currentPlan.dietPlan.dailyCalories} KCAL
+                        {currentPlan?.dietPlan?.dailyCalories ?? "—"} KCAL
                       </div>
                     </div>
 
                     <div className="h-px w-full bg-border my-4"></div>
 
                     <div className="space-y-4">
-                      {currentPlan.dietPlan.meals.map((meal, index) => (
+                      {(currentPlan.dietPlan?.meals ?? []).map((meal, index) => (
                         <div
                           key={index}
                           className="border border-border rounded-lg overflow-hidden p-4"
