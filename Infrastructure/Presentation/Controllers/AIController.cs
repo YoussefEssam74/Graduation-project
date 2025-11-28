@@ -1,31 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using ServiceAbstraction.Services;
-using Shared.DTOs.AI;
-<<<<<<< HEAD
-
-namespace IntelliFit.Presentation.Controllers
-{
-    [Authorize]
-=======
 using IntelliFit.ServiceAbstraction;
 using Shared.DTOs;
+using Shared.DTOs.AI;
 
 namespace IntelliFit.Presentation.Controllers
 {
     // [Authorize] // Temporarily disabled for testing
->>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
     [ApiController]
     [Route("api/ai")]
     public class AIController : ControllerBase
     {
         private readonly IAIChatService _aiChatService;
-<<<<<<< HEAD
-
-        public AIController(IAIChatService aiChatService)
-        {
-            _aiChatService = aiChatService;
-=======
         private readonly IAIService _geminiAIService;
         private readonly ILogger<AIController> _logger;
 
@@ -37,7 +24,6 @@ namespace IntelliFit.Presentation.Controllers
             _aiChatService = aiChatService;
             _geminiAIService = geminiAIService;
             _logger = logger;
->>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
         }
 
         [HttpPost("chat")]
@@ -65,8 +51,6 @@ namespace IntelliFit.Presentation.Controllers
             var history = await _aiChatService.GetChatHistoryAsync(userId, limit);
             return Ok(history);
         }
-<<<<<<< HEAD
-=======
 
         /// <summary>
         /// Generate an AI-powered workout plan using Google Gemini
@@ -224,6 +208,5 @@ namespace IntelliFit.Presentation.Controllers
     {
         public int UserId { get; set; }
         public string Message { get; set; } = string.Empty;
->>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
     }
 }

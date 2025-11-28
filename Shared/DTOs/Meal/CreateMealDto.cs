@@ -24,11 +24,9 @@ namespace Shared.DTOs.Meal
         public string? PreparationTime { get; set; }
 
         public string? CookingInstructions { get; set; }
-<<<<<<< HEAD
-=======
+
 
         [Required(ErrorMessage = "NutritionPlanId is required. Meals must be associated with a nutrition plan.")]
         public int NutritionPlanId { get; set; }
->>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
     }
 }

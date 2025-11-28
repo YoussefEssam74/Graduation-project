@@ -34,9 +34,7 @@ namespace Service.Services
 
         public async Task<MealDto> CreateMealAsync(CreateMealDto createDto)
         {
-<<<<<<< HEAD
             // For standalone meals, we need a nutrition plan. This might need adjustment based on requirements
-=======
             // Verify that the nutrition plan exists
             var nutritionPlan = await _unitOfWork.Repository<NutritionPlan>().GetByIdAsync(createDto.NutritionPlanId);
             if (nutritionPlan == null)
@@ -44,7 +42,6 @@ namespace Service.Services
                 throw new KeyNotFoundException($"Nutrition plan with ID {createDto.NutritionPlanId} not found. Meals must be associated with an existing nutrition plan.");
             }
 
->>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
             var meal = new Meal
             {
                 Name = createDto.Name,
@@ -54,11 +51,8 @@ namespace Service.Services
                 CarbsGrams = (int)(createDto.CarbsGrams ?? 0),
                 FatsGrams = (int)(createDto.FatGrams ?? 0),
                 RecommendedTime = TimeSpan.Zero,
-<<<<<<< HEAD
-                NutritionPlanId = 0, // This needs to be set properly
-=======
+               // NutritionPlanId = 0, // This needs to be set properly
                 NutritionPlanId = createDto.NutritionPlanId,
->>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
                 CreatedAt = DateTime.UtcNow
             };
 
