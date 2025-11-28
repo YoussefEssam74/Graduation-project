@@ -143,6 +143,11 @@ namespace Service.Services
                 Schedule = $"{template.WorkoutsPerWeek} workouts per week",
                 GeneratedByCoachId = assignDto.AssignedByCoachId,
                 Status = "Active",
+<<<<<<< HEAD
+=======
+                // Explicitly set IsActive = true when assigning a plan to a member
+                // The model default is false for safety, but assigned plans should be active
+>>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
                 IsActive = true,
                 StartDate = assignDto.StartDate,
                 EndDate = assignDto.EndDate ?? assignDto.StartDate.AddDays(template.DurationWeeks * 7),

@@ -44,6 +44,12 @@ namespace Graduation_Project
             builder.Services.AddScoped<IAIChatService, AIChatService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
 
+<<<<<<< HEAD
+=======
+            // Add Google Gemini AI Service
+            builder.Services.AddScoped<IntelliFit.ServiceAbstraction.IAIService, IntelliFit.Service.Services.AIService>();
+
+>>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
             // Add JWT Authentication
             var jwtKey = builder.Configuration["Jwt:Key"];
             var jwtIssuer = builder.Configuration["Jwt:Issuer"];
