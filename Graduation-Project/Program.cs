@@ -42,6 +42,7 @@ namespace Graduation_Project
             builder.Services.AddScoped<IStatsService, StatsService>();
             builder.Services.AddScoped<IMealService, MealService>();
             builder.Services.AddScoped<IAIChatService, AIChatService>();
+            builder.Services.AddScoped<INotificationService, NotificationService>();
 
             // Add JWT Authentication
             var jwtKey = builder.Configuration["Jwt:Key"];
@@ -65,20 +66,40 @@ namespace Graduation_Project
                     ValidAudience = jwtAudience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!))
                 };
+
+                // Allow SignalR to use JWT token from query string
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             builder.Services.AddAuthorization();
 
-            // Add CORS
+            // Add CORS (Updated for SignalR - Allow all origins in development)
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.AllowAnyOrigin()
+                    policy.SetIsOriginAllowed(_ => true) // Allow all origins in development
                           .AllowAnyMethod()
-                          .AllowAnyHeader();
+                          .AllowAnyHeader()
+                          .AllowCredentials(); // Required for SignalR
                 });
             });
+
+            // Add SignalR
+            builder.Services.AddSignalR();
 
             // Add Controllers from Presentation layer
             builder.Services.AddControllers()
@@ -138,6 +159,10 @@ namespace Graduation_Project
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // Map SignalR Hubs
+            app.MapHub<IntelliFit.Presentation.Hubs.NotificationHub>("/hubs/notifications");
+            app.MapHub<IntelliFit.Presentation.Hubs.ChatHub>("/hubs/chat");
 
             app.Run();
         }
