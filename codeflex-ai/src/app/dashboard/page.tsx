@@ -114,7 +114,7 @@ function DashboardContent() {
           <Zap className="h-6 w-6 text-white" />
           <div className="text-white">
             <div className="text-xs font-medium opacity-80">Token Balance</div>
-            <div className="text-2xl font-bold">{mockStats.tokenBalance}</div>
+            <div className="text-2xl font-bold">{user?.tokenBalance ?? 0}</div>
           </div>
         </div>
       </div>

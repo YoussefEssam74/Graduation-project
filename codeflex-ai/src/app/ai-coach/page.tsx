@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Brain,
   Send,
@@ -15,14 +16,14 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
 export default function AICoachPage() {
-  const user = { firstName: "Youssef" }; // Demo user
+  const { user, deductTokens } = useAuth();
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState<
     { role: "user" | "ai"; content: string; timestamp: string }[]
   >([
     {
       role: "ai",
-      content: `Hi ${user?.firstName || "there"}! I'm your AI fitness coach. I can help you with workout tips, nutrition advice, form corrections, and personalized recommendations based on your InBody data. How can I assist you today?`,
+      content: `Hi ${user?.name?.split(' ')[0] ?? "there"}! I'm your AI fitness coach. I can help you with workout tips, nutrition advice, form corrections, and personalized recommendations based on your InBody data. How can I assist you today?`,
       timestamp: new Date().toLocaleTimeString(),
     },
   ]);
@@ -38,6 +39,18 @@ export default function AICoachPage() {
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
+    const currentBalance = user?.tokenBalance ?? 0;
+    if (currentBalance <= 0) {
+      // show a friendly AI response when out of tokens
+      const outOfTokens = {
+        role: "ai" as const,
+        content: "You have run out of tokens — generate more or upgrade your plan to continue using the AI coach.",
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      setChatHistory((s) => [...s, outOfTokens]);
+      return;
+    }
 
     // Add user message
     const newUserMessage = {
@@ -52,6 +65,9 @@ export default function AICoachPage() {
       content: `Great question! Based on your current stats and goals, here's my recommendation: ${message.toLowerCase().includes("protein") ? "Aim for 1.6-2.2g of protein per kg of body weight. At your current weight of 75.5kg, that's around 120-165g daily. Focus on lean sources like chicken, fish, eggs, and Greek yogurt." : message.toLowerCase().includes("workout") || message.toLowerCase().includes("eat") ? "Within 30-60 minutes post-workout, consume a meal with both protein and carbs. A great option would be chicken breast with rice and vegetables, or a protein shake with banana and oats." : "I'd be happy to help with that! For personalized advice, I can analyze your InBody measurements, workout history, and nutrition data to give you the most accurate recommendations."}`,
       timestamp: new Date().toLocaleTimeString(),
     };
+
+    // deduct one token for the message (persisted in auth context)
+    deductTokens(1);
 
     setChatHistory([...chatHistory, newUserMessage, aiResponse]);
     setMessage("");
@@ -88,9 +104,9 @@ export default function AICoachPage() {
 
         <Card className="p-4 border border-border bg-card/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <div>
+              <div>
               <div className="text-sm text-muted-foreground mb-1">Tokens Available</div>
-              <div className="text-2xl font-bold">250</div>
+              <div className="text-2xl font-bold">{user?.tokenBalance ?? 0}</div>
             </div>
             <Zap className="h-8 w-8 text-primary" />
           </div>
@@ -183,7 +199,7 @@ export default function AICoachPage() {
               onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
               className="flex-1"
             />
-            <Button onClick={handleSendMessage} disabled={!message.trim()}>
+            <Button onClick={handleSendMessage} disabled={!message.trim() || (user?.tokenBalance ?? 0) <= 0}>
               <Send className="h-4 w-4" />
             </Button>
           </div>
