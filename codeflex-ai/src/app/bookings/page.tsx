@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Calendar,
   Clock,
@@ -21,7 +22,7 @@ export default function BookingsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   // Mock data - will be replaced with Convex queries
-  const mockEquipment = [
+  const [equipmentList, setEquipmentList] = useState(() => [
     {
       id: 1,
       name: "Bench Press",
@@ -76,9 +77,9 @@ export default function BookingsPage() {
       tokensCost: 8,
       nextAvailable: null,
     },
-  ];
+  ]);
 
-  const mockCoaches = [
+  const [coaches, setCoaches] = useState(() => [
     {
       id: 1,
       name: "Ahmed Hassan",
@@ -106,9 +107,9 @@ export default function BookingsPage() {
       tokensCost: 35,
       availability: "Today 4:00 PM",
     },
-  ];
+  ]);
 
-  const upcomingBookings = [
+  const [upcomingBookingsState, setUpcomingBookingsState] = useState(() => [
     {
       id: 1,
       type: "equipment",
@@ -136,9 +137,9 @@ export default function BookingsPage() {
       status: "pending",
       tokensCost: 5,
     },
-  ];
+  ]);
 
-  const pastBookings = [
+  const [pastBookingsState, setPastBookingsState] = useState(() => [
     {
       id: 4,
       type: "equipment",
@@ -166,14 +167,82 @@ export default function BookingsPage() {
       status: "cancelled",
       tokensCost: 0,
     },
-  ];
+  ]);
 
-  const filteredEquipment = mockEquipment.filter((equipment) => {
+  const { user, deductTokens } = useAuth();
+
+  const filteredEquipment = equipmentList.filter((equipment) => {
     const matchesSearch = equipment.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
       selectedCategory === "all" || equipment.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  const handleBookEquipment = (id: number) => {
+    const equip = equipmentList.find((e) => e.id === id);
+    if (!equip) return;
+
+    if (!user) {
+      alert("Please log in to book equipment.");
+      return;
+    }
+
+    const cost = equip.tokensCost ?? 0;
+    if ((user.tokenBalance ?? 0) < cost) {
+      alert("Insufficient tokens to book this equipment.");
+      return;
+    }
+
+    deductTokens(cost);
+
+    setEquipmentList((prev) => prev.map((e) => (e.id === id ? { ...e, status: "in_use", nextAvailable: "In Use" } : e)));
+
+    const newBooking = {
+      id: Date.now(),
+      type: "equipment",
+      name: equip.name,
+      date: "Today",
+      time: "Now - 1:00h",
+      status: "confirmed",
+      tokensCost: cost,
+    };
+
+    setUpcomingBookingsState((prev) => [newBooking, ...prev]);
+    alert(`Booked ${equip.name} — ${cost} tokens deducted`);
+  };
+
+  const handleBookSession = (coachId: number) => {
+    const coach = coaches.find((c) => c.id === coachId);
+    if (!coach) return;
+
+    if (!user) {
+      alert("Please log in to book a coach session.");
+      return;
+    }
+
+    const cost = coach.tokensCost ?? 0;
+    if ((user.tokenBalance ?? 0) < cost) {
+      alert("Insufficient tokens for this coach session.");
+      return;
+    }
+
+    deductTokens(cost);
+
+    // Add booking and mark coach as booked locally
+    const newBooking = {
+      id: Date.now(),
+      type: "coach",
+      name: coach.name,
+      date: coach.availability ?? "Today",
+      time: "Session",
+      status: "confirmed",
+      tokensCost: cost,
+    };
+
+    setUpcomingBookingsState((prev) => [newBooking, ...prev]);
+    setCoaches((prev) => prev.map((c) => (c.id === coachId ? { ...c, availability: "Booked" } : c)));
+    alert(`Booked session with ${coach.name} — ${cost} tokens deducted`);
+  };
 
   const getStatusBadge = (status: string) => {
     const badges = {
@@ -245,7 +314,7 @@ export default function BookingsPage() {
           </TabsList>
 
           <TabsContent value="upcoming" className="space-y-4 mt-6">
-            {upcomingBookings.map((booking) => (
+            {upcomingBookingsState.map((booking) => (
               <div
                 key={booking.id}
                 className="p-4 bg-primary/5 rounded-lg border border-primary/20 flex items-center justify-between"
@@ -287,7 +356,7 @@ export default function BookingsPage() {
           </TabsContent>
 
           <TabsContent value="past" className="space-y-4 mt-6">
-            {pastBookings.map((booking) => (
+            {pastBookingsState.map((booking) => (
               <div
                 key={booking.id}
                 className="p-4 bg-card rounded-lg border border-border flex items-center justify-between opacity-75"
@@ -405,6 +474,7 @@ export default function BookingsPage() {
               <Button
                 className="w-full"
                 disabled={equipment.status !== "available"}
+                onClick={() => handleBookEquipment(equipment.id)}
               >
                 {equipment.status === "available" ? "Book Now" : "Unavailable"}
               </Button>
@@ -421,7 +491,7 @@ export default function BookingsPage() {
         </h2>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {mockCoaches.map((coach) => (
+          {coaches.map((coach) => (
             <Card
               key={coach.id}
               className="p-6 border border-border bg-card/50 backdrop-blur-sm"
@@ -460,7 +530,9 @@ export default function BookingsPage() {
                 </div>
               </div>
 
-              <Button className="w-full">Book Session</Button>
+              <Button className="w-full" onClick={() => handleBookSession(coach.id)}>
+                Book Session
+              </Button>
             </Card>
           ))}
         </div>

@@ -13,12 +13,14 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 export default function TokensPage() {
 
-  // Mock data - will be replaced with Convex queries
-  const tokenBalance = 250;
+  // Use current user's token balance from auth
+  const { user } = useAuth();
+  const tokenBalance = user?.tokenBalance ?? 0;
 
   const packages = [
     {
