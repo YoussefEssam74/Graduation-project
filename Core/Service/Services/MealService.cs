@@ -34,7 +34,13 @@ namespace Service.Services
 
         public async Task<MealDto> CreateMealAsync(CreateMealDto createDto)
         {
-            // For standalone meals, we need a nutrition plan. This might need adjustment based on requirements
+            // Verify that the nutrition plan exists
+            var nutritionPlan = await _unitOfWork.Repository<NutritionPlan>().GetByIdAsync(createDto.NutritionPlanId);
+            if (nutritionPlan == null)
+            {
+                throw new KeyNotFoundException($"Nutrition plan with ID {createDto.NutritionPlanId} not found. Meals must be associated with an existing nutrition plan.");
+            }
+
             var meal = new Meal
             {
                 Name = createDto.Name,
@@ -44,7 +50,7 @@ namespace Service.Services
                 CarbsGrams = (int)(createDto.CarbsGrams ?? 0),
                 FatsGrams = (int)(createDto.FatGrams ?? 0),
                 RecommendedTime = TimeSpan.Zero,
-                NutritionPlanId = 0, // This needs to be set properly
+                NutritionPlanId = createDto.NutritionPlanId,
                 CreatedAt = DateTime.UtcNow
             };
 
