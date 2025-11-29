@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Dumbbell,
   Calendar,
@@ -15,19 +16,41 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
+import { statsApi, MemberStatsDto } from "@/lib/api";
 
 function DashboardContent() {
   const { user } = useAuth();
+  const [stats, setStats] = useState<MemberStatsDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - will be replaced with real Convex queries
-  const mockStats = {
-    tokenBalance: 250,
-    activeWorkoutPlan: true,
-    activeDietPlan: true,
-    upcomingBookings: 3,
-    completedWorkouts: 24,
-    currentWeight: 75.5,
-    bodyFatPercentage: 18.2,
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user?.userId) return;
+      
+      try {
+        const response = await statsApi.getMemberStats(user.userId);
+        if (response.success && response.data) {
+          setStats(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch member stats:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [user?.userId]);
+
+  // Use stats from API or fallback to defaults
+  const displayStats = {
+    tokenBalance: user?.tokenBalance ?? 0,
+    activeWorkoutPlan: (stats?.activeWorkoutPlans ?? 0) > 0,
+    activeDietPlan: (stats?.activeNutritionPlans ?? 0) > 0,
+    upcomingBookings: stats?.totalBookings ?? 0,
+    completedWorkouts: stats?.totalWorkoutsCompleted ?? 0,
+    currentWeight: stats?.currentWeight ?? 0,
+    bodyFatPercentage: stats?.currentBodyFat ?? 0,
     nextBooking: "Tomorrow at 10:00 AM",
   };
 
@@ -128,7 +151,9 @@ function DashboardContent() {
             </div>
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
-          <div className="text-2xl font-bold mb-1">{mockStats.completedWorkouts}</div>
+          <div className="text-2xl font-bold mb-1">
+            {isLoading ? "..." : displayStats.completedWorkouts}
+          </div>
           <div className="text-sm text-muted-foreground">Workouts Completed</div>
         </Card>
 
@@ -139,7 +164,9 @@ function DashboardContent() {
             </div>
             <span className="text-xs font-medium text-green-500">-2.3%</span>
           </div>
-          <div className="text-2xl font-bold mb-1">{mockStats.bodyFatPercentage}%</div>
+          <div className="text-2xl font-bold mb-1">
+            {isLoading ? "..." : displayStats.bodyFatPercentage > 0 ? `${displayStats.bodyFatPercentage}%` : "N/A"}
+          </div>
           <div className="text-sm text-muted-foreground">Body Fat</div>
         </Card>
 
@@ -150,8 +177,10 @@ function DashboardContent() {
             </div>
             <span className="text-xs font-medium text-primary">Active</span>
           </div>
-          <div className="text-2xl font-bold mb-1">{mockStats.upcomingBookings}</div>
-          <div className="text-sm text-muted-foreground">Upcoming Bookings</div>
+          <div className="text-2xl font-bold mb-1">
+            {isLoading ? "..." : displayStats.upcomingBookings}
+          </div>
+          <div className="text-sm text-muted-foreground">Total Bookings</div>
         </Card>
 
         <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
@@ -161,7 +190,9 @@ function DashboardContent() {
             </div>
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
-          <div className="text-2xl font-bold mb-1">{mockStats.currentWeight} kg</div>
+          <div className="text-2xl font-bold mb-1">
+            {isLoading ? "..." : displayStats.currentWeight > 0 ? `${displayStats.currentWeight} kg` : "N/A"}
+          </div>
           <div className="text-sm text-muted-foreground">Current Weight</div>
         </Card>
       </div>
@@ -196,37 +227,52 @@ function DashboardContent() {
             <span className="text-primary">Plans</span>
           </h3>
           <div className="space-y-4">
-            <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Dumbbell className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">Muscle Building Program</span>
-                </div>
-                <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">AI Generated</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                4-day split • Week 3 of 12
-              </p>
-              <div className="w-full bg-border rounded-full h-2">
-                <div className="bg-primary rounded-full h-2 w-1/4"></div>
-              </div>
-            </div>
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading plans...</div>
+            ) : displayStats.activeWorkoutPlan || displayStats.activeDietPlan ? (
+              <>
+                {displayStats.activeWorkoutPlan && (
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Dumbbell className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Active Workout Program</span>
+                      </div>
+                      <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Active</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {stats?.activeWorkoutPlans} active plan{stats?.activeWorkoutPlans !== 1 ? 's' : ''}
+                    </p>
+                    <div className="w-full bg-border rounded-full h-2">
+                      <div className="bg-primary rounded-full h-2 w-1/4"></div>
+                    </div>
+                  </div>
+                )}
 
-            <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">High Protein Diet Plan</span>
-                </div>
-                <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">AI Generated</span>
+                {displayStats.activeDietPlan && (
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">Active Nutrition Plan</span>
+                      </div>
+                      <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Active</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {stats?.activeNutritionPlans} active plan{stats?.activeNutritionPlans !== 1 ? 's' : ''}
+                    </p>
+                    <div className="w-full bg-border rounded-full h-2">
+                      <div className="bg-primary rounded-full h-2 w-1/3"></div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No active plans</p>
+                <p className="text-sm mt-2">Generate a new plan to get started</p>
               </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                2,400 cal/day • 180g protein
-              </p>
-              <div className="w-full bg-border rounded-full h-2">
-                <div className="bg-primary rounded-full h-2 w-1/3"></div>
-              </div>
-            </div>
+            )}
 
             <Link href="/profile">
               <Button className="w-full" variant="outline">

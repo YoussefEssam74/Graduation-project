@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { User, UserRole } from "@/types/gym";
+import { authApi, getAuthToken } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string, role: UserRole) => Promise<void>;
+  register: (email: string, password: string, name: string, phone: string, role: UserRole, gender?: number) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   // modify token balance by a signed integer (positive to add, negative to deduct)
@@ -81,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Load auth from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("token");
+    const storedToken = getAuthToken(); // Use auth_token from API client
 
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
@@ -91,39 +93,104 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string, role: UserRole) => {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    try {
+      const response = await authApi.login({ email, password, role });
 
-    // Find matching user
-    const foundUser = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password && u.role === role
-    );
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Login failed");
+      }
 
-    if (!foundUser) {
-      throw new Error("Invalid credentials or role");
+      const { user: userData, token: authToken } = response.data;
+
+      // Convert backend UserDto to frontend User type
+      const userObj: User = {
+        userId: userData.userId,
+        email: userData.email,
+        name: userData.name,
+        age: 25, // Backend doesn't have age, using default
+        gender: userData.gender === 0 ? "Male" : "Female", // Convert number to string
+        fitnessGoal: "General Fitness", // Backend doesn't have this field
+        tokenBalance: userData.tokenBalance,
+        role: userData.role as UserRole,
+        createdAt: userData.createdAt,
+        phone: userData.phone,
+        profileImageUrl: userData.profileImageUrl,
+        address: userData.address,
+      };
+
+      // Save to state and localStorage
+      setUser(userObj);
+      setToken(authToken);
+      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("auth_token", authToken);
+
+      // Redirect based on role
+      const roleRoutes: Record<UserRole, string> = {
+        [UserRole.Member]: "/dashboard",
+        [UserRole.Coach]: "/coach-dashboard",
+        [UserRole.Reception]: "/reception-dashboard",
+        [UserRole.Admin]: "/admin-dashboard",
+      };
+
+      router.push(roleRoutes[role]);
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     }
+  };
 
-    // Create mock token
-    const mockToken = `token_${Date.now()}_${foundUser.userId}`;
+  const register = async (email: string, password: string, name: string, phone: string, role: UserRole, gender?: number) => {
+    try {
+      const response = await authApi.register({ 
+        email, 
+        password, 
+        name, 
+        phone,
+        gender,
+        role 
+      });
 
-    // Remove password from user object
-    const { password: _, ...userWithoutPassword } = foundUser;
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Registration failed");
+      }
 
-    // Save to state and localStorage
-    setUser(userWithoutPassword as User);
-    setToken(mockToken);
-    localStorage.setItem("user", JSON.stringify(userWithoutPassword));
-    localStorage.setItem("token", mockToken);
+      const { user: userData, token: authToken } = response.data;
 
-    // Redirect based on role
-    const roleRoutes: Record<UserRole, string> = {
-      [UserRole.Member]: "/dashboard",
-      [UserRole.Coach]: "/coach-dashboard",
-      [UserRole.Reception]: "/reception-dashboard",
-      [UserRole.Admin]: "/admin-dashboard",
-    };
+      // Convert backend UserDto to frontend User type
+      const userObj: User = {
+        userId: userData.userId,
+        email: userData.email,
+        name: userData.name,
+        age: 25,
+        gender: userData.gender === 0 ? "Male" : "Female",
+        fitnessGoal: "General Fitness",
+        tokenBalance: userData.tokenBalance,
+        role: userData.role as UserRole,
+        createdAt: userData.createdAt,
+        phone: userData.phone,
+        profileImageUrl: userData.profileImageUrl,
+        address: userData.address,
+      };
 
-    router.push(roleRoutes[role]);
+      // Save to state and localStorage
+      setUser(userObj);
+      setToken(authToken);
+      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("auth_token", authToken);
+
+      // Redirect based on role
+      const roleRoutes: Record<UserRole, string> = {
+        [UserRole.Member]: "/dashboard",
+        [UserRole.Coach]: "/coach-dashboard",
+        [UserRole.Reception]: "/reception-dashboard",
+        [UserRole.Admin]: "/admin-dashboard",
+      };
+
+      router.push(roleRoutes[role]);
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
   };
 
   const adjustTokens = (amount: number) => {
@@ -141,10 +208,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    authApi.logout(); // Clear token from API client
     setUser(null);
     setToken(null);
     localStorage.removeItem("user");
     localStorage.removeItem("token");
+    localStorage.removeItem("auth_token");
     router.push("/login");
   };
 
@@ -164,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         deductTokens,
         isLoading,
         login,
+        register,
         logout,
         hasRole,
       }}

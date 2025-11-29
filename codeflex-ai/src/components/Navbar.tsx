@@ -103,8 +103,11 @@ export default function Navbar() {
         <nav className="flex items-center gap-5">
           {!isAuthenticated ? (
             <>
-              <Button asChild>
+              <Button asChild variant="outline">
                 <Link href="/login">Sign In</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Sign Up</Link>
               </Button>
             </>
           ) : (
