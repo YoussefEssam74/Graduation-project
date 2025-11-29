@@ -1,7 +1,6 @@
 "use client";
 
 import { 
-  HomeIcon, 
   UserIcon, 
   ZapIcon, 
   LayoutDashboardIcon,
@@ -104,13 +103,6 @@ export default function Navbar() {
         <nav className="flex items-center gap-5">
           {!isAuthenticated ? (
             <>
-              <Link
-                href="/"
-                className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors"
-              >
-                <HomeIcon size={16} />
-                <span>Home</span>
-              </Link>
               <Button asChild>
                 <Link href="/login">Sign In</Link>
               </Button>

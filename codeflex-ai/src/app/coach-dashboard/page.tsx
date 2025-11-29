@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Users,
   ClipboardCheck,
@@ -21,18 +22,9 @@ import { UserRole } from "@/types/gym";
 
 function CoachDashboardContent() {
   const { user } = useAuth();
-
-  // Mock data for coach
-  const mockStats = {
-    activeClients: 24,
-    pendingApprovals: 5,
-    upcomingSessions: 8,
-    monthlyEarnings: 4500,
-    rating: 4.8,
-    totalReviews: 127,
-  };
-
-  const pendingProgramApprovals = [
+  const [showAllApprovals, setShowAllApprovals] = useState(false);
+  const [showAllSessions, setShowAllSessions] = useState(false);
+  const [approvals, setApprovals] = useState([
     {
       id: 1,
       memberName: "Ahmed Hassan",
@@ -57,12 +49,119 @@ function CoachDashboardContent() {
       tokensSpent: 150,
       date: "1 day ago",
     },
-  ];
+    {
+      id: 4,
+      memberName: "Fatma Ibrahim",
+      programType: "Weight Loss Plan",
+      generatedBy: "AI",
+      tokensSpent: 120,
+      date: "1 day ago",
+    },
+    {
+      id: 5,
+      memberName: "Mahmoud Khaled",
+      programType: "Muscle Gain",
+      generatedBy: "AI",
+      tokensSpent: 140,
+      date: "2 days ago",
+    },
+    {
+      id: 6,
+      memberName: "Nour Ahmed",
+      programType: "CrossFit Program",
+      generatedBy: "AI",
+      tokensSpent: 130,
+      date: "2 days ago",
+    },
+    {
+      id: 7,
+      memberName: "Youssef Essam",
+      programType: "HIIT Training",
+      generatedBy: "AI",
+      tokensSpent: 110,
+      date: "3 days ago",
+    },
+    {
+      id: 8,
+      memberName: "Mona Sayed",
+      programType: "Yoga & Flexibility",
+      generatedBy: "AI",
+      tokensSpent: 90,
+      date: "3 days ago",
+    },
+    {
+      id: 9,
+      memberName: "Karim Mostafa",
+      programType: "Strength Training",
+      generatedBy: "AI",
+      tokensSpent: 160,
+      date: "4 days ago",
+    },
+    {
+      id: 10,
+      memberName: "Layla Hassan",
+      programType: "Cardio Program",
+      generatedBy: "AI",
+      tokensSpent: 95,
+      date: "4 days ago",
+    },
+    {
+      id: 11,
+      memberName: "Tarek Mahmoud",
+      programType: "Bodybuilding",
+      generatedBy: "AI",
+      tokensSpent: 170,
+      date: "5 days ago",
+    },
+    {
+      id: 12,
+      memberName: "Heba Adel",
+      programType: "Athletic Performance",
+      generatedBy: "AI",
+      tokensSpent: 145,
+      date: "5 days ago",
+    },
+  ]);
+
+  // Mock data for coach
+  const mockStats = {
+    activeClients: 24,
+    pendingApprovals: approvals.length,
+    upcomingSessions: 8,
+    monthlyEarnings: 4500,
+    rating: 4.8,
+    totalReviews: 127,
+  };
+
+  const handleApprove = (id: number, memberName: string) => {
+    setApprovals(approvals.filter(approval => approval.id !== id));
+    alert(`✅ Approved ${memberName}'s program successfully!`);
+  };
+
+  const handleReject = (id: number, memberName: string) => {
+    setApprovals(approvals.filter(approval => approval.id !== id));
+    alert(`❌ Rejected ${memberName}'s program.`);
+  };
+
+  const handleEdit = (approval: any) => {
+    alert(`📝 Opening editor for ${approval.memberName}'s ${approval.programType}...\n\nThis would open a detailed view where you can modify the program.`);
+  };
+
+  const handleStartSession = (session: any) => {
+    alert(`🏋️ Starting ${session.type} session with ${session.member}\n\nTime: ${session.time}\nDuration: ${session.duration}\n\nThis would launch the session tracking interface.`);
+  };
 
   const upcomingSessions = [
     { id: 1, member: "Fatma Ibrahim", time: "10:00 AM", type: "Personal Training", duration: "60 min" },
     { id: 2, member: "Karim Youssef", time: "11:30 AM", type: "Form Check", duration: "30 min" },
     { id: 3, member: "Nour Ahmed", time: "2:00 PM", type: "Nutrition Consultation", duration: "45 min" },
+    { id: 4, member: "Ahmed Hassan", time: "3:30 PM", type: "Personal Training", duration: "60 min" },
+    { id: 5, member: "Sara Mohamed", time: "4:45 PM", type: "Group Class", duration: "45 min" },
+    { id: 6, member: "Omar Ali", time: "5:30 PM", type: "HIIT Session", duration: "30 min" },
+    { id: 7, member: "Mahmoud Khaled", time: "6:00 PM", type: "Strength Training", duration: "60 min" },
+    { id: 8, member: "Layla Hassan", time: "7:00 PM", type: "Cardio Session", duration: "45 min" },
+    { id: 9, member: "Youssef Essam", time: "7:45 PM", type: "Personal Training", duration: "60 min" },
+    { id: 10, member: "Mona Sayed", time: "8:45 PM", type: "Yoga Class", duration: "60 min" },
   ];
 
   const recentActivities = [
@@ -154,44 +253,69 @@ function CoachDashboardContent() {
           </div>
 
           <div className="space-y-4">
-            {pendingProgramApprovals.map((approval) => (
-              <div
-                key={approval.id}
-                className="flex items-start justify-between p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold">{approval.memberName}</h4>
-                    <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
-                      {approval.programType}
-                    </span>
+            {approvals.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                <p>All caught up! No pending approvals.</p>
+              </div>
+            ) : (
+              (showAllApprovals ? approvals : approvals.slice(0, 3)).map((approval) => (
+                <div
+                  key={approval.id}
+                  className="flex items-start justify-between p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold">{approval.memberName}</h4>
+                      <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                        {approval.programType}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p>Generated by: <span className="text-purple-600 font-medium">{approval.generatedBy}</span></p>
+                      <p>Tokens: <span className="font-medium">{approval.tokensSpent}</span> • {approval.date}</p>
+                    </div>
                   </div>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p>Generated by: <span className="text-purple-600 font-medium">{approval.generatedBy}</span></p>
-                    <p>Tokens: <span className="font-medium">{approval.tokensSpent}</span> • {approval.date}</p>
+                  <div className="flex gap-2 ml-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleEdit(approval)}
+                    >
+                      Edit
+                    </Button>
+
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => handleReject(approval.id, approval.memberName)}
+                    >
+                      Reject
+                    </Button>
+
+                    <Button 
+                      size="sm" 
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => handleApprove(approval.id, approval.memberName)}
+                    >
+                      Approve
+                    </Button>
                   </div>
                 </div>
-               <div className="flex gap-2 ml-4">
-  <Button size="sm" variant="outline">
-    Edit
-  </Button>
-
-  <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
-    Reject
-  </Button>
-
-  <Button size="sm" className="bg-green-600 hover:bg-green-700">
-    Approve
-  </Button>
-</div>
-
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
-          <Button variant="outline" className="w-full mt-4">
-            View All Approvals
-          </Button>
+          {approvals.length > 3 && (
+            <Button 
+              variant="outline" 
+              className="w-full mt-4"
+              onClick={() => setShowAllApprovals(!showAllApprovals)}
+            >
+              {showAllApprovals ? 'Show Less' : `View All Approvals (${approvals.length})`}
+            </Button>
+          )}
         </Card>
 
         {/* Today's Schedule */}
@@ -201,11 +325,13 @@ function CoachDashboardContent() {
               <Calendar className="h-6 w-6 text-purple-500" />
               Today's Schedule
             </h3>
-            <span className="text-sm text-muted-foreground">{upcomingSessions.length} sessions</span>
+            <span className="text-sm text-muted-foreground">
+              {showAllSessions ? upcomingSessions.length : Math.min(3, upcomingSessions.length)} of {upcomingSessions.length} sessions
+            </span>
           </div>
 
           <div className="space-y-3">
-            {upcomingSessions.map((session) => (
+            {(showAllSessions ? upcomingSessions : upcomingSessions.slice(0, 3)).map((session) => (
               <div
                 key={session.id}
                 className="flex items-center gap-4 p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
@@ -223,17 +349,27 @@ function CoachDashboardContent() {
                     <span>{session.duration}</span>
                   </div>
                 </div>
-                <Button size="sm" variant="outline">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => handleStartSession(session)}
+                >
                   Start Session
                 </Button>
               </div>
             ))}
           </div>
 
-          <Button variant="outline" className="w-full mt-4">
-            <Calendar className="h-4 w-4 mr-2" />
-            View Full Calendar
-          </Button>
+          {upcomingSessions.length > 3 && (
+            <Button 
+              variant="outline" 
+              className="w-full mt-4"
+              onClick={() => setShowAllSessions(!showAllSessions)}
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              {showAllSessions ? 'Show Less' : `View Full Calendar (${upcomingSessions.length} sessions)`}
+            </Button>
+          )}
         </Card>
       </div>
 
