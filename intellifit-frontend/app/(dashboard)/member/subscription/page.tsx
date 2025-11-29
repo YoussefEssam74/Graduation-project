@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { subscriptionApi } from '@/lib/api/services';
 import { CreditCard, Check, Zap, Crown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -78,20 +80,54 @@ const MOCK_PLANS: SubscriptionPlan[] = [
 export default function SubscriptionPage() {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
-  const [currentPlan] = useState<SubscriptionPlan | null>(MOCK_PLANS[1]); // Mock: User has Pro plan
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
   const [renewalDate] = useState<string>(MOCK_RENEWAL_DATE);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [paymentId, setPaymentId] = useState<string>('');
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const plansRes = await subscriptionApi.getPlans();
+        if (plansRes?.success && plansRes.data) setPlans(plansRes.data);
+
+        const hasActive = await subscriptionApi.hasActiveSubscription(user.userId);
+        if (hasActive?.success && hasActive.data) {
+          // if user has active subscription, pick the first active plan from all plans (simple placeholder)
+          setCurrentPlan(plansRes?.data?.[1] ?? null);
+        }
+      } catch (err) {
+        console.error('Failed to load subscription data', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);
 
-  const handleSubscribe = (planId: number) => {
-    const plan = MOCK_PLANS.find((p) => p.planID === planId);
-    alert(`Subscribe to ${plan?.planName} plan - Feature coming soon!`);
+  const handleSubscribe = async (planId: number) => {
+    if (!user?.userId) return alert('Please log in');
+    if (!paymentId) return alert('Enter a payment ID for testing');
+
+    try {
+      const payload = { userId: user.userId, planId, paymentId: Number(paymentId) };
+      const res = await subscriptionApi.createSubscription(payload);
+      if (res?.success) {
+        const plan = plans.find((p) => p.planID === planId) ?? null;
+        setCurrentPlan(plan);
+        alert('Subscription created successfully');
+      } else {
+        alert(res?.message || 'Failed to create subscription');
+      }
+    } catch (err) {
+      console.error('Create subscription error', err);
+      alert('Failed to create subscription');
+    }
   };
 
   if (isLoading) {
@@ -150,8 +186,13 @@ export default function SubscriptionPage() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           {currentPlan ? 'Upgrade or Change Plan' : 'Available Plans'}
         </h2>
+        <div className="mb-4 flex gap-3 items-center">
+          <input value={paymentId} onChange={(e) => setPaymentId(e.target.value)} placeholder="Payment ID (for testing)" className="px-3 py-2 border rounded-lg" />
+          <div className="text-sm text-gray-600">Enter a payment id to create a subscription (test flow)</div>
+        </div>
+
         <div className="grid md:grid-cols-3 gap-6">
-          {MOCK_PLANS.map((plan) => {
+          {(plans.length ? plans : MOCK_PLANS).map((plan) => {
             const isCurrent = currentPlan?.planID === plan.planID;
             
             return (

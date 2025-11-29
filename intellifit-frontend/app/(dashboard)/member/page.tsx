@@ -18,19 +18,20 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { useAuthStore } from '@/hooks/useAuth';
 import { MemberStats, ActivityItem } from '@/types';
+import { statsApi } from '@/lib/api/services';
 
-// Mock data for demonstration - will be replaced with real API calls
-const MOCK_STATS: MemberStats = {
-  currentWeight: 75.5,
-  bodyFatPercentage: 18.2,
-  muscleMass: 35.8,
-  bmi: 23.4,
-  tokenBalance: 150,
-  activeWorkoutPlans: 2,
-  activeNutritionPlans: 1,
-  upcomingBookings: 3,
-  completedWorkouts: 24,
-  totalCaloriesBurned: 8450,
+// Default/fallback stats while loading
+const DEFAULT_STATS: MemberStats = {
+  currentWeight: 0,
+  bodyFatPercentage: 0,
+  muscleMass: 0,
+  bmi: 0,
+  tokenBalance: 0,
+  activeWorkoutPlans: 0,
+  activeNutritionPlans: 0,
+  upcomingBookings: 0,
+  completedWorkouts: 0,
+  totalCaloriesBurned: 0,
 };
 
 const MOCK_ACTIVITIES: ActivityItem[] = [
@@ -67,15 +68,29 @@ const MOCK_ACTIVITIES: ActivityItem[] = [
 export default function MemberDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [stats] = useState<MemberStats>(MOCK_STATS);
+  const [stats, setStats] = useState<MemberStats>(DEFAULT_STATS);
   const [activities] = useState<ActivityItem[]>(MOCK_ACTIVITIES);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API call
+    // Load real member stats from API when user is available
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const res = await statsApi.getMemberStats(user.userId);
+        if (res?.success && res.data) {
+          setStats(res.data);
+        }
+      } catch (err) {
+        // Could add toast / logging here
+        console.error('Failed to load member stats', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);

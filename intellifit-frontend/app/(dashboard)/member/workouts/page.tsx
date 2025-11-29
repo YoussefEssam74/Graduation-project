@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { workoutPlanApi } from '@/lib/api/services';
 import { useRouter } from 'next/navigation';
 import {
   Dumbbell,
@@ -88,17 +90,33 @@ const MOCK_TEMPLATES: WorkoutPlanTemplate[] = [
 
 export default function WorkoutsPage() {
   const router = useRouter();
-  const [myPlans] = useState<MemberWorkoutPlan[]>(MOCK_PLANS);
-  const [availableTemplates] = useState<WorkoutPlanTemplate[]>(MOCK_TEMPLATES);
+  const { user } = useAuthStore();
+  const [myPlans, setMyPlans] = useState<MemberWorkoutPlan[]>([]);
+  const [availableTemplates, setAvailableTemplates] = useState<WorkoutPlanTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const plansRes = await workoutPlanApi.getMyPlans(user.userId);
+        if (plansRes?.success && plansRes.data) setMyPlans(plansRes.data);
+
+        const templatesRes = await workoutPlanApi.getTemplates();
+        if (templatesRes?.success && templatesRes.data) setAvailableTemplates(templatesRes.data);
+      } catch (err) {
+        console.error('Failed to load workout data', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     loadData();
-  }, []);
+  }, [user]);
 
   if (isLoading) {
     return (

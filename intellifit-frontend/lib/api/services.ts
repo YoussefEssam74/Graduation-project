@@ -53,29 +53,30 @@ export const userApi = {
 };
 
 // Exercise APIs
+// Exercise APIs - backend route is singular: /api/exercise
 export const exerciseApi = {
   getAll: async () => {
-    const response = await apiClient.get<ApiResponse<Exercise[]>>('/exercises');
+    const response = await apiClient.get<ApiResponse<Exercise[]>>('/exercise');
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<ApiResponse<Exercise>>(`/exercises/${id}`);
+    const response = await apiClient.get<ApiResponse<Exercise>>(`/exercise/${id}`);
     return response.data;
   },
 
-  create: async (exerciseData: Partial<Exercise>) => {
-    const response = await apiClient.post<ApiResponse<Exercise>>('/exercises', exerciseData);
+  getActive: async () => {
+    const response = await apiClient.get<ApiResponse<Exercise[]>>('/exercise/active');
     return response.data;
   },
 
-  update: async (id: number, exerciseData: Partial<Exercise>) => {
-    const response = await apiClient.put<ApiResponse<Exercise>>(`/exercises/${id}`, exerciseData);
+  getByMuscleGroup: async (muscleGroup: string) => {
+    const response = await apiClient.get<ApiResponse<Exercise[]>>(`/exercise/muscle-group/${muscleGroup}`);
     return response.data;
   },
 
-  delete: async (id: number) => {
-    const response = await apiClient.delete<ApiResponse<void>>(`/exercises/${id}`);
+  getByDifficulty: async (level: number) => {
+    const response = await apiClient.get<ApiResponse<Exercise[]>>(`/exercise/difficulty/${level}`);
     return response.data;
   },
 };
@@ -137,7 +138,8 @@ export const workoutPlanApi = {
   },
 
   getMyPlans: async (userId: number) => {
-    const response = await apiClient.get<ApiResponse<MemberWorkoutPlan[]>>(`/workout-plans/user/${userId}`);
+    // backend path expects member/{memberId}
+    const response = await apiClient.get<ApiResponse<MemberWorkoutPlan[]>>(`/workout-plans/member/${userId}`);
     return response.data;
   },
 
@@ -179,8 +181,19 @@ export const inBodyApi = {
 
 // Subscription APIs
 export const subscriptionApi = {
+  // backend route uses singular 'subscription'
   getPlans: async () => {
-    const response = await apiClient.get<ApiResponse<SubscriptionPlan[]>>('/subscriptions/plans');
+    const response = await apiClient.get<ApiResponse<SubscriptionPlan[]>>('/subscription/plans');
+    return response.data;
+  },
+
+  createSubscription: async (createDto: any) => {
+    const response = await apiClient.post<ApiResponse<boolean>>('/subscription', createDto);
+    return response.data;
+  },
+
+  hasActiveSubscription: async (userId: number) => {
+    const response = await apiClient.get<ApiResponse<boolean>>(`/subscription/user/${userId}/active`);
     return response.data;
   },
 };
@@ -206,7 +219,7 @@ export const statsApi = {
 // Nutrition Plan APIs
 export const nutritionPlanApi = {
   getMyPlans: async (userId: number) => {
-    const response = await apiClient.get<ApiResponse<NutritionPlan[]>>(`/nutrition-plans/user/${userId}`);
+    const response = await apiClient.get<ApiResponse<NutritionPlan[]>>(`/nutrition-plans/member/${userId}`);
     return response.data;
   },
 

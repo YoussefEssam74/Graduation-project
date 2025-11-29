@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { bookingApi, equipmentApi } from '@/lib/api/services';
 import { Calendar, Clock, Plus, X, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -90,25 +92,79 @@ const MOCK_AVAILABLE_EQUIPMENT: Equipment[] = [
 ];
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const [availableEquipment] = useState<Equipment[]>(MOCK_AVAILABLE_EQUIPMENT);
+  const { user } = useAuthStore();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<number | ''>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [selectedDuration, setSelectedDuration] = useState<number>(60);
   const [isLoading, setIsLoading] = useState(true);
   const [showNewBooking, setShowNewBooking] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
-    };
-    loadData();
-  }, []);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
 
-  const handleCancelBooking = (bookingId: number) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.bookingID === bookingId ? { ...b, status: BookingStatus.Cancelled } : b
-      )
-    );
+      try {
+        const bookingsRes = await bookingApi.getMyBookings(user.userId);
+        if (bookingsRes?.success && bookingsRes.data) setBookings(bookingsRes.data);
+
+        const equipRes = await equipmentApi.getAvailable();
+        if (equipRes?.success && equipRes.data) setAvailableEquipment(equipRes.data);
+      } catch (err) {
+        console.error('Failed to load bookings or equipment', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user]);
+
+  const handleCancelBooking = async (bookingId: number) => {
+    try {
+      const res = await bookingApi.cancel(bookingId);
+      if (res?.success && res.data) {
+        // update local state
+        setBookings((prev) => prev.map((b) => (b.bookingID === bookingId ? res.data as Booking : b)));
+      }
+    } catch (err) {
+      console.error('Failed to cancel booking', err);
+    }
+  };
+
+  const handleCreateBooking = async () => {
+    if (!user?.userId || !selectedEquipment || !selectedDate || !selectedTime) return;
+
+    const start = new Date(`${selectedDate}T${selectedTime}`);
+    const end = new Date(start.getTime() + selectedDuration * 60 * 1000);
+
+    try {
+      const payload = {
+        userId: user.userId,
+        equipmentId: Number(selectedEquipment),
+        bookingType: 'Equipment',
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+      } as any;
+
+      const res = await bookingApi.create(payload);
+      if (res?.success && res.data) {
+        setBookings((prev) => [res.data as Booking, ...prev]);
+        setShowNewBooking(false);
+        // reset form
+        setSelectedEquipment('');
+        setSelectedDate('');
+        setSelectedTime('');
+        setSelectedDuration(60);
+      }
+    } catch (err) {
+      console.error('Failed to create booking', err);
+    }
   };
 
   if (isLoading) {
@@ -164,8 +220,8 @@ export default function BookingsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Equipment
                   </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b4fd4]">
-                    <option>Select equipment...</option>
+                  <select value={selectedEquipment} onChange={(e) => setSelectedEquipment(e.target.value ? Number(e.target.value) : '')} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b4fd4]">
+                    <option value="">Select equipment...</option>
                     {availableEquipment.map((eq) => (
                       <option key={eq.equipmentID} value={eq.equipmentID}>
                         {eq.name} - {eq.category}
@@ -207,7 +263,7 @@ export default function BookingsPage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button className="flex-1">Confirm Booking</Button>
+                <Button className="flex-1" onClick={handleCreateBooking}>Confirm Booking</Button>
                 <Button
                   variant="outline"
                   className="flex-1"

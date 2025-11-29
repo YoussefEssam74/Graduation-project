@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { nutritionPlanApi } from '@/lib/api/services';
 import { useRouter } from 'next/navigation';
 import { Apple, TrendingUp, Flame, Target, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -80,14 +82,29 @@ const MOCK_TODAY_INTAKE = {
 
 export default function NutritionPage() {
   const router = useRouter();
-  const [nutritionPlan] = useState<NutritionPlan | null>(MOCK_NUTRITION_PLAN);
+  const { user } = useAuthStore();
+  const [nutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
   const [todayIntake] = useState(MOCK_TODAY_INTAKE);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const res = await nutritionPlanApi.getMyPlans(user.userId);
+        if (res?.success && res.data && res.data.length > 0) {
+          // take the first active plan if present
+          setNutritionPlan(res.data[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load nutrition plan', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);

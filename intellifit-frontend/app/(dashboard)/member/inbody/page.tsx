@@ -1,82 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { inBodyApi } from '@/lib/api/services';
 import { Activity, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { InBodyMeasurement } from '@/types';
 
 // Mock data
-const MOCK_MEASUREMENTS: InBodyMeasurement[] = [
-  {
-    inBodyID: 1,
-    userID: 1,
-    measurementDate: new Date(Date.now() - 7776000000).toISOString(), // 90 days ago
-    weight: 80.5,
-    bodyFatPercentage: 22.5,
-    muscleMass: 32.5,
-    visceralFatLevel: 8,
-    bodyWaterPercentage: 58.2,
-    boneMass: 3.2,
-    bmr: 1680,
-    bmi: 25.8,
-    receptionistID: 3,
-  },
-  {
-    inBodyID: 2,
-    userID: 1,
-    measurementDate: new Date(Date.now() - 5184000000).toISOString(), // 60 days ago
-    weight: 78.2,
-    bodyFatPercentage: 20.8,
-    muscleMass: 33.8,
-    visceralFatLevel: 7,
-    bodyWaterPercentage: 59.1,
-    boneMass: 3.3,
-    bmr: 1720,
-    bmi: 25.1,
-    receptionistID: 3,
-  },
-  {
-    inBodyID: 3,
-    userID: 1,
-    measurementDate: new Date(Date.now() - 2592000000).toISOString(), // 30 days ago
-    weight: 76.8,
-    bodyFatPercentage: 19.5,
-    muscleMass: 34.9,
-    visceralFatLevel: 6,
-    bodyWaterPercentage: 60.2,
-    boneMass: 3.3,
-    bmr: 1750,
-    bmi: 24.6,
-    receptionistID: 3,
-  },
-  {
-    inBodyID: 4,
-    userID: 1,
-    measurementDate: new Date().toISOString(), // Today
-    weight: 75.5,
-    bodyFatPercentage: 18.2,
-    muscleMass: 35.8,
-    visceralFatLevel: 5,
-    bodyWaterPercentage: 61.5,
-    boneMass: 3.4,
-    bmr: 1790,
-    bmi: 24.2,
-    receptionistID: 3,
-  },
-];
+// measurements will be loaded from the API
 
 export default function InBodyPage() {
-  const [measurements] = useState<InBodyMeasurement[]>(MOCK_MEASUREMENTS);
+  const { user } = useAuthStore();
+  const [measurements, setMeasurements] = useState<InBodyMeasurement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const res = await inBodyApi.getMyMeasurements(user.userId);
+        if (res?.success && res.data) setMeasurements(res.data);
+      } catch (err) {
+        console.error('Failed loading measurements', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     loadData();
-  }, []);
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -243,13 +201,13 @@ export default function InBodyPage() {
               <div className="p-4 bg-green-50 rounded-lg">
                 <p className="font-semibold text-green-800 mb-2">✅ Great Progress!</p>
                 <p className="text-sm text-green-700">
-                  You&apos;ve reduced body fat by {Math.abs(latest.bodyFatPercentage - MOCK_MEASUREMENTS[0].bodyFatPercentage).toFixed(1)}% since your first measurement.
+                  You&apos;ve reduced body fat by {measurements.length > 0 ? Math.abs(latest.bodyFatPercentage - measurements[0].bodyFatPercentage).toFixed(1) : '0.0'}% since your first measurement.
                 </p>
               </div>
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="font-semibold text-blue-800 mb-2">💪 Muscle Gain</p>
                 <p className="text-sm text-blue-700">
-                  You&apos;ve gained {(latest.muscleMass - MOCK_MEASUREMENTS[0].muscleMass).toFixed(1)}kg of muscle mass. Keep up the strength training!
+                  You&apos;ve gained {measurements.length > 0 ? (latest.muscleMass - measurements[0].muscleMass).toFixed(1) : '0.0'}kg of muscle mass. Keep up the strength training!
                 </p>
               </div>
               <div className="p-4 bg-orange-50 rounded-lg">
