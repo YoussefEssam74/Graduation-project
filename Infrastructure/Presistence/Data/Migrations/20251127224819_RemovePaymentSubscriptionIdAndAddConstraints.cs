@@ -18,10 +18,6 @@ namespace Presistence.Migrations
                 name: "IX_user_subscriptions_PaymentId",
                 table: "user_subscriptions");
 
-            migrationBuilder.DropColumn(
-                name: "SubscriptionId",
-                table: "payments");
-
             migrationBuilder.CreateIndex(
                 name: "IX_user_subscriptions_PaymentId",
                 table: "user_subscriptions",

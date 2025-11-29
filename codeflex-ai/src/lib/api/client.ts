@@ -1,5 +1,5 @@
 // API Base URL from environment variable
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5025/api';
 
 // Helper function to get auth token from localStorage
 export const getAuthToken = (): string | null => {

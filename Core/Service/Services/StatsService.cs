@@ -36,10 +36,11 @@ namespace Service.Services
             var memberMeasurements = inBodyMeasurements.Where(m => m.UserId == memberId).OrderByDescending(m => m.MeasurementDate).ToList();
 
             var latestMeasurement = memberMeasurements.FirstOrDefault();
-            var latestBmi = latestMeasurement != null? (decimal)((double)latestMeasurement.Weight / Math.Pow((double)latestMeasurement.Height / 100.0, 2)) : (decimal?)null;
-             latestBmi = (latestMeasurement != null && latestMeasurement.Height.HasValue && latestMeasurement.Height.Value > 0)
-                ? (decimal)((double)latestMeasurement.Weight / Math.Pow((double)latestMeasurement.Height.Value / 100.0, 2))
-                : (decimal?)null;
+            decimal? latestBmi = null;
+            if (latestMeasurement != null && latestMeasurement.Height.HasValue && latestMeasurement.Height.Value > 0)
+            {
+                latestBmi = (decimal)((double)latestMeasurement.Weight / Math.Pow((double)latestMeasurement.Height.Value / 100.0, 2));
+            }
 
             return new MemberStatsDto
             {

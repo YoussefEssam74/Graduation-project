@@ -8,6 +8,7 @@ using IntelliFit.Infrastructure.Persistence.Repository;
 using DomainLayer.Contracts;
 using ServiceAbstraction.Services;
 using Service.Services;
+using IntelliFit.Presentation.Controllers;
 
 namespace Graduation_Project
 {
@@ -17,12 +18,9 @@ namespace Graduation_Project
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add DbContext with automatic database creation
+            // Add DbContext
             builder.Services.AddDbContext<IntelliFitDbContext>(options =>
-            {
-                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-                options.UseNpgsql(connectionString);
-            });
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Add Repository Pattern
             builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -70,7 +68,7 @@ namespace Graduation_Project
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtIssuer,
                     ValidAudience = jwtAudience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                 };
 
                 // Allow SignalR to use JWT token from query string
@@ -107,9 +105,9 @@ namespace Graduation_Project
             // Add SignalR
             builder.Services.AddSignalR();
 
-            // Add Controllers from Presentation layer
+            // Add Controllers from Presentation layer (explicitly reference Presentation assembly)
             builder.Services.AddControllers()
-                .AddApplicationPart(typeof(IntelliFit.Presentation.Controllers.AuthController).Assembly);
+                .AddApplicationPart(typeof(AuthController).Assembly);
             builder.Services.AddEndpointsApiExplorer();
 
             // Configure Swagger with JWT support
@@ -150,39 +148,16 @@ namespace Graduation_Project
 
             var app = builder.Build();
 
-            // Automatically apply database migrations and ensure database is created
-            using (var scope = app.Services.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<IntelliFitDbContext>();
-                try
-                {
-                    dbContext.Database.Migrate();
-                    Console.WriteLine("Database migrations applied successfully.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Database migration error: {ex.Message}");
-                    Console.WriteLine("Attempting to create database...");
-                    try
-                    {
-                        dbContext.Database.EnsureCreated();
-                        Console.WriteLine("Database created successfully.");
-                    }
-                    catch (Exception createEx)
-                    {
-                        Console.WriteLine($"Database creation error: {createEx.Message}");
-                    }
-                }
-            }
-
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
-            app.UseHttpsRedirection();
+            else
+            {
+                app.UseHttpsRedirection();
+            }
 
             app.UseCors("AllowAll");
 
