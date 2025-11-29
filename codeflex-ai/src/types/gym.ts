@@ -19,6 +19,9 @@ export interface User {
   name: string;
   age: number;
   gender: Gender;
+  phone?: string;
+  profileImageUrl?: string;
+  address?: string;
   fitnessGoal: string;
   tokenBalance: number;
   subscriptionPlanID?: number;

@@ -17,9 +17,12 @@ namespace Graduation_Project
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add DbContext
+            // Add DbContext with automatic database creation
             builder.Services.AddDbContext<IntelliFitDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+            {
+                var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+                options.UseNpgsql(connectionString);
+            });
 
             // Add Repository Pattern
             builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -146,6 +149,31 @@ namespace Graduation_Project
             });
 
             var app = builder.Build();
+
+            // Automatically apply database migrations and ensure database is created
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<IntelliFitDbContext>();
+                try
+                {
+                    dbContext.Database.Migrate();
+                    Console.WriteLine("Database migrations applied successfully.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Database migration error: {ex.Message}");
+                    Console.WriteLine("Attempting to create database...");
+                    try
+                    {
+                        dbContext.Database.EnsureCreated();
+                        Console.WriteLine("Database created successfully.");
+                    }
+                    catch (Exception createEx)
+                    {
+                        Console.WriteLine($"Database creation error: {createEx.Message}");
+                    }
+                }
+            }
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

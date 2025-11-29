@@ -51,21 +51,45 @@ export async function apiFetch<T>(
       headers,
     });
 
-    const data = await response.json();
+    // Log full request details for debugging
+    console.log(`API Request: ${options.method || 'GET'} ${API_BASE_URL}${endpoint}`);
+    console.log('Response status:', response.status, response.statusText);
 
-    if (!response.ok) {
+    // Try to parse JSON, but handle cases where response isn't JSON
+    let data: any;
+    try {
+      data = await response.json();
+      console.log('Response data:', data);
+    } catch (jsonError) {
+      console.error('Failed to parse JSON response:', jsonError);
+      // If JSON parsing fails, return error with status text
       return {
         success: false,
-        message: data.message || 'An error occurred',
-        errors: data.errors || [response.statusText],
+        message: `Server error: ${response.statusText}`,
+        errors: [`HTTP ${response.status}: ${response.statusText}`],
+      };
+    }
+
+    if (!response.ok) {
+      console.error('API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: data,
+      });
+      return {
+        success: false,
+        message: data?.message || 'An error occurred',
+        errors: data?.errors || [response.statusText],
       };
     }
 
     return data;
   } catch (error) {
+    console.error('Network/Fetch Error:', error);
+    console.error('Failed URL:', `${API_BASE_URL}${endpoint}`);
     return {
       success: false,
-      message: 'Network error',
+      message: 'Network error - Cannot connect to server',
       errors: [error instanceof Error ? error.message : 'Unknown error'],
     };
   }

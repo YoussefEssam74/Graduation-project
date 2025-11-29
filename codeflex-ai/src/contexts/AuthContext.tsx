@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { User, UserRole } from "@/types/gym";
+import { User, UserRole, Gender } from "@/types/gym";
 import { authApi, getAuthToken } from "@/lib/api";
 
 interface AuthContextType {
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, role: UserRole) => {
     try {
-      const response = await authApi.login({ email, password, role });
+      const response = await authApi.login({ email, password, role: role as unknown as number });
 
       if (!response.success || !response.data) {
         throw new Error(response.message || "Login failed");
@@ -108,10 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: userData.email,
         name: userData.name,
         age: 25, // Backend doesn't have age, using default
-        gender: userData.gender === 0 ? "Male" : "Female", // Convert number to string
+        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male, // Convert number to Gender enum
         fitnessGoal: "General Fitness", // Backend doesn't have this field
         tokenBalance: userData.tokenBalance,
-        role: userData.role as UserRole,
+        role: Object.values(UserRole)[userData.role] || UserRole.Member,
         createdAt: userData.createdAt,
         phone: userData.phone,
         profileImageUrl: userData.profileImageUrl,
@@ -141,31 +141,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, name: string, phone: string, role: UserRole, gender?: number) => {
     try {
+      console.log('Registering with:', { email, name, phone, role, gender });
       const response = await authApi.register({ 
         email, 
         password, 
         name, 
         phone,
         gender,
-        role 
+        role: role as unknown as number
       });
 
+      console.log('Registration response:', response);
+      console.log('Response data:', response.data);
+      console.log('Response success:', response.success);
+
       if (!response.success || !response.data) {
+        console.error('Registration failed:', response);
         throw new Error(response.message || "Registration failed");
       }
 
       const { user: userData, token: authToken } = response.data;
-
-      // Convert backend UserDto to frontend User type
       const userObj: User = {
         userId: userData.userId,
         email: userData.email,
         name: userData.name,
         age: 25,
-        gender: userData.gender === 0 ? "Male" : "Female",
+        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male, // Default to Male if not specified
         fitnessGoal: "General Fitness",
         tokenBalance: userData.tokenBalance,
-        role: userData.role as UserRole,
+        role: Object.values(UserRole)[userData.role] || UserRole.Member,
         createdAt: userData.createdAt,
         phone: userData.phone,
         profileImageUrl: userData.profileImageUrl,

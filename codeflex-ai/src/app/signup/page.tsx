@@ -109,7 +109,9 @@ export default function SignUpPage() {
     try {
       await register(email, password, name, phone, selectedRole, gender);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
+      console.error("Registration error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
