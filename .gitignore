@@ -360,11 +360,10 @@ MigrationBackup/
 .ionide/
 
 # Fody - auto-generated XML schema
-<<<<<<< HEAD
-FodyWeavers.xsd
-=======
 FodyWeavers.xsd
 
 # IntelliFit secrets
 Graduation-Project/appsettings.json
->>>>>>> f0ac5ba58a532553620554ee25d560ca8961f5df
+
+# VS Code local settings (contains database credentials)
+.vscode/settings.json
