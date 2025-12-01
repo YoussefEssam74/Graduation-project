@@ -16,7 +16,7 @@ namespace IntelliFit.Domain.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        public virtual CoachProfile CreatedByCoach { get; set; } = null!;
+        public virtual Coach CreatedByCoach { get; set; } = null!;
         public virtual ICollection<WorkoutTemplateExercise> TemplateExercises { get; set; } = new List<WorkoutTemplateExercise>();
     }
 }

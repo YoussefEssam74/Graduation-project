@@ -1,7 +1,19 @@
+using IntelliFit.Shared.DTOs.User;
+
 namespace ServiceAbstraction.Services
 {
     public interface INotificationService
     {
+        // Database Operations
+        Task<NotificationDto> CreateNotificationAsync(CreateNotificationDto dto);
+        Task<NotificationDto> GetNotificationByIdAsync(int notificationId);
+        Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(int userId, bool unreadOnly = false);
+        Task<NotificationDto> MarkAsReadAsync(int notificationId);
+        Task MarkAllAsReadAsync(int userId);
+        Task DeleteNotificationAsync(int notificationId);
+        Task<int> GetUnreadCountAsync(int userId);
+
+        // SignalR Real-time Operations
         /// <summary>
         /// Send notification to a specific user
         /// </summary>

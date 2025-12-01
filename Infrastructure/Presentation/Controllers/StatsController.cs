@@ -1,27 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     [Authorize]
     [ApiController]
     [Route("api/stats")]
-    public class StatsController : ControllerBase
+    public class StatsController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly IStatsService _statsService;
-
-        public StatsController(IStatsService statsService)
-        {
-            _statsService = statsService;
-        }
-
+        #region Get Stats
         [HttpGet("member/{memberId}")]
         public async Task<IActionResult> GetMemberStats(int memberId)
         {
             try
             {
-                var stats = await _statsService.GetMemberStatsAsync(memberId);
+                var stats = await _serviceManager.StatsService.GetMemberStatsAsync(memberId);
                 return Ok(stats);
             }
             catch (KeyNotFoundException ex)
@@ -35,7 +29,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var stats = await _statsService.GetCoachStatsAsync(coachId);
+                var stats = await _serviceManager.StatsService.GetCoachStatsAsync(coachId);
                 return Ok(stats);
             }
             catch (KeyNotFoundException ex)
@@ -47,8 +41,9 @@ namespace IntelliFit.Presentation.Controllers
         [HttpGet("reception")]
         public async Task<IActionResult> GetReceptionStats()
         {
-            var stats = await _statsService.GetReceptionStatsAsync();
+            var stats = await _serviceManager.StatsService.GetReceptionStatsAsync();
             return Ok(stats);
         }
+        #endregion
     }
 }

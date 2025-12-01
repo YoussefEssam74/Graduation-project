@@ -7,7 +7,7 @@ namespace IntelliFit.Domain.Models
         public int LogId { get; set; }
         public int UserId { get; set; }
         public int? PlanId { get; set; }
-        public DateTime WorkoutDate { get; set; } = DateTime.Today;
+        public DateTime WorkoutDate { get; set; } = DateTime.UtcNow.Date;
         public int? DurationMinutes { get; set; }
         public int? CaloriesBurned { get; set; }
         public string? ExercisesCompleted { get; set; }

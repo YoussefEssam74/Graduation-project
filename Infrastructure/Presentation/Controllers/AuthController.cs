@@ -1,78 +1,42 @@
 using Microsoft.AspNetCore.Mvc;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.Auth;
-using Shared.Helpers;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    public class AuthController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly IAuthService _authService;
+        #region Login
 
-        public AuthController(IAuthService authService)
-        {
-            _authService = authService;
-        }
-
-        /// <summary>
-        /// Login user with email, password, and role
-        /// </summary>
         [HttpPost("login")]
-        public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Login([FromBody] LoginRequestDto loginDto)
+        public async Task<ActionResult<AuthResponseDto>> Login(LoginRequestDto loginDto)
         {
-            try
-            {
-                var result = await _authService.LoginAsync(loginDto);
-                return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(result, "Login successful"));
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ApiResponse<AuthResponseDto>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse("Login failed", new List<string> { ex.Message }));
-            }
+            var result = await _serviceManager.AuthService.LoginAsync(loginDto);
+            return Ok(result);
         }
 
-        /// <summary>
-        /// Register new user
-        /// </summary>
+        #endregion
+
+        #region Register
+
         [HttpPost("register")]
-        public async Task<ActionResult<ApiResponse<AuthResponseDto>>> Register([FromBody] RegisterRequestDto registerDto)
+        public async Task<ActionResult<AuthResponseDto>> Register(RegisterRequestDto registerDto)
         {
-            try
-            {
-                var result = await _authService.RegisterAsync(registerDto);
-                return Ok(ApiResponse<AuthResponseDto>.SuccessResponse(result, "Registration successful"));
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<AuthResponseDto>.ErrorResponse("Registration failed", new List<string> { ex.Message }));
-            }
+            var result = await _serviceManager.AuthService.RegisterAsync(registerDto);
+            return Ok(result);
         }
 
-        /// <summary>
-        /// Check if email exists
-        /// </summary>
-        [HttpGet("email-exists")]
-        public async Task<ActionResult<ApiResponse<bool>>> EmailExists([FromQuery] string email)
+        #endregion
+
+        #region Check Email
+
+        [HttpGet("emailexists")]
+        public async Task<ActionResult<bool>> CheckEmail(string email)
         {
-            try
-            {
-                var exists = await _authService.EmailExistsAsync(email);
-                return Ok(ApiResponse<bool>.SuccessResponse(exists));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<bool>.ErrorResponse("Check failed", new List<string> { ex.Message }));
-            }
+            var result = await _serviceManager.AuthService.EmailExistsAsync(email);
+            return Ok(result);
         }
+
+        #endregion
     }
 }

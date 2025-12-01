@@ -10,8 +10,14 @@ namespace IntelliFit.Infrastructure.Persistence
         {
         }
 
-        // Core
+        // Core - TPT (Table-Per-Type) Inheritance
         public DbSet<User> Users { get; set; }
+        public DbSet<Member> Members { get; set; }
+        public DbSet<Coach> Coaches { get; set; }
+        public DbSet<Receptionist> Receptionists { get; set; }
+        public DbSet<Admin> Admins { get; set; }
+
+        // Deprecated - Use TPT derived types instead
         public DbSet<MemberProfile> MemberProfiles { get; set; }
         public DbSet<CoachProfile> CoachProfiles { get; set; }
 
@@ -73,8 +79,14 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.HasPostgresEnum<PaymentStatus>();
             modelBuilder.HasPostgresEnum<NotificationType>();
 
-            // Configure table names (snake_case)
+            // Configure TPT (Table-Per-Type) inheritance for User roles
             modelBuilder.Entity<User>().ToTable("users");
+            modelBuilder.Entity<Member>().ToTable("members");
+            modelBuilder.Entity<Coach>().ToTable("coaches");
+            modelBuilder.Entity<Receptionist>().ToTable("receptionists");
+            modelBuilder.Entity<Admin>().ToTable("admins");
+
+            // Deprecated Profile tables (to be removed after data migration)
             modelBuilder.Entity<MemberProfile>().ToTable("member_profiles");
             modelBuilder.Entity<CoachProfile>().ToTable("coach_profiles");
             modelBuilder.Entity<SubscriptionPlan>().ToTable("subscription_plans");
@@ -106,7 +118,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<CoachReview>().ToTable("coach_reviews");
             modelBuilder.Entity<AuditLog>().ToTable("audit_logs");
 
-            // User Configuration
+            // User Configuration (Base TPT table)
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasKey(e => e.UserId);
@@ -114,16 +126,39 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.Property(e => e.PasswordHash).IsRequired();
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
                 entity.HasIndex(e => e.Email).IsUnique();
+            });
 
-                entity.HasOne(e => e.MemberProfile)
-                    .WithOne(m => m.User)
-                    .HasForeignKey<MemberProfile>(m => m.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
+            // Member Configuration (TPT derived type)
+            modelBuilder.Entity<Member>(entity =>
+            {
+                entity.Property(e => e.CurrentWeight).HasPrecision(5, 2);
+                entity.Property(e => e.TargetWeight).HasPrecision(5, 2);
+                entity.Property(e => e.Height).HasPrecision(5, 2);
 
-                entity.HasOne(e => e.CoachProfile)
-                    .WithOne(c => c.User)
-                    .HasForeignKey<CoachProfile>(c => c.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                // FK to SubscriptionPlan
+                entity.HasOne(e => e.SubscriptionPlan)
+                    .WithMany()
+                    .HasForeignKey(e => e.SubscriptionPlanId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Coach Configuration (TPT derived type)
+            modelBuilder.Entity<Coach>(entity =>
+            {
+                entity.Property(e => e.Rating).HasPrecision(3, 2);
+                entity.Property(e => e.HourlyRate).HasPrecision(10, 2);
+            });
+
+            // Receptionist Configuration (TPT derived type)
+            modelBuilder.Entity<Receptionist>(entity =>
+            {
+                // Add any specific configuration for receptionists here
+            });
+
+            // Admin Configuration (TPT derived type)
+            modelBuilder.Entity<Admin>(entity =>
+            {
+                // Add any specific configuration for admins here
             });
 
             // MemberProfile Configuration
@@ -248,8 +283,9 @@ namespace IntelliFit.Infrastructure.Persistence
                     .HasForeignKey(e => e.EquipmentId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                // Coach relationship uses CoachBookings navigation property
                 entity.HasOne(e => e.Coach)
-                    .WithMany(c => c.Bookings)
+                    .WithMany(c => c.CoachBookings)
                     .HasForeignKey(e => e.CoachId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
@@ -276,6 +312,12 @@ namespace IntelliFit.Infrastructure.Persistence
                     .HasForeignKey(e => e.MeasuredBy)
                     .OnDelete(DeleteBehavior.SetNull);
             });
+
+            // Ignore Receptionist-specific navigations to avoid conflicts (no FK in related tables)
+            modelBuilder.Entity<Receptionist>()
+                .Ignore(r => r.InBodyMeasurementsConducted);
+            modelBuilder.Entity<Receptionist>()
+                .Ignore(r => r.TokenTransactionsProcessed);
 
             // Exercise Configuration
             modelBuilder.Entity<Exercise>(entity =>
@@ -396,7 +438,7 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.HasKey(e => e.MealId);
 
                 entity.HasOne(e => e.NutritionPlan)
-                    .WithMany(np => np.MealsList)
+                    .WithMany(np => np.Meals)
                     .HasForeignKey(e => e.NutritionPlanId)
                     .OnDelete(DeleteBehavior.Cascade);
 
@@ -554,7 +596,7 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // Performance Indexes
-            modelBuilder.Entity<User>().HasIndex(e => e.Role);
+            // Note: Role is determined by TPT inheritance (Member/Coach/Receptionist/Admin tables)
             modelBuilder.Entity<User>().HasIndex(e => e.IsActive);
             modelBuilder.Entity<WorkoutPlan>().HasIndex(e => new { e.UserId, e.IsActive });
             modelBuilder.Entity<NutritionPlan>().HasIndex(e => new { e.UserId, e.IsActive });

@@ -16,7 +16,7 @@ namespace Service.Services
             _configuration = configuration;
         }
 
-        public string GenerateJwtToken(int userId, string email, int role)
+        public string GenerateJwtToken(int userId, string email, string role)
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured")));
@@ -26,7 +26,7 @@ namespace Service.Services
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, email),
-                new Claim(ClaimTypes.Role, role.ToString()),
+                new Claim(ClaimTypes.Role, role),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 

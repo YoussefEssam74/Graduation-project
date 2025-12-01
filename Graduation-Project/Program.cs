@@ -8,7 +8,7 @@ using IntelliFit.Infrastructure.Persistence.Repository;
 using DomainLayer.Contracts;
 using ServiceAbstraction.Services;
 using Service.Services;
-using IntelliFit.Presentation.Controllers;
+using Presentation.Controllers;
 
 namespace Graduation_Project
 {
@@ -22,31 +22,18 @@ namespace Graduation_Project
             builder.Services.AddDbContext<IntelliFitDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // Add Repository Pattern
-            builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            // Add Repository Pattern (typed)
+            builder.Services.AddScoped(typeof(IGenaricRepository<,>), typeof(GenericRepository<,>));
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-            // Add Services
+            // Add AutoMapper
+            builder.Services.AddAutoMapper(typeof(Service.MappingProfiles.MappingProfile).Assembly);
+
+            // Add Core Services (shared dependencies)
             builder.Services.AddScoped<ITokenService, TokenService>();
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IUserService, UserService>();
-            builder.Services.AddScoped<IBookingService, BookingService>();
-            builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
-            builder.Services.AddScoped<IPaymentService, PaymentService>();
-            builder.Services.AddScoped<IExerciseService, ExerciseService>();
-            builder.Services.AddScoped<IEquipmentService, EquipmentService>();
 
-            // Add New Services
-            builder.Services.AddScoped<IWorkoutPlanService, WorkoutPlanService>();
-            builder.Services.AddScoped<INutritionPlanService, NutritionPlanService>();
-            builder.Services.AddScoped<IInBodyService, InBodyService>();
-            builder.Services.AddScoped<IStatsService, StatsService>();
-            builder.Services.AddScoped<IMealService, MealService>();
-            builder.Services.AddScoped<IAIChatService, AIChatService>();
-            builder.Services.AddScoped<INotificationService, NotificationService>();
-
-            // Add Google Gemini AI Service
-            builder.Services.AddScoped<IntelliFit.ServiceAbstraction.IAIService, IntelliFit.Service.Services.AIService>();
+            // Add Service Manager (creates service instances internally with lazy loading - E-Commerce pattern)
+            builder.Services.AddScoped<ServiceAbstraction.IServiceManager, Service.ServiceManager>();
 
             // Add JWT Authentication
             var jwtKey = builder.Configuration["Jwt:Key"];
@@ -68,7 +55,7 @@ namespace Graduation_Project
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = jwtIssuer,
                     ValidAudience = jwtAudience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!))
                 };
 
                 // Allow SignalR to use JWT token from query string
@@ -107,7 +94,12 @@ namespace Graduation_Project
 
             // Add Controllers from Presentation layer (explicitly reference Presentation assembly)
             builder.Services.AddControllers()
-                .AddApplicationPart(typeof(AuthController).Assembly);
+                .AddApplicationPart(typeof(AuthController).Assembly)
+                .AddJsonOptions(options =>
+                {
+                    // Configure JSON serializer to treat all DateTime as UTC for PostgreSQL compatibility
+                    options.JsonSerializerOptions.Converters.Add(new IntelliFit.Shared.Helpers.UtcDateTimeConverter());
+                });
             builder.Services.AddEndpointsApiExplorer();
 
             // Configure Swagger with JWT support
@@ -147,6 +139,21 @@ namespace Graduation_Project
             });
 
             var app = builder.Build();
+
+            // Fix users sequence on startup (one-time fix for seeded data)
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<IntelliFitDbContext>();
+                try
+                {
+                    dbContext.Database.ExecuteSqlRaw("SELECT setval(pg_get_serial_sequence('users','UserId'), COALESCE((SELECT MAX(\"UserId\") FROM users), 1));");
+                    Console.WriteLine("✓ Users sequence synchronized with max UserId");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not sync users sequence: {ex.Message}");
+                }
+            }
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

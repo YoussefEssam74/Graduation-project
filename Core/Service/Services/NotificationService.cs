@@ -1,17 +1,106 @@
 using Microsoft.AspNetCore.SignalR;
 using ServiceAbstraction.Services;
 using IntelliFit.Presentation.Hubs;
+using DomainLayer.Contracts;
+using IntelliFit.Domain.Models;
+using IntelliFit.Shared.DTOs.User;
+using AutoMapper;
 
 namespace Service.Services
 {
     public class NotificationService : INotificationService
     {
         private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public NotificationService(IHubContext<NotificationHub> hubContext)
+        public NotificationService(
+            IHubContext<NotificationHub> hubContext,
+            IUnitOfWork unitOfWork,
+            IMapper mapper)
         {
             _hubContext = hubContext;
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
+
+        // Database Operations
+        public async Task<NotificationDto> CreateNotificationAsync(CreateNotificationDto dto)
+        {
+            var notification = _mapper.Map<Notification>(dto);
+
+            await _unitOfWork.Repository<Notification>().AddAsync(notification);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Send real-time notification
+            await SendNotificationToUserAsync(dto.UserId, dto.Title, dto.Message, dto.NotificationType);
+
+            return _mapper.Map<NotificationDto>(notification);
+        }
+
+        public async Task<NotificationDto?> GetNotificationByIdAsync(int notificationId)
+        {
+            var notification = await _unitOfWork.Repository<Notification>().GetByIdAsync(notificationId);
+            return notification != null ? _mapper.Map<NotificationDto>(notification) : null;
+        }
+
+        public async Task<IEnumerable<NotificationDto>> GetUserNotificationsAsync(int userId, bool unreadOnly = false)
+        {
+            var notifications = await _unitOfWork.Repository<Notification>().GetAllAsync();
+            var userNotifications = notifications.Where(n => n.UserId == userId);
+
+            if (unreadOnly)
+                userNotifications = userNotifications.Where(n => !n.IsRead);
+
+            return userNotifications.OrderByDescending(n => n.CreatedAt).Select(n => _mapper.Map<NotificationDto>(n));
+        }
+
+        public async Task<NotificationDto?> MarkAsReadAsync(int notificationId)
+        {
+            var notification = await _unitOfWork.Repository<Notification>().GetByIdAsync(notificationId);
+            if (notification == null) return null;
+
+            notification.IsRead = true;
+            notification.ReadAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<Notification>().Update(notification);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<NotificationDto>(notification);
+        }
+
+        public async Task MarkAllAsReadAsync(int userId)
+        {
+            var notifications = await _unitOfWork.Repository<Notification>().GetAllAsync();
+            var userNotifications = notifications.Where(n => n.UserId == userId && !n.IsRead);
+
+            foreach (var notification in userNotifications)
+            {
+                notification.IsRead = true;
+                notification.ReadAt = DateTime.UtcNow;
+                _unitOfWork.Repository<Notification>().Update(notification);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task DeleteNotificationAsync(int notificationId)
+        {
+            var notification = await _unitOfWork.Repository<Notification>().GetByIdAsync(notificationId);
+            if (notification != null)
+            {
+                _unitOfWork.Repository<Notification>().Remove(notification);
+                await _unitOfWork.SaveChangesAsync();
+            }
+        }
+
+        public async Task<int> GetUnreadCountAsync(int userId)
+        {
+            var notifications = await _unitOfWork.Repository<Notification>().GetAllAsync();
+            return notifications.Count(n => n.UserId == userId && !n.IsRead);
+        }
+
+        // SignalR Operations
 
         public async Task SendNotificationToUserAsync(int userId, string title, string message, string type)
         {

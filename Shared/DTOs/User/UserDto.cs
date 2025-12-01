@@ -8,7 +8,7 @@ namespace Shared.DTOs.User
         public string? Phone { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public int? Gender { get; set; }
-        public int Role { get; set; }
+        public string Role { get; set; } = null!;
         public string? ProfileImageUrl { get; set; }
         public string? Address { get; set; }
         public int TokenBalance { get; set; }

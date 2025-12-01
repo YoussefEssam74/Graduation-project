@@ -1,22 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.Exercise;
 using Shared.Helpers;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ExerciseController : ControllerBase
+    public class ExerciseController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly IExerciseService _exerciseService;
-
-        public ExerciseController(IExerciseService exerciseService)
-        {
-            _exerciseService = exerciseService;
-        }
-
+        #region Get All Exercises
         /// <summary>
         /// Get all exercises
         /// </summary>
@@ -25,7 +19,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var exercises = await _exerciseService.GetAllExercisesAsync();
+                var exercises = await _serviceManager.ExerciseService.GetAllExercisesAsync();
                 return Ok(ApiResponse<IEnumerable<ExerciseDto>>.SuccessResponse(exercises));
             }
             catch (Exception ex)
@@ -42,7 +36,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var exercises = await _exerciseService.GetActiveExercisesAsync();
+                var exercises = await _serviceManager.ExerciseService.GetActiveExercisesAsync();
                 return Ok(ApiResponse<IEnumerable<ExerciseDto>>.SuccessResponse(exercises));
             }
             catch (Exception ex)
@@ -50,7 +44,9 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<IEnumerable<ExerciseDto>>.ErrorResponse("Failed to retrieve active exercises", new List<string> { ex.Message }));
             }
         }
+        #endregion
 
+        #region Get Exercise By Criteria
         /// <summary>
         /// Get exercise by ID
         /// </summary>
@@ -59,7 +55,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var exercise = await _exerciseService.GetExerciseByIdAsync(id);
+                var exercise = await _serviceManager.ExerciseService.GetExerciseByIdAsync(id);
 
                 if (exercise == null)
                 {
@@ -82,7 +78,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var exercises = await _exerciseService.GetExercisesByMuscleGroupAsync(muscleGroup);
+                var exercises = await _serviceManager.ExerciseService.GetExercisesByMuscleGroupAsync(muscleGroup);
                 return Ok(ApiResponse<IEnumerable<ExerciseDto>>.SuccessResponse(exercises));
             }
             catch (Exception ex)
@@ -99,7 +95,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var exercises = await _exerciseService.GetExercisesByDifficultyAsync(level);
+                var exercises = await _serviceManager.ExerciseService.GetExercisesByDifficultyAsync(level);
                 return Ok(ApiResponse<IEnumerable<ExerciseDto>>.SuccessResponse(exercises));
             }
             catch (Exception ex)
@@ -107,5 +103,6 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<IEnumerable<ExerciseDto>>.ErrorResponse("Failed to retrieve exercises", new List<string> { ex.Message }));
             }
         }
+        #endregion
     }
 }

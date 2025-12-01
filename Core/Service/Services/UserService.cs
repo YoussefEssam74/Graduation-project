@@ -1,5 +1,6 @@
 using DomainLayer.Contracts;
 using IntelliFit.Domain.Models;
+using IntelliFit.Domain.Enums;
 using ServiceAbstraction.Services;
 using Shared.DTOs.User;
 
@@ -12,6 +13,21 @@ namespace Service.Services
         public UserService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
+        }
+
+        /// <summary>
+        /// Helper method to determine User Role from TPT derived type
+        /// </summary>
+        private string GetUserRole(User user)
+        {
+            return user switch
+            {
+                Member => "Member",
+                Coach => "Coach",
+                Receptionist => "Receptionist",
+                Admin => "Admin",
+                _ => throw new InvalidOperationException($"Unknown user type: {user.GetType().Name}")
+            };
         }
 
         public async Task<UserDto?> GetUserByIdAsync(int userId)
@@ -102,7 +118,7 @@ namespace Service.Services
                 Phone = user.Phone,
                 DateOfBirth = user.DateOfBirth,
                 Gender = user.Gender.HasValue ? (int)user.Gender.Value : null,
-                Role = (int)user.Role,
+                Role = GetUserRole(user),
                 ProfileImageUrl = user.ProfileImageUrl,
                 Address = user.Address,
                 TokenBalance = user.TokenBalance,

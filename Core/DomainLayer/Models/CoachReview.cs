@@ -16,7 +16,7 @@ namespace IntelliFit.Domain.Models
 
 
         // Navigation properties
-        public virtual CoachProfile Coach { get; set; } = null!;
+        public virtual Coach Coach { get; set; } = null!;
         public virtual User User { get; set; } = null!;
         public virtual Booking? Booking { get; set; }
     }

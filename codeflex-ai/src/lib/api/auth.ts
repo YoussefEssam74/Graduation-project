@@ -3,7 +3,6 @@ import { apiFetch, setAuthToken, removeAuthToken, type ApiResponse } from './cli
 export interface LoginRequest {
   email: string;
   password: string;
-  role: number;
 }
 
 export interface RegisterRequest {
@@ -13,7 +12,7 @@ export interface RegisterRequest {
   phone?: string;
   dateOfBirth?: string;
   gender?: number;
-  role: number;
+  role: string;
 }
 
 export interface UserDto {
@@ -23,7 +22,7 @@ export interface UserDto {
   phone?: string;
   dateOfBirth?: string;
   gender?: number;
-  role: number;
+  role: string;
   profileImageUrl?: string;
   address?: string;
   tokenBalance: number;

@@ -10,8 +10,5 @@ namespace Shared.DTOs.Auth
 
         [Required(ErrorMessage = "Password is required")]
         public string Password { get; set; } = null!;
-
-        [Required(ErrorMessage = "Role is required")]
-        public int Role { get; set; }
     }
 }

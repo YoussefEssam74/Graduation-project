@@ -54,7 +54,6 @@ const ROLE_CONFIG = [
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.Member);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -67,7 +66,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password, selectedRole);
+      await login(email, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     } finally {
@@ -75,7 +74,8 @@ export default function LoginPage() {
     }
   };
 
-  const selectedConfig = ROLE_CONFIG.find((r) => r.role === selectedRole)!;
+  // Default to Member for styling
+  const selectedConfig = ROLE_CONFIG[0];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
@@ -147,38 +147,7 @@ export default function LoginPage() {
           <div className="p-12 bg-background">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-foreground mb-2">Sign In</h2>
-              <p className="text-muted-foreground">Choose your role and access your dashboard</p>
-            </div>
-
-            {/* Role Selector */}
-            <div className="mb-8">
-              <Label className="text-sm font-medium mb-3 block">Select Role</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {ROLE_CONFIG.map((config) => {
-                  const Icon = config.icon;
-                  const isSelected = selectedRole === config.role;
-                  return (
-                    <button
-                      key={config.role}
-                      type="button"
-                      onClick={() => setSelectedRole(config.role)}
-                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                        isSelected
-                          ? `${config.color} text-white border-transparent shadow-lg scale-105`
-                          : "border-border bg-card hover:border-primary/50 hover:shadow-md"
-                      }`}
-                    >
-                      <Icon className={`w-6 h-6 mb-2 ${isSelected ? "text-white" : "text-primary"}`} />
-                      <div className={`font-semibold text-sm ${isSelected ? "text-white" : "text-foreground"}`}>
-                        {config.label}
-                      </div>
-                      <div className={`text-xs mt-1 ${isSelected ? "text-white/90" : "text-muted-foreground"}`}>
-                        {config.description}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <p className="text-muted-foreground">Enter your credentials to access your dashboard</p>
             </div>
 
             {/* Login Form */}
@@ -247,10 +216,10 @@ export default function LoginPage() {
                 {isLoading ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Signing in...
+                    Detecting role and signing in...
                   </div>
                 ) : (
-                  `Sign in as ${selectedConfig.label}`
+                  "Sign In"
                 )}
               </Button>
             </form>

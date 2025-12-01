@@ -1,105 +1,56 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.User;
-using Shared.Helpers;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
-    [Route("api/users")]
-    [ApiController]
     [Authorize]
-    public class UserController : ControllerBase
+    [Route("api/users")]
+    public class UserController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly IUserService _userService;
+        #region Get User
 
-        public UserController(IUserService userService)
-        {
-            _userService = userService;
-        }
-
-        /// <summary>
-        /// Get user by ID
-        /// </summary>
         [HttpGet("{id}")]
-        public async Task<ActionResult<ApiResponse<UserDto>>> GetUser(int id)
+        public async Task<ActionResult<UserDto>> GetUser(int id)
         {
-            try
-            {
-                var user = await _userService.GetUserByIdAsync(id);
-
-                if (user == null)
-                {
-                    return NotFound(ApiResponse<UserDto>.ErrorResponse("User not found"));
-                }
-
-                return Ok(ApiResponse<UserDto>.SuccessResponse(user));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<UserDto>.ErrorResponse("Failed to retrieve user", new List<string> { ex.Message }));
-            }
+            var user = await _serviceManager.UserService.GetUserByIdAsync(id);
+            return Ok(user);
         }
 
-        /// <summary>
-        /// Update user profile
-        /// </summary>
+        #endregion
+
+        #region Update Profile
+
         [HttpPut("{id}")]
-        public async Task<ActionResult<ApiResponse<UserDto>>> UpdateProfile(int id, [FromBody] UpdateProfileDto updateDto)
+        public async Task<ActionResult<UserDto>> UpdateProfile(int id, [FromBody] UpdateProfileDto updateDto)
         {
-            try
-            {
-                var user = await _userService.UpdateProfileAsync(id, updateDto);
-                return Ok(ApiResponse<UserDto>.SuccessResponse(user, "Profile updated successfully"));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ApiResponse<UserDto>.ErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<UserDto>.ErrorResponse("Failed to update profile", new List<string> { ex.Message }));
-            }
+            var user = await _serviceManager.UserService.UpdateProfileAsync(id, updateDto);
+            return Ok(user);
         }
 
-        /// <summary>
-        /// Get user token balance
-        /// </summary>
+        #endregion
+
+        #region Get Token Balance
+
         [HttpGet("{id}/tokens")]
-        public async Task<ActionResult<ApiResponse<int>>> GetTokenBalance(int id)
+        public async Task<ActionResult<int>> GetTokenBalance(int id)
         {
-            try
-            {
-                var balance = await _userService.GetTokenBalanceAsync(id);
-                return Ok(ApiResponse<int>.SuccessResponse(balance));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<int>.ErrorResponse("Failed to retrieve token balance", new List<string> { ex.Message }));
-            }
+            var balance = await _serviceManager.UserService.GetTokenBalanceAsync(id);
+            return Ok(balance);
         }
 
-        /// <summary>
-        /// Deactivate user account
-        /// </summary>
+        #endregion
+
+        #region Deactivate User
+
         [HttpDelete("{id}")]
-        public async Task<ActionResult<ApiResponse<bool>>> DeactivateUser(int id)
+        public async Task<ActionResult<bool>> DeactivateUser(int id)
         {
-            try
-            {
-                var result = await _userService.DeactivateUserAsync(id);
-
-                if (!result)
-                {
-                    return NotFound(ApiResponse<bool>.ErrorResponse("User not found"));
-                }
-
-                return Ok(ApiResponse<bool>.SuccessResponse(true, "User deactivated successfully"));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to deactivate user", new List<string> { ex.Message }));
-            }
+            var result = await _serviceManager.UserService.DeactivateUserAsync(id);
+            return Ok(result);
         }
+
+        #endregion
     }
 }

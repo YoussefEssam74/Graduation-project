@@ -19,6 +19,36 @@ namespace Service.Services
             _tokenService = tokenService;
         }
 
+        /// <summary>
+        /// Helper method to determine User Role from TPT derived type
+        /// </summary>
+        private string GetUserRole(User user)
+        {
+            return user switch
+            {
+                Member => "Member",
+                Coach => "Coach",
+                Receptionist => "Receptionist",
+                Admin => "Admin",
+                _ => throw new InvalidOperationException($"Unknown user type: {user.GetType().Name}")
+            };
+        }
+
+        // Ensure DateTime values persisted to PostgreSQL with timestamptz are UTC
+        private DateTime? EnsureUtc(DateTime? value)
+        {
+            if (!value.HasValue) return null;
+            var dt = value.Value;
+            if (dt.Kind == DateTimeKind.Utc) return dt;
+            if (dt.Kind == DateTimeKind.Unspecified)
+            {
+                // Treat unspecified as UTC for storage consistency
+                return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+            }
+            // Local -> convert to UTC
+            return dt.ToUniversalTime();
+        }
+
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto loginDto)
         {
             var user = await _unitOfWork.Repository<User>()
@@ -34,17 +64,15 @@ namespace Service.Services
                 throw new UnauthorizedAccessException("Account is deactivated");
             }
 
-            if ((int)user.Role != loginDto.Role)
-            {
-                throw new UnauthorizedAccessException("Invalid role for this user");
-            }
+            // Detect role from TPT derived type
+            var userRole = GetUserRole(user);
 
             // Update last login
             user.LastLoginAt = DateTime.UtcNow;
             _unitOfWork.Repository<User>().Update(user);
             await _unitOfWork.SaveChangesAsync();
 
-            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, (int)user.Role);
+            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, userRole);
 
             return new AuthResponseDto
             {
@@ -61,24 +89,64 @@ namespace Service.Services
                 throw new InvalidOperationException("Email already exists");
             }
 
-            var user = new User
+            // Create correct derived user type based on Role (TPT pattern)
+            User user = registerDto.Role.ToLowerInvariant() switch
             {
-                Email = registerDto.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                Name = registerDto.Name,
-                Phone = registerDto.Phone,
-                DateOfBirth = registerDto.DateOfBirth,
-                Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
-                Role = (UserRole)registerDto.Role,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                "member" => new Member
+                {
+                    Email = registerDto.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                    Name = registerDto.Name,
+                    Phone = registerDto.Phone,
+                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
+                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                "coach" => new Coach
+                {
+                    Email = registerDto.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                    Name = registerDto.Name,
+                    Phone = registerDto.Phone,
+                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
+                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                "receptionist" => new Receptionist
+                {
+                    Email = registerDto.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                    Name = registerDto.Name,
+                    Phone = registerDto.Phone,
+                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
+                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                "admin" => new Admin
+                {
+                    Email = registerDto.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                    Name = registerDto.Name,
+                    Phone = registerDto.Phone,
+                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
+                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                },
+                _ => throw new InvalidOperationException($"Invalid role: {registerDto.Role}")
             };
 
             await _unitOfWork.Repository<User>().AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, (int)user.Role);
+            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, GetUserRole(user));
 
             return new AuthResponseDto
             {
@@ -111,7 +179,7 @@ namespace Service.Services
                 Phone = user.Phone,
                 DateOfBirth = user.DateOfBirth,
                 Gender = user.Gender.HasValue ? (int)user.Gender.Value : null,
-                Role = (int)user.Role,
+                Role = GetUserRole(user),
                 ProfileImageUrl = user.ProfileImageUrl,
                 Address = user.Address,
                 TokenBalance = user.TokenBalance,

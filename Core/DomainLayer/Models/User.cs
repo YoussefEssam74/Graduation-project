@@ -3,7 +3,11 @@ using IntelliFit.Domain.Enums;
 
 namespace IntelliFit.Domain.Models
 {
-    public class User
+    /// <summary>
+    /// Base User entity for TPT (Table-Per-Type) inheritance
+    /// Derived types: Member, Coach, Receptionist, Admin
+    /// </summary>
+    public abstract class User
     {
         public int UserId { get; set; }
         public string Email { get; set; } = null!;
@@ -12,7 +16,7 @@ namespace IntelliFit.Domain.Models
         public string? Phone { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public GenderType? Gender { get; set; }
-        public UserRole Role { get; set; } = UserRole.Member;
+        // Note: Role is determined by TPT inheritance (Member/Coach/Receptionist/Admin tables)
         public string? ProfileImageUrl { get; set; }
         public string? Address { get; set; }
         public string? EmergencyContactName { get; set; }
@@ -24,8 +28,7 @@ namespace IntelliFit.Domain.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        public virtual MemberProfile? MemberProfile { get; set; }
-        public virtual CoachProfile? CoachProfile { get; set; }
+        // Navigation properties (common to all user types)
         public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
         public virtual ICollection<UserSubscription> UserSubscriptions { get; set; } = new List<UserSubscription>();
         public virtual ICollection<TokenTransaction> TokenTransactions { get; set; } = new List<TokenTransaction>();

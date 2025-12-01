@@ -17,7 +17,7 @@ namespace IntelliFit.Domain.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public virtual NutritionPlan NutritionPlan { get; set; } = null!;
-        public virtual CoachProfile? CreatedByCoach { get; set; }
+        public virtual Coach? CreatedByCoach { get; set; }
         public virtual ICollection<MealIngredient> Ingredients { get; set; } = new List<MealIngredient>();
     }
 }

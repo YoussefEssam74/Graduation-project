@@ -1,31 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using IntelliFit.ServiceAbstraction;
 using Shared.DTOs;
 using Shared.DTOs.AI;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     // [Authorize] // Temporarily disabled for testing
     [ApiController]
     [Route("api/ai")]
-    public class AIController : ControllerBase
+    public class AIController(IServiceManager _serviceManager, ILogger<AIController> _logger) : ApiControllerBase
     {
-        private readonly IAIChatService _aiChatService;
-        private readonly IAIService _geminiAIService;
-        private readonly ILogger<AIController> _logger;
-
-        public AIController(
-            IAIChatService aiChatService,
-            IAIService geminiAIService,
-            ILogger<AIController> logger)
-        {
-            _aiChatService = aiChatService;
-            _geminiAIService = geminiAIService;
-            _logger = logger;
-        }
-
+        #region Chat
         [HttpPost("chat")]
         public async Task<IActionResult> SendMessage([FromBody] AIChatRequestDto request)
         {
@@ -36,7 +23,7 @@ namespace IntelliFit.Presentation.Controllers
 
             try
             {
-                var response = await _aiChatService.SendMessageAsync(request);
+                var response = await _serviceManager.AIChatService.SendMessageAsync(request);
                 return Ok(response);
             }
             catch (KeyNotFoundException ex)
@@ -48,10 +35,12 @@ namespace IntelliFit.Presentation.Controllers
         [HttpGet("history/{userId}")]
         public async Task<IActionResult> GetChatHistory(int userId, [FromQuery] int limit = 50)
         {
-            var history = await _aiChatService.GetChatHistoryAsync(userId, limit);
+            var history = await _serviceManager.AIChatService.GetChatHistoryAsync(userId, limit);
             return Ok(history);
         }
+        #endregion
 
+        #region Generate Plans
         /// <summary>
         /// Generate an AI-powered workout plan using Google Gemini
         /// POST: api/ai/generate-workout-plan
@@ -69,7 +58,7 @@ namespace IntelliFit.Presentation.Controllers
 
                 _logger.LogInformation("Generating workout plan for user {UserId}", request.UserId);
 
-                var result = await _geminiAIService.GenerateWorkoutPlanAsync(request);
+                var result = await _serviceManager.AIService.GenerateWorkoutPlanAsync(request);
 
                 if (!result.Success)
                 {
@@ -114,7 +103,7 @@ namespace IntelliFit.Presentation.Controllers
 
                 _logger.LogInformation("Generating nutrition plan for user {UserId}", request.UserId);
 
-                var result = await _geminiAIService.GenerateNutritionPlanAsync(request);
+                var result = await _serviceManager.AIService.GenerateNutritionPlanAsync(request);
 
                 if (!result.Success)
                 {
@@ -141,7 +130,9 @@ namespace IntelliFit.Presentation.Controllers
                 return StatusCode(500, new { success = false, message = "An error occurred while generating the nutrition plan" });
             }
         }
+        #endregion
 
+        #region Gemini Chat
         /// <summary>
         /// Chat with AI fitness coach using Google Gemini
         /// POST: api/ai/gemini-chat
@@ -159,7 +150,7 @@ namespace IntelliFit.Presentation.Controllers
 
                 _logger.LogInformation("Gemini AI chat request from user {UserId}", request.UserId);
 
-                var response = await _geminiAIService.ChatWithAIAsync(request.Message, request.UserId);
+                var response = await _serviceManager.AIService.ChatWithAIAsync(request.Message, request.UserId);
 
                 return Ok(new
                 {
@@ -177,7 +168,9 @@ namespace IntelliFit.Presentation.Controllers
                 return StatusCode(500, new { success = false, message = "An error occurred during the chat" });
             }
         }
+        #endregion
 
+        #region Test
         /// <summary>
         /// Test endpoint to verify AI service is working
         /// GET: api/ai/test
@@ -199,6 +192,7 @@ namespace IntelliFit.Presentation.Controllers
                 }
             });
         }
+        #endregion
     }
 
     /// <summary>

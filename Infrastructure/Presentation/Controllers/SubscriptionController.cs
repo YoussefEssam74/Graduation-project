@@ -1,22 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.Subscription;
 using Shared.Helpers;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SubscriptionController : ControllerBase
+    public class SubscriptionController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly ISubscriptionService _subscriptionService;
-
-        public SubscriptionController(ISubscriptionService subscriptionService)
-        {
-            _subscriptionService = subscriptionService;
-        }
-
+        #region Get Subscription Plans
         /// <summary>
         /// Get all subscription plans
         /// </summary>
@@ -25,7 +19,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var plans = await _subscriptionService.GetAllPlansAsync();
+                var plans = await _serviceManager.SubscriptionService.GetAllPlansAsync();
                 return Ok(ApiResponse<IEnumerable<SubscriptionPlanDto>>.SuccessResponse(plans));
             }
             catch (Exception ex)
@@ -42,7 +36,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var plans = await _subscriptionService.GetActivePlansAsync();
+                var plans = await _serviceManager.SubscriptionService.GetActivePlansAsync();
                 return Ok(ApiResponse<IEnumerable<SubscriptionPlanDto>>.SuccessResponse(plans));
             }
             catch (Exception ex)
@@ -59,7 +53,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var plan = await _subscriptionService.GetPlanByIdAsync(id);
+                var plan = await _serviceManager.SubscriptionService.GetPlanByIdAsync(id);
 
                 if (plan == null)
                 {
@@ -73,7 +67,9 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<SubscriptionPlanDto>.ErrorResponse("Failed to retrieve plan", new List<string> { ex.Message }));
             }
         }
+        #endregion
 
+        #region Create and Manage Subscription
         /// <summary>
         /// Create user subscription
         /// </summary>
@@ -83,7 +79,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                await _subscriptionService.CreateUserSubscriptionAsync(createDto);
+                await _serviceManager.SubscriptionService.CreateUserSubscriptionAsync(createDto);
                 return Ok(ApiResponse<bool>.SuccessResponse(true, "Subscription created successfully"));
             }
             catch (KeyNotFoundException ex)
@@ -105,7 +101,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var hasActive = await _subscriptionService.HasActiveSubscriptionAsync(userId);
+                var hasActive = await _serviceManager.SubscriptionService.HasActiveSubscriptionAsync(userId);
                 return Ok(ApiResponse<bool>.SuccessResponse(hasActive));
             }
             catch (Exception ex)
@@ -113,5 +109,6 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to check subscription status", new List<string> { ex.Message }));
             }
         }
+        #endregion
     }
 }

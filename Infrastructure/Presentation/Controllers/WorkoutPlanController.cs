@@ -1,108 +1,89 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.WorkoutPlan;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     [Authorize]
-    [ApiController]
     [Route("api/workout-plans")]
-    public class WorkoutPlanController : ControllerBase
+    public class WorkoutPlanController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly IWorkoutPlanService _workoutPlanService;
-
-        public WorkoutPlanController(IWorkoutPlanService workoutPlanService)
-        {
-            _workoutPlanService = workoutPlanService;
-        }
+        #region Get All Templates
 
         [HttpGet("templates")]
         public async Task<IActionResult> GetAllTemplates()
         {
-            var templates = await _workoutPlanService.GetAllTemplatesAsync();
+            var templates = await _serviceManager.WorkoutPlanService.GetAllTemplatesAsync();
             return Ok(templates);
         }
+
+        #endregion
+
+        #region Get Template By Id
 
         [HttpGet("templates/{id}")]
         public async Task<IActionResult> GetTemplateById(int id)
         {
-            var template = await _workoutPlanService.GetPlanByIdAsync(id);
-            if (template == null)
-            {
-                return NotFound(new { message = "Workout template not found" });
-            }
+            var template = await _serviceManager.WorkoutPlanService.GetPlanByIdAsync(id);
             return Ok(template);
         }
+
+        #endregion
+
+        #region Get Member Plans
 
         [HttpGet("member/{memberId}")]
         public async Task<IActionResult> GetMemberPlans(int memberId)
         {
-            var plans = await _workoutPlanService.GetMemberPlansAsync(memberId);
+            var plans = await _serviceManager.WorkoutPlanService.GetMemberPlansAsync(memberId);
             return Ok(plans);
         }
+
+        #endregion
+
+        #region Get Member Plan Details
 
         [HttpGet("{memberPlanId}")]
         public async Task<IActionResult> GetMemberPlanDetails(int memberPlanId)
         {
-            var plan = await _workoutPlanService.GetMemberPlanDetailsAsync(memberPlanId);
-            if (plan == null)
-            {
-                return NotFound(new { message = "Workout plan not found" });
-            }
+            var plan = await _serviceManager.WorkoutPlanService.GetMemberPlanDetailsAsync(memberPlanId);
             return Ok(plan);
         }
+
+        #endregion
+
+        #region Assign Plan To Member
 
         [HttpPost("assign")]
         public async Task<IActionResult> AssignPlanToMember([FromBody] AssignWorkoutPlanDto assignDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var assignedPlan = await _workoutPlanService.AssignPlanToMemberAsync(assignDto);
-                return CreatedAtAction(nameof(GetMemberPlanDetails), new { memberPlanId = assignedPlan.MemberPlanId }, assignedPlan);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
+            var assignedPlan = await _serviceManager.WorkoutPlanService.AssignPlanToMemberAsync(assignDto);
+            return CreatedAtAction(nameof(GetMemberPlanDetails), new { memberPlanId = assignedPlan.MemberPlanId }, assignedPlan);
         }
+
+        #endregion
+
+        #region Update Progress
 
         [HttpPut("{memberPlanId}/progress")]
         public async Task<IActionResult> UpdateProgress(int memberPlanId, [FromBody] UpdateProgressDto progressDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var updatedPlan = await _workoutPlanService.UpdateProgressAsync(memberPlanId, progressDto);
-                return Ok(updatedPlan);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
+            var updatedPlan = await _serviceManager.WorkoutPlanService.UpdateProgressAsync(memberPlanId, progressDto);
+            return Ok(updatedPlan);
         }
+
+        #endregion
+
+        #region Complete Plan
 
         [HttpPut("{memberPlanId}/complete")]
         public async Task<IActionResult> CompletePlan(int memberPlanId)
         {
-            try
-            {
-                var completedPlan = await _workoutPlanService.CompletePlanAsync(memberPlanId);
-                return Ok(completedPlan);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
+            var completedPlan = await _serviceManager.WorkoutPlanService.CompletePlanAsync(memberPlanId);
+            return Ok(completedPlan);
         }
+
+        #endregion
     }
 }

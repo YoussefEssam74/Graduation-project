@@ -6,6 +6,7 @@ namespace IntelliFit.Domain.Enums
         Purchase,
         Deduction,
         Refund,
-        Bonus
+        Bonus,
+        Earned
     }
 }

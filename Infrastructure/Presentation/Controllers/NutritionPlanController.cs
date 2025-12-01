@@ -1,40 +1,36 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.NutritionPlan;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     [Authorize]
     [ApiController]
     [Route("api/nutrition-plans")]
-    public class NutritionPlanController : ControllerBase
+    public class NutritionPlanController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly INutritionPlanService _nutritionPlanService;
-
-        public NutritionPlanController(INutritionPlanService nutritionPlanService)
-        {
-            _nutritionPlanService = nutritionPlanService;
-        }
-
+        #region Get Nutrition Plans
         [HttpGet("member/{memberId}")]
         public async Task<IActionResult> GetMemberPlans(int memberId)
         {
-            var plans = await _nutritionPlanService.GetMemberPlansAsync(memberId);
+            var plans = await _serviceManager.NutritionPlanService.GetMemberPlansAsync(memberId);
             return Ok(plans);
         }
 
         [HttpGet("{planId}")]
         public async Task<IActionResult> GetPlanDetails(int planId)
         {
-            var plan = await _nutritionPlanService.GetPlanDetailsAsync(planId);
+            var plan = await _serviceManager.NutritionPlanService.GetPlanDetailsAsync(planId);
             if (plan == null)
             {
                 return NotFound(new { message = "Nutrition plan not found" });
             }
             return Ok(plan);
         }
+        #endregion
 
+        #region Generate and Update Plan
         [HttpPost("generate")]
         public async Task<IActionResult> GeneratePlan([FromBody] GenerateNutritionPlanDto generateDto)
         {
@@ -45,7 +41,7 @@ namespace IntelliFit.Presentation.Controllers
 
             try
             {
-                var plan = await _nutritionPlanService.GeneratePlanAsync(generateDto);
+                var plan = await _serviceManager.NutritionPlanService.GeneratePlanAsync(generateDto);
                 return CreatedAtAction(nameof(GetPlanDetails), new { planId = plan.PlanId }, plan);
             }
             catch (KeyNotFoundException ex)
@@ -64,7 +60,7 @@ namespace IntelliFit.Presentation.Controllers
 
             try
             {
-                var plan = await _nutritionPlanService.UpdatePlanAsync(planId, updateDto);
+                var plan = await _serviceManager.NutritionPlanService.UpdatePlanAsync(planId, updateDto);
                 return Ok(plan);
             }
             catch (KeyNotFoundException ex)
@@ -78,7 +74,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var plan = await _nutritionPlanService.DeactivatePlanAsync(planId);
+                var plan = await _serviceManager.NutritionPlanService.DeactivatePlanAsync(planId);
                 return Ok(plan);
             }
             catch (KeyNotFoundException ex)
@@ -86,5 +82,6 @@ namespace IntelliFit.Presentation.Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
+        #endregion
     }
 }

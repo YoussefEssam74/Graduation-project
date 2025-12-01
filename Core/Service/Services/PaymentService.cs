@@ -3,16 +3,19 @@ using IntelliFit.Domain.Models;
 using IntelliFit.Domain.Enums;
 using ServiceAbstraction.Services;
 using Shared.DTOs.Payment;
+using AutoMapper;
 
 namespace Service.Services
 {
     public class PaymentService : IPaymentService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public PaymentService(IUnitOfWork unitOfWork)
+        public PaymentService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
         public async Task<PaymentDto> CreatePaymentAsync(CreatePaymentDto createDto)
@@ -96,21 +99,13 @@ namespace Service.Services
                 throw new KeyNotFoundException($"Payment with ID {paymentId} not found");
             }
 
-            var user = await _unitOfWork.Repository<User>().GetByIdAsync(payment.UserId);
+            var dto = _mapper.Map<PaymentDto>(payment);
 
-            return new PaymentDto
-            {
-                PaymentId = payment.PaymentId,
-                UserId = payment.UserId,
-                UserName = user?.Name ?? "Unknown",
-                Amount = payment.Amount,
-                PaymentMethod = payment.PaymentMethod,
-                Status = (int)payment.Status,
-                StatusText = payment.Status.ToString(),
-                TransactionId = payment.TransactionReference,
-                PaymentDate = payment.CreatedAt,
-                CreatedAt = payment.CreatedAt
-            };
+            // Manually set navigation property name
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(payment.UserId);
+            dto.UserName = user?.Name ?? "Unknown";
+
+            return dto;
         }
     }
 }

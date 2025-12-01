@@ -5,16 +5,19 @@ using ServiceAbstraction.Services;
 using Shared.DTOs.Booking;
 using IntelliFit.Shared.Constants;
 using Microsoft.EntityFrameworkCore;
+using AutoMapper;
 
 namespace Service.Services
 {
     public class BookingService : IBookingService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public BookingService(IUnitOfWork unitOfWork)
+        public BookingService(IUnitOfWork unitOfWork, IMapper mapper)
         {
             _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
         public async Task<BookingDto> CreateBookingAsync(CreateBookingDto createDto)
@@ -222,43 +225,29 @@ namespace Service.Services
                 throw new KeyNotFoundException($"Booking with ID {bookingId} not found");
             }
 
+            var dto = _mapper.Map<BookingDto>(booking);
+
+            // Manually set navigation property names
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(booking.UserId);
-            Equipment? equipment = null;
-            CoachProfile? coach = null;
-            User? coachUser = null;
+            dto.UserName = user?.Name ?? "Unknown";
 
             if (booking.EquipmentId.HasValue)
             {
-                equipment = await _unitOfWork.Repository<Equipment>().GetByIdAsync(booking.EquipmentId.Value);
+                var equipment = await _unitOfWork.Repository<Equipment>().GetByIdAsync(booking.EquipmentId.Value);
+                dto.EquipmentName = equipment?.Name;
             }
 
             if (booking.CoachId.HasValue)
             {
-                coach = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(booking.CoachId.Value);
+                var coach = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(booking.CoachId.Value);
                 if (coach != null)
                 {
-                    coachUser = await _unitOfWork.Repository<User>().GetByIdAsync(coach.UserId);
+                    var coachUser = await _unitOfWork.Repository<User>().GetByIdAsync(coach.UserId);
+                    dto.CoachName = coachUser?.Name;
                 }
             }
 
-            return new BookingDto
-            {
-                BookingId = booking.BookingId,
-                UserId = booking.UserId,
-                UserName = user?.Name ?? "Unknown",
-                EquipmentId = booking.EquipmentId,
-                EquipmentName = equipment?.Name,
-                CoachId = booking.CoachId,
-                CoachName = coachUser?.Name,
-                BookingType = booking.BookingType,
-                StartTime = booking.StartTime,
-                EndTime = booking.EndTime,
-                Status = (int)booking.Status,
-                StatusText = booking.Status.ToString(),
-                TokensCost = booking.TokensCost,
-                Notes = booking.Notes,
-                CreatedAt = booking.CreatedAt
-            };
+            return dto;
         }
     }
 }

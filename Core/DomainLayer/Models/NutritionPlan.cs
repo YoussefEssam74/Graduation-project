@@ -12,22 +12,21 @@ namespace IntelliFit.Domain.Models
         public int ProteinGrams { get; set; }
         public int CarbsGrams { get; set; }
         public int FatsGrams { get; set; }
-        public string? Meals { get; set; }
         public string[]? DietaryRestrictions { get; set; }
         public int? GeneratedByCoachId { get; set; }
         public string? AiPrompt { get; set; }
         public string Status { get; set; } = "Draft"; public string? ApprovalNotes { get; set; }
         public int? ApprovedByCoachId { get; set; }
         public DateTime? ApprovedAt { get; set; }
-        public int TokensSpent { get; set; } = 0; public bool IsActive { get; set; } = true; public DateTime? StartDate { get; set; }
+        public int TokensSpent { get; set; } = 0; public bool IsActive { get; set; } = false; public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public virtual User User { get; set; } = null!;
-        public virtual CoachProfile? GeneratedByCoach { get; set; }
-        public virtual CoachProfile? ApprovedByCoach { get; set; }
+        public virtual Coach? GeneratedByCoach { get; set; }
+        public virtual Coach? ApprovedByCoach { get; set; }
         public virtual ICollection<AiProgramGeneration> AiGenerations { get; set; } = new List<AiProgramGeneration>();
-        public virtual ICollection<Meal> MealsList { get; set; } = new List<Meal>();
+        public virtual ICollection<Meal> Meals { get; set; } = new List<Meal>();
     }
 }

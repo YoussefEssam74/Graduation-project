@@ -10,7 +10,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, phone: string, role: UserRole, gender?: number) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
@@ -92,26 +92,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string, role: UserRole) => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await authApi.login({ email, password, role: role as unknown as number });
+      // Single API call - backend detects role from database
+      const response = await authApi.login({ email, password });
 
-      if (!response.success || !response.data) {
-        throw new Error(response.message || "Login failed");
+      if (!response?.success || !response.data) {
+        throw new Error("Invalid credentials");
       }
 
       const { user: userData, token: authToken } = response.data;
+
+      // Calculate age from DateOfBirth
+      const calculateAge = (dob: string | null | undefined): number => {
+        if (!dob) return 25;
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        return age;
+      };
+
+      // Map backend role string to frontend UserRole enum
+      const roleMap: Record<string, UserRole> = {
+        'Member': UserRole.Member,
+        'Coach': UserRole.Coach,
+        'Receptionist': UserRole.Reception,
+        'Reception': UserRole.Reception,
+        'Admin': UserRole.Admin,
+      };
+
+      const mappedRole = roleMap[userData.role];
+      
+      if (!mappedRole) {
+        throw new Error(`Unknown role: ${userData.role}`);
+      }
 
       // Convert backend UserDto to frontend User type
       const userObj: User = {
         userId: userData.userId,
         email: userData.email,
         name: userData.name,
-        age: 25, // Backend doesn't have age, using default
-        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male, // Convert number to Gender enum
-        fitnessGoal: "General Fitness", // Backend doesn't have this field
+        age: calculateAge(userData.dateOfBirth),
+        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male,
+        fitnessGoal: "General Fitness", // Default, will be loaded from Member table
         tokenBalance: userData.tokenBalance,
-        role: Object.values(UserRole)[userData.role] || UserRole.Member,
+        role: mappedRole,
         createdAt: userData.createdAt,
         phone: userData.phone,
         profileImageUrl: userData.profileImageUrl,
@@ -124,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user", JSON.stringify(userObj));
       localStorage.setItem("auth_token", authToken);
 
-      // Redirect based on role
+      // Redirect based on role returned from backend
       const roleRoutes: Record<UserRole, string> = {
         [UserRole.Member]: "/dashboard",
         [UserRole.Coach]: "/coach-dashboard",
@@ -132,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [UserRole.Admin]: "/admin-dashboard",
       };
 
-      router.push(roleRoutes[role]);
+      router.push(roleRoutes[mappedRole]);
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -148,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name, 
         phone,
         gender,
-        role: role as unknown as number
+        role: role // Now accepts string directly
       });
 
       console.log('Registration response:', response);
@@ -161,15 +190,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const { user: userData, token: authToken } = response.data;
+      // Map backend role string to frontend UserRole enum
+      const roleMap: Record<string, UserRole> = {
+        'Member': UserRole.Member,
+        'Coach': UserRole.Coach,
+        'Receptionist': UserRole.Reception,
+        'Reception': UserRole.Reception,
+        'Admin': UserRole.Admin,
+      };
+
       const userObj: User = {
         userId: userData.userId,
         email: userData.email,
         name: userData.name,
         age: 25,
-        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male, // Default to Male if not specified
+        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male,
         fitnessGoal: "General Fitness",
         tokenBalance: userData.tokenBalance,
-        role: Object.values(UserRole)[userData.role] || UserRole.Member,
+        role: roleMap[userData.role] || UserRole.Member,
         createdAt: userData.createdAt,
         phone: userData.phone,
         profileImageUrl: userData.profileImageUrl,

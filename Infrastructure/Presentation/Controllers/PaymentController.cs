@@ -1,23 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.Payment;
 using Shared.Helpers;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class PaymentController : ControllerBase
+    public class PaymentController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly IPaymentService _paymentService;
-
-        public PaymentController(IPaymentService paymentService)
-        {
-            _paymentService = paymentService;
-        }
-
+        #region Create Payment
         /// <summary>
         /// Create a new payment
         /// </summary>
@@ -26,7 +20,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var payment = await _paymentService.CreatePaymentAsync(createDto);
+                var payment = await _serviceManager.PaymentService.CreatePaymentAsync(createDto);
                 return Ok(ApiResponse<PaymentDto>.SuccessResponse(payment, "Payment created successfully"));
             }
             catch (KeyNotFoundException ex)
@@ -38,7 +32,9 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<PaymentDto>.ErrorResponse("Failed to create payment", new List<string> { ex.Message }));
             }
         }
+        #endregion
 
+        #region Get Payment
         /// <summary>
         /// Get payment by ID
         /// </summary>
@@ -47,7 +43,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var payment = await _paymentService.GetPaymentByIdAsync(id);
+                var payment = await _serviceManager.PaymentService.GetPaymentByIdAsync(id);
 
                 if (payment == null)
                 {
@@ -70,7 +66,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var payments = await _paymentService.GetUserPaymentsAsync(userId);
+                var payments = await _serviceManager.PaymentService.GetUserPaymentsAsync(userId);
                 return Ok(ApiResponse<IEnumerable<PaymentDto>>.SuccessResponse(payments));
             }
             catch (Exception ex)
@@ -78,7 +74,9 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<IEnumerable<PaymentDto>>.ErrorResponse("Failed to retrieve payments", new List<string> { ex.Message }));
             }
         }
+        #endregion
 
+        #region Update Payment
         /// <summary>
         /// Update payment status
         /// </summary>
@@ -87,7 +85,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var payment = await _paymentService.UpdatePaymentStatusAsync(id, status, transactionId);
+                var payment = await _serviceManager.PaymentService.UpdatePaymentStatusAsync(id, status, transactionId);
                 return Ok(ApiResponse<PaymentDto>.SuccessResponse(payment, "Payment status updated successfully"));
             }
             catch (KeyNotFoundException ex)
@@ -99,5 +97,6 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<PaymentDto>.ErrorResponse("Failed to update payment status", new List<string> { ex.Message }));
             }
         }
+        #endregion
     }
 }

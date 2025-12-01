@@ -24,6 +24,6 @@ namespace Shared.DTOs.Auth
         public int? Gender { get; set; }
 
         [Required(ErrorMessage = "Role is required")]
-        public int Role { get; set; }
+        public string Role { get; set; } = null!;
     }
 }

@@ -1,22 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using ServiceAbstraction.Services;
+using ServiceAbstraction;
 using Shared.DTOs.Equipment;
 using Shared.Helpers;
 
-namespace IntelliFit.Presentation.Controllers
+namespace Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class EquipmentController : ControllerBase
+    public class EquipmentController(IServiceManager _serviceManager) : ApiControllerBase
     {
-        private readonly IEquipmentService _equipmentService;
-
-        public EquipmentController(IEquipmentService equipmentService)
-        {
-            _equipmentService = equipmentService;
-        }
-
+        #region Get Equipment
         /// <summary>
         /// Get all equipment
         /// </summary>
@@ -25,7 +19,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var equipment = await _equipmentService.GetAllEquipmentAsync();
+                var equipment = await _serviceManager.EquipmentService.GetAllEquipmentAsync();
                 return Ok(ApiResponse<IEnumerable<EquipmentDto>>.SuccessResponse(equipment));
             }
             catch (Exception ex)
@@ -42,7 +36,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var equipment = await _equipmentService.GetAvailableEquipmentAsync();
+                var equipment = await _serviceManager.EquipmentService.GetAvailableEquipmentAsync();
                 return Ok(ApiResponse<IEnumerable<EquipmentDto>>.SuccessResponse(equipment));
             }
             catch (Exception ex)
@@ -59,7 +53,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var equipment = await _equipmentService.GetEquipmentByIdAsync(id);
+                var equipment = await _serviceManager.EquipmentService.GetEquipmentByIdAsync(id);
 
                 if (equipment == null)
                 {
@@ -73,7 +67,9 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<EquipmentDto>.ErrorResponse("Failed to retrieve equipment", new List<string> { ex.Message }));
             }
         }
+        #endregion
 
+        #region Update Equipment
         /// <summary>
         /// Update equipment status
         /// </summary>
@@ -83,7 +79,7 @@ namespace IntelliFit.Presentation.Controllers
         {
             try
             {
-                var equipment = await _equipmentService.UpdateEquipmentStatusAsync(id, status);
+                var equipment = await _serviceManager.EquipmentService.UpdateEquipmentStatusAsync(id, status);
                 return Ok(ApiResponse<EquipmentDto>.SuccessResponse(equipment, "Equipment status updated successfully"));
             }
             catch (KeyNotFoundException ex)
@@ -95,5 +91,6 @@ namespace IntelliFit.Presentation.Controllers
                 return BadRequest(ApiResponse<EquipmentDto>.ErrorResponse("Failed to update equipment status", new List<string> { ex.Message }));
             }
         }
+        #endregion
     }
 }

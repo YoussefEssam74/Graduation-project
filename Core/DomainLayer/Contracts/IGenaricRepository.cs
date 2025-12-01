@@ -1,22 +1,19 @@
-using System.Linq.Expressions;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using DomainLayer.Models;
 
 namespace DomainLayer.Contracts
 {
-    public interface IGenericRepository<T> where T : class
+    public interface IGenaricRepository<TEntity, TKey> where TEntity : BaseEntity<TKey>
     {
-        // Query Operations
-        Task<T?> GetByIdAsync(int id);
-        Task<IEnumerable<T>> GetAllAsync();
-        Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
-        Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
-        Task<bool> AnyAsync(Expression<Func<T, bool>> predicate);
-        Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null);
+        Task AddAsync(TEntity entity);
+        void Update(TEntity entity);
+        void Remove(TEntity entity);
+        Task<TEntity?> GetByIdAsync(TKey id);
+        Task<IEnumerable<TEntity>> GetAllAsync();
 
-        // Command Operations
-        Task<T> AddAsync(T entity);
-        Task AddRangeAsync(IEnumerable<T> entities);
-        void Update(T entity);
-        void Remove(T entity);
-        void RemoveRange(IEnumerable<T> entities);
+        Task<TEntity?> GetByIdAsync(ISpecification<TEntity, TKey> specification);
+        Task<IEnumerable<TEntity>> GetAllAsync(ISpecification<TEntity, TKey> specification);
+        Task<int> CountAsync(ISpecification<TEntity, TKey> specification);
     }
 }
