@@ -8,23 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Button from '@/components/ui/Button';
 import { CoachStats } from '@/types';
 
-// Mock data
-const MOCK_STATS: CoachStats = {
-  totalClients: 24,
-  activePlans: 18,
-  upcomingSessions: 8,
-  averageRating: 4.7,
-};
-
 export default function CoachDashboard() {
   const [stats, setStats] = useState<CoachStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API delay
+    // TODO: Load stats from API
     const loadData = async () => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setStats(MOCK_STATS);
+      // await statsApi.getCoachStats(user.userId);
       setIsLoading(false);
     };
 

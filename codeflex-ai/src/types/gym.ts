@@ -14,40 +14,46 @@ export enum Gender {
 
 export interface User {
   userId: number;
-  clerkId?: string;
   email: string;
   name: string;
-  age: number;
-  gender: Gender;
   phone?: string;
+  dateOfBirth?: string; // Backend uses dateOfBirth instead of age
+  gender?: number; // Backend uses 0=Male, 1=Female as number
+  role: string; // Backend returns role as string (Member/Coach/Reception/Admin)
   profileImageUrl?: string;
   address?: string;
-  fitnessGoal: string;
   tokenBalance: number;
-  subscriptionPlanID?: number;
+  isActive: boolean;
+  emailVerified: boolean;
+  lastLoginAt?: string;
   createdAt: string;
-  role: UserRole;
 }
 
 // Booking Types
 export enum BookingStatus {
-  Confirmed = 'Confirmed',
-  Cancelled = 'Cancelled',
-  Completed = 'Completed',
-  NoShow = 'NoShow',
+  Pending = 0,
+  Confirmed = 1,
+  Completed = 2,
+  Cancelled = 3,
+  NoShow = 4,
 }
 
 export interface Booking {
-  bookingID: number;
-  userID: number;
-  equipmentID?: number;
-  coachID?: number;
+  bookingId: number; // Backend uses bookingId (camelCase)
+  userId: number; // Backend uses userId
+  userName?: string; // Backend includes userName
+  equipmentId?: number; // Backend uses equipmentId
+  equipmentName?: string; // Backend includes equipmentName
+  coachId?: number; // Backend uses coachId
+  coachName?: string; // Backend includes coachName
+  bookingType: string; // Backend includes bookingType (Equipment/Coach/Both)
   startTime: string;
   endTime: string;
   status: BookingStatus;
+  statusText?: string; // Backend includes statusText
   tokensCost: number;
-  equipment?: Equipment;
-  coach?: Coach;
+  notes?: string; // Backend includes notes
+  createdAt: string; // Backend includes createdAt
 }
 
 // Equipment Types

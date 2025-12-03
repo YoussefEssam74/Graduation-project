@@ -7,7 +7,6 @@ import { CreditCard, Check, Zap, Crown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import { useAuthStore } from '@/hooks/useAuth';
 
 interface SubscriptionPlan {
   planID: number;
@@ -20,68 +19,11 @@ interface SubscriptionPlan {
   isPopular?: boolean;
 }
 
-// Calculate renewal date outside component
-const MOCK_RENEWAL_DATE = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
-
-const MOCK_PLANS: SubscriptionPlan[] = [
-  {
-    planID: 1,
-    planName: 'Basic',
-    price: 29.99,
-    durationDays: 30,
-    description: 'Perfect for getting started',
-    tokensIncluded: 100,
-    features: [
-      'Access to gym equipment',
-      '100 tokens per month',
-      'Basic workout tracking',
-      'Mobile app access',
-      'Email support',
-    ],
-  },
-  {
-    planID: 2,
-    planName: 'Pro',
-    price: 49.99,
-    durationDays: 30,
-    description: 'Most popular choice',
-    tokensIncluded: 200,
-    isPopular: true,
-    features: [
-      'Everything in Basic',
-      '200 tokens per month',
-      'AI Coach access',
-      'Nutrition plans',
-      'InBody measurements',
-      'Priority booking',
-      'Priority support',
-    ],
-  },
-  {
-    planID: 3,
-    planName: 'Elite',
-    price: 79.99,
-    durationDays: 30,
-    description: 'Ultimate fitness experience',
-    tokensIncluded: 350,
-    features: [
-      'Everything in Pro',
-      '350 tokens per month',
-      'Personal coach sessions',
-      'Custom meal plans',
-      'Advanced analytics',
-      'Unlimited InBody scans',
-      'VIP support 24/7',
-      'Guest passes (2/month)',
-    ],
-  },
-];
-
 export default function SubscriptionPage() {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
-  const [renewalDate] = useState<string>(MOCK_RENEWAL_DATE);
+  const [renewalDate, setRenewalDate] = useState<string>('');
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [paymentId, setPaymentId] = useState<string>('');
 
@@ -142,13 +84,13 @@ export default function SubscriptionPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Subscription Plans</h1>
-        <p className="text-gray-600 mt-2">Choose the perfect plan for your fitness journey</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscription Plans</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Choose the perfect plan for your fitness journey</p>
       </div>
 
       {/* Current Subscription */}
       {currentPlan && (
-        <Card className="border-[#0b4fd4] border-2">
+        <Card className="border-[#0b4fd4] dark:border-[#18cef2] border-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Current Plan</CardTitle>
@@ -192,7 +134,7 @@ export default function SubscriptionPage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {(plans.length ? plans : MOCK_PLANS).map((plan) => {
+          {plans.map((plan) => {
             const isCurrent = currentPlan?.planID === plan.planID;
             
             return (
@@ -231,10 +173,10 @@ export default function SubscriptionPage() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, index) => (
+                    {(plan.features || []).map((feature, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm">
                         <Check className="h-5 w-5 text-[#a3e221] flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700">{feature}</span>
+                        <span className="text-gray-700 dark:text-gray-300">{feature}</span>
                       </li>
                     ))}
                   </ul>

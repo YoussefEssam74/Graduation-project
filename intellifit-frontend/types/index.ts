@@ -1,4 +1,4 @@
-// User Types
+// User Types - Matches backend UserDto
 export enum UserRole {
   Member = 'Member',
   Coach = 'Coach',
@@ -6,22 +6,43 @@ export enum UserRole {
   Admin = 'Admin',
 }
 
-export enum Gender {
-  Male = 'Male',
-  Female = 'Female',
-}
-
 export interface User {
   userId: number;
   email: string;
   name: string;
-  age: number;
-  gender: Gender;
-  fitnessGoal: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: number; // Backend uses int (0=Male, 1=Female)
+  role: string;
+  profileImageUrl?: string;
+  address?: string;
   tokenBalance: number;
-  subscriptionPlanID?: number;
+  isActive: boolean;
+  emailVerified: boolean;
+  lastLoginAt?: string;
   createdAt: string;
-  role: UserRole;
+}
+
+// Auth DTOs - Match backend
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: number;
+  role: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+  expiresAt: string;
 }
 
 // Exercise Types
@@ -57,23 +78,41 @@ export interface Equipment {
   lastMaintenanceDate: string;
 }
 
-// Booking Types
+// Booking Types - Matches backend BookingDto
 export enum BookingStatus {
-  Confirmed = 'Confirmed',
-  Completed = 'Completed',
-  Cancelled = 'Cancelled',
-  NoShow = 'NoShow',
+  Pending = 0,
+  Confirmed = 1,
+  Completed = 2,
+  Cancelled = 3,
+  NoShow = 4,
 }
 
 export interface Booking {
-  bookingID: number;
-  userID: number;
-  equipmentID: number;
+  bookingId: number;
+  userId: number;
+  userName: string;
+  equipmentId?: number;
+  equipmentName?: string;
+  coachId?: number;
+  coachName?: string;
+  bookingType: string;
   startTime: string;
   endTime: string;
-  status: BookingStatus;
+  status: number; // Backend uses int for status
+  statusText: string;
   tokensCost: number;
-  equipment?: Equipment;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CreateBooking {
+  userId: number;
+  equipmentId?: number;
+  coachId?: number;
+  bookingType: string;
+  startTime: string;
+  endTime: string;
+  notes?: string;
 }
 
 // Meal Types
@@ -168,20 +207,25 @@ export interface NutritionPlan {
   meals?: Meal[];
 }
 
-// InBody Measurement Types
+// InBody Measurement Types - Matches backend InBodyMeasurementDto
 export interface InBodyMeasurement {
-  inBodyID: number;
-  userID: number;
-  measurementDate: string;
+  measurementId: number;
+  userId: number;
+  userName: string;
   weight: number;
-  bodyFatPercentage: number;
-  muscleMass: number;
-  visceralFatLevel: number;
-  bodyWaterPercentage: number;
-  boneMass: number;
-  bmr: number;
-  bmi: number;
-  receptionistID: number;
+  height: number;
+  bodyFatPercentage?: number;
+  muscleMass?: number;
+  boneMass?: number;
+  bodyWater?: number;
+  visceralFat?: number;
+  bmi?: number;
+  basalMetabolicRate?: number;
+  conductedByReceptionId?: number;
+  conductedByName?: string;
+  notes?: string;
+  measurementDate: string;
+  createdAt: string;
 }
 
 // Subscription Plan Types
@@ -218,32 +262,55 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-// Dashboard Stats Types
+// Dashboard Stats Types - Matches backend Stats DTOs
 export interface MemberStats {
-  currentWeight: number;
-  bodyFatPercentage: number;
-  muscleMass: number;
-  bmi: number;
+  userId: number;
+  userName: string;
   tokenBalance: number;
+  totalBookings: number;
+  completedBookings: number;
   activeWorkoutPlans: number;
   activeNutritionPlans: number;
-  upcomingBookings: number;
-  completedWorkouts: number;
-  totalCaloriesBurned: number;
+  totalWorkoutsCompleted: number;
+  inBodyMeasurements: number;
+  currentWeight?: number;
+  currentBodyFat?: number;
+  latestBmi?: number;
+  lastInBodyDate?: string;
+  lastBookingDate?: string;
+  activeSubscriptionId?: number;
+  subscriptionEndDate?: string;
 }
 
 export interface CoachStats {
-  activeClients: number;
-  totalPlans: number;
-  upcomingSessions: number;
+  coachId: number;
+  coachName: string;
+  totalClients: number;
+  activeWorkoutPlans: number;
+  activeNutritionPlans: number;
+  totalBookings: number;
+  completedBookings: number;
+  upcomingBookings: number;
   averageRating: number;
+  totalReviews: number;
+  totalEarnings: number;
+  tokensEarned: number;
+  nextBookingDate?: string;
 }
 
 export interface ReceptionStats {
-  todayCheckins: number;
+  totalMembers: number;
   activeMembers: number;
-  pendingPayments: number;
-  maintenanceAlerts: number;
+  todayCheckIns: number;
+  todayBookings: number;
+  pendingBookings: number;
+  availableEquipment: number;
+  inUseEquipment: number;
+  maintenanceEquipment: number;
+  todayInBodyTests: number;
+  todayRevenue: number;
+  activeSubscriptions: number;
+  expiringSubscriptions: number;
 }
 
 // Activity Feed Types

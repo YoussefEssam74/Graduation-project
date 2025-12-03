@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import RoleSelector from './RoleSelector';
-import { UserRole, User, Gender } from '@/types';
+import { UserRole, RegisterRequest } from '@/types';
 import { useAuthStore } from '@/hooks/useAuth';
+import { authApi } from '@/lib/api/services';
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -18,9 +19,9 @@ export default function RegisterForm() {
     email: '',
     password: '',
     confirmPassword: '',
-    age: '',
-    gender: '',
-    fitnessGoal: ''
+    phone: '',
+    dateOfBirth: '',
+    gender: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,38 +58,41 @@ export default function RegisterForm() {
     setIsLoading(true);
 
     try {
-      // Static data - simulate successful registration
-      const mockUser: User = {
-        userId: Math.floor(Math.random() * 1000),
-        name: formData.name,
+      // Prepare register request matching backend RegisterRequestDto
+      const registerData: RegisterRequest = {
         email: formData.email,
-        role: selectedRole,
-        age: parseInt(formData.age) || 25,
-        gender: formData.gender === 'Male' ? Gender.Male : Gender.Female,
-        fitnessGoal: formData.fitnessGoal,
-        tokenBalance: 100,
-        createdAt: new Date().toISOString()
+        password: formData.password,
+        name: formData.name,
+        phone: formData.phone || undefined,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        gender: formData.gender ? parseInt(formData.gender) : undefined,
+        role: selectedRole
       };
 
-      const mockToken = 'mock-jwt-token-' + Date.now();
+      // Call the real backend API
+      const response = await authApi.register(registerData);
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Backend returns AuthResponse { user, token, expiresAt }
+      if (response && response.user && response.token) {
+        // Store auth info
+        setAuth(response.user, response.token);
 
-      // Set auth state
-      setAuth(mockUser, mockToken);
-
-      // Redirect based on role
-      const roleRoutes = {
-        [UserRole.Member]: '/member',
-        [UserRole.Coach]: '/coach',
-        [UserRole.Reception]: '/reception',
-        [UserRole.Admin]: '/admin',
-      };
-      
-      router.push(roleRoutes[selectedRole]);
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+        // Redirect based on role
+        const roleRoutes: Record<string, string> = {
+          'Member': '/member',
+          'Coach': '/coach',
+          'Reception': '/reception',
+          'Admin': '/admin',
+        };
+        
+        const route = roleRoutes[response.user.role] || '/member';
+        router.push(route);
+      } else {
+        setError('Invalid response from server');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Registration failed. Please try again.';
+      setError(errorMessage);
       console.error('Registration error:', err);
     } finally {
       setIsLoading(false);
@@ -150,46 +154,40 @@ export default function RegisterForm() {
           required
         />
 
+        <Input
+          label="Phone (Optional)"
+          type="tel"
+          name="phone"
+          placeholder="+1234567890"
+          value={formData.phone}
+          onChange={handleChange}
+        />
+
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Age"
-            type="number"
-            name="age"
-            placeholder="25"
-            value={formData.age}
+            label="Date of Birth (Optional)"
+            type="date"
+            name="dateOfBirth"
+            value={formData.dateOfBirth}
             onChange={handleChange}
-            required
-            min="13"
-            max="100"
           />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Gender
+              Gender (Optional)
             </label>
             <select
               name="gender"
               value={formData.gender}
               onChange={handleChange}
-              required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0b4fd4] focus:border-transparent"
             >
               <option value="">Select</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
+              <option value="0">Male</option>
+              <option value="1">Female</option>
             </select>
           </div>
         </div>
-
-        <Input
-          label="Fitness Goal"
-          type="text"
-          name="fitnessGoal"
-          placeholder="e.g., Weight Loss, Muscle Gain"
-          value={formData.fitnessGoal}
-          onChange={handleChange}
-          required
-        />
 
         <Input
           label="Password"

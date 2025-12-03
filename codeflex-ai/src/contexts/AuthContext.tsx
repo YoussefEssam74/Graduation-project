@@ -11,7 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, phone: string, role: UserRole, gender?: number) => Promise<void>;
+  register: (email: string, password: string, name: string, phone?: string, gender?: number) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   // modify token balance by a signed integer (positive to add, negative to deduct)
@@ -21,58 +21,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock users for authentication
-const MOCK_USERS = [
-  {
-    userId: 1,
-    email: "member@intellifit.com",
-    password: "password",
-    name: "Youssef Ahmed",
-    age: 25,
-    gender: "Male",
-    fitnessGoal: "Muscle Building",
-    tokenBalance: 250,
-    role: UserRole.Member,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    userId: 2,
-    email: "coach@intellifit.com",
-    password: "password",
-    name: "Sarah Johnson",
-    age: 32,
-    gender: "Female",
-    fitnessGoal: "Professional Training",
-    tokenBalance: 500,
-    role: UserRole.Coach,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    userId: 3,
-    email: "receptionist@intellifit.com",
-    password: "password",
-    name: "Mike Williams",
-    age: 28,
-    gender: "Male",
-    fitnessGoal: "General Fitness",
-    tokenBalance: 100,
-    role: UserRole.Reception,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    userId: 4,
-    email: "admin@intellifit.com",
-    password: "password",
-    name: "Admin User",
-    age: 35,
-    gender: "Male",
-    fitnessGoal: "System Management",
-    tokenBalance: 1000,
-    role: UserRole.Admin,
-    createdAt: new Date().toISOString(),
-  },
-];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -103,19 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { user: userData, token: authToken } = response.data;
 
-      // Calculate age from DateOfBirth
-      const calculateAge = (dob: string | null | undefined): number => {
-        if (!dob) return 25;
-        const birthDate = new Date(dob);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-        return age;
-      };
-
       // Map backend role string to frontend UserRole enum
       const roleMap: Record<string, UserRole> = {
         'Member': UserRole.Member,
@@ -136,15 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: userData.userId,
         email: userData.email,
         name: userData.name,
-        age: calculateAge(userData.dateOfBirth),
-        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male,
-        fitnessGoal: "General Fitness", // Default, will be loaded from Member table
-        tokenBalance: userData.tokenBalance,
-        role: mappedRole,
-        createdAt: userData.createdAt,
         phone: userData.phone,
+        dateOfBirth: userData.dateOfBirth,
+        gender: userData.gender,
+        role: userData.role, // Keep as string from backend
         profileImageUrl: userData.profileImageUrl,
         address: userData.address,
+        tokenBalance: userData.tokenBalance,
+        isActive: userData.isActive,
+        emailVerified: userData.emailVerified,
+        lastLoginAt: userData.lastLoginAt,
+        createdAt: userData.createdAt,
       };
 
       // Save to state and localStorage
@@ -168,16 +105,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, name: string, phone: string, role: UserRole, gender?: number) => {
+  const register = async (email: string, password: string, name: string, phone?: string, gender?: number) => {
     try {
-      console.log('Registering with:', { email, name, phone, role, gender });
+      console.log('Registering with:', { email, name, phone, gender });
       const response = await authApi.register({ 
         email, 
         password, 
         name, 
         phone,
-        gender,
-        role: role // Now accepts string directly
+        gender
+        // NOTE: role is NOT sent - backend determines from database/defaults to Member
       });
 
       console.log('Registration response:', response);
@@ -190,6 +127,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const { user: userData, token: authToken } = response.data;
+      
+      // Calculate age from dateOfBirth
+      const calculateAge = (dob: string | null | undefined): number => {
+        if (!dob) return 25;
+        const birthDate = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        return age;
+      };
+      
       // Map backend role string to frontend UserRole enum
       const roleMap: Record<string, UserRole> = {
         'Member': UserRole.Member,
@@ -199,19 +150,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'Admin': UserRole.Admin,
       };
 
+      const mappedRole = roleMap[userData.role] || UserRole.Member;
+      
       const userObj: User = {
         userId: userData.userId,
         email: userData.email,
         name: userData.name,
-        age: 25,
-        gender: userData.gender === 0 ? Gender.Male : userData.gender === 1 ? Gender.Female : Gender.Male,
-        fitnessGoal: "General Fitness",
-        tokenBalance: userData.tokenBalance,
-        role: roleMap[userData.role] || UserRole.Member,
-        createdAt: userData.createdAt,
         phone: userData.phone,
+        dateOfBirth: userData.dateOfBirth,
+        gender: userData.gender,
+        role: userData.role, // Keep as string from backend
         profileImageUrl: userData.profileImageUrl,
         address: userData.address,
+        tokenBalance: userData.tokenBalance,
+        isActive: userData.isActive,
+        emailVerified: userData.emailVerified,
+        lastLoginAt: userData.lastLoginAt,
+        createdAt: userData.createdAt,
       };
 
       // Save to state and localStorage
@@ -228,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [UserRole.Admin]: "/admin-dashboard",
       };
 
-      router.push(roleRoutes[role]);
+      router.push(roleRoutes[mappedRole]);
     } catch (error) {
       console.error("Registration error:", error);
       throw error;

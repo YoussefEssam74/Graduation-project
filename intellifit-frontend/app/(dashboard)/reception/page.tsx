@@ -9,33 +9,16 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { ReceptionStats, Equipment } from '@/types';
 
-// Mock data
-const MOCK_STATS: ReceptionStats = {
-  todaysCheckIns: 47,
-  inBodyTests: 8,
-  equipmentIssues: 2,
-  paymentsToday: 1850,
-};
-
-const MOCK_EQUIPMENT: Equipment[] = [
-  { id: 1, name: 'Treadmill #1', category: 'Cardio', status: 'Available' },
-  { id: 2, name: 'Bench Press', category: 'Strength', status: 'Occupied' },
-  { id: 3, name: 'Rowing Machine', category: 'Cardio', status: 'Available' },
-  { id: 4, name: 'Squat Rack', category: 'Strength', status: 'Maintenance' },
-  { id: 5, name: 'Elliptical #2', category: 'Cardio', status: 'Available' },
-];
-
 export default function ReceptionDashboard() {
   const [stats, setStats] = useState<ReceptionStats | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate API delay
+    // TODO: Load stats and equipment from API
     const loadData = async () => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setStats(MOCK_STATS);
-      setEquipment(MOCK_EQUIPMENT);
+      // await statsApi.getReceptionStats();
+      // await equipmentApi.getAll();
       setIsLoading(false);
     };
 

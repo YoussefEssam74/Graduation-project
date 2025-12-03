@@ -4,20 +4,13 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { UserRole, User, Gender } from '@/types';
+import { UserRole } from '@/types';
 import { useAuthStore } from '@/hooks/useAuth';
-
-// Mock users for static authentication
-const MOCK_USERS = [
-  { id: 1, email: 'member@intellifit.com', password: 'password', role: UserRole.Member, name: 'John Doe', age: 28, gender: 'Male', fitnessGoal: 'Weight Loss', tokenBalance: 150 },
-  { id: 2, email: 'coach@intellifit.com', password: 'password', role: UserRole.Coach, name: 'Jane Smith', age: 32, gender: 'Female', fitnessGoal: 'Strength Training', tokenBalance: 200 },
-  { id: 3, email: 'reception@intellifit.com', password: 'password', role: UserRole.Reception, name: 'Bob Johnson', age: 25, gender: 'Male', fitnessGoal: 'General Fitness', tokenBalance: 100 },
-];
+import { authApi } from '@/lib/api/services';
 
 export default function LoginForm() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.Member);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,83 +23,58 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Call the real backend API
+      const response = await authApi.login(email, password);
 
-      // Find matching user in mock data
-      const user = MOCK_USERS.find(
-        u => u.email === email && u.password === password && u.role === selectedRole
-      );
+      // Backend returns AuthResponse { user, token, expiresAt }
+      if (response && response.user && response.token) {
+        // Store auth info
+        setAuth(response.user, response.token);
 
-      if (!user) {
-        setError('Invalid email, password, or role');
-        setIsLoading(false);
-        return;
+        // Redirect based on role
+        const roleRoutes: Record<string, string> = {
+          'Member': '/member',
+          'Coach': '/coach',
+          'Reception': '/reception',
+          'Receptionist': '/reception',
+          'Admin': '/admin',
+        };
+        
+        const route = roleRoutes[response.user.role] || '/member';
+        router.push(route);
+      } else {
+        setError('Invalid response from server');
       }
-
-      // Create mock token
-      const mockToken = 'mock-jwt-token-' + Date.now();
-
-      // Set auth state - create proper User object
-      const mockUser: User = {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        age: user.age,
-        gender: user.gender === 'Male' ? Gender.Male : Gender.Female,
-        fitnessGoal: user.fitnessGoal,
-        tokenBalance: user.tokenBalance,
-        role: user.role,
-        createdAt: new Date().toISOString(),
-      };
-      setAuth(mockUser, mockToken);
-
-      // Redirect based on role
-      const roleRoutes = {
-        [UserRole.Member]: '/member',
-        [UserRole.Coach]: '/coach',
-        [UserRole.Reception]: '/reception',
-        [UserRole.Admin]: '/admin',
-      };
+    } catch (err: any) {
+      // Extract error message from backend response
+      let errorMessage = 'Invalid email or password';
       
-      router.push(roleRoutes[selectedRole]);
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+      if (err.response?.data) {
+        // Backend returns error as plain text in some cases
+        if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data.title) {
+          errorMessage = err.response.data.title;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       console.error('Login error:', err);
+      console.error('Error response:', err.response?.data);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const roles = [
-    { value: UserRole.Member, label: 'Member' },
-    { value: UserRole.Coach, label: 'Coach' },
-    { value: UserRole.Reception, label: 'Reception' },
-  ];
 
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900">Welcome Back</h2>
         <p className="text-sm text-gray-600 mt-1">Sign in to your account</p>
-      </div>
-
-      {/* Role Selector - Inline */}
-      <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-        {roles.map((role) => (
-          <button
-            key={role.value}
-            type="button"
-            onClick={() => setSelectedRole(role.value)}
-            className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all ${
-              selectedRole === role.value
-                ? 'bg-[#0b4fd4] text-white shadow-sm'
-                : 'bg-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {role.label}
-          </button>
-        ))}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -161,11 +129,13 @@ export default function LoginForm() {
       </div>
 
       {/* Helper text for testing */}
-      <div className="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-gray-600">
-        <p className="font-medium mb-1">Test Credentials:</p>
-        <p>Member: member@intellifit.com / password</p>
-        <p>Coach: coach@intellifit.com / password</p>
-        <p>Reception: reception@intellifit.com / password</p>
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs">
+        <p className="font-semibold text-blue-900 mb-2">✓ Working Test Account:</p>
+        <div className="space-y-1 text-blue-700">
+          <p><span className="font-medium">Email:</span> apitest.user@example.com</p>
+          <p><span className="font-medium">Password:</span> Test@1234</p>
+          <p className="text-blue-600 text-[10px] mt-2">Note: Password is case-sensitive</p>
+        </div>
       </div>
     </div>
   );

@@ -44,8 +44,8 @@ export default function InBodyPage() {
     );
   }
 
-  const latest = measurements[measurements.length - 1];
-  const previous = measurements[measurements.length - 2];
+  const latest = measurements.length > 0 ? measurements[measurements.length - 1] : null;
+  const previous = measurements.length > 1 ? measurements[measurements.length - 2] : null;
 
   const calculateChange = (current: number, prev: number) => {
     const change = ((current - prev) / prev) * 100;
@@ -55,19 +55,45 @@ export default function InBodyPage() {
     };
   };
 
-  const weightChange = previous ? calculateChange(latest.weight, previous.weight) : null;
-  const fatChange = previous
+  const weightChange = previous && latest ? calculateChange(latest.weight, previous.weight) : null;
+  const fatChange = previous && latest
     ? calculateChange(latest.bodyFatPercentage, previous.bodyFatPercentage)
     : null;
-  const muscleChange = previous ? calculateChange(latest.muscleMass, previous.muscleMass) : null;
+  const muscleChange = previous && latest ? calculateChange(latest.muscleMass, previous.muscleMass) : null;
+
+  // If no measurements, show empty state
+  if (!latest) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">InBody Analysis</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Track your body composition over time</p>
+          </div>
+          <Button>
+            <Calendar className="h-4 w-4 mr-2" />
+            Book InBody Test
+          </Button>
+        </div>
+        <Card className="p-12 text-center">
+          <Activity className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">No Measurements Yet</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Book your first InBody test to start tracking your body composition
+          </p>
+          <Button>Book InBody Test</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">InBody Analysis</h1>
-          <p className="text-gray-600 mt-1">Track your body composition over time</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">InBody Analysis</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Track your body composition over time</p>
         </div>
         <Button>
           <Calendar className="h-4 w-4 mr-2" />
@@ -80,7 +106,7 @@ export default function InBodyPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Latest Measurement</CardTitle>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               {new Date(latest.measurementDate).toLocaleDateString()}
             </span>
           </div>
