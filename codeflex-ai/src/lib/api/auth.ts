@@ -12,7 +12,7 @@ export interface RegisterRequest {
   phone?: string;
   dateOfBirth?: string;
   gender?: number; // 0 = Male, 1 = Female
-  // NOTE: role is NOT sent - backend determines from database/defaults to Member
+  role: string; // Member, Coach, Reception, Admin
 }
 
 export interface UserDto {

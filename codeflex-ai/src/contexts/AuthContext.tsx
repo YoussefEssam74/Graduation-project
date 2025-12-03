@@ -10,8 +10,9 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isRedirecting: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, phone?: string, gender?: number) => Promise<void>;
+  register: (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   // modify token balance by a signed integer (positive to add, negative to deduct)
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
 
   // Load auth from localStorage on mount
@@ -84,12 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: userData.createdAt,
       };
 
-      // Save to state and localStorage
-      setUser(userObj);
-      setToken(authToken);
-      localStorage.setItem("user", JSON.stringify(userObj));
-      localStorage.setItem("auth_token", authToken);
-
       // Redirect based on role returned from backend
       const roleRoutes: Record<UserRole, string> = {
         [UserRole.Member]: "/dashboard",
@@ -98,23 +94,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [UserRole.Admin]: "/admin-dashboard",
       };
 
-      router.push(roleRoutes[mappedRole]);
+      // Save to state and localStorage
+      setUser(userObj);
+      setToken(authToken);
+      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("auth_token", authToken);
+
+      // Set redirecting state
+      setIsRedirecting(true);
+
+      // Force immediate redirect using window.location
+      window.location.href = roleRoutes[mappedRole];
     } catch (error) {
       console.error("Login error:", error);
+      setIsRedirecting(false);
       throw error;
     }
   };
 
-  const register = async (email: string, password: string, name: string, phone?: string, gender?: number) => {
+  const register = async (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => {
     try {
-      console.log('Registering with:', { email, name, phone, gender });
+      console.log('Registering with:', { email, name, phone, gender, role });
       const response = await authApi.register({ 
         email, 
         password, 
         name, 
         phone,
-        gender
-        // NOTE: role is NOT sent - backend determines from database/defaults to Member
+        gender,
+        role
       });
 
       console.log('Registration response:', response);
@@ -169,12 +176,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: userData.createdAt,
       };
 
-      // Save to state and localStorage
-      setUser(userObj);
-      setToken(authToken);
-      localStorage.setItem("user", JSON.stringify(userObj));
-      localStorage.setItem("auth_token", authToken);
-
       // Redirect based on role
       const roleRoutes: Record<UserRole, string> = {
         [UserRole.Member]: "/dashboard",
@@ -183,9 +184,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [UserRole.Admin]: "/admin-dashboard",
       };
 
-      router.push(roleRoutes[mappedRole]);
+      // Save to state and localStorage
+      setUser(userObj);
+      setToken(authToken);
+      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("auth_token", authToken);
+
+      // Set redirecting state
+      setIsRedirecting(true);
+
+      // Force immediate redirect using window.location
+      window.location.href = roleRoutes[mappedRole];
     } catch (error) {
       console.error("Registration error:", error);
+      setIsRedirecting(false);
       throw error;
     }
   };
@@ -229,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         adjustTokens,
         deductTokens,
         isLoading,
+        isRedirecting,
         login,
         register,
         logout,
