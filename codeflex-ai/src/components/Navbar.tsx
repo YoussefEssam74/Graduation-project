@@ -20,7 +20,12 @@ import { UserRole } from "@/types/gym";
 import { Button } from "./ui/button";
 
 export default function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isRedirecting, logout } = useAuth();
+
+  // Don't render navbar during redirect
+  if (isRedirecting) {
+    return null;
+  }
 
   // Role-based navigation items
   const getMemberNav = () => [

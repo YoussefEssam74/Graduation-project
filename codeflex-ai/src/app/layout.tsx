@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -16,10 +17,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "IntelliFit - Smart Gym Management",
-  description: "Complete gym ecosystem with AI coaching, equipment booking, InBody tracking, and personalized nutrition plans.",
-};
+function LayoutContent({ children }: { children: React.ReactNode }) {
+  const { isRedirecting } = useAuth();
+
+  if (isRedirecting) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+          <p className="text-muted-foreground">Redirecting to your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
+
+      {/* GRID BACKGROUND */}
+      <div className="fixed inset-0 -z-1">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(var(--cyber-grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--cyber-grid-color)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+      </div>
+
+      <main className="pt-24 flex-grow">{children}</main>
+      <Footer />
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -30,16 +56,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <Navbar />
-
-          {/* GRID BACKGROUND */}
-          <div className="fixed inset-0 -z-1">
-            <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background"></div>
-            <div className="absolute inset-0 bg-[linear-gradient(var(--cyber-grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--cyber-grid-color)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-          </div>
-
-          <main className="pt-24 flex-grow">{children}</main>
-          <Footer />
+          <LayoutContent>{children}</LayoutContent>
         </AuthProvider>
       </body>
     </html>
