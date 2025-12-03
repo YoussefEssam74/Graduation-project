@@ -2,13 +2,8 @@
 
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserRole } from "@/types/gym";
 import Link from "next/link";
 import { 
-  DumbbellIcon, 
-  UserIcon, 
-  Users2Icon, 
-  ShieldCheckIcon,
   ZapIcon,
   MailIcon,
   LockIcon,
@@ -21,44 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const ROLE_CONFIG = [
-  {
-    role: UserRole.Member,
-    label: "Member",
-    icon: DumbbellIcon,
-    color: "bg-blue-500",
-    hoverColor: "hover:bg-blue-600",
-    description: "Access workouts, bookings & AI coach",
-  },
-  {
-    role: UserRole.Coach,
-    label: "Coach",
-    icon: UserIcon,
-    color: "bg-green-500",
-    hoverColor: "hover:bg-green-600",
-    description: "Manage clients & training programs",
-  },
-  {
-    role: UserRole.Reception,
-    label: "Receptionist",
-    icon: Users2Icon,
-    color: "bg-purple-500",
-    hoverColor: "hover:bg-purple-600",
-    description: "Handle bookings & member support",
-  },
-  {
-    role: UserRole.Admin,
-    label: "Admin",
-    icon: ShieldCheckIcon,
-    color: "bg-red-500",
-    hoverColor: "hover:bg-red-600",
-    description: "Full system control & analytics",
-  },
-];
-
 export default function SignUpPage() {
   const { register } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.Member);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -107,7 +66,7 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      await register(email, password, name, phone, selectedRole, gender);
+      await register(email, password, name, phone, gender);
     } catch (err) {
       console.error("Registration error:", err);
       const errorMessage = err instanceof Error ? err.message : "Registration failed. Please try again.";
@@ -116,8 +75,6 @@ export default function SignUpPage() {
       setIsLoading(false);
     }
   };
-
-  const selectedConfig = ROLE_CONFIG.find((r) => r.role === selectedRole)!;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
@@ -130,7 +87,7 @@ export default function SignUpPage() {
       <div className="relative w-full max-w-5xl">
         <div className="grid md:grid-cols-2 gap-0 bg-background rounded-2xl shadow-2xl overflow-hidden border border-border/50">
           {/* Left Side - Branding */}
-          <div className={`${selectedConfig.color} p-12 text-white flex flex-col justify-between relative overflow-hidden`}>
+          <div className="bg-primary p-12 text-white flex flex-col justify-between relative overflow-hidden">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-10 right-10 w-64 h-64 border-2 border-white rounded-full"></div>
               <div className="absolute bottom-10 left-10 w-48 h-48 border-2 border-white rounded-full"></div>
@@ -198,35 +155,7 @@ export default function SignUpPage() {
           <div className="p-12 bg-background">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-foreground mb-2">Create Account</h2>
-              <p className="text-muted-foreground">Choose your role and fill in your details</p>
-            </div>
-
-            {/* Role Selector */}
-            <div className="mb-6">
-              <Label className="text-sm font-medium mb-3 block">Select Role</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {ROLE_CONFIG.map((config) => {
-                  const Icon = config.icon;
-                  const isSelected = selectedRole === config.role;
-                  return (
-                    <button
-                      key={config.role}
-                      type="button"
-                      onClick={() => setSelectedRole(config.role)}
-                      className={`p-3 rounded-xl border-2 transition-all duration-200 ${
-                        isSelected
-                          ? `${config.color} text-white border-transparent shadow-lg scale-105`
-                          : "border-border bg-card hover:border-primary/50 hover:shadow-md"
-                      }`}
-                    >
-                      <Icon className={`w-5 h-5 mb-1 ${isSelected ? "text-white" : "text-primary"}`} />
-                      <div className={`font-semibold text-xs ${isSelected ? "text-white" : "text-foreground"}`}>
-                        {config.label}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <p className="text-muted-foreground">Fill in your details to get started</p>
             </div>
 
             {/* Sign Up Form */}
@@ -349,9 +278,7 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full h-11 ${selectedConfig.color} ${selectedConfig.hoverColor} text-white font-semibold shadow-lg transition-all duration-200 ${
-                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:scale-[1.02]"
-                }`}
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold shadow-lg transition-all duration-200"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -359,7 +286,7 @@ export default function SignUpPage() {
                     Creating Account...
                   </div>
                 ) : (
-                  `Sign up as ${selectedConfig.label}`
+                  "Create Account"
                 )}
               </Button>
             </form>

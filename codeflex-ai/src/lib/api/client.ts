@@ -83,7 +83,16 @@ export async function apiFetch<T>(
       };
     }
 
-    return data;
+    // Backend returns data directly, wrap it in ApiResponse format
+    // If backend already has success field, use as-is, otherwise wrap it
+    if (typeof data === 'object' && data !== null && 'success' in data) {
+      return data;
+    }
+    
+    return {
+      success: true,
+      data: data,
+    };
   } catch (error) {
     console.error('Network/Fetch Error:', error);
     console.error('Failed URL:', `${API_BASE_URL}${endpoint}`);

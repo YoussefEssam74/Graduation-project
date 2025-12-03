@@ -11,8 +11,8 @@ export interface RegisterRequest {
   name: string;
   phone?: string;
   dateOfBirth?: string;
-  gender?: number;
-  role: string;
+  gender?: number; // 0 = Male, 1 = Female
+  // NOTE: role is NOT sent - backend determines from database/defaults to Member
 }
 
 export interface UserDto {

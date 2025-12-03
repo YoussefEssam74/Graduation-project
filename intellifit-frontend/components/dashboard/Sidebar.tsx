@@ -14,7 +14,9 @@ import {
   LogOut,
   LucideIcon,
   Apple,
-  Brain
+  Brain,
+  User,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UserRole } from '@/types';
@@ -29,6 +31,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/member', icon: Home, roles: [UserRole.Member] },
+  { label: 'Profile', href: '/member/profile', icon: User, roles: [UserRole.Member] },
+  { label: 'Tokens', href: '/member/tokens', icon: Zap, roles: [UserRole.Member] },
   { label: 'Workout Plans', href: '/member/workouts', icon: Dumbbell, roles: [UserRole.Member] },
   { label: 'Nutrition', href: '/member/nutrition', icon: Apple, roles: [UserRole.Member] },
   { label: 'AI Coach', href: '/member/ai-coach', icon: Brain, roles: [UserRole.Member] },
@@ -62,10 +66,10 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="flex h-screen w-64 flex-col bg-white shadow-lg">
+    <aside className="flex h-screen w-64 flex-col bg-white dark:bg-gray-900 shadow-lg transition-colors duration-300">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-center border-b px-6">
-        <h1 className="text-2xl font-bold text-primary-blue">IntelliFit</h1>
+      <div className="flex h-16 items-center justify-center border-b dark:border-gray-800 px-6">
+        <h1 className="text-2xl font-bold text-primary-blue dark:text-[#18cef2]">IntelliFit</h1>
       </div>
 
       {/* Navigation */}
@@ -81,8 +85,8 @@ export default function Sidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-primary-blue text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-primary-blue dark:bg-[#18cef2] text-white dark:text-gray-900'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
               )}
             >
               <Icon className="h-5 w-5" />
@@ -93,14 +97,14 @@ export default function Sidebar() {
       </nav>
 
       {/* User Section */}
-      <div className="border-t p-4">
-        <div className="mb-2 rounded-md bg-gray-50 p-3">
-          <p className="text-sm font-medium text-gray-900">{user?.name}</p>
-          <p className="text-xs text-gray-500">{user?.email}</p>
+      <div className="border-t dark:border-gray-800 p-4">
+        <div className="mb-2 rounded-md bg-gray-50 dark:bg-gray-800 p-3">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
         </div>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
           <LogOut className="h-5 w-5" />
           Logout

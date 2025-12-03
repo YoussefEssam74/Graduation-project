@@ -34,42 +34,11 @@ const DEFAULT_STATS: MemberStats = {
   totalCaloriesBurned: 0,
 };
 
-const MOCK_ACTIVITIES: ActivityItem[] = [
-  {
-    id: '1',
-    type: 'workout',
-    title: 'Completed Upper Body Workout',
-    description: '6 exercises • 45 minutes • 320 calories',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: '2',
-    type: 'nutrition',
-    title: 'Logged Daily Meals',
-    description: '2,150 calories • Protein: 145g',
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: '3',
-    type: 'ai',
-    title: 'AI Recommendation',
-    description: 'New workout plan suggested based on your progress',
-    timestamp: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: '4',
-    type: 'booking',
-    title: 'Booking Confirmed',
-    description: 'Personal Training Session - Tomorrow 10:00 AM',
-    timestamp: new Date(Date.now() - 172800000).toISOString(),
-  },
-];
-
 export default function MemberDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [stats, setStats] = useState<MemberStats>(DEFAULT_STATS);
-  const [activities] = useState<ActivityItem[]>(MOCK_ACTIVITIES);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

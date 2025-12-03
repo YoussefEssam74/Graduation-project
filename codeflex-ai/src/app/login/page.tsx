@@ -2,11 +2,8 @@
 
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserRole } from "@/types/gym";
 import { 
   DumbbellIcon, 
-  UserIcon, 
-  Users2Icon, 
   ShieldCheckIcon,
   ZapIcon,
   MailIcon,
@@ -16,41 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const ROLE_CONFIG = [
-  {
-    role: UserRole.Member,
-    label: "Member",
-    icon: DumbbellIcon,
-    color: "bg-blue-500",
-    hoverColor: "hover:bg-blue-600",
-    description: "Access workouts, bookings & AI coach",
-  },
-  {
-    role: UserRole.Coach,
-    label: "Coach",
-    icon: UserIcon,
-    color: "bg-green-500",
-    hoverColor: "hover:bg-green-600",
-    description: "Manage clients & training programs",
-  },
-  {
-    role: UserRole.Reception,
-    label: "Receptionist",
-    icon: Users2Icon,
-    color: "bg-purple-500",
-    hoverColor: "hover:bg-purple-600",
-    description: "Handle bookings & member support",
-  },
-  {
-    role: UserRole.Admin,
-    label: "Admin",
-    icon: ShieldCheckIcon,
-    color: "bg-red-500",
-    hoverColor: "hover:bg-red-600",
-    description: "Full system control & analytics",
-  },
-];
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -74,9 +36,6 @@ export default function LoginPage() {
     }
   };
 
-  // Default to Member for styling
-  const selectedConfig = ROLE_CONFIG[0];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
       {/* Background Animation */}
@@ -88,7 +47,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-5xl">
         <div className="grid md:grid-cols-2 gap-0 bg-background rounded-2xl shadow-2xl overflow-hidden border border-border/50">
           {/* Left Side - Branding */}
-          <div className={`${selectedConfig.color} p-12 text-white flex flex-col justify-between relative overflow-hidden`}>
+          <div className="bg-primary p-12 text-white flex flex-col justify-between relative overflow-hidden">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-10 right-10 w-64 h-64 border-2 border-white rounded-full"></div>
               <div className="absolute bottom-10 left-10 w-48 h-48 border-2 border-white rounded-full"></div>
@@ -209,14 +168,12 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full h-12 ${selectedConfig.color} ${selectedConfig.hoverColor} text-white font-semibold text-base shadow-lg transition-all duration-200 ${
-                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:scale-[1.02]"
-                }`}
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-semibold text-base shadow-lg transition-all duration-200"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Detecting role and signing in...
+                    Signing in...
                   </div>
                 ) : (
                   "Sign In"
