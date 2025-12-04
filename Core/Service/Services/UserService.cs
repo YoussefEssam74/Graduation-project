@@ -108,6 +108,12 @@ namespace Service.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
+        public async Task<IEnumerable<UserDto>> GetCoachesListAsync()
+        {
+            var coaches = await _unitOfWork.Repository<Coach>().GetAllAsync();
+            return coaches.Select(c => MapToUserDto(c));
+        }
+
         private UserDto MapToUserDto(User user)
         {
             return new UserDto

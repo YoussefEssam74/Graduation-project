@@ -1,11 +1,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace IntelliFit.Presentation.Hubs
 {
     [Authorize]
     public class ChatHub : Hub
     {
+        private readonly ILogger<ChatHub> _logger;
+
+        public ChatHub(ILogger<ChatHub> logger)
+        {
+            _logger = logger;
+        }
+
         public override async Task OnConnectedAsync()
         {
             var userId = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -15,6 +23,11 @@ namespace IntelliFit.Presentation.Hubs
             {
                 // Add user to their personal chat room
                 await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
+                _logger.LogInformation("User {UserId} connected to chat hub and added to group user_{UserId}", userId, userId);
+            }
+            else
+            {
+                _logger.LogWarning("User connected but userId claim not found");
             }
 
             await base.OnConnectedAsync();
@@ -71,6 +84,9 @@ namespace IntelliFit.Presentation.Hubs
             var userName = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
                          ?? Context.User?.FindFirst("name")?.Value ?? "User";
 
+            _logger.LogInformation("Member {UserId} ({UserName}) sending message to coach {CoachId}: {Message}",
+                userId, userName, coachId, message);
+
             await Clients.Group($"user_{coachId}").SendAsync("ReceiveMessage", new
             {
                 senderId = userId,
@@ -78,6 +94,8 @@ namespace IntelliFit.Presentation.Hubs
                 message,
                 timestamp = DateTime.UtcNow
             });
+
+            _logger.LogInformation("Message sent to group user_{CoachId}", coachId);
         }
 
         /// <summary>
@@ -90,6 +108,9 @@ namespace IntelliFit.Presentation.Hubs
             var userName = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
                          ?? Context.User?.FindFirst("name")?.Value ?? "Coach";
 
+            _logger.LogInformation("Coach {UserId} ({UserName}) sending message to member {MemberId}: {Message}",
+                userId, userName, memberId, message);
+
             await Clients.Group($"user_{memberId}").SendAsync("ReceiveMessage", new
             {
                 senderId = userId,
@@ -97,6 +118,8 @@ namespace IntelliFit.Presentation.Hubs
                 message,
                 timestamp = DateTime.UtcNow
             });
+
+            _logger.LogInformation("Message sent to group user_{MemberId}", memberId);
         }
 
         /// <summary>

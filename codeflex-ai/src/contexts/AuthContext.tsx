@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useRouter } from "next/navigation";
 import { User, UserRole, Gender } from "@/types/gym";
 import { authApi, getAuthToken } from "@/lib/api";
+import { tokenTransactionsApi } from "@/lib/api/tokenTransactions";
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +20,8 @@ interface AuthContextType {
   adjustTokens: (amount: number) => void;
   // convenience: deduct tokens (positive number -> decreases balance)
   deductTokens: (amount?: number) => void;
+  // refresh user data from server (e.g., after token purchase)
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -216,6 +219,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     adjustTokens(-Math.abs(amount));
   };
 
+  const refreshUser = async () => {
+    if (!user?.userId) return;
+    
+    try {
+      // Fetch the latest token balance from the server
+      const balanceResponse = await tokenTransactionsApi.getUserTokenBalance(user.userId);
+      
+      if (balanceResponse.success && balanceResponse.data !== undefined) {
+        setUser((prev) => {
+          if (!prev) return prev;
+          const updated = { ...prev, tokenBalance: balanceResponse.data! } as User;
+          if (typeof window !== 'undefined') localStorage.setItem('user', JSON.stringify(updated));
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  };
+
   const logout = () => {
     authApi.logout(); // Clear token from API client
     setUser(null);
@@ -226,10 +249,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   };
 
+  // Map backend role strings to frontend UserRole enum
+  const normalizeRole = (role: string): UserRole => {
+    const roleMap: Record<string, UserRole> = {
+      'Member': UserRole.Member,
+      'Coach': UserRole.Coach,
+      'Receptionist': UserRole.Reception,
+      'Reception': UserRole.Reception,
+      'Admin': UserRole.Admin,
+    };
+    return roleMap[role] || UserRole.Member;
+  };
+
   const hasRole = (roles: UserRole | UserRole[]): boolean => {
     if (!user) return false;
     const roleArray = Array.isArray(roles) ? roles : [roles];
-    return roleArray.includes(user.role);
+    const normalizedRole = normalizeRole(user.role);
+    return roleArray.includes(normalizedRole);
   };
 
   return (
@@ -240,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         adjustTokens,
         deductTokens,
+        refreshUser,
         isLoading,
         isRedirecting,
         login,

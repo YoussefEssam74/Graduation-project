@@ -97,6 +97,10 @@ namespace Graduation_Project
                 .AddApplicationPart(typeof(AuthController).Assembly)
                 .AddJsonOptions(options =>
                 {
+                    // Configure JSON serializer to use camelCase for property names (frontend compatibility)
+                    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+                    // Allow reading camelCase properties from frontend
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
                     // Configure JSON serializer to treat all DateTime as UTC for PostgreSQL compatibility
                     options.JsonSerializerOptions.Converters.Add(new IntelliFit.Shared.Helpers.UtcDateTimeConverter());
                 });

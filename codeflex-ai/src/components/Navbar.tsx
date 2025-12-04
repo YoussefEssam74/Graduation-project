@@ -19,6 +19,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
 import { Button } from "./ui/button";
 
+// Map backend role strings to frontend UserRole enum
+const normalizeRole = (role: string): UserRole => {
+  const roleMap: Record<string, UserRole> = {
+    'Member': UserRole.Member,
+    'Coach': UserRole.Coach,
+    'Receptionist': UserRole.Reception,
+    'Reception': UserRole.Reception,
+    'Admin': UserRole.Admin,
+  };
+  return roleMap[role] || UserRole.Member;
+};
+
 export default function Navbar() {
   const { user, isAuthenticated, isRedirecting, logout } = useAuth();
 
@@ -61,7 +73,8 @@ export default function Navbar() {
 
   const getNavItems = () => {
     if (!user) return [];
-    switch (user.role) {
+    const role = normalizeRole(user.role);
+    switch (role) {
       case UserRole.Member:
         return getMemberNav();
       case UserRole.Coach:
@@ -77,7 +90,8 @@ export default function Navbar() {
 
   const getRoleBadgeColor = () => {
     if (!user) return "bg-gray-500";
-    switch (user.role) {
+    const role = normalizeRole(user.role);
+    switch (role) {
       case UserRole.Member:
         return "bg-blue-500";
       case UserRole.Coach:
@@ -93,10 +107,28 @@ export default function Navbar() {
 
   const navItems = getNavItems();
 
+  // Get dashboard URL based on normalized role
+  const getDashboardUrl = () => {
+    if (!user) return "/";
+    const role = normalizeRole(user.role);
+    switch (role) {
+      case UserRole.Member:
+        return "/dashboard";
+      case UserRole.Coach:
+        return "/coach-dashboard";
+      case UserRole.Reception:
+        return "/reception-dashboard";
+      case UserRole.Admin:
+        return "/admin-dashboard";
+      default:
+        return "/dashboard";
+    }
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border py-3">
       <div className="container mx-auto flex items-center justify-between">
-        <Link href={isAuthenticated ? (user?.role === UserRole.Member ? "/dashboard" : `/${user?.role.toLowerCase()}-dashboard`) : "/"} className="flex items-center gap-2">
+        <Link href={isAuthenticated ? getDashboardUrl() : "/"} className="flex items-center gap-2">
           <div className="p-1 bg-primary/10 rounded">
             <ZapIcon className="w-4 h-4 text-primary" />
           </div>
@@ -131,7 +163,7 @@ export default function Navbar() {
                 );
               })}
 
-              {user?.role === UserRole.Member && (
+              {normalizeRole(user?.role || '') === UserRole.Member && (
                 <Button
                   asChild
                   variant="outline"
@@ -144,14 +176,14 @@ export default function Navbar() {
               <div className="flex items-center gap-3 ml-2 pl-3 border-l border-border">
                 <div className="flex items-center gap-2">
                   <div className={`w-8 h-8 rounded-full ${getRoleBadgeColor()} flex items-center justify-center`}>
-                    {user?.role === UserRole.Admin && <ShieldIcon className="w-4 h-4 text-white" />}
-                    {user?.role === UserRole.Coach && <UserCogIcon className="w-4 h-4 text-white" />}
-                    {user?.role === UserRole.Reception && <Users2Icon className="w-4 h-4 text-white" />}
-                    {user?.role === UserRole.Member && <UserIcon className="w-4 h-4 text-white" />}
+                    {normalizeRole(user?.role || '') === UserRole.Admin && <ShieldIcon className="w-4 h-4 text-white" />}
+                    {normalizeRole(user?.role || '') === UserRole.Coach && <UserCogIcon className="w-4 h-4 text-white" />}
+                    {normalizeRole(user?.role || '') === UserRole.Reception && <Users2Icon className="w-4 h-4 text-white" />}
+                    {normalizeRole(user?.role || '') === UserRole.Member && <UserIcon className="w-4 h-4 text-white" />}
                   </div>
                   <div className="text-sm">
                     <div className="font-semibold">{user?.name?.split(' ')[0]}</div>
-                    <div className="text-xs text-muted-foreground">{user?.role}</div>
+                    <div className="text-xs text-muted-foreground capitalize">{normalizeRole(user?.role || '')}</div>
                   </div>
                 </div>
 

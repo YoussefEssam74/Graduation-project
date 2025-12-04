@@ -17,16 +17,21 @@ namespace IntelliFit.Shared.Constants
         public const string Session = "Session";
 
         /// <summary>
+        /// Booking for an InBody body composition scan
+        /// </summary>
+        public const string InBody = "InBody";
+
+        /// <summary>
         /// Validates if the given booking type is valid
         /// </summary>
         public static bool IsValid(string bookingType)
         {
-            return bookingType == Equipment || bookingType == Session;
+            return bookingType == Equipment || bookingType == Session || bookingType == InBody;
         }
 
         /// <summary>
         /// Gets all valid booking types
         /// </summary>
-        public static string[] GetAll() => new[] { Equipment, Session };
+        public static string[] GetAll() => new[] { Equipment, Session, InBody };
     }
 }

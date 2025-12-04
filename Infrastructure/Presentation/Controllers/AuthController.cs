@@ -22,8 +22,19 @@ namespace Presentation.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<AuthResponseDto>> Register(RegisterRequestDto registerDto)
         {
-            var result = await _serviceManager.AuthService.RegisterAsync(registerDto);
-            return Ok(result);
+            try
+            {
+                var result = await _serviceManager.AuthService.RegisterAsync(registerDto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
+            }
         }
 
         #endregion

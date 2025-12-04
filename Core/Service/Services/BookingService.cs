@@ -22,38 +22,50 @@ namespace Service.Services
 
         public async Task<BookingDto> CreateBookingAsync(CreateBookingDto createDto)
         {
-            // Validate XOR: Either Equipment OR Coach, not both, not neither
-            if ((createDto.EquipmentId.HasValue && createDto.CoachId.HasValue) ||
-                (!createDto.EquipmentId.HasValue && !createDto.CoachId.HasValue))
+            // InBody bookings don't require equipment or coach
+            if (createDto.BookingType == BookingTypes.InBody)
             {
-                throw new InvalidOperationException("Booking must be either for Equipment or Coach, not both or neither");
-            }
-
-            // Validate BookingType matches the FK
-            if (createDto.BookingType == BookingTypes.Equipment && !createDto.EquipmentId.HasValue)
-            {
-                throw new InvalidOperationException("Equipment booking requires EquipmentId");
-            }
-
-            if (createDto.BookingType == BookingTypes.Session && !createDto.CoachId.HasValue)
-            {
-                throw new InvalidOperationException("Session booking requires CoachId");
-            }
-
-            // Check availability
-            if (createDto.EquipmentId.HasValue)
-            {
-                if (!await IsEquipmentAvailableAsync(createDto.EquipmentId.Value, createDto.StartTime, createDto.EndTime))
+                // InBody booking - no equipment or coach needed
+                if (createDto.EquipmentId.HasValue || createDto.CoachId.HasValue)
                 {
-                    throw new InvalidOperationException("Equipment is not available for the selected time slot");
+                    throw new InvalidOperationException("InBody booking should not have equipment or coach");
                 }
             }
-
-            if (createDto.CoachId.HasValue)
+            else
             {
-                if (!await IsCoachAvailableAsync(createDto.CoachId.Value, createDto.StartTime, createDto.EndTime))
+                // Validate XOR: Either Equipment OR Coach, not both, not neither
+                if ((createDto.EquipmentId.HasValue && createDto.CoachId.HasValue) ||
+                    (!createDto.EquipmentId.HasValue && !createDto.CoachId.HasValue))
                 {
-                    throw new InvalidOperationException("Coach is not available for the selected time slot");
+                    throw new InvalidOperationException("Booking must be either for Equipment or Coach, not both or neither");
+                }
+
+                // Validate BookingType matches the FK
+                if (createDto.BookingType == BookingTypes.Equipment && !createDto.EquipmentId.HasValue)
+                {
+                    throw new InvalidOperationException("Equipment booking requires EquipmentId");
+                }
+
+                if (createDto.BookingType == BookingTypes.Session && !createDto.CoachId.HasValue)
+                {
+                    throw new InvalidOperationException("Session booking requires CoachId");
+                }
+
+                // Check availability
+                if (createDto.EquipmentId.HasValue)
+                {
+                    if (!await IsEquipmentAvailableAsync(createDto.EquipmentId.Value, createDto.StartTime, createDto.EndTime))
+                    {
+                        throw new InvalidOperationException("Equipment is not available for the selected time slot");
+                    }
+                }
+
+                if (createDto.CoachId.HasValue)
+                {
+                    if (!await IsCoachAvailableAsync(createDto.CoachId.Value, createDto.StartTime, createDto.EndTime))
+                    {
+                        throw new InvalidOperationException("Coach is not available for the selected time slot");
+                    }
                 }
             }
 
@@ -65,7 +77,7 @@ namespace Service.Services
                 BookingType = createDto.BookingType,
                 StartTime = createDto.StartTime,
                 EndTime = createDto.EndTime,
-                Status = BookingStatus.Confirmed,
+                Status = BookingStatus.Pending, // Start as pending for receptionist confirmation
                 Notes = createDto.Notes,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -88,7 +100,69 @@ namespace Service.Services
                 .FindAsync(b => b.UserId == userId);
 
             var bookingDtos = new List<BookingDto>();
-            foreach (var booking in bookings)
+            foreach (var booking in bookings.OrderByDescending(b => b.StartTime))
+            {
+                var dto = await GetBookingDtoAsync(booking.BookingId);
+                if (dto != null)
+                {
+                    bookingDtos.Add(dto);
+                }
+            }
+
+            return bookingDtos;
+        }
+
+        public async Task<IEnumerable<BookingDto>> GetAllBookingsAsync()
+        {
+            var bookings = await _unitOfWork.Repository<Booking>().GetAllAsync();
+
+            var bookingDtos = new List<BookingDto>();
+            foreach (var booking in bookings.OrderByDescending(b => b.StartTime))
+            {
+                var dto = await GetBookingDtoAsync(booking.BookingId);
+                if (dto != null)
+                {
+                    bookingDtos.Add(dto);
+                }
+            }
+
+            return bookingDtos;
+        }
+
+        public async Task<IEnumerable<BookingDto>> GetBookingsByStatusAsync(string status)
+        {
+            BookingStatus bookingStatus;
+            if (!Enum.TryParse<BookingStatus>(status, true, out bookingStatus))
+            {
+                throw new ArgumentException($"Invalid booking status: {status}");
+            }
+
+            var bookings = await _unitOfWork.Repository<Booking>()
+                .FindAsync(b => b.Status == bookingStatus);
+
+            var bookingDtos = new List<BookingDto>();
+            foreach (var booking in bookings.OrderByDescending(b => b.StartTime))
+            {
+                var dto = await GetBookingDtoAsync(booking.BookingId);
+                if (dto != null)
+                {
+                    bookingDtos.Add(dto);
+                }
+            }
+
+            return bookingDtos;
+        }
+
+        public async Task<IEnumerable<BookingDto>> GetTodaysBookingsAsync()
+        {
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
+            var bookings = await _unitOfWork.Repository<Booking>()
+                .FindAsync(b => b.StartTime >= today && b.StartTime < tomorrow);
+
+            var bookingDtos = new List<BookingDto>();
+            foreach (var booking in bookings.OrderBy(b => b.StartTime))
             {
                 var dto = await GetBookingDtoAsync(booking.BookingId);
                 if (dto != null)
@@ -151,6 +225,24 @@ namespace Service.Services
 
             booking.Status = BookingStatus.Cancelled;
             booking.CancellationReason = cancellationReason;
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<Booking>().Update(booking);
+            await _unitOfWork.SaveChangesAsync();
+
+            return await GetBookingDtoAsync(bookingId);
+        }
+
+        public async Task<BookingDto> ConfirmBookingAsync(int bookingId)
+        {
+            var booking = await _unitOfWork.Repository<Booking>().GetByIdAsync(bookingId);
+
+            if (booking == null)
+            {
+                throw new KeyNotFoundException($"Booking with ID {bookingId} not found");
+            }
+
+            booking.Status = BookingStatus.Confirmed;
             booking.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Repository<Booking>().Update(booking);
@@ -239,12 +331,9 @@ namespace Service.Services
 
             if (booking.CoachId.HasValue)
             {
-                var coach = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(booking.CoachId.Value);
-                if (coach != null)
-                {
-                    var coachUser = await _unitOfWork.Repository<User>().GetByIdAsync(coach.UserId);
-                    dto.CoachName = coachUser?.Name;
-                }
+                // Coach extends User in TPT hierarchy, so CoachId is the UserId
+                var coachUser = await _unitOfWork.Repository<User>().GetByIdAsync(booking.CoachId.Value);
+                dto.CoachName = coachUser?.Name;
             }
 
             return dto;

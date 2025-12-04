@@ -43,4 +43,11 @@ export const usersApi = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Get all coaches
+   */
+  async getCoaches(): Promise<ApiResponse<UserDto[]>> {
+    return apiFetch<UserDto[]>('/users/coaches');
+  },
 };

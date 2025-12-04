@@ -141,7 +141,7 @@ export default function SignUpPage() {
               {/* Reception Role */}
               <button
                 onClick={() => {
-                  setSelectedRole('Reception');
+                  setSelectedRole('Receptionist');
                   setStep('details');
                 }}
                 className="group relative p-6 bg-card border-2 border-border rounded-xl hover:border-purple-500 hover:shadow-lg transition-all duration-200"

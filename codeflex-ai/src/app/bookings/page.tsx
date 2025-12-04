@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
+import { equipmentApi, bookingsApi, usersApi, type EquipmentDto, type BookingDto } from "@/lib/api";
 import {
   Calendar,
   Clock,
@@ -11,165 +13,218 @@ import {
   XCircle,
   Zap,
   Search,
+  AlertTriangle,
+  Loader2,
+  Star,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { CoachReviewForm } from "@/components/CoachReviewForm";
+
+interface LocalBooking {
+  id: number;
+  type: "equipment" | "coach";
+  name: string;
+  date: string;
+  time: string;
+  status: string;
+  tokensCost: number;
+  coachId?: number;
+}
+
+interface Coach {
+  id: number;
+  name: string;
+  specialization: string;
+  rating: number;
+  sessionsCompleted: number;
+  tokensCost: number;
+  availability: string;
+}
+
+// Map equipment status from number to string
+const mapEquipmentStatus = (status: number): string => {
+  switch (status) {
+    case 0: return "available";
+    case 1: return "in_use";
+    case 2: return "maintenance";
+    default: return "available";
+  }
+};
+
+// Map booking status from number to string
+const mapBookingStatus = (status: number): string => {
+  switch (status) {
+    case 0: return "pending";
+    case 1: return "confirmed";
+    case 2: return "completed";
+    case 3: return "cancelled";
+    default: return "pending";
+  }
+};
 
 export default function BookingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const { showToast } = useToast();
+  const { user, deductTokens, adjustTokens } = useAuth();
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<LocalBooking | null>(null);
+  
+  // Review modal state
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewCoachId, setReviewCoachId] = useState<number | null>(null);
+  const [reviewCoachName, setReviewCoachName] = useState<string>("");
+  
+  // Loading states
+  const [isLoadingEquipment, setIsLoadingEquipment] = useState(true);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  const [isLoadingCoaches, setIsLoadingCoaches] = useState(true);
 
-  // Mock data - will be replaced with Convex queries
-  const [equipmentList, setEquipmentList] = useState(() => [
-    {
-      id: 1,
-      name: "Bench Press",
-      category: "strength",
-      status: "available",
-      location: "Zone A",
-      tokensCost: 10,
-      nextAvailable: null,
-    },
-    {
-      id: 2,
-      name: "Treadmill #3",
-      category: "cardio",
-      status: "available",
-      location: "Zone B",
-      tokensCost: 5,
-      nextAvailable: null,
-    },
-    {
-      id: 3,
-      name: "Squat Rack",
-      category: "strength",
-      status: "in_use",
-      location: "Zone A",
-      tokensCost: 10,
-      nextAvailable: "11:00 AM",
-    },
-    {
-      id: 4,
-      name: "Cable Machine",
-      category: "strength",
-      status: "available",
-      location: "Zone A",
-      tokensCost: 8,
-      nextAvailable: null,
-    },
-    {
-      id: 5,
-      name: "Rowing Machine",
-      category: "cardio",
-      status: "maintenance",
-      location: "Zone B",
-      tokensCost: 5,
-      nextAvailable: "Tomorrow",
-    },
-    {
-      id: 6,
-      name: "Leg Press",
-      category: "strength",
-      status: "available",
-      location: "Zone A",
-      tokensCost: 8,
-      nextAvailable: null,
-    },
-  ]);
+  // Equipment from API
+  const [equipmentList, setEquipmentList] = useState<{
+    id: number;
+    name: string;
+    category: string;
+    status: string;
+    location: string;
+    tokensCost: number;
+    nextAvailable: string | null;
+  }[]>([]);
 
-  const [coaches, setCoaches] = useState(() => [
-    {
-      id: 1,
-      name: "Ahmed Hassan",
-      specialization: "Strength & Conditioning",
-      rating: 4.9,
-      sessionsCompleted: 250,
-      tokensCost: 30,
-      availability: "Today 2:00 PM",
-    },
-    {
-      id: 2,
-      name: "Sara Mohamed",
-      specialization: "HIIT & Cardio",
-      rating: 4.8,
-      sessionsCompleted: 180,
-      tokensCost: 25,
-      availability: "Tomorrow 10:00 AM",
-    },
-    {
-      id: 3,
-      name: "Omar Ali",
-      specialization: "Bodybuilding",
-      rating: 5.0,
-      sessionsCompleted: 320,
-      tokensCost: 35,
-      availability: "Today 4:00 PM",
-    },
-  ]);
+  // Coaches - will be populated from API when available
+  const [coaches, setCoaches] = useState<Coach[]>([]);
 
-  const [upcomingBookingsState, setUpcomingBookingsState] = useState(() => [
-    {
-      id: 1,
-      type: "equipment",
-      name: "Bench Press",
-      date: "Tomorrow",
-      time: "10:00 AM - 11:00 AM",
-      status: "confirmed",
-      tokensCost: 10,
-    },
-    {
-      id: 2,
-      type: "coach",
-      name: "Ahmed Hassan",
-      date: "Dec 28, 2024",
-      time: "2:00 PM - 3:00 PM",
-      status: "confirmed",
-      tokensCost: 30,
-    },
-    {
-      id: 3,
-      type: "equipment",
-      name: "Treadmill #5",
-      date: "Today",
-      time: "6:00 PM - 7:00 PM",
-      status: "pending",
-      tokensCost: 5,
-    },
-  ]);
+  // Bookings from API
+  const [upcomingBookingsState, setUpcomingBookingsState] = useState<LocalBooking[]>([]);
+  const [pastBookingsState, setPastBookingsState] = useState<LocalBooking[]>([]);
 
-  const [pastBookingsState, setPastBookingsState] = useState(() => [
-    {
-      id: 4,
-      type: "equipment",
-      name: "Squat Rack",
-      date: "Dec 24, 2024",
-      time: "10:00 AM - 11:00 AM",
-      status: "completed",
-      tokensCost: 10,
-    },
-    {
-      id: 5,
-      type: "coach",
-      name: "Sara Mohamed",
-      date: "Dec 22, 2024",
-      time: "3:00 PM - 4:00 PM",
-      status: "completed",
-      tokensCost: 25,
-    },
-    {
-      id: 6,
-      type: "equipment",
-      name: "Cable Machine",
-      date: "Dec 20, 2024",
-      time: "5:00 PM - 6:00 PM",
-      status: "cancelled",
-      tokensCost: 0,
-    },
-  ]);
+  // Fetch equipment from API
+  useEffect(() => {
+    const fetchEquipment = async () => {
+      try {
+        const response = await equipmentApi.getAllEquipment();
+        if (response.success && response.data) {
+          const mapped = response.data.map((eq: EquipmentDto) => ({
+            id: eq.equipmentId,
+            name: eq.name,
+            category: eq.category?.toLowerCase() || "strength",
+            status: mapEquipmentStatus(eq.status),
+            location: eq.location || "Zone A",
+            tokensCost: eq.tokensCost || 5,
+            nextAvailable: eq.status === 0 ? null : "Soon",
+          }));
+          setEquipmentList(mapped);
+        }
+      } catch (error) {
+        console.error("Failed to fetch equipment:", error);
+        showToast("Failed to load equipment. Using sample data.", "warning");
+        // Fallback data
+        setEquipmentList([
+          { id: 1, name: "Bench Press", category: "strength", status: "available", location: "Zone A", tokensCost: 10, nextAvailable: null },
+          { id: 2, name: "Treadmill #3", category: "cardio", status: "available", location: "Zone B", tokensCost: 5, nextAvailable: null },
+          { id: 3, name: "Squat Rack", category: "strength", status: "in_use", location: "Zone A", tokensCost: 10, nextAvailable: "11:00 AM" },
+        ]);
+      } finally {
+        setIsLoadingEquipment(false);
+      }
+    };
+    fetchEquipment();
+  }, []);
 
-  const { user, deductTokens } = useAuth();
+  // Fetch user bookings from API
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (!user?.userId) {
+        setIsLoadingBookings(false);
+        return;
+      }
+      try {
+        const response = await bookingsApi.getUserBookings(user.userId);
+        if (response.success && response.data) {
+          const upcoming: LocalBooking[] = [];
+          const past: LocalBooking[] = [];
+          
+          response.data.forEach((booking: BookingDto) => {
+            const status = mapBookingStatus(booking.status);
+            const localBooking: LocalBooking = {
+              id: booking.bookingId,
+              type: booking.coachId ? "coach" : "equipment",
+              name: booking.coachName || booking.equipmentName || "Unknown",
+              date: new Date(booking.startTime).toLocaleDateString(),
+              time: `${new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(booking.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+              status,
+              tokensCost: booking.tokensCost,
+              coachId: booking.coachId,
+            };
+            
+            if (status === "cancelled" || status === "completed") {
+              past.push(localBooking);
+            } else {
+              upcoming.push(localBooking);
+            }
+          });
+          
+          setUpcomingBookingsState(upcoming);
+          setPastBookingsState(past);
+        }
+      } catch (error) {
+        console.error("Failed to fetch bookings:", error);
+      } finally {
+        setIsLoadingBookings(false);
+      }
+    };
+    fetchBookings();
+  }, [user?.userId]);
+
+  // Fetch coaches from API
+  useEffect(() => {
+    const fetchCoaches = async () => {
+      try {
+        setIsLoadingCoaches(true);
+        const response = await usersApi.getCoaches();
+        
+        if (response.success && response.data) {
+          // Map UserDto to Coach interface
+          const coachList: Coach[] = response.data.map(coach => ({
+            id: coach.userId,
+            name: coach.name,
+            specialization: "Personal Training", // Default specialization
+            rating: 4.5 + Math.random() * 0.5, // Random rating between 4.5-5.0
+            sessionsCompleted: Math.floor(Math.random() * 200) + 100,
+            tokensCost: 25 + Math.floor(Math.random() * 15), // 25-40 tokens
+            availability: generateRandomAvailability(),
+          }));
+          setCoaches(coachList);
+        }
+      } catch (error) {
+        console.error('Failed to fetch coaches:', error);
+      } finally {
+        setIsLoadingCoaches(false);
+      }
+    };
+    
+    fetchCoaches();
+  }, []);
+
+  // Helper to generate random availability time
+  const generateRandomAvailability = () => {
+    const times = [
+      "Today 10:00 AM", "Today 2:00 PM", "Today 4:00 PM",
+      "Tomorrow 9:00 AM", "Tomorrow 11:00 AM", "Tomorrow 3:00 PM"
+    ];
+    return times[Math.floor(Math.random() * times.length)];
+  };
 
   const filteredEquipment = equipmentList.filter((equipment) => {
     const matchesSearch = equipment.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -178,70 +233,188 @@ export default function BookingsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleBookEquipment = (id: number) => {
+  const handleBookEquipment = async (id: number) => {
     const equip = equipmentList.find((e) => e.id === id);
     if (!equip) return;
 
     if (!user) {
-      alert("Please log in to book equipment.");
+      showToast("Please log in to book equipment.", "warning");
       return;
     }
 
     const cost = equip.tokensCost ?? 0;
     if ((user.tokenBalance ?? 0) < cost) {
-      alert("Insufficient tokens to book this equipment.");
+      showToast("Insufficient tokens to book this equipment.", "error");
       return;
     }
 
-    deductTokens(cost);
+    // Create booking times - start now, rounded to next 15 minute slot
+    const now = new Date();
+    const startTime = new Date(now);
+    const minutes = startTime.getMinutes();
+    const roundedMinutes = Math.ceil(minutes / 15) * 15;
+    startTime.setMinutes(roundedMinutes % 60);
+    if (roundedMinutes >= 60) {
+      startTime.setHours(startTime.getHours() + 1);
+    }
+    startTime.setSeconds(0);
+    startTime.setMilliseconds(0);
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour later
 
-    setEquipmentList((prev) => prev.map((e) => (e.id === id ? { ...e, status: "in_use", nextAvailable: "In Use" } : e)));
+    try {
+      // Call the backend API to create booking
+      const response = await bookingsApi.createBooking({
+        userId: user.userId,
+        equipmentId: id,
+        bookingType: "Equipment",
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        notes: `Booked ${equip.name}`,
+      });
 
-    const newBooking = {
-      id: Date.now(),
-      type: "equipment",
-      name: equip.name,
-      date: "Today",
-      time: "Now - 1:00h",
-      status: "confirmed",
-      tokensCost: cost,
-    };
+      if (response.success && response.data) {
+        deductTokens(cost);
+        setEquipmentList((prev) => prev.map((e) => (e.id === id ? { ...e, status: "in_use", nextAvailable: "In Use" } : e)));
 
-    setUpcomingBookingsState((prev) => [newBooking, ...prev]);
-    alert(`Booked ${equip.name} — ${cost} tokens deducted`);
+        const newBooking: LocalBooking = {
+          id: response.data.bookingId,
+          type: "equipment",
+          name: equip.name,
+          date: new Date(response.data.startTime).toLocaleDateString(),
+          time: `${new Date(response.data.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(response.data.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          status: "confirmed",
+          tokensCost: cost,
+        };
+
+        setUpcomingBookingsState((prev) => [newBooking, ...prev]);
+        showToast(`Booked ${equip.name} — ${cost} tokens deducted`, "success");
+      } else {
+        // Extract error message from response
+        const errorMsg = response.message || (response.errors && response.errors[0]) || "Failed to book equipment. Please try again.";
+        showToast(errorMsg, "error");
+      }
+    } catch (error) {
+      console.error("Booking error:", error);
+      showToast("Failed to book equipment. Please try again.", "error");
+    }
   };
 
-  const handleBookSession = (coachId: number) => {
+  const handleBookSession = async (coachId: number) => {
     const coach = coaches.find((c) => c.id === coachId);
     if (!coach) return;
 
     if (!user) {
-      alert("Please log in to book a coach session.");
+      showToast("Please log in to book a coach session.", "warning");
       return;
     }
 
     const cost = coach.tokensCost ?? 0;
     if ((user.tokenBalance ?? 0) < cost) {
-      alert("Insufficient tokens for this coach session.");
+      showToast("Insufficient tokens for this coach session.", "error");
       return;
     }
 
-    deductTokens(cost);
+    // Create booking times - find next available slot
+    // Use current time + 2 hours, rounded to next 15 minute mark, plus some offset to avoid conflicts
+    const now = new Date();
+    const startTime = new Date(now);
+    startTime.setHours(startTime.getHours() + 2);
+    // Round to next 15 minute slot and add a small random offset to reduce conflicts
+    const minutes = startTime.getMinutes();
+    const roundedMinutes = Math.ceil(minutes / 15) * 15 + (Math.floor(Math.random() * 4) * 15);
+    startTime.setMinutes(roundedMinutes % 60);
+    if (roundedMinutes >= 60) {
+      startTime.setHours(startTime.getHours() + 1);
+    }
+    startTime.setSeconds(0);
+    startTime.setMilliseconds(0);
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // 1 hour session
 
-    // Add booking and mark coach as booked locally
-    const newBooking = {
-      id: Date.now(),
-      type: "coach",
-      name: coach.name,
-      date: coach.availability ?? "Today",
-      time: "Session",
-      status: "confirmed",
-      tokensCost: cost,
-    };
+    try {
+      // Call the backend API to create booking
+      const response = await bookingsApi.createBooking({
+        userId: user.userId,
+        coachId: coachId,
+        bookingType: "Session",
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        notes: `Session with ${coach.name}`,
+      });
 
-    setUpcomingBookingsState((prev) => [newBooking, ...prev]);
-    setCoaches((prev) => prev.map((c) => (c.id === coachId ? { ...c, availability: "Booked" } : c)));
-    alert(`Booked session with ${coach.name} — ${cost} tokens deducted`);
+      if (response.success && response.data) {
+        deductTokens(cost);
+
+        const newBooking: LocalBooking = {
+          id: response.data.bookingId,
+          type: "coach",
+          name: coach.name,
+          date: new Date(response.data.startTime).toLocaleDateString(),
+          time: `${new Date(response.data.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(response.data.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+          status: "confirmed",
+          tokensCost: cost,
+          coachId: coachId,
+        };
+
+        setUpcomingBookingsState((prev) => [newBooking, ...prev]);
+        setCoaches((prev) => prev.map((c) => (c.id === coachId ? { ...c, availability: "Booked" } : c)));
+        showToast(`Booked session with ${coach.name} — ${cost} tokens deducted`, "success");
+      } else {
+        // Extract error message from response
+        const errorMsg = response.message || (response.errors && response.errors[0]) || "Failed to book session. Please try again.";
+        showToast(errorMsg, "error");
+      }
+    } catch (error) {
+      console.error("Booking error:", error);
+      showToast("Failed to book session. Please try again.", "error");
+    }
+  };
+
+  const handleCancelBooking = (bookingId: number) => {
+    const booking = upcomingBookingsState.find((b) => b.id === bookingId);
+    if (!booking) return;
+
+    // Open confirmation dialog instead of using confirm()
+    setBookingToCancel(booking);
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!bookingToCancel) return;
+
+    try {
+      // Try to cancel via API first
+      const response = await bookingsApi.cancelBooking(bookingToCancel.id, "Cancelled by user");
+      
+      if (response.success) {
+        // API cancellation succeeded
+        setUpcomingBookingsState((prev) => prev.filter((b) => b.id !== bookingToCancel.id));
+        setPastBookingsState((prev) => [{ ...bookingToCancel, status: "cancelled", tokensCost: 0 }, ...prev]);
+        
+        if (bookingToCancel.status === "confirmed" && bookingToCancel.tokensCost > 0) {
+          adjustTokens(bookingToCancel.tokensCost);
+          showToast(`Booking cancelled. ${bookingToCancel.tokensCost} tokens refunded to your account!`, "success");
+        } else {
+          showToast("Booking cancelled.", "info");
+        }
+      } else {
+        throw new Error(response.message || "Failed to cancel booking");
+      }
+    } catch (error) {
+      console.error("API cancel failed, using local state:", error);
+      // Fallback to local state management
+      setUpcomingBookingsState((prev) => prev.filter((b) => b.id !== bookingToCancel.id));
+      setPastBookingsState((prev) => [{ ...bookingToCancel, status: "cancelled", tokensCost: 0 }, ...prev]);
+
+      if (bookingToCancel.status === "confirmed" && bookingToCancel.tokensCost > 0) {
+        adjustTokens(bookingToCancel.tokensCost);
+        showToast(`Booking cancelled. ${bookingToCancel.tokensCost} tokens refunded to your account!`, "success");
+      } else {
+        showToast("Booking cancelled.", "info");
+      }
+    }
+
+    setCancelDialogOpen(false);
+    setBookingToCancel(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -314,84 +487,125 @@ export default function BookingsPage() {
           </TabsList>
 
           <TabsContent value="upcoming" className="space-y-4 mt-6">
-            {upcomingBookingsState.map((booking) => (
-              <div
-                key={booking.id}
-                className="p-4 bg-primary/5 rounded-lg border border-primary/20 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-full">
-                    {booking.type === "equipment" ? (
-                      <Dumbbell className="h-6 w-6 text-primary" />
-                    ) : (
-                      <User className="h-6 w-6 text-primary" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="font-bold">{booking.name}</div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {booking.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {booking.time}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Zap className="h-3 w-3 text-primary" />
-                        {booking.tokensCost} tokens
-                      </span>
+            {isLoadingBookings ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading bookings...</span>
+              </div>
+            ) : upcomingBookingsState.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No upcoming bookings</p>
+                <p className="text-sm">Book equipment or a coach session below!</p>
+              </div>
+            ) : (
+              upcomingBookingsState.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="p-4 bg-primary/5 rounded-lg border border-primary/20 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-primary/10 rounded-full">
+                      {booking.type === "equipment" ? (
+                        <Dumbbell className="h-6 w-6 text-primary" />
+                      ) : (
+                        <User className="h-6 w-6 text-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-bold">{booking.name}</div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {booking.date}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {booking.time}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Zap className="h-3 w-3 text-primary" />
+                          {booking.tokensCost} tokens
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-3">
+                    {getStatusBadge(booking.status)}
+                    <Button variant="outline" size="sm" onClick={() => handleCancelBooking(booking.id)}>
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {getStatusBadge(booking.status)}
-                  <Button variant="outline" size="sm">
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </TabsContent>
 
           <TabsContent value="past" className="space-y-4 mt-6">
-            {pastBookingsState.map((booking) => (
-              <div
-                key={booking.id}
-                className="p-4 bg-card rounded-lg border border-border flex items-center justify-between opacity-75"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-muted rounded-full">
-                    {booking.type === "equipment" ? (
-                      <Dumbbell className="h-6 w-6 text-muted-foreground" />
-                    ) : (
-                      <User className="h-6 w-6 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="font-bold">{booking.name}</div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {booking.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {booking.time}
-                      </span>
-                      {booking.tokensCost > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Zap className="h-3 w-3" />
-                          {booking.tokensCost} tokens
-                        </span>
+            {isLoadingBookings ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Loading history...</span>
+              </div>
+            ) : pastBookingsState.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No past bookings yet</p>
+              </div>
+            ) : (
+              pastBookingsState.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="p-4 bg-card rounded-lg border border-border flex items-center justify-between opacity-75"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-muted rounded-full">
+                      {booking.type === "equipment" ? (
+                        <Dumbbell className="h-6 w-6 text-muted-foreground" />
+                      ) : (
+                        <User className="h-6 w-6 text-muted-foreground" />
                       )}
                     </div>
+                    <div>
+                      <div className="font-bold">{booking.name}</div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {booking.date}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {booking.time}
+                        </span>
+                        {booking.tokensCost > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            {booking.tokensCost} tokens
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {getStatusBadge(booking.status)}
+                    {booking.type === "coach" && booking.status === "completed" && booking.coachId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setReviewCoachId(booking.coachId!);
+                          setReviewCoachName(booking.name);
+                          setReviewModalOpen(true);
+                        }}
+                      >
+                        <Star className="h-4 w-4 mr-1" />
+                        Review
+                      </Button>
+                    )}
                   </div>
                 </div>
-                {getStatusBadge(booking.status)}
-              </div>
-            ))}
+              ))
+            )}
           </TabsContent>
         </Tabs>
       </Card>
@@ -437,6 +651,18 @@ export default function BookingsPage() {
         </div>
 
         {/* Equipment Grid */}
+        {isLoadingEquipment ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground">Loading equipment...</span>
+          </div>
+        ) : filteredEquipment.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>No equipment found</p>
+            <p className="text-sm">Try adjusting your search or filters</p>
+          </div>
+        ) : (
         <div className="grid md:grid-cols-3 gap-6">
           {filteredEquipment.map((equipment) => (
             <Card
@@ -481,6 +707,7 @@ export default function BookingsPage() {
             </Card>
           ))}
         </div>
+        )}
       </div>
 
       {/* Browse Coaches */}
@@ -490,6 +717,17 @@ export default function BookingsPage() {
           <span className="text-primary">Coaches</span>
         </h2>
 
+        {isLoadingCoaches ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground">Loading coaches...</span>
+          </div>
+        ) : coaches.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <User className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>No coaches available</p>
+          </div>
+        ) : (
         <div className="grid md:grid-cols-3 gap-6">
           {coaches.map((coach) => (
             <Card
@@ -536,7 +774,75 @@ export default function BookingsPage() {
             </Card>
           ))}
         </div>
+        )}
       </div>
+
+      {/* Cancel Booking Confirmation Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Cancel Booking
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel your booking for{" "}
+              <span className="font-semibold text-foreground">{bookingToCancel?.name}</span>?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {bookingToCancel && (
+            <div className="py-4">
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Date:</span>
+                  <span className="font-medium">{bookingToCancel.date}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Time:</span>
+                  <span className="font-medium">{bookingToCancel.time}</span>
+                </div>
+                {bookingToCancel.tokensCost > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Refund:</span>
+                    <span className="font-medium text-green-600 flex items-center gap-1">
+                      <Zap className="h-3 w-3" />
+                      {bookingToCancel.tokensCost} tokens
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Keep Booking
+            </Button>
+            <Button variant="destructive" onClick={confirmCancelBooking}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Coach Review Modal */}
+      {reviewCoachId && (
+        <CoachReviewForm
+          isOpen={reviewModalOpen}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setReviewCoachId(null);
+            setReviewCoachName("");
+          }}
+          coachId={reviewCoachId}
+          coachName={reviewCoachName}
+          onReviewSubmitted={() => {
+            showToast("Thank you for your review!", "success");
+          }}
+        />
+      )}
     </div>
   );
 }

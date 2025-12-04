@@ -42,6 +42,17 @@ namespace Presentation.Controllers
 
         #endregion
 
+        #region Get Coaches List
+
+        [HttpGet("coaches")]
+        public async Task<ActionResult<IEnumerable<UserDto>>> GetCoaches()
+        {
+            var coaches = await _serviceManager.UserService.GetCoachesListAsync();
+            return Ok(coaches);
+        }
+
+        #endregion
+
         #region Deactivate User
 
         [HttpDelete("{id}")]

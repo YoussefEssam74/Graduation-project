@@ -15,8 +15,19 @@ namespace Presentation.Controllers
         [HttpPost]
         public async Task<ActionResult<BookingDto>> CreateBooking([FromBody] CreateBookingDto createDto)
         {
-            var booking = await _serviceManager.BookingService.CreateBookingAsync(createDto);
-            return Ok(booking);
+            try
+            {
+                var booking = await _serviceManager.BookingService.CreateBookingAsync(createDto);
+                return Ok(booking);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
+            }
         }
 
         #endregion
@@ -32,6 +43,39 @@ namespace Presentation.Controllers
 
         #endregion
 
+        #region Get All Bookings (for Receptionist)
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<BookingDto>>> GetAllBookings()
+        {
+            var bookings = await _serviceManager.BookingService.GetAllBookingsAsync();
+            return Ok(bookings);
+        }
+
+        #endregion
+
+        #region Get Bookings by Status
+
+        [HttpGet("status/{status}")]
+        public async Task<ActionResult<IEnumerable<BookingDto>>> GetBookingsByStatus(string status)
+        {
+            var bookings = await _serviceManager.BookingService.GetBookingsByStatusAsync(status);
+            return Ok(bookings);
+        }
+
+        #endregion
+
+        #region Get Todays Bookings
+
+        [HttpGet("today")]
+        public async Task<ActionResult<IEnumerable<BookingDto>>> GetTodaysBookings()
+        {
+            var bookings = await _serviceManager.BookingService.GetTodaysBookingsAsync();
+            return Ok(bookings);
+        }
+
+        #endregion
+
         #region Get User Bookings
 
         [HttpGet("user/{userId}")]
@@ -39,6 +83,33 @@ namespace Presentation.Controllers
         {
             var bookings = await _serviceManager.BookingService.GetUserBookingsAsync(userId);
             return Ok(bookings);
+        }
+
+        #endregion
+
+        #region Get Coach Bookings
+
+        [HttpGet("coach/{coachId}")]
+        public async Task<ActionResult<IEnumerable<BookingDto>>> GetCoachBookings(
+            int coachId,
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate)
+        {
+            var start = startDate ?? DateTime.UtcNow.Date;
+            var end = endDate ?? DateTime.UtcNow.Date.AddDays(30);
+            var bookings = await _serviceManager.BookingService.GetCoachBookingsAsync(coachId, start, end);
+            return Ok(bookings);
+        }
+
+        #endregion
+
+        #region Confirm Booking
+
+        [HttpPut("{id}/confirm")]
+        public async Task<ActionResult<BookingDto>> ConfirmBooking(int id)
+        {
+            var booking = await _serviceManager.BookingService.ConfirmBookingAsync(id);
+            return Ok(booking);
         }
 
         #endregion

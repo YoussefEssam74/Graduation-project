@@ -4,6 +4,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SignalRProvider } from "@/contexts/SignalRContext";
+import { ToastProvider } from "@/components/ui/toast";
+import { NotificationListener } from "@/components/Notifications/NotificationListener";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -34,6 +37,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
+      <NotificationListener />
 
       {/* GRID BACKGROUND */}
       <div className="fixed inset-0 -z-1">
@@ -56,7 +60,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <LayoutContent>{children}</LayoutContent>
+          <SignalRProvider>
+            <ToastProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </ToastProvider>
+          </SignalRProvider>
         </AuthProvider>
       </body>
     </html>

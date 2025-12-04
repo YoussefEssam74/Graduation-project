@@ -10,5 +10,6 @@ namespace ServiceAbstraction.Services
         Task<bool> DeactivateUserAsync(int userId);
         Task<int> GetTokenBalanceAsync(int userId);
         Task UpdateTokenBalanceAsync(int userId, int amount);
+        Task<IEnumerable<UserDto>> GetCoachesListAsync();
     }
 }

@@ -78,8 +78,8 @@ export async function apiFetch<T>(
       });
       return {
         success: false,
-        message: data?.message || 'An error occurred',
-        errors: data?.errors || [response.statusText],
+        message: data?.error || data?.message || data?.title || 'An error occurred',
+        errors: data?.errors || [data?.error || response.statusText],
       };
     }
 

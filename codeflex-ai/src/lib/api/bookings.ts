@@ -26,6 +26,8 @@ export interface BookingDto {
   tokensCost: number;
   notes?: string;
   createdAt: string;
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 export const bookingsApi = {
@@ -47,10 +49,51 @@ export const bookingsApi = {
   },
 
   /**
+   * Get all bookings (for receptionist)
+   */
+  async getAllBookings(): Promise<ApiResponse<BookingDto[]>> {
+    return apiFetch<BookingDto[]>('/bookings');
+  },
+
+  /**
+   * Get bookings by status
+   */
+  async getBookingsByStatus(status: string): Promise<ApiResponse<BookingDto[]>> {
+    return apiFetch<BookingDto[]>(`/bookings/status/${status}`);
+  },
+
+  /**
+   * Get today's bookings
+   */
+  async getTodaysBookings(): Promise<ApiResponse<BookingDto[]>> {
+    return apiFetch<BookingDto[]>('/bookings/today');
+  },
+
+  /**
    * Get all bookings for a user
    */
   async getUserBookings(userId: number): Promise<ApiResponse<BookingDto[]>> {
     return apiFetch<BookingDto[]>(`/bookings/user/${userId}`);
+  },
+
+  /**
+   * Get all bookings for a coach
+   */
+  async getCoachBookings(coachId: number, startDate?: string, endDate?: string): Promise<ApiResponse<BookingDto[]>> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const queryString = params.toString();
+    return apiFetch<BookingDto[]>(`/bookings/coach/${coachId}${queryString ? `?${queryString}` : ''}`);
+  },
+
+  /**
+   * Confirm a booking
+   */
+  async confirmBooking(id: number): Promise<ApiResponse<BookingDto>> {
+    return apiFetch<BookingDto>(`/bookings/${id}/confirm`, {
+      method: 'PUT',
+    });
   },
 
   /**
