@@ -205,12 +205,18 @@ function DashboardContent() {
   ];
 
   // Helper function to get status badge
-  const getStatusBadge = (status: number) => {
+  // Backend enum: Pending=0, Confirmed=1, Cancelled=2, Completed=3, NoShow=4
+  const getStatusBadge = (status: number, checkInTime?: string, checkOutTime?: string) => {
+    // If checked in but not checked out, show "In Progress"
+    if (status === 1 && checkInTime && !checkOutTime) {
+      return { text: "In Progress", color: "text-blue-600", bg: "bg-blue-100" };
+    }
     switch (status) {
       case 0: return { text: "Pending", color: "text-orange-600", bg: "bg-orange-100" };
       case 1: return { text: "Confirmed", color: "text-green-600", bg: "bg-green-100" };
-      case 2: return { text: "Completed", color: "text-blue-600", bg: "bg-blue-100" };
-      case 3: return { text: "Cancelled", color: "text-red-600", bg: "bg-red-100" };
+      case 2: return { text: "Cancelled", color: "text-red-600", bg: "bg-red-100" };
+      case 3: return { text: "Completed", color: "text-purple-600", bg: "bg-purple-100" };
+      case 4: return { text: "No Show", color: "text-gray-600", bg: "bg-gray-100" };
       default: return { text: "Unknown", color: "text-gray-600", bg: "bg-gray-100" };
     }
   };
@@ -468,8 +474,9 @@ function DashboardContent() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
           {recentBookings.length > 0 ? (
             recentBookings.map((booking) => {
-              const statusBadge = getStatusBadge(booking.status);
-              const canCancel = booking.status === 0 || booking.status === 1; // Pending or Confirmed
+              const statusBadge = getStatusBadge(booking.status, booking.checkInTime, booking.checkOutTime);
+              const isInProgress = booking.status === 1 && booking.checkInTime && !booking.checkOutTime;
+              const canCancel = (booking.status === 0 || booking.status === 1) && !isInProgress; // Pending or Confirmed (but not in progress)
               return (
                 <div
                   key={booking.bookingId}

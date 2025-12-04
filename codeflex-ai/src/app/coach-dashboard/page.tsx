@@ -90,18 +90,64 @@ function CoachDashboardContent() {
 
   const handleStartSession = async (booking: BookingDto) => {
     try {
-      await bookingsApi.checkIn(booking.bookingId);
-      showToast(`Started session with ${booking.userName}`, "success");
-      // Refresh bookings
-      if (user?.userId) {
-        const response = await bookingsApi.getCoachBookings(user.userId);
-        if (response.success && response.data) {
-          setBookings(response.data);
+      const response = await bookingsApi.checkIn(booking.bookingId);
+      if (response.success) {
+        showToast(`Session with ${booking.userName} started!`, "success");
+        // Refresh bookings
+        if (user?.userId) {
+          const updated = await bookingsApi.getCoachBookings(user.userId);
+          if (updated.success && updated.data) {
+            setBookings(updated.data);
+          }
         }
+      } else {
+        showToast("Failed to start session", "error");
       }
     } catch (error) {
       console.error('Failed to start session:', error);
       showToast("Failed to start session", "error");
+    }
+  };
+
+  const handleCompleteSession = async (booking: BookingDto) => {
+    try {
+      const response = await bookingsApi.checkOut(booking.bookingId);
+      if (response.success) {
+        showToast(`Session with ${booking.userName} completed!`, "success");
+        // Refresh bookings
+        if (user?.userId) {
+          const updated = await bookingsApi.getCoachBookings(user.userId);
+          if (updated.success && updated.data) {
+            setBookings(updated.data);
+          }
+        }
+      } else {
+        showToast("Failed to complete session", "error");
+      }
+    } catch (error) {
+      console.error('Failed to complete session:', error);
+      showToast("Failed to complete session", "error");
+    }
+  };
+
+  const handleCancelBooking = async (booking: BookingDto) => {
+    if (!confirm(`Cancel session with ${booking.userName}?`)) return;
+    
+    try {
+      const response = await bookingsApi.cancelBooking(booking.bookingId, 'Cancelled by coach');
+      if (response.success) {
+        showToast(`Session with ${booking.userName} cancelled`, "success");
+        // Refresh bookings
+        if (user?.userId) {
+          const updated = await bookingsApi.getCoachBookings(user.userId);
+          if (updated.success && updated.data) {
+            setBookings(updated.data);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to cancel session:', error);
+      showToast("Failed to cancel session", "error");
     }
   };
 
@@ -216,11 +262,16 @@ function CoachDashboardContent() {
                         <span>{formatDuration(booking.startTime, booking.endTime)}</span>
                         <span>•</span>
                         <span className={`px-2 py-0.5 text-xs rounded-full ${
-                          booking.statusText === 'Confirmed' ? 'bg-green-100 text-green-700' :
+                          booking.checkOutTime ? 'bg-blue-100 text-blue-700' :
+                          booking.checkInTime ? 'bg-green-100 text-green-700' :
+                          booking.statusText === 'Confirmed' ? 'bg-emerald-100 text-emerald-700' :
                           booking.statusText === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                          booking.statusText === 'Cancelled' ? 'bg-red-100 text-red-700' :
                           'bg-gray-100 text-gray-700'
                         }`}>
-                          {booking.statusText}
+                          {booking.checkOutTime ? 'Completed' :
+                           booking.checkInTime ? 'In Progress' :
+                           booking.statusText}
                         </span>
                       </div>
                     </div>
@@ -233,21 +284,49 @@ function CoachDashboardContent() {
                             setChatMemberId(booking.userId);
                             setChatMemberName(booking.userName);
                           }}
+                          title="Send Message"
                         >
                           <MessageSquare className="h-4 w-4" />
                         </Button>
                       )}
-                      {!booking.checkInTime && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleStartSession(booking)}
-                        >
-                          Start Session
-                        </Button>
+                      {!booking.checkInTime && booking.statusText !== 'Cancelled' && (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleStartSession(booking)}
+                          >
+                            Start Session
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleCancelBooking(booking)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Cancel
+                          </Button>
+                        </>
                       )}
                       {booking.checkInTime && !booking.checkOutTime && (
-                        <span className="text-sm text-green-600 font-medium">In Progress</span>
+                        <Button 
+                          size="sm" 
+                          variant="default"
+                          onClick={() => handleCompleteSession(booking)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Complete Session
+                        </Button>
+                      )}
+                      {booking.checkOutTime && (
+                        <span className="text-sm text-blue-600 font-medium flex items-center gap-1">
+                          <CheckCircle className="h-4 w-4" />
+                          Completed
+                        </span>
+                      )}
+                      {booking.statusText === 'Cancelled' && (
+                        <span className="text-sm text-red-600 font-medium">Cancelled</span>
                       )}
                     </div>
                   </div>

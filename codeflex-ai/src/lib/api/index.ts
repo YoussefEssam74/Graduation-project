@@ -16,3 +16,4 @@ export * from './notifications';
 export * from './activityFeed';
 export * from './milestones';
 export * from './coachReviews';
+export * from './chat';

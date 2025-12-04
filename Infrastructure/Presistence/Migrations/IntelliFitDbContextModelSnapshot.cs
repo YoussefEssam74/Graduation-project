@@ -22,11 +22,11 @@ namespace Presistence.Migrations
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "booking_status", new[] { "pending", "confirmed", "cancelled", "completed", "no_show" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "equipment_status", new[] { "available", "in_use", "under_maintenance", "out_of_service", "reserved" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "gender_type", new[] { "male", "female", "other", "prefer_not_to_say" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "gender_type", new[] { "male", "female" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "notification_type", new[] { "booking_reminder", "maintenance_alert", "payment_due", "workout_complete", "milestone_achieved", "coach_message", "system_alert", "promotional_offer" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "payment_status", new[] { "pending", "completed", "failed", "refunded", "cancelled" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "subscription_status", new[] { "active", "expired", "cancelled", "suspended", "pending_payment" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "transaction_type", new[] { "purchase", "deduction", "refund", "bonus" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "transaction_type", new[] { "purchase", "deduction", "refund", "bonus", "earned" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "user_role", new[] { "member", "coach", "reception", "admin" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
@@ -328,6 +328,61 @@ namespace Presistence.Migrations
                     b.HasIndex("UserId", "StartTime");
 
                     b.ToTable("bookings", (string)null);
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.ChatMessage", b =>
+                {
+                    b.Property<int>("ChatMessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ChatMessageId"));
+
+                    b.Property<string>("ConversationId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsPermanent")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ReceiverId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ChatMessageId");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("ReceiverId");
+
+                    b.HasIndex("ConversationId", "CreatedAt");
+
+                    b.HasIndex("SenderId", "ReceiverId");
+
+                    b.ToTable("chat_messages", (string)null);
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.CoachProfile", b =>
@@ -1909,6 +1964,25 @@ namespace Presistence.Migrations
                     b.Navigation("Equipment");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.ChatMessage", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.User", "Receiver")
+                        .WithMany()
+                        .HasForeignKey("ReceiverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Receiver");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.CoachProfile", b =>

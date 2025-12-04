@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -190,6 +191,16 @@ export default function LoginPage() {
                 <p>📋 Receptionist: receptionist@intellifit.com / password</p>
                 <p>⚙️ Admin: admin@intellifit.com / password</p>
               </div>
+            </div>
+
+            {/* Sign Up Link */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="text-primary hover:underline font-medium">
+                  Sign Up
+                </Link>
+              </p>
             </div>
           </div>
         </div>

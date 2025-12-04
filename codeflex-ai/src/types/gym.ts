@@ -54,6 +54,8 @@ export interface Booking {
   tokensCost: number;
   notes?: string; // Backend includes notes
   createdAt: string; // Backend includes createdAt
+  checkInTime?: string; // When session started
+  checkOutTime?: string; // When session completed
 }
 
 // Equipment Types

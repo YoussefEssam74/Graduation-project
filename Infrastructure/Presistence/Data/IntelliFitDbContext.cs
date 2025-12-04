@@ -62,6 +62,7 @@ namespace IntelliFit.Infrastructure.Persistence
 
         // System
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<CoachReview> CoachReviews { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
@@ -115,6 +116,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<ProgressMilestone>().ToTable("progress_milestones");
             modelBuilder.Entity<UserMilestone>().ToTable("user_milestones");
             modelBuilder.Entity<Notification>().ToTable("notifications");
+            modelBuilder.Entity<ChatMessage>().ToTable("chat_messages");
             modelBuilder.Entity<CoachReview>().ToTable("coach_reviews");
             modelBuilder.Entity<AuditLog>().ToTable("audit_logs");
 
@@ -569,6 +571,33 @@ namespace IntelliFit.Infrastructure.Persistence
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // ChatMessage Configuration
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                entity.HasKey(e => e.ChatMessageId);
+
+                // Indexes for fast querying
+                entity.HasIndex(e => e.ConversationId);
+                entity.HasIndex(e => new { e.SenderId, e.ReceiverId });
+                entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => e.ExpiresAt);
+
+                entity.Property(e => e.Message).IsRequired();
+                entity.Property(e => e.ConversationId).IsRequired().HasMaxLength(50);
+
+                // Sender relationship
+                entity.HasOne(e => e.Sender)
+                    .WithMany()
+                    .HasForeignKey(e => e.SenderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Receiver relationship
+                entity.HasOne(e => e.Receiver)
+                    .WithMany()
+                    .HasForeignKey(e => e.ReceiverId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // CoachReview Configuration
             modelBuilder.Entity<CoachReview>(entity =>
             {
@@ -602,6 +631,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<NutritionPlan>().HasIndex(e => new { e.UserId, e.IsActive });
             modelBuilder.Entity<Booking>().HasIndex(e => new { e.UserId, e.StartTime });
             modelBuilder.Entity<TokenTransaction>().HasIndex(e => new { e.UserId, e.CreatedAt });
+            modelBuilder.Entity<ChatMessage>().HasIndex(e => new { e.ConversationId, e.CreatedAt });
         }
     }
 }

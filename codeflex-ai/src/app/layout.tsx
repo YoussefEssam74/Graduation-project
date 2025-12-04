@@ -6,6 +6,7 @@ import "./globals.css";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SignalRProvider } from "@/contexts/SignalRContext";
 import { ToastProvider } from "@/components/ui/toast";
+import { usePathname } from 'next/navigation';
 import { NotificationListener } from "@/components/Notifications/NotificationListener";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -22,6 +23,7 @@ const geistMono = Geist_Mono({
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isRedirecting } = useAuth();
+  const pathname = usePathname();
 
   if (isRedirecting) {
     return (
@@ -31,6 +33,23 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           <p className="text-muted-foreground">Redirecting to your dashboard...</p>
         </div>
       </div>
+    );
+  }
+
+  // Hide navbar/notifications on auth pages like login/signup
+  const hideNav = pathname && (pathname.startsWith('/login') || pathname.startsWith('/signup'));
+
+  if (hideNav) {
+    return (
+      <>
+        {/* GRID BACKGROUND */}
+        <div className="fixed inset-0 -z-1">
+          <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(var(--cyber-grid-color)_1px,transparent_1px),linear-gradient(90deg,var(--cyber-grid-color)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+        </div>
+
+        <main className="flex-grow">{children}</main>
+      </>
     );
   }
 
@@ -60,11 +79,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AuthProvider>
-          <SignalRProvider>
-            <ToastProvider>
+          <ToastProvider>
+            <SignalRProvider>
               <LayoutContent>{children}</LayoutContent>
-            </ToastProvider>
-          </SignalRProvider>
+            </SignalRProvider>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

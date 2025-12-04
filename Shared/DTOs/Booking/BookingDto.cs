@@ -17,5 +17,7 @@ namespace Shared.DTOs.Booking
         public int TokensCost { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? CheckInTime { get; set; }
+        public DateTime? CheckOutTime { get; set; }
     }
 }

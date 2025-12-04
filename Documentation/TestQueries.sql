@@ -11,29 +11,31 @@ FROM equipment e
 JOIN equipment_categories ec ON e."CategoryId" = ec."CategoryId"
 WHERE e."Status" = 0; -- 0=Available
 
--- 2. Get all active users with their roles
-SELECT "UserId", "Name", "Email", "Role", "CreatedAt"
+-- 2. Get all equipment categories with equipment count
+SELECT ec."CategoryId", ec."CategoryName", ec."Description", COUNT(e."EquipmentId") as equipment_count
+FROM equipment_categories ec
+LEFT JOIN equipment e ON ec."CategoryId" = e."CategoryId"
+GROUP BY ec."CategoryId", ec."CategoryName", ec."Description";
+
+
+-- 3. Get all active users
+SELECT "UserId", "Name", "Email", "CreatedAt"
 FROM users
 WHERE "IsActive" = true
 ORDER BY "CreatedAt" DESC;
 
--- 3. Get all active subscription plans with pricing
+-- 4. Get all active subscription plans with pricing
 SELECT "PlanId", "PlanName", "Price", "DurationDays", "Features"
 FROM subscription_plans
 WHERE "IsActive" = true
 ORDER BY "Price";
 
--- 4. Get all token packages available for purchase
-SELECT "PackageId", "PackageName", "TokenAmount", "Price", "BonusTokens"
+-- 5. Get all token packages available for purchase
+SELECT  "PackageName", "TokenAmount", "Price", "BonusTokens"
 FROM token_packages
 WHERE "IsActive" = true
 ORDER BY "TokenAmount";
 
--- 5. Get all equipment categories with equipment count
-SELECT ec."CategoryId", ec."CategoryName", ec."Description", COUNT(e."EquipmentId") as equipment_count
-FROM equipment_categories ec
-LEFT JOIN equipment e ON ec."CategoryId" = e."CategoryId"
-GROUP BY ec."CategoryId", ec."CategoryName", ec."Description";
 
 -- 6. Get all exercises grouped by difficulty
 SELECT "DifficultyLevel", COUNT(*) as exercise_count
@@ -42,11 +44,10 @@ WHERE "IsActive" = true
 GROUP BY "DifficultyLevel"
 ORDER BY exercise_count DESC;
 
--- 7. Get all active nutrition plans with coach info
+-- 7. Get all active nutrition plans with coach info (TPT fixed)
 SELECT np."PlanId", np."PlanName", u."Name" as coach_name, np."CreatedAt"
 FROM nutrition_plans np
-JOIN coach_profiles cp ON np."GeneratedByCoachId" = cp."CoachId"
-JOIN users u ON cp."UserId" = u."UserId"
+LEFT JOIN users u ON np."GeneratedByCoachId" = u."UserId"
 WHERE np."IsActive" = true
 ORDER BY np."CreatedAt" DESC;
 
@@ -57,11 +58,10 @@ FROM ingredients
 WHERE "IsActive" = true
 ORDER BY "Name";
 
--- 9. Get all workout templates created by coaches
+-- 9. Get all workout templates created by coaches (TPT fixed)
 SELECT wt."TemplateId", wt."TemplateName", wt."Description", u."Name" as coach_name
 FROM workout_templates wt
-JOIN coach_profiles cp ON wt."CreatedByCoachId" = cp."CoachId"
-JOIN users u ON cp."UserId" = u."UserId"
+LEFT JOIN users u ON wt."CreatedByCoachId" = u."UserId"
 ORDER BY wt."CreatedAt" DESC;
 
 -- 10. Get all active notifications for users
@@ -74,44 +74,47 @@ ORDER BY n."CreatedAt" DESC;
 -- SECTION 2: MEMBER & PROFILE QUERIES (8 queries)
 -- ==========================================
 
--- 11. Get member profiles with latest InBody measurements
-SELECT mp."MemberId", u."Name" as member_name,
-       mp."FitnessGoal", mp."CurrentWeight", mp."Height",
+-- 11. Get member profiles with latest InBody measurements (TPT fixed)
+SELECT u."UserId", u."Name" as member_name,
+       m."FitnessGoal", m."CurrentWeight", m."Height",
        ibm."Weight", ibm."BodyFatPercentage", ibm."MeasurementDate"
-FROM member_profiles mp
-JOIN users u ON mp."UserId" = u."UserId"
+FROM users u
+INNER JOIN members m ON u."UserId" = m."UserId"
 LEFT JOIN LATERAL (
     SELECT * FROM inbody_measurements
-    WHERE "UserId" = mp."UserId"
+    WHERE "UserId" = m."UserId"
     ORDER BY "MeasurementDate" DESC
     LIMIT 1
 ) ibm ON true
 ORDER BY u."Name";
 
--- 12. Get members with their current token balance
+-- 12. Get members with their current token balance (TPT fixed)
 SELECT u."UserId", u."Name", u."TokenBalance"
 FROM users u
-WHERE u."Role" = 0 -- 0=Member
+INNER JOIN members m ON u."UserId" = m."UserId"
 ORDER BY u."TokenBalance" DESC;
 
--- 13. Get coach profiles with their specializations and ratings
-SELECT cp."CoachId", u."Name" as coach_name,
-       cp."Specialization", cp."ExperienceYears", cp."Rating", cp."TotalReviews"
-FROM coach_profiles cp
-JOIN users u ON cp."UserId" = u."UserId"
-WHERE cp."IsAvailable" = true
-ORDER BY cp."Rating" DESC;
+-- 13. Get coach profiles with their specializations and ratings (TPT fixed)
+SELECT u."UserId", u."Name" as coach_name,
+       c."Specialization", c."ExperienceYears", c."Rating", c."TotalReviews"
+FROM users u
+INNER JOIN coaches c ON u."UserId" = c."UserId"
+WHERE c."IsAvailable" = true
+ORDER BY c."Rating" DESC;
 
--- 14. Get members by fitness goal distribution
-SELECT mp."FitnessGoal", COUNT(*) as member_count
-FROM member_profiles mp
-GROUP BY mp."FitnessGoal"
+-- 14. Get members by fitness goal distribution (TPT fixed)
+SELECT m."FitnessGoal", COUNT(*) as member_count
+FROM members m
+INNER JOIN users u ON m."UserId" = u."UserId"
+WHERE u."IsActive" = true
+GROUP BY m."FitnessGoal"
 ORDER BY member_count DESC;
 
--- 15. Get members who joined in the last 30 days
+-- 15. Get members who joined in the last 30 days (TPT fixed)
 SELECT u."UserId", u."Name", u."Email", u."CreatedAt"
 FROM users u
-WHERE u."Role" = 0 AND u."CreatedAt" >= CURRENT_DATE - INTERVAL '30 days'
+INNER JOIN members m ON u."UserId" = m."UserId"
+WHERE u."CreatedAt" >= CURRENT_DATE - INTERVAL '30 days'
 ORDER BY u."CreatedAt" DESC;
 
 -- 16. Get all InBody measurements for a specific member with trends
@@ -144,14 +147,13 @@ ORDER BY us."EndDate";
 -- SECTION 3: WORKOUT & EXERCISE QUERIES (10 queries)
 -- ==========================================
 
--- 19. Get all workout plans assigned to members with their status
+-- 19. Get all workout plans assigned to members with their status (TPT fixed)
 SELECT wp."PlanId", u."Name" as member_name,
        wp."PlanName", wp."Status", wp."StartDate", wp."EndDate",
-       c."Name" as coach_name
+       coach."Name" as coach_name
 FROM workout_plans wp
-JOIN users u ON wp."UserId" = u."UserId"
-LEFT JOIN coach_profiles cp ON wp."GeneratedByCoachId" = cp."CoachId"
-LEFT JOIN users c ON cp."UserId" = c."UserId"
+INNER JOIN users u ON wp."UserId" = u."UserId"
+LEFT JOIN users coach ON wp."GeneratedByCoachId" = coach."UserId"
 ORDER BY wp."CreatedAt" DESC;
 
 -- 20. Get exercises by muscle group and difficulty
@@ -170,25 +172,24 @@ JOIN exercises e ON wpe."ExerciseId" = e."ExerciseId"
 ORDER BY wp."PlanId", wpe."DayNumber", wpe."OrderInDay";
 
 -- 22. Get workout logs with exercise performance
-SELECT wl."LogId", u."Name" as member_name,
+SELECT u."Name" as member_name,
        wl."ExercisesCompleted", wl."DurationMinutes", wl."CaloriesBurned", wl."WorkoutDate"
 FROM workout_logs wl
 JOIN users u ON wl."UserId" = u."UserId"
 ORDER BY wl."WorkoutDate" DESC;
 
--- 23. Get member workout frequency and consistency
+-- 23. Get member workout frequency and consistency (TPT fixed)
 SELECT u."UserId", u."Name",
        COUNT(DISTINCT DATE(wl."WorkoutDate")) as total_workout_days,
-       COUNT(wl."LogId") as total_workouts_logged,
        MAX(wl."WorkoutDate") as last_workout_date
 FROM users u
+INNER JOIN members m ON u."UserId" = m."UserId"
 LEFT JOIN workout_logs wl ON u."UserId" = wl."UserId"
-WHERE u."Role" = 0 -- 0=Member
 GROUP BY u."UserId", u."Name"
 ORDER BY total_workout_days DESC;
 
 -- 24. Get AI-generated workout plans pending coach approval
-SELECT wp."PlanId", u."Name" as member_name,
+SELECT  u."Name" as member_name,
        wp."PlanName", wp."Status", wp."CreatedAt",
        ag."GenerationId", ag."TokensUsed"
 FROM workout_plans wp
@@ -197,14 +198,13 @@ JOIN ai_program_generations ag ON wp."PlanId" = ag."WorkoutPlanId" AND ag."Progr
 WHERE wp."Status" = 'PendingApproval'
 ORDER BY wp."CreatedAt";
 
--- 25. Get workout templates with exercise count
+-- 25. Get workout templates with exercise count (TPT fixed)
 SELECT wt."TemplateId", wt."TemplateName", wt."Description", wt."DifficultyLevel",
        COUNT(wte."ExerciseId") as exercise_count,
        u."Name" as created_by
 FROM workout_templates wt
 JOIN workout_template_exercises wte ON wt."TemplateId" = wte."TemplateId"
-JOIN coach_profiles cp ON wt."CreatedByCoachId" = cp."CoachId"
-JOIN users u ON cp."UserId" = u."UserId"
+LEFT JOIN users u ON wt."CreatedByCoachId" = u."UserId"
 GROUP BY wt."TemplateId", wt."TemplateName", wt."Description", wt."DifficultyLevel", u."Name"
 ORDER BY wt."TemplateName";
 
@@ -237,7 +237,7 @@ JOIN users u ON fs."UserId" = u."UserId"
 ORDER BY weight_change;
 
 -- 28. Get workout plans expiring in next 7 days
-SELECT wp."PlanId", u."Name" as member_name,
+SELECT  u."Name" as member_name,
        wp."PlanName", wp."EndDate", wp."EndDate" - CURRENT_DATE as days_remaining
 FROM workout_plans wp
 JOIN users u ON wp."UserId" = u."UserId"
@@ -249,25 +249,26 @@ ORDER BY wp."EndDate";
 -- SECTION 4: NUTRITION QUERIES (7 queries)
 -- ==========================================
 
--- 29. Get nutrition plans with meal count
-SELECT np."PlanId", np."PlanName", u."Name" as member_name,
-       np."DailyCalories", np."ProteinGrams", np."CarbsGrams", np."FatsGrams",
-       COUNT(m."MealId") as meal_count
-FROM nutrition_plans np
-JOIN users u ON np."UserId" = u."UserId"
-LEFT JOIN meals m ON np."PlanId" = m."NutritionPlanId"
-GROUP BY np."PlanId", np."PlanName", u."Name", np."DailyCalories", np."ProteinGrams", np."CarbsGrams", np."FatsGrams"
-ORDER BY np."CreatedAt" DESC;
-
--- 30. Get all meals with ingredient details
-SELECT m."MealId", m."Name" as "MealName", m."MealType", m."Calories", m."ProteinGrams", m."CarbsGrams", m."FatsGrams",
-       COUNT(mi."IngredientId") as ingredient_count
+-- 29. Get nutrition plans with meal count or Get all meals with ingredient details
+SELECT 
+    m."MealId", 
+    m."Name" AS "MealName", 
+    m."MealType", 
+    m."Calories", 
+    m."ProteinGrams", 
+    m."CarbsGrams", 
+    m."FatsGrams",
+    COUNT(mi."IngredientId") AS ingredient_count,
+    STRING_AGG(ing."Name", ', ') AS ingredient_names
 FROM meals m
 LEFT JOIN meal_ingredients mi ON m."MealId" = mi."MealId"
-GROUP BY m."MealId", m."Name", m."MealType", m."Calories", m."ProteinGrams", m."CarbsGrams", m."FatsGrams"
+LEFT JOIN ingredients ing ON mi."IngredientId" = ing."IngredientId"
+GROUP BY 
+    m."MealId", m."Name", m."MealType", m."Calories", m."ProteinGrams", m."CarbsGrams", m."FatsGrams"
 ORDER BY m."Name";
 
--- 31. Get meal ingredients with nutritional breakdown
+
+-- 31. Get meal ingredients with nutritional breakdown (mesh mzbota awy el functions !!)
 SELECT m."Name" as meal_name, i."Name" as ingredient_name, 
        mi."Quantity", mi."Unit",
        (mi."Quantity" / 100.0) * i."CaloriesPer100g" as calories_contribution,
@@ -288,21 +289,33 @@ WHERE np."Status" = 'PendingApproval'
 ORDER BY np."CreatedAt";
 
 -- 33. Get ingredients by category with usage count
-SELECT i."Category", COUNT(i."IngredientId") as ingredient_count,
-       COUNT(mi."MealIngredientId") as times_used_in_meals
+SELECT 
+    i."Category",
+    COUNT(DISTINCT i."IngredientId") AS ingredient_count,
+    COUNT(mi."MealIngredientId") AS times_used_in_meals,
+    STRING_AGG(DISTINCT i."Name", ', ') AS ingredient_names,
+    STRING_AGG(DISTINCT m."Name", ', ') AS meals_used_in
 FROM ingredients i
-LEFT JOIN meal_ingredients mi ON i."IngredientId" = mi."IngredientId"
+LEFT JOIN meal_ingredients mi 
+    ON i."IngredientId" = mi."IngredientId"
+LEFT JOIN meals m
+    ON mi."MealId" = m."MealId"
 WHERE i."IsActive" = true
 GROUP BY i."Category"
 ORDER BY ingredient_count DESC;
 
--- 34. Get meals created by coaches with their specialization
+
+
+
+-- 34. Get meals with nutrition plan and coach info (TPT fixed)
 SELECT m."MealId", m."Name" as meal_name, m."MealType", m."Calories",
        u."Name" as coach_name,
-       cp."Specialization"
+       c."Specialization",
+       np."PlanName"
 FROM meals m
-JOIN coach_profiles cp ON m."CreatedByCoachId" = cp."CoachId"
-JOIN users u ON cp."UserId" = u."UserId"
+INNER JOIN nutrition_plans np ON m."NutritionPlanId" = np."PlanId"
+LEFT JOIN users u ON np."GeneratedByCoachId" = u."UserId"
+LEFT JOIN coaches c ON u."UserId" = c."UserId"
 ORDER BY m."CreatedAt" DESC;
 
 -- 35. Get high-protein meal recommendations (>30g protein)
@@ -348,15 +361,15 @@ WHERE e."Status" = 0 -- 0=Available
   )
 ORDER BY ec."CategoryName", e."Name";
 
--- 39. Get member booking history
+-- 39. Get member booking history (TPT fixed)
 SELECT u."Name" as member_name,
        COUNT(b."BookingId") as total_bookings,
        COUNT(CASE WHEN b."Status" = 3 THEN 1 END) as completed, -- 3=Completed
        COUNT(CASE WHEN b."Status" = 4 THEN 1 END) as cancelled, -- 4=Cancelled
        MAX(b."StartTime") as last_booking_date
 FROM users u
+INNER JOIN members m ON u."UserId" = m."UserId"
 LEFT JOIN bookings b ON u."UserId" = b."UserId"
-WHERE u."Role" = 0 -- 0=Member
 GROUP BY u."UserId", u."Name"
 ORDER BY total_bookings DESC;
 
@@ -369,18 +382,18 @@ WHERE e."Status" = 2 -- 2=UnderMaintenance
    OR e."NextMaintenanceDate" <= CURRENT_DATE + INTERVAL '7 days'
 ORDER BY e."NextMaintenanceDate";
 
--- 41. Get coach session bookings
+-- 41. Get coach session bookings (TPT fixed)
 SELECT b."BookingId", 
-       u."Name" as member_name,
-       c."Name" as coach_name,
+       member."Name" as member_name,
+       coach."Name" as coach_name,
        b."BookingType",
        b."StartTime",
-       b."EndTime"
+       b."EndTime",
+       b."Status"
 FROM bookings b
-JOIN users u ON b."UserId" = u."UserId"
-JOIN coach_profiles cp ON b."CoachId" = cp."CoachId"
-JOIN users c ON cp."UserId" = c."UserId"
-WHERE b."BookingType" = 'Session'
+INNER JOIN users member ON b."UserId" = member."UserId"
+LEFT JOIN users coach ON b."CoachId" = coach."UserId"
+WHERE b."BookingType" = 'Coach'
 ORDER BY b."StartTime" DESC;
 
 -- ==========================================
@@ -400,14 +413,22 @@ LEFT JOIN token_packages tp ON p."PackageId" = tp."PackageId"
 ORDER BY p."CreatedAt" DESC;
 
 -- 43. Get subscription revenue by plan
-SELECT sp."PlanName" as plan_name, sp."Price",
+SELECT sp."PlanName" as plan_name, 
+       sp."Price",
        COUNT(us."SubscriptionId") as total_subscriptions,
-       SUM(p."Amount") as total_revenue
+	   COUNT(p."PaymentId") as paid_subscriptions,
+       SUM(COALESCE(p."Amount", 0)) as total_revenue
 FROM subscription_plans sp
-LEFT JOIN user_subscriptions us ON sp."PlanId" = us."PlanId"
-LEFT JOIN payments p ON us."PaymentId" = p."PaymentId" AND p."Status" = 1 -- 1=Completed
+LEFT JOIN user_subscriptions us 
+       ON sp."PlanId" = us."PlanId"
+LEFT JOIN payments p 
+       ON us."PaymentId" = p."PaymentId" 
+       AND p."Status" = 1 -- 1=Completed
 GROUP BY sp."PlanId", sp."PlanName", sp."Price"
 ORDER BY total_revenue DESC;
+
+
+
 
 -- 44. Get token transactions for members
 SELECT u."Name" as member_name,

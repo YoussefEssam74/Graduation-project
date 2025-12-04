@@ -7,19 +7,31 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Presistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreateWithChat : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Drop existing enum types if they exist (from previous migrations)
+            migrationBuilder.Sql(@"
+                DROP TYPE IF EXISTS booking_status CASCADE;
+                DROP TYPE IF EXISTS equipment_status CASCADE;
+                DROP TYPE IF EXISTS gender_type CASCADE;
+                DROP TYPE IF EXISTS notification_type CASCADE;
+                DROP TYPE IF EXISTS payment_status CASCADE;
+                DROP TYPE IF EXISTS subscription_status CASCADE;
+                DROP TYPE IF EXISTS transaction_type CASCADE;
+                DROP TYPE IF EXISTS user_role CASCADE;
+            ");
+
             migrationBuilder.AlterDatabase()
                 .Annotation("Npgsql:Enum:booking_status", "pending,confirmed,cancelled,completed,no_show")
                 .Annotation("Npgsql:Enum:equipment_status", "available,in_use,under_maintenance,out_of_service,reserved")
-                .Annotation("Npgsql:Enum:gender_type", "male,female,other,prefer_not_to_say")
+                .Annotation("Npgsql:Enum:gender_type", "male,female")
                 .Annotation("Npgsql:Enum:notification_type", "booking_reminder,maintenance_alert,payment_due,workout_complete,milestone_achieved,coach_message,system_alert,promotional_offer")
                 .Annotation("Npgsql:Enum:payment_status", "pending,completed,failed,refunded,cancelled")
                 .Annotation("Npgsql:Enum:subscription_status", "active,expired,cancelled,suspended,pending_payment")
-                .Annotation("Npgsql:Enum:transaction_type", "purchase,deduction,refund,bonus")
+                .Annotation("Npgsql:Enum:transaction_type", "purchase,deduction,refund,bonus,earned")
                 .Annotation("Npgsql:Enum:user_role", "member,coach,reception,admin");
 
             migrationBuilder.CreateTable(
@@ -303,6 +315,39 @@ namespace Presistence.Migrations
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "UserId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "chat_messages",
+                columns: table => new
+                {
+                    ChatMessageId = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    SenderId = table.Column<int>(type: "integer", nullable: false),
+                    ReceiverId = table.Column<int>(type: "integer", nullable: false),
+                    Message = table.Column<string>(type: "text", nullable: false),
+                    IsRead = table.Column<bool>(type: "boolean", nullable: false),
+                    ReadAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ConversationId = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsPermanent = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_chat_messages", x => x.ChatMessageId);
+                    table.ForeignKey(
+                        name: "FK_chat_messages_users_ReceiverId",
+                        column: x => x.ReceiverId,
+                        principalTable: "users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_chat_messages_users_SenderId",
+                        column: x => x.SenderId,
+                        principalTable: "users",
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1240,6 +1285,36 @@ namespace Presistence.Migrations
                 columns: new[] { "UserId", "StartTime" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_chat_messages_ConversationId",
+                table: "chat_messages",
+                column: "ConversationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_chat_messages_ConversationId_CreatedAt",
+                table: "chat_messages",
+                columns: new[] { "ConversationId", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_chat_messages_CreatedAt",
+                table: "chat_messages",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_chat_messages_ExpiresAt",
+                table: "chat_messages",
+                column: "ExpiresAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_chat_messages_ReceiverId",
+                table: "chat_messages",
+                column: "ReceiverId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_chat_messages_SenderId_ReceiverId",
+                table: "chat_messages",
+                columns: new[] { "SenderId", "ReceiverId" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_coach_profiles_UserId",
                 table: "coach_profiles",
                 column: "UserId",
@@ -1508,6 +1583,9 @@ namespace Presistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "audit_logs");
+
+            migrationBuilder.DropTable(
+                name: "chat_messages");
 
             migrationBuilder.DropTable(
                 name: "coach_reviews");

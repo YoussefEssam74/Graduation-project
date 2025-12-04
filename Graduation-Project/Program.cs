@@ -32,6 +32,18 @@ namespace Graduation_Project
             // Add Core Services (shared dependencies)
             builder.Services.AddScoped<ITokenService, TokenService>();
 
+            // Add Distributed Cache (use in-memory cache for development, Redis for production)
+            builder.Services.AddDistributedMemoryCache();
+            // For production, use Redis:
+            // builder.Services.AddStackExchangeRedisCache(options =>
+            // {
+            //     options.Configuration = builder.Configuration.GetConnectionString("Redis");
+            //     options.InstanceName = "IntelliFit:";
+            // });
+
+            // Add Chat Service
+            builder.Services.AddScoped<IChatService, ChatService>();
+
             // Add Service Manager (creates service instances internally with lazy loading - E-Commerce pattern)
             builder.Services.AddScoped<ServiceAbstraction.IServiceManager, Service.ServiceManager>();
 

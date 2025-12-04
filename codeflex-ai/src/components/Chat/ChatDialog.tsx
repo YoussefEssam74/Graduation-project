@@ -9,6 +9,7 @@ import { ChatMessage } from '@/lib/signalr/hubConnection';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { getChatHistory, markMessagesAsRead, ChatMessageDto } from '@/lib/api/chat';
 
 interface ChatDialogProps {
   recipientId: number;
@@ -35,21 +36,81 @@ export const ChatDialog: React.FC<ChatDialogProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (instant = false) => {
+    if (instant && messagesContainerRef.current) {
+      // Instant scroll for initial load
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  // Load chat history on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        setIsLoading(true);
+        console.log('Loading chat history with user:', recipientId);
+        const history = await getChatHistory(recipientId);
+        console.log('Chat history loaded:', history.length, 'messages');
+        
+        // Convert API response to ChatMessage format
+        const chatMessages: ChatMessage[] = history.map((msg: ChatMessageDto) => ({
+          senderId: msg.senderId,
+          senderName: msg.senderName,
+          message: msg.message,
+          timestamp: msg.createdAt,
+          conversationId: msg.conversationId
+        }));
+        
+        setMessages(chatMessages);
+        
+        // Mark messages as read
+        await markMessagesAsRead(recipientId);
+        
+        // Scroll to bottom after loading history (with small delay to ensure DOM is updated)
+        setTimeout(() => scrollToBottom(true), 50);
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [recipientId]);
+
   // Listen for incoming messages
   useEffect(() => {
     const handleMessage = (message: ChatMessage) => {
       console.log('Received message via SignalR:', message);
-      setMessages(prev => [...prev, message]);
+      // Only add message if it's from/to this conversation
+      if (message.senderId === recipientId || 
+          (user?.userId && message.senderId === user.userId)) {
+        setMessages(prev => {
+          // Avoid duplicates
+          const isDuplicate = prev.some(m => 
+            m.message === message.message && 
+            m.senderId === message.senderId &&
+            Math.abs(new Date(m.timestamp).getTime() - new Date(message.timestamp).getTime()) < 1000
+          );
+          if (isDuplicate) return prev;
+          return [...prev, message];
+        });
+        
+        // Mark as read if message is from recipient
+        if (message.senderId === recipientId) {
+          markMessagesAsRead(recipientId).catch(console.error);
+        }
+      }
     };
 
     console.log('Setting up message listener for chat with:', recipientName);
@@ -59,7 +120,7 @@ export const ChatDialog: React.FC<ChatDialogProps> = ({
       console.log('Removing message listener');
       offChatMessage(handleMessage);
     };
-  }, [onChatMessage, offChatMessage, recipientName]);
+  }, [onChatMessage, offChatMessage, recipientName, recipientId, user?.userId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,31 +130,35 @@ export const ChatDialog: React.FC<ChatDialogProps> = ({
     }
 
     setIsSending(true);
+    const messageText = newMessage.trim();
+    setNewMessage(''); // Clear immediately for better UX
+    
     try {
       // Send message via SignalR
-      console.log(`Sending message to ${recipientRole} (ID: ${recipientId}):`, newMessage);
+      console.log(`Sending message to ${recipientRole} (ID: ${recipientId}):`, messageText);
       
       if (recipientRole === 'coach') {
-        console.log('Calling sendMessageToCoach with:', { coachId: recipientId, message: newMessage });
-        await sendMessageToCoach(recipientId, newMessage);
+        console.log('Calling sendMessageToCoach with:', { coachId: recipientId, message: messageText });
+        await sendMessageToCoach(recipientId, messageText);
         console.log('Message sent to coach successfully');
       } else {
-        console.log('Calling sendMessageToMember with:', { memberId: recipientId, message: newMessage });
-        await sendMessageToMember(recipientId, newMessage);
+        console.log('Calling sendMessageToMember with:', { memberId: recipientId, message: messageText });
+        await sendMessageToMember(recipientId, messageText);
         console.log('Message sent to member successfully');
       }
 
       // Add to local messages immediately for better UX
+      // The server will also send back MessageSent event, but we show it immediately
       setMessages(prev => [...prev, {
         senderId: user?.userId || 0,
         senderName: user?.name || 'You',
-        message: newMessage,
+        message: messageText,
         timestamp: new Date().toISOString(),
       }]);
 
-      setNewMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);
+      setNewMessage(messageText); // Restore message on error
       alert('Failed to send message. Please try again.');
     } finally {
       setIsSending(false);
@@ -127,10 +192,15 @@ export const ChatDialog: React.FC<ChatDialogProps> = ({
           </Button>
         </CardHeader>
 
-        <CardContent className="flex-1 flex flex-col p-0">
-          <div className="flex-1 p-4 overflow-auto">
+        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 min-h-0">
             <div className="space-y-4">
-              {messages.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                  <p className="text-muted-foreground">Loading chat history...</p>
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
                   No messages yet. Start the conversation!
                 </div>

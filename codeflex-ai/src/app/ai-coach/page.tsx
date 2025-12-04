@@ -6,13 +6,11 @@ import {
   Brain,
   Send,
   Zap,
-  Sparkles,
-  TrendingUp,
+  History,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
 
 export default function AICoachPage() {
   const { user, deductTokens, token } = useAuth();
@@ -169,56 +167,39 @@ export default function AICoachPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
-      <div className="container mx-auto px-4 py-6 lg:py-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
-              <span className="text-foreground">AI </span>
-              <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">Coach</span>
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Get instant fitness advice powered by AI
-            </p>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
-            <Zap className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-sm">{user?.tokenBalance ?? 0}</span>
-            <span className="text-xs text-muted-foreground">tokens</span>
-          </div>
-        </div>
-
-        {/* Main Chat Area - Full Width */}
-        <div className="grid lg:grid-cols-4 gap-4 lg:gap-6" style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}>
+    <div className="h-[calc(100vh-6rem)] flex flex-col bg-gradient-to-b from-background to-background/95">
+      <div className="flex-1 container mx-auto px-4 py-4 max-w-7xl flex flex-col min-h-0">
+        {/* Main Chat Area - Full Height */}
+        <div className="flex-1 grid lg:grid-cols-4 gap-4 min-h-0">
           {/* Left: History Sidebar */}
-          <div className="lg:col-span-1 order-2 lg:order-1">
+          <div className="lg:col-span-1 order-2 lg:order-1 hidden lg:block min-h-0">
             <Card className="h-full flex flex-col border-0 shadow-lg bg-card/80 backdrop-blur-sm">
-              <div className="p-4 border-b border-border/50">
+              <div className="p-3 border-b border-border/50 flex items-center gap-2">
+                <History className="h-4 w-4 text-muted-foreground" />
                 <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">History</h3>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
                 {isLoadingHistory && (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
                   </div>
                 )}
                 {!isLoadingHistory && historyList.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">No previous conversations</p>
+                  <p className="text-xs text-muted-foreground text-center py-4">No conversations yet</p>
                 )}
                 {historyList.map((item, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleHistoryItemClick(idx)}
-                    className="w-full text-left p-3 rounded-lg hover:bg-primary/10 transition-all duration-200 group"
+                    className="w-full text-left p-2 rounded-lg hover:bg-primary/10 transition-all duration-200 group"
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-0.5">
                       <span className={`text-[10px] font-medium uppercase tracking-wide ${item.role === 'ai' ? 'text-primary' : 'text-muted-foreground'}`}>
                         {item.role === 'ai' ? 'AI' : 'You'}
                       </span>
                       <span className="text-[10px] text-muted-foreground/60">{item.timestamp}</span>
                     </div>
-                    <p className="text-xs text-foreground/80 line-clamp-2 group-hover:text-foreground transition-colors">{item.content}</p>
+                    <p className="text-xs text-foreground/80 line-clamp-1 group-hover:text-foreground transition-colors">{item.content}</p>
                   </button>
                 ))}
               </div>
@@ -226,13 +207,13 @@ export default function AICoachPage() {
           </div>
 
           {/* Right: Chat Area */}
-          <div className="lg:col-span-3 order-1 lg:order-2">
-            <Card className="h-full flex flex-col border-0 shadow-xl bg-card/90 backdrop-blur-sm overflow-hidden">
+          <div className="lg:col-span-3 order-1 lg:order-2 min-h-0">
+            <Card className="h-full flex flex-col border-0 shadow-xl bg-card/90 backdrop-blur-sm overflow-hidden min-h-0">
               {/* Chat Header */}
-              <div className="px-5 py-4 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
+              <div className="px-4 py-3 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl">
+                    <div className="p-2 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl">
                       <Brain className="h-5 w-5 text-primary" />
                     </div>
                     <div>
@@ -240,30 +221,37 @@ export default function AICoachPage() {
                       <p className="text-xs text-muted-foreground">Powered by Gemini AI</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/20">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-medium text-green-600">Online</span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+                      <Zap className="h-3.5 w-3.5 text-primary" />
+                      <span className="font-semibold text-sm">{user?.tokenBalance ?? 0}</span>
+                      <span className="text-xs text-muted-foreground">tokens</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-500/10 rounded-full border border-green-500/20">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="text-xs font-medium text-green-600">Online</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Chat Messages */}
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-transparent to-muted/5">
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-transparent to-muted/5 min-h-0">
                 {chatHistory.length === 0 && !isLoadingHistory && (
                   <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                    <div className="p-4 bg-primary/10 rounded-2xl mb-4">
-                      <Brain className="h-10 w-10 text-primary" />
+                    <div className="p-3 bg-primary/10 rounded-2xl mb-3">
+                      <Brain className="h-8 w-8 text-primary" />
                     </div>
-                    <h3 className="font-semibold text-lg mb-2">Start a Conversation</h3>
-                    <p className="text-muted-foreground text-sm mb-6 max-w-md">
-                      Ask me anything about fitness, nutrition, workout routines, or health goals!
+                    <h3 className="font-semibold text-base mb-1">Start a Conversation</h3>
+                    <p className="text-muted-foreground text-sm mb-4 max-w-md">
+                      Ask me anything about fitness, nutrition, or health goals!
                     </p>
-                    <div className="grid grid-cols-2 gap-2 max-w-lg w-full">
+                    <div className="grid grid-cols-2 gap-2 max-w-md w-full">
                       {suggestedPrompts.slice(0, 4).map((prompt, index) => (
                         <button
                           key={index}
                           onClick={() => handlePromptClick(prompt)}
-                          className="text-left p-3 bg-primary/5 hover:bg-primary/10 rounded-xl border border-primary/10 hover:border-primary/30 text-sm transition-all duration-200"
+                          className="text-left p-2.5 bg-primary/5 hover:bg-primary/10 rounded-xl border border-primary/10 hover:border-primary/30 text-xs transition-all duration-200"
                         >
                           {prompt}
                         </button>
@@ -282,11 +270,11 @@ export default function AICoachPage() {
                         msg.role === "user"
                           ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20"
                           : "bg-muted/80 border border-border/50"
-                      } rounded-2xl px-4 py-3`}
+                      } rounded-2xl px-3 py-2`}
                     >
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                       <p
-                        className={`text-[10px] mt-2 ${
+                        className={`text-[10px] mt-1 ${
                           msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground/60"
                         }`}
                       >
@@ -312,8 +300,8 @@ export default function AICoachPage() {
               </div>
 
               {/* Chat Input */}
-              <div className="p-4 border-t border-border/50 bg-background/80">
-                <div className="flex gap-3">
+              <div className="flex-shrink-0 p-3 border-t border-border/50 bg-background/80">
+                <div className="flex gap-2">
                   <Input
                     placeholder="Ask me anything about fitness, nutrition, or training..."
                     value={message}
@@ -330,48 +318,13 @@ export default function AICoachPage() {
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground/60 mt-2 text-center">
+                <p className="text-[10px] text-muted-foreground/60 mt-1.5 text-center">
                   1 token per message • Press Enter to send
                 </p>
               </div>
             </Card>
           </div>
         </div>
-
-        {/* CTA for Voice Program */}
-        <Card className="mt-6 p-5 border-0 shadow-lg bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 overflow-hidden relative">
-          <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
-          <div className="relative flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex-1">
-              <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <span>Want a Complete AI Program?</span>
-              </h3>
-              <p className="text-muted-foreground text-sm mb-3">
-                Use our voice AI to generate a fully personalized workout and nutrition plan
-              </p>
-              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                  <span>Personalized goals</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5 text-primary" />
-                  <span>AI analysis</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-primary" />
-                  <span>50 tokens</span>
-                </div>
-              </div>
-            </div>
-            <Link href="/generate-program">
-              <Button size="lg" className="px-6 shadow-lg shadow-primary/20 whitespace-nowrap">
-                Generate Program
-              </Button>
-            </Link>
-          </div>
-        </Card>
       </div>
     </div>
   );

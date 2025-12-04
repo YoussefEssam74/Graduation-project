@@ -55,14 +55,48 @@ export async function apiFetch<T>(
     console.log(`API Request: ${options.method || 'GET'} ${API_BASE_URL}${endpoint}`);
     console.log('Response status:', response.status, response.statusText);
 
-    // Try to parse JSON, but handle cases where response isn't JSON
+    // Try to parse JSON, but handle cases where response isn't JSON or is empty
     let data: any;
+    const contentType = response.headers.get('content-type');
+    const contentLength = response.headers.get('content-length');
+    
+    // Check if response has content to parse
+    if (contentLength === '0' || !contentType?.includes('application/json')) {
+      // No content or not JSON - treat as success for 2xx responses
+      if (response.ok) {
+        return {
+          success: true,
+          data: undefined,
+        };
+      }
+      return {
+        success: false,
+        message: `Server error: ${response.statusText}`,
+        errors: [`HTTP ${response.status}: ${response.statusText}`],
+      };
+    }
+    
     try {
-      data = await response.json();
+      const text = await response.text();
+      // Handle empty response body
+      if (!text || text.trim() === '') {
+        if (response.ok) {
+          return { success: true, data: undefined };
+        }
+        return {
+          success: false,
+          message: `Server error: ${response.statusText}`,
+          errors: [`HTTP ${response.status}: ${response.statusText}`],
+        };
+      }
+      data = JSON.parse(text);
       console.log('Response data:', data);
     } catch (jsonError) {
       console.error('Failed to parse JSON response:', jsonError);
-      // If JSON parsing fails, return error with status text
+      // If JSON parsing fails but response was OK, treat as success
+      if (response.ok) {
+        return { success: true, data: undefined };
+      }
       return {
         success: false,
         message: `Server error: ${response.statusText}`,

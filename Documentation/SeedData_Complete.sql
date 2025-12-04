@@ -17,55 +17,25 @@ admins, coaches, receptionists, members, users RESTART IDENTITY CASCADE;
 -- ==========================================
 -- USERS (Base Table - TPT)
 -- Note: UserId is auto-generated. Role determined by derived table (members/coaches/receptionists/admins)
+-- All attributes included: UserId (auto), Email, PasswordHash, Name, Phone, DateOfBirth, Gender, ProfileImageUrl, 
+-- Address, EmergencyContactName, EmergencyContactPhone, TokenBalance, IsActive, EmailVerified, LastLoginAt, CreatedAt, UpdatedAt
 -- ==========================================
-INSERT INTO users ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "TokenBalance", "IsActive", "EmailVerified", "CreatedAt", "UpdatedAt") VALUES
-('john.doe@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'John Doe', '+1234567890', '1995-05-15', 0, 50, true, true, NOW(), NOW()),
-('sarah.johnson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, 0, true, true, NOW(), NOW()),
-('michael.smith@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Michael Smith', '+1234567892', '1992-08-18', 0, 75, true, true, NOW(), NOW()),
-('emily.davis@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Emily Davis', '+1234567893', '1988-11-30', 1, 0, true, true, NOW(), NOW()),
-('david.wilson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'David Wilson', '+1234567894', '1998-03-10', 0, 30, true, true, NOW(), NOW()),
-('jessica.brown@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Jessica Brown', '+1234567895', '1996-11-05', 1, 100, true, true, NOW(), NOW()),
-('robert.taylor@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Robert Taylor', '+1234567896', '1985-07-14', 0, 0, true, true, NOW(), NOW()),
-('lisa.anderson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGm', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, 25, true, true, NOW(), NOW()),
-('james.martinez@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'James Martinez', '+1234567898', '1982-01-25', 0, 0, true, true, NOW(), NOW()),
-('amanda.garcia@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, 60, true, true, NOW(), NOW()),
-('admin@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Admin User', '555-0011', '1985-01-01', 0, 100, true, true, NOW(), NOW()),
-('superadmin@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Super Admin', '555-0012', '1980-01-01', 0, 100, true, true, NOW(), NOW());
+INSERT INTO users ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "ProfileImageUrl", "Address", "EmergencyContactName", "EmergencyContactPhone", "TokenBalance", "IsActive", "EmailVerified", "LastLoginAt", "CreatedAt", "UpdatedAt") VALUES
+('john.doe@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'John Doe', '+1234567890', '1995-05-15', 0, NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, NULL, NOW(), NOW()),
+('sarah.johnson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, NULL, '456 Oak Ave, Brooklyn, NY 11201', 'Mike Johnson', '+1234567801', 0, true, true, NULL, NOW(), NOW()),
+('michael.smith@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Michael Smith', '+1234567892', '1992-08-18', 0, NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, NULL, NOW(), NOW()),
+('emily.davis@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Emily Davis', '+1234567893', '1988-11-30', 1, NULL, '321 Elm St, Manhattan, NY 10002', 'Tom Davis', '+1234567803', 0, true, true, NULL, NOW(), NOW()),
+('david.wilson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'David Wilson', '+1234567894', '1998-03-10', 0, NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, NULL, NOW(), NOW()),
+('jessica.brown@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Jessica Brown', '+1234567895', '1996-11-05', 1, NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, NULL, NOW(), NOW()),
+('robert.taylor@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Robert Taylor', '+1234567896', '1985-07-14', 0, NULL, '147 Birch St, Long Island, NY 11530', 'Mary Taylor', '+1234567806', 0, true, true, NULL, NOW(), NOW()),
+('lisa.anderson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGm', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, NULL, '258 Spruce Way, White Plains, NY 10601', 'John Anderson', '+1234567807', 25, true, true, NULL, NOW(), NOW()),
+('james.martinez@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'James Martinez', '+1234567898', '1982-01-25', 0, NULL, '369 Willow Ct, Yonkers, NY 10701', 'Maria Martinez', '+1234567808', 0, true, true, NULL, NOW(), NOW()),
+('amanda.garcia@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, NULL, '741 Ash Pl, New Rochelle, NY 10801', 'Carlos Garcia', '+1234567809', 60, true, true, NULL, NOW(), NOW()),
+('admin@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Admin User', '555-0011', '1985-01-01', 0, NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, NULL, NOW(), NOW()),
+('superadmin@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Super Admin', '555-0012', '1980-01-01', 0, NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, NULL, NOW(), NOW());
 
 -- ==========================================
--- MEMBERS (TPT Derived)
--- ==========================================
-INSERT INTO members ("UserId", "FitnessGoal", "MedicalConditions", "TotalWorkoutsCompleted", "TotalCaloriesBurned", "Achievements") VALUES
-(1, 'Weight Loss', 'None', 15, 4500, '["First Workout"]'),
-(3, 'Muscle Gain', 'Asthma', 42, 12600, '["Week Warrior", "Month Champion"]'),
-(5, 'General Fitness', 'None', 8, 2400, '["First Workout"]'),
-(6, 'Weight Loss', 'None', 28, 8400, '["Week Warrior"]'),
-(8, 'Endurance', 'Previous knee injury', 12, 3600, '["First Workout"]'),
-(10, 'Flexibility', 'None', 6, 1800, '[]');
-
--- ==========================================
--- COACHES (TPT Derived)
--- ==========================================
-INSERT INTO coaches ("UserId", "Specialization", "Certifications", "ExperienceYears", "Bio", "Rating", "TotalReviews", "TotalClients", "IsAvailable") VALUES
-(2, 'Strength Training & Weight Loss', ARRAY['NASM-CPT', 'CSCS'], 5, 'Certified personal trainer specializing in strength training', 4.8, 45, 28, true),
-(4, 'Powerlifting & Muscle Building', ARRAY['CSCS', 'ISSA'], 8, 'Former competitive powerlifter', 4.9, 67, 35, true),
-(7, 'CrossFit & Athletic Performance', ARRAY['CrossFit L2', 'NASM-CPT'], 7, 'CrossFit Level 2 trainer', 4.7, 52, 41, true);
-
--- ==========================================
--- RECEPTIONISTS (TPT Derived)
--- ==========================================
-INSERT INTO receptionists ("UserId", "ShiftSchedule", "HireDate", "Department", "TotalCheckIns", "TotalPaymentsProcessed") VALUES
-(9, 'Monday-Friday 9AM-5PM', '2024-01-15', 'Front Desk', 150, 75);
-
--- ==========================================
--- ADMINS (TPT Derived)
--- ==========================================
-INSERT INTO admins ("UserId", "IsSuperAdmin") VALUES
-(11, false),
-(12, true);
-
--- ==========================================
--- SUBSCRIPTION PLANS
+-- SUBSCRIPTION PLANS (Must be inserted BEFORE members due to FK constraint)
 -- ==========================================
 INSERT INTO subscription_plans ("PlanName", "Description", "Price", "DurationDays", "TokensIncluded", "Features", "MaxBookingsPerDay", "IsPopular", "IsActive", "CreatedAt", "UpdatedAt") VALUES
 ('Basic Monthly', 'Access to gym facilities and basic equipment', 49.99, 30, 20, '["Gym Access", "Equipment Use", "Locker Room"]', 2, false, true, NOW(), NOW()),
@@ -88,6 +58,45 @@ INSERT INTO token_packages ("PackageName", "TokenAmount", "Price", "BonusTokens"
 ('Popular Pack', 250, 39.99, 50, 'Most popular choice', true, NOW()),
 ('Pro Pack', 500, 69.99, 100, 'For serious fitness enthusiasts', true, NOW()),
 ('Ultimate Pack', 1000, 119.99, 250, 'Best value for power users', true, NOW());
+
+-- ==========================================
+-- MEMBERS (TPT Derived)
+-- All attributes: UserId (PK/FK), FitnessGoal, MedicalConditions, Allergies, FitnessLevel, 
+-- PreferredWorkoutTime, SubscriptionPlanId, MembershipStartDate, MembershipEndDate,
+-- CurrentWeight, TargetWeight, Height, TotalWorkoutsCompleted, TotalCaloriesBurned, Achievements
+-- ==========================================
+INSERT INTO members ("UserId", "FitnessGoal", "MedicalConditions", "Allergies", "FitnessLevel", "PreferredWorkoutTime", "SubscriptionPlanId", "MembershipStartDate", "MembershipEndDate", "CurrentWeight", "TargetWeight", "Height", "TotalWorkoutsCompleted", "TotalCaloriesBurned", "Achievements") VALUES
+(1, 'Weight Loss', 'None', 'None', 'Intermediate', 'Morning', 2, '2024-11-01', '2024-12-01', 85.5, 75.0, 175.0, 15, 4500, '["First Workout"]'),
+(3, 'Muscle Gain', 'Asthma', 'Peanuts', 'Advanced', 'Evening', 3, '2024-10-15', '2024-11-15', 78.5, 85.0, 180.0, 42, 12600, '["Week Warrior", "Month Champion"]'),
+(5, 'General Fitness', 'None', 'None', 'Beginner', 'Afternoon', 1, '2024-11-10', '2024-12-10', 70.0, 70.0, 170.0, 8, 2400, '["First Workout"]'),
+(6, 'Weight Loss', 'None', 'Lactose', 'Intermediate', 'Morning', 2, '2024-10-20', '2024-11-20', 92.0, 80.0, 165.0, 28, 8400, '["Week Warrior"]'),
+(8, 'Endurance', 'Previous knee injury', 'None', 'Intermediate', 'Evening', NULL, NULL, NULL, 75.0, 72.0, 178.0, 12, 3600, '["First Workout"]'),
+(10, 'Flexibility', 'None', 'Shellfish', 'Beginner', 'Morning', NULL, NULL, NULL, 65.0, 65.0, 168.0, 6, 1800, '[]');
+
+-- ==========================================
+-- COACHES (TPT Derived)
+-- All attributes: UserId (PK/FK), Specialization, Certifications, ExperienceYears, Bio,
+-- HourlyRate, Rating, TotalReviews, TotalClients, AvailabilitySchedule, IsAvailable
+-- ==========================================
+INSERT INTO coaches ("UserId", "Specialization", "Certifications", "ExperienceYears", "Bio", "HourlyRate", "Rating", "TotalReviews", "TotalClients", "AvailabilitySchedule", "IsAvailable") VALUES
+(2, 'Strength Training & Weight Loss', ARRAY['NASM-CPT', 'CSCS'], 5, 'Certified personal trainer specializing in strength training', 75.00, 4.8, 45, 28, 'Mon-Fri: 6AM-8PM, Sat: 8AM-2PM', true),
+(4, 'Powerlifting & Muscle Building', ARRAY['CSCS', 'ISSA'], 8, 'Former competitive powerlifter', 95.00, 4.9, 67, 35, 'Mon-Fri: 7AM-9PM, Sat-Sun: 8AM-4PM', true),
+(7, 'CrossFit & Athletic Performance', ARRAY['CrossFit L2', 'NASM-CPT'], 7, 'CrossFit Level 2 trainer', 85.00, 4.7, 52, 41, 'Mon-Sat: 5AM-7PM', true);
+
+-- ==========================================
+-- RECEPTIONISTS (TPT Derived)
+-- All attributes: UserId (PK/FK), ShiftSchedule, HireDate, Department, TotalCheckIns, TotalPaymentsProcessed
+-- ==========================================
+INSERT INTO receptionists ("UserId", "ShiftSchedule", "HireDate", "Department", "TotalCheckIns", "TotalPaymentsProcessed") VALUES
+(9, 'Monday-Friday 9AM-5PM', '2024-01-15', 'Front Desk', 150, 75);
+
+-- ==========================================
+-- ADMINS (TPT Derived)
+-- All attributes: UserId (PK/FK), IsSuperAdmin, Permissions
+-- ==========================================
+INSERT INTO admins ("UserId", "IsSuperAdmin", "Permissions") VALUES
+(11, false, '["ManageMembers", "ManageBookings", "ViewReports"]'),
+(12, true, '["FullAccess"]');
 
 -- ==========================================
 -- EQUIPMENT CATEGORIES
@@ -152,7 +161,8 @@ INSERT INTO bookings ("UserId", "EquipmentId", "CoachId", "BookingType", "StartT
 -- ==========================================
 INSERT INTO workout_plans ("UserId", "PlanName", "Description", "PlanType", "DifficultyLevel", "DurationWeeks", "Schedule", "GeneratedByCoachId", "Status", "ApprovalNotes", "ApprovedBy", "ApprovedAt", "TokensSpent", "IsActive", "StartDate", "EndDate", "CreatedAt", "UpdatedAt") VALUES
 (1, 'Weight Loss Transformation', '8-week fat loss program', 'Custom', 'Intermediate', 8, '5 days per week', 2, 'Active', 'Approved - great plan', 2, '2024-10-30', 0, true, '2024-11-01', '2024-12-26', NOW(), NOW()),
-(3, 'Muscle Building Program', '12-week hypertrophy training', 'Custom', 'Advanced', 12, '6 days per week', 4, 'Active', 'Excellent plan', 4, '2024-10-13', 20, true, '2024-10-15', '2025-01-07', NOW(), NOW());
+(3, 'Muscle Building Program', '12-week hypertrophy training', 'Custom', 'Advanced', 12, '6 days per week', 4, 'Active', 'Excellent plan', 4, '2024-10-13', 20, true, '2024-10-15', '2025-01-07', NOW(), NOW()),
+(5, 'AI Generated Strength Plan', 'AI-generated 10-week strength training program', 'Custom', 'Intermediate', 10, '4 days per week', NULL, 'PendingApproval', NULL, NULL, NULL, 30, true, '2024-12-01', '2025-02-09', NOW(), NOW());
 
 -- ==========================================
 -- NUTRITION PLANS
@@ -160,6 +170,156 @@ INSERT INTO workout_plans ("UserId", "PlanName", "Description", "PlanType", "Dif
 INSERT INTO nutrition_plans ("UserId", "PlanName", "Description", "PlanType", "DailyCalories", "ProteinGrams", "CarbsGrams", "FatsGrams", "GeneratedByCoachId", "Status", "ApprovalNotes", "ApprovedByCoachId", "ApprovedAt", "TokensSpent", "IsActive", "StartDate", "EndDate", "CreatedAt", "UpdatedAt") VALUES
 (1, 'Weight Loss Nutrition', 'Calorie deficit plan', 'Custom', 1800, 150, 180, 50, 4, 'Active', 'Well balanced plan', 4, '2024-10-30', 0, true, '2024-11-01', '2024-12-31', NOW(), NOW()),
 (3, 'Muscle Gain Diet', 'Calorie surplus for bulking', 'Custom', 2800, 200, 350, 80, 4, 'Active', 'Great for bulking', 4, '2024-10-13', 25, true, '2024-10-15', '2025-01-07', NOW(), NOW());
+
+-- ==========================================
+-- MEALS
+-- ==========================================
+INSERT INTO meals ("NutritionPlanId", "MealType", "Name", "Calories", "ProteinGrams", "CarbsGrams", "FatsGrams", "RecommendedTime", "CreatedByCoachId", "CreatedAt") VALUES
+(1, 'Lunch', 'Grilled Chicken with Rice', 450, 45, 50, 8, '12:00:00'::interval, 4, NOW()),
+(1, 'Breakfast', 'Greek Yogurt Parfait', 280, 25, 35, 6, '08:00:00'::interval, 4, NOW()),
+(2, 'Dinner', 'Salmon Power Bowl', 650, 55, 60, 22, '19:00:00'::interval, 4, NOW()),
+(2, 'Breakfast', 'Protein Pancakes', 520, 38, 65, 12, '08:00:00'::interval, 4, NOW());
+
+-- ==========================================
+-- MEAL INGREDIENTS
+-- ==========================================
+INSERT INTO meal_ingredients ("MealId", "IngredientId", "Quantity", "Unit") VALUES
+(1, 1, 200, 'g'),
+(1, 2, 150, 'g'),
+(1, 3, 100, 'g'),
+(2, 5, 2, 'whole'),
+(3, 4, 180, 'g'),
+(4, 1, 150, 'g');
+
+-- ==========================================
+-- WORKOUT TEMPLATES
+-- ==========================================
+INSERT INTO workout_templates ("CreatedByCoachId", "TemplateName", "Description", "DifficultyLevel", "DurationWeeks", "WorkoutsPerWeek", "IsPublic", "IsActive", "CreatedAt", "UpdatedAt") VALUES
+(2, 'Push Day - Upper Body', 'Chest, shoulders, and triceps workout', 'Intermediate', 4, 3, true, true, NOW(), NOW()),
+(4, 'Pull Day - Back & Biceps', 'Back and bicep focused training', 'Intermediate', 4, 3, true, true, NOW(), NOW()),
+(4, 'Leg Day Hypertrophy', 'Complete lower body workout', 'Advanced', 6, 4, true, true, NOW(), NOW());
+
+-- ==========================================
+-- WORKOUT TEMPLATE EXERCISES
+-- ==========================================
+INSERT INTO workout_template_exercises ("TemplateId", "ExerciseId", "WeekNumber", "DayNumber", "OrderInDay", "Sets", "Reps", "RestSeconds", "Notes", "CreatedAt") VALUES
+(1, 2, 1, 1, 1, 4, 8, 120, 'Focus on controlled descent', NOW()),
+(1, 1, 1, 1, 2, 4, 10, 90, 'Go deep on squats', NOW()),
+(2, 3, 1, 1, 1, 4, 5, 180, 'Heavy weight, perfect form', NOW()),
+(2, 4, 1, 1, 2, 3, 10, 60, 'Controlled tempo', NOW()),
+(3, 1, 1, 1, 1, 5, 8, 150, 'Main compound movement', NOW());
+
+-- ==========================================
+-- WORKOUT PLAN EXERCISES
+-- ==========================================
+INSERT INTO workout_plan_exercises ("WorkoutPlanId", "ExerciseId", "DayNumber", "OrderInDay", "Sets", "Reps", "RestSeconds", "Notes", "CreatedAt") VALUES
+(1, 1, 1, 1, 4, 10, 90, 'Warm up properly', NOW()),
+(1, 2, 1, 2, 3, 12, 60, 'Focus on form', NOW()),
+(1, 5, 1, 3, 3, 60, 45, 'Core finisher', NOW()),
+(2, 3, 1, 1, 5, 5, 180, 'Heavy day', NOW()),
+(2, 1, 2, 1, 4, 8, 120, 'Volume day', NOW());
+
+-- ==========================================
+-- WORKOUT LOGS
+-- ==========================================
+INSERT INTO workout_logs ("UserId", "PlanId", "WorkoutDate", "ExercisesCompleted", "DurationMinutes", "CaloriesBurned", "FeelingRating", "Notes", "Completed", "CreatedAt") VALUES
+(1, 1, '2024-11-15 09:00:00+00', 8, 45, 320, 4, 'Great session, felt strong', true, NOW()),
+(1, 1, '2024-11-17 09:00:00+00', 8, 48, 340, 5, 'Personal best on squats!', true, NOW()),
+(1, 1, '2024-11-20 09:00:00+00', 7, 42, 310, 3, 'Bit tired today', true, NOW()),
+(3, 2, '2024-10-20 18:00:00+00', 10, 75, 580, 5, 'Excellent training day', true, NOW()),
+(3, 2, '2024-10-22 18:00:00+00', 10, 78, 600, 5, 'Hit new PR on deadlift', true, NOW());
+
+-- ==========================================
+-- INBODY MEASUREMENTS
+-- ==========================================
+INSERT INTO inbody_measurements ("UserId", "MeasurementDate", "Weight", "BodyFatPercentage", "MuscleMass", "VisceralFatLevel", "BodyWaterPercentage", "BoneMass", "Bmr", "Notes", "CreatedAt") VALUES
+(1, '2024-11-01', 85.5, 22.5, 62.8, 8, 58.2, 3.2, 1820, 'Baseline measurement', NOW()),
+(1, '2024-11-15', 83.2, 20.8, 63.1, 7, 59.1, 3.2, 1830, 'Good progress', NOW()),
+(1, '2024-11-29', 81.5, 19.5, 63.5, 6, 60.0, 3.2, 1840, 'Excellent results', NOW()),
+(3, '2024-10-15', 78.5, 12.5, 66.2, 3, 62.5, 3.4, 1950, 'Starting bulk', NOW()),
+(3, '2024-11-01', 80.8, 13.2, 68.5, 3, 62.0, 3.4, 1980, 'Gaining well', NOW());
+
+-- ==========================================
+-- USER SUBSCRIPTIONS
+-- ==========================================
+INSERT INTO user_subscriptions ("UserId", "PlanId", "StartDate", "EndDate", "Status", "AutoRenew", "PaymentId", "RenewalReminderSent", "CreatedAt", "UpdatedAt") VALUES
+(1, 2, '2024-11-01', '2025-12-01', 0, true, NULL, false, NOW(), NOW()),
+(3, 3, '2024-10-15', '2025-11-15', 0, true, NULL, false, NOW(), NOW()),
+(5, 1, '2024-11-10', '2025-12-10', 0, false, NULL, false, NOW(), NOW()),
+(6, 2, '2024-10-20', '2025-11-20', 0, true, NULL, false, NOW(), NOW());
+
+-- Link subscriptions to payments (update after both tables are populated)
+UPDATE user_subscriptions us
+SET "PaymentId" = p."PaymentId"
+FROM payments p
+WHERE us."UserId" = p."UserId" 
+  AND p."PaymentType" = 'Subscription'
+  AND p."Status" = 1;
+
+-- ==========================================
+-- PAYMENTS
+-- ==========================================
+INSERT INTO payments ("UserId", "Amount", "Currency", "PaymentMethod", "PaymentType", "Status", "TransactionReference", "PackageId", "CreatedAt", "UpdatedAt") VALUES
+(1, 79.99, 'USD', 'CreditCard', 'Subscription', 1, 'TXN-001-2024', NULL, '2024-11-01', NOW()),
+(3, 129.99, 'USD', 'CreditCard', 'Subscription', 1, 'TXN-002-2024', NULL, '2024-10-15', NOW()),
+(5, 49.99, 'USD', 'CreditCard', 'Subscription', 1, 'TXN-003-2024', NULL, '2024-11-10', NOW()),
+(6, 17.99, 'USD', 'PayPal', 'TokenPurchase', 1, 'TXN-004-2024', 2, '2024-11-05', NOW()),
+(1, 39.99, 'USD', 'CreditCard', 'TokenPurchase', 2, 'TXN-005-2024', 3, '2024-11-12', NOW());
+
+-- ==========================================
+-- TOKEN TRANSACTIONS
+-- ==========================================
+INSERT INTO token_transactions ("UserId", "Amount", "TransactionType", "Description", "ReferenceId", "ReferenceType", "BalanceBefore", "BalanceAfter", "CreatedAt") VALUES
+(1, 50, 0, 'Initial subscription tokens', 1, 'Subscription', 0, 50, NOW()),
+(1, -20, 1, 'AI workout plan generation', 1, 'AIProgramGeneration', 50, 30, NOW()),
+(3, 100, 0, 'Premium subscription tokens', 2, 'Subscription', 0, 100, NOW()),
+(3, -25, 1, 'AI nutrition plan generation', 2, 'AIProgramGeneration', 100, 75, NOW()),
+(6, 110, 0, 'Basic Pack with bonus', 2, 'TokenPackage', 0, 110, NOW());
+
+-- ==========================================
+-- NOTIFICATIONS
+-- ==========================================
+INSERT INTO notifications ("UserId", "NotificationType", "Priority", "Title", "Message", "IsRead", "ReferenceType", "ReferenceId", "CreatedAt", "UpdatedAt") VALUES
+(1, 0, 'normal', 'Time for your workout!', 'You have a workout scheduled for today', false, 'WorkoutPlan', 1, NOW(), NOW()),
+(1, 3, 'high', 'New Milestone Unlocked!', 'Congratulations! You completed Week Warrior', false, 'Milestone', 2, NOW(), NOW()),
+(3, 4, 'high', 'Subscription Expiring Soon', 'Your premium subscription expires in 3 days', false, 'Subscription', 2, NOW(), NOW()),
+(5, 0, 'normal', 'Workout Reminder', 'Keep up the great work!', false, 'WorkoutPlan', NULL, NOW(), NOW());
+
+-- ==========================================
+-- USER MILESTONES
+-- ==========================================
+INSERT INTO user_milestones ("UserId", "MilestoneId", "CurrentProgress", "IsCompleted", "CompletedAt", "CreatedAt") VALUES
+(1, 1, 1, true, '2024-11-01', NOW()),
+(1, 2, 7, true, '2024-11-08', NOW()),
+(3, 1, 1, true, '2024-10-15', NOW()),
+(3, 2, 7, true, '2024-10-22', NOW()),
+(3, 3, 30, true, '2024-11-14', NOW());
+
+-- ==========================================
+-- ACTIVITY FEEDS
+-- ==========================================
+INSERT INTO activity_feeds ("UserId", "ActivityType", "Title", "Description", "ReferenceType", "ReferenceId", "CreatedAt") VALUES
+(1, 'Workout', 'Completed Weight Loss Workout', 'John Doe completed a 45-minute workout', 'WorkoutLog', 1, '2024-11-15 09:45:00+00'),
+(1, 'Achievement', 'Unlocked Week Warrior!', 'John Doe completed 7 consecutive workout days', 'Milestone', 2, '2024-11-08 12:00:00+00'),
+(3, 'Workout', 'Hit New Deadlift PR!', 'Michael Smith deadlifted 140kg for 5 reps', 'WorkoutLog', 4, '2024-10-22 19:00:00+00'),
+(3, 'Achievement', 'Unlocked Month Champion!', 'Michael Smith completed 30 days of training', 'Milestone', 3, '2024-11-14 12:00:00+00');
+
+-- ==========================================
+-- AI PROGRAM GENERATIONS
+-- ==========================================
+INSERT INTO ai_program_generations ("UserId", "ProgramType", "WorkoutPlanId", "NutritionPlanId", "TokensUsed", "InputPrompt", "GeneratedPlan", "CreatedAt") VALUES
+(1, 'Workout', 1, NULL, 20, 'Create an 8-week weight loss program for intermediate level', 'Generated workout plan with progressive overload', '2024-10-28'),
+(3, 'Nutrition', NULL, 2, 25, 'Create a 2800 calorie muscle gain nutrition plan', 'Generated high protein meal plan', '2024-10-12'),
+(5, 'Workout', 3, NULL, 30, 'Create a 10-week strength training program focusing on compound movements', 'AI-generated strength program with progressive overload and deload weeks', '2024-11-28');
+
+-- ==========================================
+-- AI CHAT LOGS
+-- ==========================================
+INSERT INTO ai_chat_logs ("UserId", "SessionId", "MessageType", "MessageContent", "TokensUsed", "CreatedAt") VALUES
+(1, 'a7e3c8d1-4f2b-4a1c-8e9f-1234567890ab'::uuid, 'Question', 'How can I improve my squat form?', 5, NOW()),
+(1, 'a7e3c8d1-4f2b-4a1c-8e9f-1234567890ab'::uuid, 'Response', 'To improve squat form, focus on: 1) Keep chest up 2) Drive knees out 3) Break at hips first...', 10, NOW()),
+(3, 'b8f4d9e2-5a3c-5b2d-9f0e-2345678901bc'::uuid, 'Question', 'What should I eat post-workout?', 4, NOW()),
+(3, 'b8f4d9e2-5a3c-5b2d-9f0e-2345678901bc'::uuid, 'Response', 'Post-workout nutrition should include: 1) Protein (30-40g) 2) Fast-digesting carbs...', 8, NOW());
 
 -- ==========================================
 -- VERIFICATION
