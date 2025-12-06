@@ -25,9 +25,12 @@ namespace Service.Services
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()), // For ASP.NET Core User.FindFirstValue
                 new Claim(JwtRegisteredClaimNames.Email, email),
+                new Claim(ClaimTypes.Email, email), // For ASP.NET Core compatibility
                 new Claim(ClaimTypes.Role, role),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };
 
             var token = new JwtSecurityToken(

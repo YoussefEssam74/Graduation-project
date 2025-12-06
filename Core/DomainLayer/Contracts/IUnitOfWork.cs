@@ -14,8 +14,21 @@ namespace DomainLayer.Contracts
 
         // Transaction management
         Task<int> SaveChangesAsync();
-        Task BeginTransactionAsync();
+
+        /// <summary>
+        /// Begins a database transaction and returns a disposable transaction object.
+        /// The caller must dispose the transaction (commit or rollback).
+        /// </summary>
+        Task<IDisposable> BeginTransactionAsync();
+
+        /// <summary>
+        /// Commits the current database transaction (legacy - prefer using the transaction object)
+        /// </summary>
         Task CommitTransactionAsync();
+
+        /// <summary>
+        /// Rolls back the current database transaction (legacy - prefer using the transaction object)
+        /// </summary>
         Task RollbackTransactionAsync();
     }
 }

@@ -37,6 +37,10 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const notificationRef = useRef<HubConnection | null>(null);
   const showToastRef = useRef(showToast);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Track processed message IDs to prevent duplicates on the client
+  const processedMessageIds = useRef<Set<number>>(new Set());
   
   // Keep the ref updated
   useEffect(() => {
@@ -61,6 +65,15 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   useEffect(() => {
+    // Cancel any previous connection attempt
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller for this connection attempt
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    
     if (!user || !token) {
       // Cleanup when user logs out
       const cleanup = async () => {
@@ -89,6 +102,9 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
             notificationRef.current = null;
             setNotificationConnection(null);
           }
+          
+          // Clear processed messages on logout
+          processedMessageIds.current.clear();
         } catch (err) {
           console.error('Error during SignalR cleanup', err);
         }
@@ -103,8 +119,8 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
 
-    // Flag to track if we should proceed with connection
-    let isMounted = true;
+    // Check if aborted before proceeding
+    if (abortController.signal.aborted) return;
 
     console.log('Creating new SignalR connections...');
     const chat = createHubConnection(`${API_BASE}/hubs/chat`);
@@ -116,10 +132,10 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setNotificationConnection(notification);
 
     const updateChatState = () => {
-      if (isMounted) setChatConnectionState(chat.state);
+      if (!abortController.signal.aborted) setChatConnectionState(chat.state);
     };
     const updateNotificationState = () => {
-      if (isMounted) setNotificationConnectionState(notification.state);
+      if (!abortController.signal.aborted) setNotificationConnectionState(notification.state);
     };
 
     chat.onreconnecting(() => updateChatState());
@@ -127,7 +143,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     chat.onclose((error) => {
       updateChatState();
       // If connection closed unexpectedly (not during cleanup), try to reconnect after a delay
-      if (isMounted && user && token && error) {
+      if (!abortController.signal.aborted && user && token && error) {
         console.log('Chat connection closed unexpectedly, scheduling reconnect...');
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
@@ -145,7 +161,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     notification.onclose((error) => {
       updateNotificationState();
       // If connection closed unexpectedly, try to reconnect
-      if (isMounted && user && token && error) {
+      if (!abortController.signal.aborted && user && token && error) {
         console.log('Notification connection closed unexpectedly, scheduling reconnect...');
         setTimeout(() => {
           if (notificationRef.current?.state === HubConnectionState.Disconnected) {
@@ -157,13 +173,25 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     chat.start()
       .then(() => {
-        if (!isMounted) return;
+        if (abortController.signal.aborted) return;
         console.log('Connected to chat hub');
         updateChatState();
 
         try {
           const globalHandler = (payload: any) => {
             try {
+              // Check for duplicate messages using messageId
+              const messageId = payload?.messageId || payload?.MessageId;
+              if (messageId && processedMessageIds.current.has(messageId)) {
+                console.log('Skipping duplicate message:', messageId);
+                return;
+              }
+              if (messageId) {
+                processedMessageIds.current.add(messageId);
+                // Clean up old message IDs after 5 minutes
+                setTimeout(() => processedMessageIds.current.delete(messageId), 5 * 60 * 1000);
+              }
+              
               const sender = payload?.senderName || payload?.sender || 'Someone';
               const text = payload?.message || payload?.text || '';
               if (text) showToastRef.current(`${sender}: ${text}`, 'info', 5000);
@@ -179,8 +207,8 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       })
       .catch(err => {
-        // Only log if component is still mounted and it's not a "stopped during negotiation" error
-        if (isMounted && !err?.message?.includes('stopped during negotiation')) {
+        // Only log if not aborted and it's not a "stopped during negotiation" error
+        if (!abortController.signal.aborted && !err?.message?.includes('stopped during negotiation')) {
           console.error('Failed to connect to chat hub:', err);
         }
         updateChatState();
@@ -188,20 +216,20 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     notification.start()
       .then(() => {
-        if (!isMounted) return;
+        if (abortController.signal.aborted) return;
         console.log('Connected to notification hub');
         updateNotificationState();
       })
       .catch(err => {
-        // Only log if component is still mounted and it's not a "stopped during negotiation" error
-        if (isMounted && !err?.message?.includes('stopped during negotiation')) {
+        // Only log if not aborted and it's not a "stopped during negotiation" error
+        if (!abortController.signal.aborted && !err?.message?.includes('stopped during negotiation')) {
           console.error('Failed to connect to notification hub:', err);
         }
         updateNotificationState();
       });
 
     return () => {
-      isMounted = false;
+      abortController.abort();
       // Clear any pending reconnect timeouts
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);

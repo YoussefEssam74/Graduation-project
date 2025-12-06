@@ -22,6 +22,23 @@ namespace Service.Services
 
         public async Task<BookingDto> CreateBookingAsync(CreateBookingDto createDto)
         {
+            // Validate time slot
+            if (createDto.StartTime >= createDto.EndTime)
+            {
+                throw new InvalidOperationException("Start time must be before end time");
+            }
+
+            if (createDto.StartTime < DateTime.UtcNow)
+            {
+                throw new InvalidOperationException("Cannot book a time slot in the past");
+            }
+
+            // Check if user already has a booking during this time slot
+            if (!await IsUserAvailableAsync(createDto.UserId, createDto.StartTime, createDto.EndTime))
+            {
+                throw new InvalidOperationException("You already have a booking during this time slot");
+            }
+
             // InBody bookings don't require equipment or coach
             if (createDto.BookingType == BookingTypes.InBody)
             {
@@ -293,6 +310,7 @@ namespace Service.Services
             var overlappingBookings = await _unitOfWork.Repository<Booking>()
                 .AnyAsync(b => b.EquipmentId == equipmentId &&
                               b.Status != BookingStatus.Cancelled &&
+                              b.Status != BookingStatus.Completed &&
                               ((b.StartTime < endTime && b.EndTime > startTime)));
 
             return !overlappingBookings;
@@ -303,6 +321,21 @@ namespace Service.Services
             var overlappingBookings = await _unitOfWork.Repository<Booking>()
                 .AnyAsync(b => b.CoachId == coachId &&
                               b.Status != BookingStatus.Cancelled &&
+                              b.Status != BookingStatus.Completed &&
+                              ((b.StartTime < endTime && b.EndTime > startTime)));
+
+            return !overlappingBookings;
+        }
+
+        /// <summary>
+        /// Check if the user already has a booking during the specified time slot
+        /// </summary>
+        public async Task<bool> IsUserAvailableAsync(int userId, DateTime startTime, DateTime endTime)
+        {
+            var overlappingBookings = await _unitOfWork.Repository<Booking>()
+                .AnyAsync(b => b.UserId == userId &&
+                              b.Status != BookingStatus.Cancelled &&
+                              b.Status != BookingStatus.Completed &&
                               ((b.StartTime < endTime && b.EndTime > startTime)));
 
             return !overlappingBookings;

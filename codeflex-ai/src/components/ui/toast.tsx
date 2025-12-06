@@ -87,6 +87,13 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     info: "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800",
   };
 
+  const textColors = {
+  success: "text-green-800 dark:text-green-100",
+  error: "text-red-800 dark:text-red-100",
+  warning: "text-yellow-800 dark:text-yellow-100",
+  info: "text-blue-800 dark:text-blue-100",
+  };
+
   return (
     <div
       className={cn(
@@ -95,7 +102,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       )}
     >
       {icons[toast.type]}
-      <p className="flex-1 text-sm font-medium text-foreground">{toast.message}</p>
+     <p className={cn("flex-1 text-sm font-medium", textColors[toast.type])}>{toast.message}</p>
       <button
         onClick={onClose}
         className="text-muted-foreground hover:text-foreground transition-colors"

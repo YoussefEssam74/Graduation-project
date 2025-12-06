@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Security.Claims;
 using IntelliFit.Infrastructure.Persistence;
 using IntelliFit.Infrastructure.Persistence.Repository;
 using DomainLayer.Contracts;
@@ -47,10 +48,19 @@ namespace Graduation_Project
             // Add Service Manager (creates service instances internally with lazy loading - E-Commerce pattern)
             builder.Services.AddScoped<ServiceAbstraction.IServiceManager, Service.ServiceManager>();
 
-            // Add JWT Authentication
-            var jwtKey = builder.Configuration["Jwt:Key"];
-            var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-            var jwtAudience = builder.Configuration["Jwt:Audience"];
+            // Add JWT Authentication with proper validation
+            var jwtKey = builder.Configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("JWT Key not configured. Set Jwt:Key in appsettings or environment variables.");
+            var jwtIssuer = builder.Configuration["Jwt:Issuer"]
+                ?? throw new InvalidOperationException("JWT Issuer not configured.");
+            var jwtAudience = builder.Configuration["Jwt:Audience"]
+                ?? throw new InvalidOperationException("JWT Audience not configured.");
+
+            // Validate key length for security
+            if (jwtKey.Length < 32)
+            {
+                throw new InvalidOperationException("JWT Key must be at least 32 characters for security.");
+            }
 
             builder.Services.AddAuthentication(options =>
             {
@@ -59,15 +69,32 @@ namespace Graduation_Project
             })
             .AddJwtBearer(options =>
             {
+                options.RequireHttpsMetadata = builder.Environment.IsProduction();
+                options.SaveToken = true;
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
+                    // CRITICAL: Validate signature to prevent token tampering
                     ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+
+                    // Validate issuer
+                    ValidateIssuer = true,
                     ValidIssuer = jwtIssuer,
+
+                    // Validate audience
+                    ValidateAudience = true,
                     ValidAudience = jwtAudience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!))
+
+                    // Validate token expiration
+                    ValidateLifetime = true,
+
+                    // No clock skew - tokens expire exactly at expiration time
+                    ClockSkew = TimeSpan.Zero,
+
+                    // Map name identifier claim for user ID extraction
+                    NameClaimType = ClaimTypes.NameIdentifier,
+                    RoleClaimType = ClaimTypes.Role
                 };
 
                 // Allow SignalR to use JWT token from query string
@@ -82,6 +109,20 @@ namespace Graduation_Project
                         {
                             context.Token = accessToken;
                         }
+                        return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                        logger.LogWarning("JWT Authentication failed: {Error}", context.Exception.Message);
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                        var userId = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                  ?? context.Principal?.FindFirst("sub")?.Value;
+                        logger.LogDebug("Token validated for user: {UserId}", userId);
                         return Task.CompletedTask;
                     }
                 };

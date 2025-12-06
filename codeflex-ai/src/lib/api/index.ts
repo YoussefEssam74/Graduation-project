@@ -1,5 +1,6 @@
 // Export all API modules
 export * from './client';
+export * from './cache';
 export * from './auth';
 export * from './stats';
 export * from './bookings';

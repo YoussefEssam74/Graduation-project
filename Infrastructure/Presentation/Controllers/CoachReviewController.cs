@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction;
 using IntelliFit.Shared.DTOs.User;
-using System.Security.Claims;
 
 namespace Presentation.Controllers
 {
@@ -15,7 +14,7 @@ namespace Presentation.Controllers
         [HttpPost]
         public async Task<ActionResult<CoachReviewDto>> CreateReview([FromBody] CreateCoachReviewDto dto)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userId = GetUserIdFromToken();
             var review = await _serviceManager.CoachReviewService.CreateReviewAsync(userId, dto);
             return Ok(review);
         }
@@ -61,7 +60,7 @@ namespace Presentation.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<CoachReviewDto>> UpdateReview(int id, [FromBody] UpdateCoachReviewDto dto)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userId = GetUserIdFromToken();
             var review = await _serviceManager.CoachReviewService.UpdateReviewAsync(id, userId, dto);
             if (review == null) return NotFound();
             return Ok(review);
@@ -74,7 +73,7 @@ namespace Presentation.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteReview(int id)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userId = GetUserIdFromToken();
             await _serviceManager.CoachReviewService.DeleteReviewAsync(id, userId);
             return NoContent();
         }

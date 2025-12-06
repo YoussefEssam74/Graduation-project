@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction;
 using IntelliFit.Shared.DTOs.WorkoutPlan;
-using System.Security.Claims;
 
 namespace Presentation.Controllers
 {
@@ -16,7 +15,7 @@ namespace Presentation.Controllers
         [Authorize(Roles = "Coach")]
         public async Task<ActionResult<WorkoutTemplateDto>> CreateTemplate([FromBody] CreateWorkoutTemplateDto dto)
         {
-            var coachId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var coachId = GetUserIdFromToken();
             var template = await _serviceManager.WorkoutTemplateService.CreateTemplateAsync(coachId, dto);
             return Ok(template);
         }
@@ -63,7 +62,7 @@ namespace Presentation.Controllers
         [Authorize(Roles = "Coach")]
         public async Task<ActionResult<WorkoutTemplateDto>> UpdateTemplate(int id, [FromBody] UpdateWorkoutTemplateDto dto)
         {
-            var coachId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var coachId = GetUserIdFromToken();
             var template = await _serviceManager.WorkoutTemplateService.UpdateTemplateAsync(id, coachId, dto);
             if (template == null) return NotFound();
             return Ok(template);
@@ -77,7 +76,7 @@ namespace Presentation.Controllers
         [Authorize(Roles = "Coach")]
         public async Task<ActionResult> DeleteTemplate(int id)
         {
-            var coachId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var coachId = GetUserIdFromToken();
             await _serviceManager.WorkoutTemplateService.DeleteTemplateAsync(id, coachId);
             return NoContent();
         }

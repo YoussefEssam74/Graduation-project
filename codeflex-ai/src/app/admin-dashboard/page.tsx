@@ -230,10 +230,10 @@ function AdminDashboardContent() {
                 key={alert.id}
                 className={`p-4 rounded-lg border-l-4 ${
                   alert.severity === "critical"
-                    ? "bg-red-50 border-red-500"
+                    ? "bg-red-50 border-red-500 dark:bg-red-950"
                     : alert.severity === "warning"
-                    ? "bg-orange-50 border-orange-500"
-                    : "bg-blue-50 border-blue-500"
+                    ? "bg-orange-50 border-orange-500 dark:bg-orange-950"
+                    : "bg-blue-50 border-blue-500 dark:bg-blue-950"
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -252,7 +252,7 @@ function AdminDashboardContent() {
                       </span>
                       <span className="text-xs text-muted-foreground">{alert.time}</span>
                     </div>
-                    <p className="text-sm font-medium">{alert.message}</p>
+                    
                   </div>
                   <Button size="sm" variant="outline" className="ml-3">
                     Resolve

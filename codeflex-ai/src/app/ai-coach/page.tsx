@@ -7,13 +7,23 @@ import {
   Send,
   Zap,
   History,
+  Plus,
+  MessageSquare,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+interface ChatSession {
+  sessionId: string;
+  messageCount: number;
+  lastMessage: string;
+  lastMessageTime: string;
+  firstMessage: string;
+}
+
 export default function AICoachPage() {
-  const { user, deductTokens, token } = useAuth();
+  const { user, refreshUser, token } = useAuth();
   // API base - can be configured via environment variable in development/production
   const API_BASE = (
     process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5025/api"
@@ -22,8 +32,9 @@ export default function AICoachPage() {
   const [chatHistory, setChatHistory] = useState<
     { role: "user" | "ai"; content: string; timestamp: string }[]
   >([]);
-  const [historyList, setHistoryList] = useState<any[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
   const suggestedPrompts = [
@@ -67,7 +78,11 @@ export default function AICoachPage() {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ userId: user?.userId, message }),
+          body: JSON.stringify({ 
+            userId: user?.userId, 
+            message,
+            sessionId: currentSessionId 
+          }),
         });
 
         if (!res.ok) {
@@ -77,11 +92,22 @@ export default function AICoachPage() {
 
         const payload = await res.json();
         const aiReply = payload?.data?.response ?? "Sorry, I couldn't get a response from the AI.";
+        const returnedSessionId = payload?.data?.sessionId;
 
-        // add ai message and deduct token
+        // Update current session ID if this was a new chat
+        if (!currentSessionId && returnedSessionId) {
+          setCurrentSessionId(returnedSessionId);
+        }
+
+        // add ai message
         const aiMessage = { role: "ai" as const, content: aiReply, timestamp: new Date().toLocaleTimeString() };
         setChatHistory((s) => [...s, aiMessage]);
-        deductTokens(1);
+        
+        // Refresh user data to get updated token balance from database
+        await refreshUser();
+        
+        // Reload sessions to update sidebar
+        loadSessions();
       } catch (err) {
         console.error("Error sending message to Gemini API:", err);
         const errMsg = { role: "ai" as const, content: "Error: Unable to get response from AI. Try again later.", timestamp: new Date().toLocaleTimeString() };
@@ -93,50 +119,79 @@ export default function AICoachPage() {
     })();
   };
 
+  const handleNewChat = () => {
+    setCurrentSessionId(null);
+    setChatHistory([]);
+  };
+
   const handlePromptClick = (prompt: string) => {
     setMessage(prompt);
   };
 
-  // Load chat history for the user on mount
-  useEffect(() => {
-    let mounted = true;
-    const loadHistory = async () => {
-      if (!user?.userId) {
-        setIsLoadingHistory(false);
+  // Load chat sessions for the user on mount
+  const loadSessions = async () => {
+    if (!user?.userId) {
+      setIsLoadingSessions(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/ai/sessions/${user.userId}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!res.ok) {
+        console.warn("Failed to load chat sessions", res.status);
+        setIsLoadingSessions(false);
         return;
       }
-      try {
-        const res = await fetch(`${API_BASE}/ai/history/${user.userId}`, {
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
 
-        if (!res.ok) {
-          console.warn("Failed to load chat history", res.status);
-          setIsLoadingHistory(false);
-          return;
-        }
-
-        const data = await res.json();
-        // Expecting array of { role, content, timestamp } or similar shape
-        if (mounted && Array.isArray(data)) {
-          const mapped = data.map((m: any) => ({ role: m.role ?? (m.isUser ? 'user' : 'ai'), content: m.content ?? m.message ?? '', timestamp: m.timestamp ?? new Date().toLocaleTimeString() }));
-          // Full history list is available on the left pane
-          setHistoryList(mapped);
-          // Show recent messages in the main chat area (last 12)
-          setChatHistory(mapped.slice(-12));
-        }
-      } catch (err) {
-        console.error("Error loading chat history:", err);
-      } finally {
-        if (mounted) setIsLoadingHistory(false);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.sessions)) {
+        setSessions(data.sessions);
       }
-    };
+    } catch (err) {
+      console.error("Error loading chat sessions:", err);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
 
-    loadHistory();
-    return () => { mounted = false; };
+  useEffect(() => {
+    loadSessions();
   }, [user?.userId]);
+
+  // Load a specific session's messages
+  const loadSession = async (sessionId: string) => {
+    if (!user?.userId) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/ai/sessions/${user.userId}/${sessionId}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!res.ok) {
+        console.warn("Failed to load session messages", res.status);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success && Array.isArray(data.messages)) {
+        const mapped = data.messages.map((m: any) => ({
+          role: m.role === 'user' ? 'user' as const : 'ai' as const,
+          content: m.message || '',
+          timestamp: new Date(m.timestamp).toLocaleTimeString()
+        }));
+        setChatHistory(mapped);
+        setCurrentSessionId(sessionId);
+      }
+    } catch (err) {
+      console.error("Error loading session messages:", err);
+    }
+  };
 
   // Keep chat scrolled to bottom when new messages arrive
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
@@ -161,10 +216,7 @@ export default function AICoachPage() {
     }
   }, [chatHistory]);
 
-  const handleHistoryItemClick = (index: number) => {
-    // load conversation up to clicked message (simple approach)
-    setChatHistory(historyList.slice(0, index + 1));
-  };
+
 
   return (
     <div className="h-[calc(100vh-6rem)] flex flex-col bg-gradient-to-b from-background to-background/95">
@@ -174,32 +226,58 @@ export default function AICoachPage() {
           {/* Left: History Sidebar */}
           <div className="lg:col-span-1 order-2 lg:order-1 hidden lg:block min-h-0">
             <Card className="h-full flex flex-col border-0 shadow-lg bg-card/80 backdrop-blur-sm">
-              <div className="p-3 border-b border-border/50 flex items-center gap-2">
-                <History className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">History</h3>
+              <div className="p-3 border-b border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <History className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Chat History</h3>
+                  </div>
+                  <Button 
+                    onClick={handleNewChat}
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    New
+                  </Button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
-                {isLoadingHistory && (
+                {isLoadingSessions && (
                   <div className="flex items-center justify-center py-4">
                     <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
                   </div>
                 )}
-                {!isLoadingHistory && historyList.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No conversations yet</p>
+                {!isLoadingSessions && sessions.length === 0 && (
+                  <div className="text-center py-8 px-4">
+                    <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">No conversations yet</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">Start chatting to see your history</p>
+                  </div>
                 )}
-                {historyList.map((item, idx) => (
+                {sessions.map((session) => (
                   <button
-                    key={idx}
-                    onClick={() => handleHistoryItemClick(idx)}
-                    className="w-full text-left p-2 rounded-lg hover:bg-primary/10 transition-all duration-200 group"
+                    key={session.sessionId}
+                    onClick={() => loadSession(session.sessionId)}
+                    className={`w-full text-left p-3 rounded-lg hover:bg-primary/10 transition-all duration-200 group border ${
+                      currentSessionId === session.sessionId 
+                        ? 'border-primary/30 bg-primary/5' 
+                        : 'border-transparent'
+                    }`}
                   >
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={`text-[10px] font-medium uppercase tracking-wide ${item.role === 'ai' ? 'text-primary' : 'text-muted-foreground'}`}>
-                        {item.role === 'ai' ? 'AI' : 'You'}
+                    <div className="flex items-center gap-2 mb-1">
+                      <MessageSquare className="h-3 w-3 text-primary" />
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {new Date(session.lastMessageTime).toLocaleDateString()}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/60">{item.timestamp}</span>
                     </div>
-                    <p className="text-xs text-foreground/80 line-clamp-1 group-hover:text-foreground transition-colors">{item.content}</p>
+                    <p className="text-xs text-foreground font-medium line-clamp-1 mb-1">
+                      {session.firstMessage}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/80 line-clamp-1">
+                      {session.messageCount} messages
+                    </p>
                   </button>
                 ))}
               </div>
@@ -237,7 +315,7 @@ export default function AICoachPage() {
 
               {/* Chat Messages */}
               <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-transparent to-muted/5 min-h-0">
-                {chatHistory.length === 0 && !isLoadingHistory && (
+                {chatHistory.length === 0 && !isLoadingSessions && (
                   <div className="h-full flex flex-col items-center justify-center text-center px-4">
                     <div className="p-3 bg-primary/10 rounded-2xl mb-3">
                       <Brain className="h-8 w-8 text-primary" />

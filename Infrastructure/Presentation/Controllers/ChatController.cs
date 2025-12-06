@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction.Services;
 using Shared.DTOs.Chat;
-using System.Security.Claims;
 
 namespace Presentation.Controllers
 {
@@ -28,10 +27,8 @@ namespace Presentation.Controllers
             [FromQuery] int limit = 50,
             [FromQuery] DateTime? beforeDate = null)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
-
-            var messages = await _chatService.GetChatHistoryAsync(userId.Value, otherUserId, limit, beforeDate);
+            var userId = GetUserIdFromToken();
+            var messages = await _chatService.GetChatHistoryAsync(userId, otherUserId, limit, beforeDate);
             return Ok(messages);
         }
 
@@ -45,10 +42,8 @@ namespace Presentation.Controllers
         [HttpGet("conversations")]
         public async Task<ActionResult<IEnumerable<ConversationDto>>> GetConversations()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
-
-            var conversations = await _chatService.GetConversationsAsync(userId.Value);
+            var userId = GetUserIdFromToken();
+            var conversations = await _chatService.GetConversationsAsync(userId);
             return Ok(conversations);
         }
 
@@ -62,10 +57,8 @@ namespace Presentation.Controllers
         [HttpGet("unread-count")]
         public async Task<ActionResult<int>> GetUnreadCount()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
-
-            var count = await _chatService.GetUnreadCountAsync(userId.Value);
+            var userId = GetUserIdFromToken();
+            var count = await _chatService.GetUnreadCountAsync(userId);
             return Ok(count);
         }
 
@@ -79,27 +72,9 @@ namespace Presentation.Controllers
         [HttpPost("mark-read/{otherUserId}")]
         public async Task<ActionResult<object>> MarkAsRead(int otherUserId)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized();
-
-            await _chatService.MarkMessagesAsReadAsync(otherUserId, userId.Value);
+            var userId = GetUserIdFromToken();
+            await _chatService.MarkMessagesAsReadAsync(otherUserId, userId);
             return Ok(new { success = true, message = "Messages marked as read" });
-        }
-
-        #endregion
-
-        #region Helpers
-
-        private int? GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value;
-
-            if (int.TryParse(userIdClaim, out var userId))
-            {
-                return userId;
-            }
-            return null;
         }
 
         #endregion

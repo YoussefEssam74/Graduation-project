@@ -622,16 +622,59 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.HasIndex(e => e.CreatedAt);
                 entity.HasIndex(e => e.Action);
                 entity.HasIndex(e => e.UserId);
+
+                // FK to User for audit trail
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Performance Indexes
             // Note: Role is determined by TPT inheritance (Member/Coach/Receptionist/Admin tables)
             modelBuilder.Entity<User>().HasIndex(e => e.IsActive);
+            modelBuilder.Entity<User>().HasIndex(e => e.CreatedAt); // For recent users queries
+            modelBuilder.Entity<User>().HasIndex(e => e.LastLoginAt); // For activity tracking
+
             modelBuilder.Entity<WorkoutPlan>().HasIndex(e => new { e.UserId, e.IsActive });
+            modelBuilder.Entity<WorkoutPlan>().HasIndex(e => e.CreatedAt); // For recent plans
+
             modelBuilder.Entity<NutritionPlan>().HasIndex(e => new { e.UserId, e.IsActive });
+            modelBuilder.Entity<NutritionPlan>().HasIndex(e => e.CreatedAt);
+
             modelBuilder.Entity<Booking>().HasIndex(e => new { e.UserId, e.StartTime });
+            modelBuilder.Entity<Booking>().HasIndex(e => new { e.CoachId, e.StartTime }); // Coach availability
+            modelBuilder.Entity<Booking>().HasIndex(e => new { e.EquipmentId, e.StartTime }); // Equipment availability
+            modelBuilder.Entity<Booking>().HasIndex(e => e.Status); // Filter by status
+
             modelBuilder.Entity<TokenTransaction>().HasIndex(e => new { e.UserId, e.CreatedAt });
+            modelBuilder.Entity<TokenTransaction>().HasIndex(e => e.TransactionType); // Filter by type
+
             modelBuilder.Entity<ChatMessage>().HasIndex(e => new { e.ConversationId, e.CreatedAt });
+
+            // WorkoutLog indexes for user workout history and stats
+            modelBuilder.Entity<WorkoutLog>().HasIndex(e => new { e.UserId, e.WorkoutDate });
+            modelBuilder.Entity<WorkoutLog>().HasIndex(e => e.WorkoutDate); // For date-range queries
+
+            // AiChatLog indexes for conversation lookup
+            modelBuilder.Entity<AiChatLog>().HasIndex(e => new { e.UserId, e.SessionId });
+            modelBuilder.Entity<AiChatLog>().HasIndex(e => e.CreatedAt);
+
+            // CoachReview indexes
+            modelBuilder.Entity<CoachReview>().HasIndex(e => new { e.CoachId, e.CreatedAt });
+            modelBuilder.Entity<CoachReview>().HasIndex(e => e.Rating); // For filtering by rating
+
+            // UserSubscription indexes
+            modelBuilder.Entity<UserSubscription>().HasIndex(e => new { e.UserId, e.Status });
+            modelBuilder.Entity<UserSubscription>().HasIndex(e => e.EndDate); // For expiration checks
+
+            // Payment indexes
+            modelBuilder.Entity<Payment>().HasIndex(e => new { e.UserId, e.CreatedAt });
+            modelBuilder.Entity<Payment>().HasIndex(e => e.Status);
+
+            // Exercise indexes for search
+            modelBuilder.Entity<Exercise>().HasIndex(e => e.MuscleGroup); // Filter by muscle group
+            modelBuilder.Entity<Exercise>().HasIndex(e => e.DifficultyLevel); // Filter by difficulty
         }
     }
 }

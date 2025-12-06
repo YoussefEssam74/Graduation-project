@@ -3,6 +3,17 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Sensitive configuration files - NEVER commit these
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.local.json
+.env
+.env.*
+!.env.example
+secrets.json
+*.pfx
+*.key
+
 # User-specific files
 *.rsuser
 *.suo

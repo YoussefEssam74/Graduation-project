@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction;
 using IntelliFit.Shared.DTOs.WorkoutPlan;
-using System.Security.Claims;
 
 namespace Presentation.Controllers
 {
@@ -15,7 +14,7 @@ namespace Presentation.Controllers
         [HttpPost]
         public async Task<ActionResult<WorkoutLogDto>> CreateWorkoutLog([FromBody] CreateWorkoutLogDto dto)
         {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var userId = GetUserIdFromToken();
             var log = await _serviceManager.WorkoutLogService.CreateWorkoutLogAsync(userId, dto);
             return Ok(log);
         }

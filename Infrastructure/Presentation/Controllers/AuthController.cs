@@ -11,8 +11,24 @@ namespace Presentation.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<AuthResponseDto>> Login(LoginRequestDto loginDto)
         {
-            var result = await _serviceManager.AuthService.LoginAsync(loginDto);
-            return Ok(result);
+            try
+            {
+                var result = await _serviceManager.AuthService.LoginAsync(loginDto);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Treat invalid operations as bad requests (e.g., account issues)
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
+            }
         }
 
         #endregion

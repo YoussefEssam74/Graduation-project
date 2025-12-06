@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DomainLayer.Contracts;
 using DomainLayer.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 
 namespace IntelliFit.Infrastructure.Persistence.Repository
@@ -45,20 +46,27 @@ namespace IntelliFit.Infrastructure.Persistence.Repository
             return adapter;
         }
 
-        // Transaction helpers
-        public async Task BeginTransactionAsync()
+        // Transaction helpers - returns the transaction object for proper disposal
+        // Cast to IDisposable to keep domain layer clean from EF Core dependencies
+        public async Task<IDisposable> BeginTransactionAsync()
         {
-            await _dbContext.Database.BeginTransactionAsync();
+            return await _dbContext.Database.BeginTransactionAsync();
         }
 
         public async Task CommitTransactionAsync()
         {
-            await _dbContext.Database.CommitTransactionAsync();
+            if (_dbContext.Database.CurrentTransaction != null)
+            {
+                await _dbContext.Database.CommitTransactionAsync();
+            }
         }
 
         public async Task RollbackTransactionAsync()
         {
-            await _dbContext.Database.RollbackTransactionAsync();
+            if (_dbContext.Database.CurrentTransaction != null)
+            {
+                await _dbContext.Database.RollbackTransactionAsync();
+            }
         }
 
         public void Dispose()

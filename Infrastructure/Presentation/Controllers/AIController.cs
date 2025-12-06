@@ -4,6 +4,8 @@ using ServiceAbstraction;
 using IntelliFit.ServiceAbstraction;
 using Shared.DTOs;
 using Shared.DTOs.AI;
+using IntelliFit.Shared.DTOs.Payment;
+using System.Diagnostics;
 
 namespace Presentation.Controllers
 {
@@ -58,11 +60,38 @@ namespace Presentation.Controllers
 
                 _logger.LogInformation("Generating workout plan for user {UserId}", request.UserId);
 
+                // Check user has sufficient tokens (50 tokens required)
+                var currentBalance = await _serviceManager.TokenTransactionService.GetUserTokenBalanceAsync(request.UserId);
+                if (currentBalance < 50)
+                {
+                    return BadRequest(new { success = false, message = $"Insufficient token balance. You need 50 tokens but have {currentBalance}." });
+                }
+
                 var result = await _serviceManager.AIService.GenerateWorkoutPlanAsync(request);
 
                 if (!result.Success)
                 {
                     return BadRequest(new { success = false, message = result.ErrorMessage });
+                }
+
+                // Deduct 50 tokens from user balance
+                try
+                {
+                    await _serviceManager.TokenTransactionService.CreateTransactionAsync(
+                        userId: request.UserId,
+                        dto: new CreateTokenTransactionDto
+                        {
+                            Amount = -50,
+                            TransactionType = "Deduction",
+                            Description = "AI Generated Workout Plan",
+                            ReferenceType = "WorkoutPlan"
+                        }
+                    );
+                }
+                catch (Exception tokenEx)
+                {
+                    _logger.LogError(tokenEx, "Failed to deduct tokens for user {UserId}", request.UserId);
+                    return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
                 }
 
                 return Ok(new
@@ -75,6 +104,7 @@ namespace Presentation.Controllers
                         schedule = result.Schedule,
                         exercises = result.Exercises,
                         tokensSpent = result.TokensSpent,
+                        newBalance = currentBalance - 50,
                         note = "This AI-generated plan is pending coach approval"
                     }
                 });
@@ -103,11 +133,38 @@ namespace Presentation.Controllers
 
                 _logger.LogInformation("Generating nutrition plan for user {UserId}", request.UserId);
 
+                // Check user has sufficient tokens (50 tokens required)
+                var currentBalance = await _serviceManager.TokenTransactionService.GetUserTokenBalanceAsync(request.UserId);
+                if (currentBalance < 50)
+                {
+                    return BadRequest(new { success = false, message = $"Insufficient token balance. You need 50 tokens but have {currentBalance}." });
+                }
+
                 var result = await _serviceManager.AIService.GenerateNutritionPlanAsync(request);
 
                 if (!result.Success)
                 {
                     return BadRequest(new { success = false, message = result.ErrorMessage });
+                }
+
+                // Deduct 50 tokens from user balance
+                try
+                {
+                    await _serviceManager.TokenTransactionService.CreateTransactionAsync(
+                        userId: request.UserId,
+                        dto: new CreateTokenTransactionDto
+                        {
+                            Amount = -50,
+                            TransactionType = "Deduction",
+                            Description = "AI Generated Nutrition Plan",
+                            ReferenceType = "NutritionPlan"
+                        }
+                    );
+                }
+                catch (Exception tokenEx)
+                {
+                    _logger.LogError(tokenEx, "Failed to deduct tokens for user {UserId}", request.UserId);
+                    return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
                 }
 
                 return Ok(new
@@ -120,6 +177,7 @@ namespace Presentation.Controllers
                         dailyCalories = result.DailyCalories,
                         meals = result.Meals,
                         tokensSpent = result.TokensSpent,
+                        newBalance = currentBalance - 50,
                         note = "This AI-generated plan is pending coach approval"
                     }
                 });
@@ -134,7 +192,7 @@ namespace Presentation.Controllers
 
         #region Gemini Chat
         /// <summary>
-        /// Chat with AI fitness coach using Google Gemini
+        /// Chat with AI fitness coach using Groq (llama-3.3-70b-versatile)
         /// POST: api/ai/gemini-chat
         /// Cost: 1 token per message
         /// </summary>
@@ -148,9 +206,60 @@ namespace Presentation.Controllers
                     return BadRequest(new { success = false, message = "Message cannot be empty" });
                 }
 
-                _logger.LogInformation("Gemini AI chat request from user {UserId}", request.UserId);
+                _logger.LogInformation("AI chat request from user {UserId}", request.UserId);
 
+                // Check user has sufficient tokens
+                var currentBalance = await _serviceManager.TokenTransactionService.GetUserTokenBalanceAsync(request.UserId);
+                if (currentBalance < 1)
+                {
+                    return BadRequest(new { success = false, message = "Insufficient token balance. You need at least 1 token to chat with AI." });
+                }
+
+                // Track response time
+                var stopwatch = Stopwatch.StartNew();
                 var response = await _serviceManager.AIService.ChatWithAIAsync(request.Message, request.UserId);
+                stopwatch.Stop();
+
+                // Deduct 1 token from user balance
+                try
+                {
+                    await _serviceManager.TokenTransactionService.CreateTransactionAsync(
+                        userId: request.UserId,
+                        dto: new CreateTokenTransactionDto
+                        {
+                            Amount = -1,
+                            TransactionType = "Deduction",
+                            Description = "AI Chat - Gemini conversation",
+                            ReferenceType = "AIChat"
+                        }
+                    );
+                }
+                catch (Exception tokenEx)
+                {
+                    _logger.LogError(tokenEx, "Failed to deduct tokens for user {UserId}", request.UserId);
+                    return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
+                }
+
+                // Use provided sessionId or create new one
+                var sessionId = request.SessionId ?? Guid.NewGuid();
+
+                // Save the chat interaction to the database
+                try
+                {
+                    await _serviceManager.AIChatService.SaveChatInteractionAsync(
+                        userId: request.UserId,
+                        userMessage: request.Message,
+                        aiResponse: response,
+                        tokensUsed: 1,
+                        responseTimeMs: (int)stopwatch.ElapsedMilliseconds,
+                        sessionId: sessionId
+                    );
+                }
+                catch (Exception saveEx)
+                {
+                    // Log but don't fail the request if saving fails
+                    _logger.LogWarning(saveEx, "Failed to save chat interaction for user {UserId}", request.UserId);
+                }
 
                 return Ok(new
                 {
@@ -158,17 +267,58 @@ namespace Presentation.Controllers
                     data = new
                     {
                         response,
-                        tokensSpent = 1
+                        tokensSpent = 1,
+                        responseTimeMs = stopwatch.ElapsedMilliseconds,
+                        newBalance = currentBalance - 1,
+                        sessionId = sessionId
                     }
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in Gemini AI chat");
+                _logger.LogError(ex, "Error in AI chat for user {UserId}", request.UserId);
                 return StatusCode(500, new { success = false, message = "An error occurred during the chat" });
             }
         }
         #endregion
+
+        /// <summary>
+        /// Get all chat sessions for a user
+        /// GET: api/ai/sessions/{userId}
+        /// </summary>
+        [HttpGet("sessions/{userId}")]
+        public async Task<IActionResult> GetChatSessions(int userId)
+        {
+            try
+            {
+                var sessions = await _serviceManager.AIChatService.GetChatSessionsAsync(userId);
+                return Ok(new { success = true, sessions });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting chat sessions for user {UserId}", userId);
+                return StatusCode(500, new { success = false, message = "Failed to get chat sessions" });
+            }
+        }
+
+        /// <summary>
+        /// Get all messages for a specific session
+        /// GET: api/ai/sessions/{userId}/{sessionId}
+        /// </summary>
+        [HttpGet("sessions/{userId}/{sessionId}")]
+        public async Task<IActionResult> GetSessionMessages(int userId, Guid sessionId)
+        {
+            try
+            {
+                var messages = await _serviceManager.AIChatService.GetSessionMessagesAsync(userId, sessionId);
+                return Ok(new { success = true, messages });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting session messages for user {UserId}, session {SessionId}", userId, sessionId);
+                return StatusCode(500, new { success = false, message = "Failed to get session messages" });
+            }
+        }
 
         #region Test
         /// <summary>
@@ -188,7 +338,9 @@ namespace Presentation.Controllers
                     "POST /api/ai/chat - Legacy AI chat",
                     "POST /api/ai/generate-workout-plan - Generate AI workout plan (50 tokens)",
                     "POST /api/ai/generate-nutrition-plan - Generate AI nutrition plan (50 tokens)",
-                    "POST /api/ai/gemini-chat - Chat with Gemini AI coach (1 token per message)"
+                    "POST /api/ai/gemini-chat - Chat with Gemini AI coach (1 token per message)",
+                    "GET /api/ai/sessions/{userId} - Get all chat sessions for user",
+                    "GET /api/ai/sessions/{userId}/{sessionId} - Get messages for specific session"
                 }
             });
         }
@@ -202,5 +354,6 @@ namespace Presentation.Controllers
     {
         public int UserId { get; set; }
         public string Message { get; set; } = string.Empty;
+        public Guid? SessionId { get; set; }
     }
 }

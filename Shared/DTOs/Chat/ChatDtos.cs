@@ -47,6 +47,10 @@ namespace Shared.DTOs.Chat
     /// </summary>
     public class ChatMessagePayload
     {
+        /// <summary>
+        /// Unique message ID for deduplication on the client
+        /// </summary>
+        public int MessageId { get; set; }
         public int SenderId { get; set; }
         public string SenderName { get; set; } = null!;
         public string Message { get; set; } = null!;

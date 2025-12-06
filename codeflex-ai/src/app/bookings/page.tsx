@@ -77,7 +77,7 @@ export default function BookingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const { showToast } = useToast();
-  const { user, deductTokens, adjustTokens } = useAuth();
+  const { user, deductTokens, adjustTokens, refreshUser } = useAuth();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<LocalBooking | null>(null);
   
@@ -274,6 +274,8 @@ export default function BookingsPage() {
 
       if (response.success && response.data) {
         deductTokens(cost);
+        // Refresh authoritative balance from server (in case backend persisted a transaction)
+        if (refreshUser) await refreshUser();
         setEquipmentList((prev) => prev.map((e) => (e.id === id ? { ...e, status: "in_use", nextAvailable: "In Use" } : e)));
 
         const newBooking: LocalBooking = {
@@ -343,6 +345,8 @@ export default function BookingsPage() {
 
       if (response.success && response.data) {
         deductTokens(cost);
+        // Refresh authoritative balance from server (in case backend persisted a transaction)
+        if (refreshUser) await refreshUser();
 
         const newBooking: LocalBooking = {
           id: response.data.bookingId,
@@ -392,6 +396,8 @@ export default function BookingsPage() {
         
         if (bookingToCancel.status === "confirmed" && bookingToCancel.tokensCost > 0) {
           adjustTokens(bookingToCancel.tokensCost);
+          // Refresh authoritative balance from server (in case backend processed a refund)
+          if (refreshUser) await refreshUser();
           showToast(`Booking cancelled. ${bookingToCancel.tokensCost} tokens refunded to your account!`, "success");
         } else {
           showToast("Booking cancelled.", "info");

@@ -1,5 +1,6 @@
 using DomainLayer.Contracts;
 using IntelliFit.Domain.Models;
+using IntelliFit.Domain.Enums;
 using IntelliFit.ServiceAbstraction.Services;
 using IntelliFit.Shared.DTOs.Payment;
 using AutoMapper;
@@ -19,25 +20,55 @@ namespace Service.Services
 
         public async Task<TokenTransactionDto> CreateTransactionAsync(int userId, CreateTokenTransactionDto dto)
         {
-            var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
-            if (user == null) throw new Exception("User not found");
+            // Use explicit transaction for atomicity
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+                if (user == null) throw new InvalidOperationException("User not found");
 
-            var balanceBefore = user.TokenBalance;
-            var balanceAfter = balanceBefore + dto.Amount;
+                // Validate sufficient balance for deductions
+                if (dto.Amount < 0 && user.TokenBalance + dto.Amount < 0)
+                {
+                    throw new InvalidOperationException("Insufficient token balance");
+                }
 
-            var transaction = _mapper.Map<TokenTransaction>(dto);
-            transaction.UserId = userId;
-            transaction.BalanceBefore = balanceBefore;
-            transaction.BalanceAfter = balanceAfter;
+                var balanceBefore = user.TokenBalance;
+                var balanceAfter = balanceBefore + dto.Amount;
 
-            // Update user balance
-            user.TokenBalance = balanceAfter;
-            _unitOfWork.Repository<User>().Update(user);
+                // Parse TransactionType enum from string
+                if (!Enum.TryParse<TransactionType>(dto.TransactionType, ignoreCase: true, out var transactionType))
+                {
+                    throw new ArgumentException($"Invalid transaction type: {dto.TransactionType}");
+                }
 
-            await _unitOfWork.Repository<TokenTransaction>().AddAsync(transaction);
-            await _unitOfWork.SaveChangesAsync();
+                var tokenTransaction = new TokenTransaction
+                {
+                    UserId = userId,
+                    Amount = dto.Amount,
+                    TransactionType = transactionType,
+                    Description = dto.Description,
+                    BalanceBefore = balanceBefore,
+                    BalanceAfter = balanceAfter,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            return _mapper.Map<TokenTransactionDto>(transaction);
+                // Update user balance
+                user.TokenBalance = balanceAfter;
+                user.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Repository<User>().Update(user);
+
+                await _unitOfWork.Repository<TokenTransaction>().AddAsync(tokenTransaction);
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return _mapper.Map<TokenTransactionDto>(tokenTransaction);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
 
         public async Task<IEnumerable<TokenTransactionDto>> GetUserTransactionsAsync(int userId)

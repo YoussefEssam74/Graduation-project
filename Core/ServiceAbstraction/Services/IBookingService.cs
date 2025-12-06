@@ -19,5 +19,10 @@ namespace ServiceAbstraction.Services
         Task<BookingDto> CheckOutAsync(int bookingId);
         Task<bool> IsEquipmentAvailableAsync(int equipmentId, DateTime startTime, DateTime endTime);
         Task<bool> IsCoachAvailableAsync(int coachId, DateTime startTime, DateTime endTime);
+
+        /// <summary>
+        /// Check if the user is available (no overlapping bookings) during the specified time slot
+        /// </summary>
+        Task<bool> IsUserAvailableAsync(int userId, DateTime startTime, DateTime endTime);
     }
 }
