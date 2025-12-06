@@ -1,13 +1,14 @@
 {
   "info": {
     "_postman_id": "intellifit-complete-tested-2025",
-    "name": "IntelliFit API - Complete Tested Collection (Dec 2025)",
+    "name": "IntelliFit API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Complete and tested Postman collection for IntelliFit API. All endpoints verified working as of Dec 2, 2025. 92.9% success rate (39/42 endpoints). Set {{BaseUrl}} = http://localhost:5025 and {{token}} will be auto-populated after login."
+    "description": "Complete and tested Postman collection for IntelliFit API. All endpoints verified working as of Dec 6, 2025. Includes AI Chat Sessions and Token Transaction endpoints. Test User: member@intellifit.com (ID: 13). Set {{BaseUrl}} = http://localhost:5025 and {{token}} will be auto-populated after login."
   },
   "variable": [
     { "key": "BaseUrl", "value": "http://localhost:5025" },
-    { "key": "token", "value": "" }
+    { "key": "token", "value": "" },
+    { "key": "userId", "value": "13" }
   ],
   "item": [
     {
@@ -34,7 +35,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"Email\": \"testuser1303188034@example.com\",\n  \"Password\": \"Test@1234\"\n}"
+              "raw": "{\n  \"Email\": \"member@intellifit.com\",\n  \"Password\": \"123123\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/auth/login",
@@ -83,9 +84,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/users/14",
+              "raw": "{{BaseUrl}}/api/users/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "users", "14"]
+              "path": ["api", "users", "{{userId}}"]
             }
           }
         },
@@ -95,9 +96,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/users/14/tokens",
+              "raw": "{{BaseUrl}}/api/users/{{userId}}/tokens",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "users", "14", "tokens"]
+              "path": ["api", "users", "{{userId}}", "tokens"]
             }
           }
         },
@@ -114,9 +115,9 @@
               "raw": "{\n  \"Name\": \"Updated Name\",\n  \"Phone\": \"1234567890\",\n  \"Address\": \"123 Main St\"\n}"
             },
             "url": {
-              "raw": "{{BaseUrl}}/api/users/14",
+              "raw": "{{BaseUrl}}/api/users/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "users", "14"]
+              "path": ["api", "users", "{{userId}}"]
             }
           }
         }
@@ -135,7 +136,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"UserId\": 14,\n  \"TransactionType\": \"Earned\",\n  \"Amount\": 100,\n  \"Description\": \"Workout milestone completed\"\n}"
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"TransactionType\": \"Earned\",\n  \"Amount\": 100,\n  \"Description\": \"Workout milestone completed\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/token-transactions",
@@ -162,9 +163,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/token-transactions/user/14",
+              "raw": "{{BaseUrl}}/api/token-transactions/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "token-transactions", "user", "14"]
+              "path": ["api", "token-transactions", "user", "{{userId}}"]
             }
           }
         },
@@ -174,9 +175,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/token-transactions/user/14/balance",
+              "raw": "{{BaseUrl}}/api/token-transactions/user/{{userId}}/balance",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "token-transactions", "user", "14", "balance"]
+              "path": ["api", "token-transactions", "user", "{{userId}}", "balance"]
             }
           }
         }
@@ -227,9 +228,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/subscription/user/14/active",
+              "raw": "{{BaseUrl}}/api/subscription/user/{{userId}}/active",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "subscription", "user", "14", "active"]
+              "path": ["api", "subscription", "user", "{{userId}}", "active"]
             }
           }
         },
@@ -243,7 +244,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"UserId\": 14,\n  \"PlanId\": 1,\n  \"PaymentId\": 6\n}"
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"PlanId\": 1,\n  \"PaymentId\": 6\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/subscription",
@@ -267,7 +268,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"UserId\": 14,\n  \"Amount\": 49.99,\n  \"PaymentMethod\": \"CreditCard\",\n  \"Status\": \"Completed\",\n  \"TransactionId\": \"TXN-{{$randomInt}}\"\n}"
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"Amount\": 49.99,\n  \"PaymentMethod\": \"CreditCard\",\n  \"Status\": \"Completed\",\n  \"TransactionId\": \"TXN-{{$randomInt}}\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/payment",
@@ -294,9 +295,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/payment/user/14",
+              "raw": "{{BaseUrl}}/api/payment/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "payment", "user", "14"]
+              "path": ["api", "payment", "user", "{{userId}}"]
             }
           }
         }
@@ -315,7 +316,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"UserId\": 14,\n  \"EquipmentId\": 1,\n  \"BookingType\": \"Equipment\",\n  \"StartTime\": \"2025-12-02T10:00:00Z\",\n  \"EndTime\": \"2025-12-02T11:00:00Z\",\n  \"Notes\": \"Test booking\"\n}"
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"EquipmentId\": 1,\n  \"BookingType\": \"Equipment\",\n  \"StartTime\": \"2025-12-02T10:00:00Z\",\n  \"EndTime\": \"2025-12-02T11:00:00Z\",\n  \"Notes\": \"Test booking\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/bookings",
@@ -342,9 +343,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/bookings/user/14",
+              "raw": "{{BaseUrl}}/api/bookings/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "bookings", "user", "14"]
+              "path": ["api", "bookings", "user", "{{userId}}"]
             }
           }
         },
@@ -519,9 +520,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/notifications/user/14",
+              "raw": "{{BaseUrl}}/api/notifications/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "notifications", "user", "14"]
+              "path": ["api", "notifications", "user", "{{userId}}"]
             }
           }
         },
@@ -531,9 +532,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/notifications/user/14/unread-count",
+              "raw": "{{BaseUrl}}/api/notifications/user/{{userId}}/unread-count",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "notifications", "user", "14", "unread-count"]
+              "path": ["api", "notifications", "user", "{{userId}}", "unread-count"]
             }
           }
         },
@@ -560,9 +561,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/workout-logs/user/14",
+              "raw": "{{BaseUrl}}/api/workout-logs/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-logs", "user", "14"]
+              "path": ["api", "workout-logs", "user", "{{userId}}"]
             }
           }
         },
@@ -620,9 +621,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/workout-plans/member/14",
+              "raw": "{{BaseUrl}}/api/workout-plans/member/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-plans", "member", "14"]
+              "path": ["api", "workout-plans", "member", "{{userId}}"]
             }
           }
         },
@@ -649,9 +650,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/nutrition-plans/member/14",
+              "raw": "{{BaseUrl}}/api/nutrition-plans/member/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "nutrition-plans", "member", "14"]
+              "path": ["api", "nutrition-plans", "member", "{{userId}}"]
             }
           }
         },
@@ -678,9 +679,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/inbody/user/14",
+              "raw": "{{BaseUrl}}/api/inbody/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "inbody", "user", "14"]
+              "path": ["api", "inbody", "user", "{{userId}}"]
             }
           }
         },
@@ -707,7 +708,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"UserId\": 14,\n  \"Weight\": 75.5,\n  \"Height\": 175,\n  \"BodyFatPercentage\": 18.5,\n  \"MuscleMass\": 60.2,\n  \"MeasurementDate\": \"2025-12-02T00:00:00Z\"\n}"
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"Weight\": 75.5,\n  \"Height\": 175,\n  \"BodyFatPercentage\": 18.5,\n  \"MuscleMass\": 60.2,\n  \"MeasurementDate\": \"2025-12-02T00:00:00Z\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/inbody",
@@ -727,9 +728,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/user-milestones/user/14",
+              "raw": "{{BaseUrl}}/api/user-milestones/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "user-milestones", "user", "14"]
+              "path": ["api", "user-milestones", "user", "{{userId}}"]
             }
           }
         },
@@ -746,9 +747,9 @@
               "raw": "{\n  \"MilestoneId\": 1,\n  \"CurrentProgress\": 75\n}"
             },
             "url": {
-              "raw": "{{BaseUrl}}/api/user-milestones/user/14/progress",
+              "raw": "{{BaseUrl}}/api/user-milestones/user/{{userId}}/progress",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "user-milestones", "user", "14", "progress"]
+              "path": ["api", "user-milestones", "user", "{{userId}}", "progress"]
             }
           }
         }
@@ -775,9 +776,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/activity-feed/user/14",
+              "raw": "{{BaseUrl}}/api/activity-feed/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "activity-feed", "user", "14"]
+              "path": ["api", "activity-feed", "user", "{{userId}}"]
             }
           }
         },
@@ -791,7 +792,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"UserId\": 14,\n  \"ActivityType\": \"workout_completed\",\n  \"Title\": \"Completed workout\",\n  \"Description\": \"Finished today's workout session\",\n  \"IsPublic\": true\n}"
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"ActivityType\": \"workout_completed\",\n  \"Title\": \"Completed workout\",\n  \"Description\": \"Finished today's workout session\",\n  \"IsPublic\": true\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/activity-feed",
@@ -811,9 +812,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/stats/member/14",
+              "raw": "{{BaseUrl}}/api/stats/member/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "stats", "member", "14"]
+              "path": ["api", "stats", "member", "{{userId}}"]
             }
           }
         },
@@ -868,7 +869,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"CoachId\": 1,\n  \"MemberId\": 14,\n  \"Rating\": 5,\n  \"ReviewText\": \"Excellent coach! Very professional.\"\n}"
+              "raw": "{\n  \"CoachId\": 1,\n  \"MemberId\": {{userId}},\n  \"Rating\": 5,\n  \"ReviewText\": \"Excellent coach! Very professional.\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/coach-reviews",
@@ -921,6 +922,143 @@
       ]
     },
     {
+      "name": "🤖 AI Services",
+      "item": [
+        {
+          "name": "AI Test Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/test",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "test"]
+            },
+            "description": "Test endpoint to verify AI service is running"
+          }
+        },
+        {
+          "name": "Gemini Chat - New Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"Message\": \"Hello, I need help with my workout routine\"\n}"
+            },
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/gemini-chat",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "gemini-chat"]
+            },
+            "description": "Start a new AI chat session. Costs 1 token. Returns sessionId for continuing the conversation."
+          }
+        },
+        {
+          "name": "Gemini Chat - Continue Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"Message\": \"Can you give me more details?\",\n  \"SessionId\": \"your-session-id-here\"\n}"
+            },
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/gemini-chat",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "gemini-chat"]
+            },
+            "description": "Continue an existing chat session. Include SessionId from previous response. Costs 1 token per message."
+          }
+        },
+        {
+          "name": "Get User Chat Sessions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/sessions/{{userId}}",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "sessions", "{{userId}}"]
+            },
+            "description": "Get all chat sessions for a user with message count and preview"
+          }
+        },
+        {
+          "name": "Get Session Messages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/sessions/{{userId}}/your-session-id-here",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "sessions", "{{userId}}", "your-session-id-here"]
+            },
+            "description": "Get all messages in a specific chat session"
+          }
+        },
+        {
+          "name": "Generate Workout Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"Goal\": \"Build muscle and increase strength\",\n  \"FitnessLevel\": \"Intermediate\",\n  \"DaysPerWeek\": 4,\n  \"Duration\": 60\n}"
+            },
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/generate-workout-plan",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "generate-workout-plan"]
+            },
+            "description": "Generate a personalized workout plan using AI. Costs 50 tokens."
+          }
+        },
+        {
+          "name": "Generate Nutrition Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"UserId\": {{userId}},\n  \"Goal\": \"Weight loss\",\n  \"DietaryRestrictions\": \"Vegetarian\",\n  \"CalorieTarget\": 2000,\n  \"MealsPerDay\": 3\n}"
+            },
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/generate-nutrition-plan",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "generate-nutrition-plan"]
+            },
+            "description": "Generate a personalized nutrition plan using AI. Costs 50 tokens."
+          }
+        },
+        {
+          "name": "Get Chat History (Legacy)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{BaseUrl}}/api/ai/history/{{userId}}",
+              "host": ["{{BaseUrl}}"],
+              "path": ["api", "ai", "history", "{{userId}}"]
+            },
+            "description": "Get chat history (old format without sessions). Use Get User Chat Sessions instead."
+          }
+        }
+      ]
+    },
+    {
       "name": "🔍 Audit Logs (Admin Only)",
       "item": [
         {
@@ -929,9 +1067,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
             "url": {
-              "raw": "{{BaseUrl}}/api/audit-logs/user/14",
+              "raw": "{{BaseUrl}}/api/audit-logs/user/{{userId}}",
               "host": ["{{BaseUrl}}"],
-              "path": ["api", "audit-logs", "user", "14"]
+              "path": ["api", "audit-logs", "user", "{{userId}}"]
             },
             "description": "Note: Requires Admin role, returns Forbidden for regular users"
           }
