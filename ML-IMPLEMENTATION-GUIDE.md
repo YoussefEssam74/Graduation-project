@@ -1,6 +1,7 @@
 # AI/ML Implementation Guide for IntelliFit Platform
 
 ## Overview
+
 This guide provides step-by-step instructions to implement AI/ML capabilities in your graduation project.
 
 ## Project Structure Updates
@@ -56,6 +57,7 @@ dotnet add package Npgsql --version 8.0.1
 ### Step 3: Create Project Structure
 
 Create these folders in `Graduation-Project.ML/`:
+
 - Models/
 - Data/
 - Training/
@@ -89,10 +91,12 @@ dotnet ef database update --startup-project ../Graduation-Project
 ### Required Datasets
 
 1. **Free Exercise DB** (800+ exercises)
+
    - Source: https://github.com/yuhonas/free-exercise-db
    - Download JSON file to `Datasets/raw/free_exercise_db.json`
 
 2. **Fitness Exercises Dataset** (1,500+ exercises)
+
    - Source: https://www.kaggle.com/datasets/exercisedb/fitness-exercises-dataset
    - Download to `Datasets/raw/fitness_exercises.csv`
 
@@ -119,7 +123,29 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Step 2: Train TensorFlow Models
+### Step 2: Train TensorFlow Models (priorities)
+
+Recommendation and priorities (start here):
+
+1. Embeddings first (required for RAG and similarity search)
+
+- Build a small `embedding_server.py` that uses `sentence-transformers/all-MiniLM-L6-v2` (384 dims).
+- Generate embeddings for `Exercises` and upsert into `Exercises.Embedding` (pgvector).
+- Validate similarity queries using provided SQL function `fn_FindSimilarExercises`.
+
+2. Nutrition model (TensorFlow)
+
+- Train `train_nutrition.py` per `ml_models/config.yaml` and export SavedModel to `ml_models/serving/nutrition_model/1/`.
+- Run TensorFlow Serving and exercise the REST predict API.
+
+3. Workout recommender (ML.NET or LightGBM)
+
+- Use user workout history to train a ranking/recommender model and export as ML.NET model or ONNX if preferred.
+
+4. LLM / Chat (text-only prototype)
+
+- Prototype conversational flows using a small open-source instruction-tuned model (or hosted HF inference) _after_ embeddings and the recommender are working.
+- For on-premise inference consider `mistral-7b` or `llama-2` only when GPU resources are available; otherwise use a small CPU-friendly model for development.
 
 ```bash
 # Train nutrition model
@@ -141,12 +167,14 @@ docker-compose up tensorflow-serving
 ### Step 1: Create Model Classes
 
 Implement in `Graduation-Project.ML/Models/`:
+
 - WorkoutRecommendationModel.cs
 - NutritionRecommendationModel.cs
 
 ### Step 2: Create Training Services
 
 Implement in `Graduation-Project.ML/Training/`:
+
 - WorkoutModelTrainer.cs
 - NutritionModelTrainer.cs
 
@@ -162,6 +190,7 @@ dotnet run --project Graduation-Project.ML -- train-nutrition
 ### Step 1: Create Interfaces in Core
 
 Add to `Core/Interfaces/Services/`:
+
 - IMLWorkoutService.cs
 - IMLNutritionService.cs
 - IMLPredictionService.cs
@@ -170,6 +199,7 @@ Add to `Core/Interfaces/Services/`:
 ### Step 2: Implement Services in Infrastructure
 
 Add to `Infrastructure/Services/`:
+
 - MLWorkoutService.cs
 - MLNutritionService.cs
 - MLPredictionService.cs
@@ -178,6 +208,7 @@ Add to `Infrastructure/Services/`:
 ### Step 3: Create API Controllers
 
 Add to `Graduation-Project/Controllers/`:
+
 - AIWorkoutController.cs
 - AINutritionController.cs
 
@@ -204,6 +235,7 @@ Add to `intellifit-frontend/src/services/ai.service.ts`
 ### Step 2: Create UI Components
 
 Add to `intellifit-frontend/src/components/AI/`:
+
 - WorkoutGenerator.tsx
 - NutritionPlanner.tsx
 
@@ -268,16 +300,19 @@ Use the prompts in `Documentation/ML/COPILOT-PROMPTS.md` to generate code with A
 ## Troubleshooting
 
 ### ML.NET Model Not Loading
+
 - Check model file path in appsettings.json
 - Ensure model file exists and is not corrupted
 - Verify model was trained with same ML.NET version
 
 ### TensorFlow Serving Connection Failed
+
 - Check if Docker container is running: `docker ps`
 - Verify port 8501 is not blocked
 - Test endpoint: `curl http://localhost:8501/v1/models/nutrition_model`
 
 ### Vector Search Slow Performance
+
 - Create indexes on vector columns
 - Use IVFFlat index for large datasets
 - Consider reducing embedding dimensions
@@ -300,6 +335,7 @@ Use the prompts in `Documentation/ML/COPILOT-PROMPTS.md` to generate code with A
 ## Support
 
 For issues or questions:
+
 1. Check Documentation/ML/ folder
 2. Review example code in each module
 3. Use GitHub Copilot with provided prompts

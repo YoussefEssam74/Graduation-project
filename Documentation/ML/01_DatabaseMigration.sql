@@ -3,8 +3,13 @@
 -- IntelliFit Platform - Graduation Project
 -- =============================================
 
+
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
+-- NOTE: We use `sentence-transformers/all-MiniLM-L6-v2` for embeddings by default
+-- which produces 384-dimensional vectors. The `Embedding` columns and indexes
+-- in this file are configured for 384 dimensions. If you choose a different
+-- embedding model, update the `vector(384)` declarations accordingly.
 
 -- =============================================
 -- Add Vector Embeddings Support

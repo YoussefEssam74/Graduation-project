@@ -1,5 +1,6 @@
 version: '3.8'
 
+
 services:
   # PostgreSQL with pgvector extension
   postgres:
@@ -8,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: intellifit_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-YourSecurePassword123}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123}
       POSTGRES_HOST_AUTH_METHOD: scram-sha-256
     ports:
       - "5432:5432"
@@ -47,6 +48,37 @@ services:
     depends_on:
       - postgres
 
+  # Embedder service (sentence-transformers) - generates and upserts embeddings to Postgres
+  # Builds a small image from `ml_models/Dockerfile`. Use CPU by default; replace with a GPU-enabled image
+  # if you need faster embedding generation with torch+CUDA.
+  embedder:
+    build:
+      context: ./ml_models
+      dockerfile: Dockerfile
+    container_name: intellifit-embedder
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://postgres:123@postgres:5432/intellifit_db
+      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+    volumes:
+      - ./ml_models:/app/ml_models:rw
+      - ./Datasets:/app/Datasets:ro
+      - ./scripts:/app/scripts:ro
+    working_dir: /app
+    ports:
+      - "5100:5100"
+    networks:
+      - intellifit-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5100/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   # .NET API Backend
   api:
     build:
@@ -56,7 +88,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:80
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=intellifit_db;Username=postgres;Password=${POSTGRES_PASSWORD:-YourSecurePassword123}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=intellifit_db;Username=postgres;Password=123"
       ML__ModelsPath: /app/MLModels
       TensorFlowServing__Url: http://tensorflow-serving:8501
       OpenAI__ApiKey: ${OPENAI_API_KEY}

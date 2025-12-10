@@ -3,6 +3,7 @@
 Create a complete AI Coach assistant system for fitness guidance using fine-tuned HuggingFace models with voice and text chat capabilities.
 
 **Context:**
+
 - .NET 8 Web API backend
 - React 18 frontend with TypeScript
 - PostgreSQL for conversation history
@@ -56,6 +57,7 @@ from typing import List, Dict
 
 app = Flask(__name__)
 
+
 class FitnessCoachModel:
     def __init__(self, model_path: str):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -66,27 +68,27 @@ class FitnessCoachModel:
             device_map="auto"
         )
         self.model.eval()
-    
+
     def generate_response(
-        self, 
-        messages: List[Dict[str, str]], 
+        self,
+        messages: List[Dict[str, str]],
         user_context: Dict = None,
         max_tokens: int = 512
     ) -> str:
         # Build system prompt with user context
         system_prompt = self._build_system_prompt(user_context)
         full_messages = [{"role": "system", "content": system_prompt}] + messages
-        
+
         # Apply chat template
         prompt = self.tokenizer.apply_chat_template(
             full_messages,
             tokenize=False,
             add_generation_prompt=True
         )
-        
+
         # Generate
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-        
+
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
@@ -96,16 +98,16 @@ class FitnessCoachModel:
                 repetition_penalty=1.1,
                 do_sample=True
             )
-        
+
         response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         response = response.split("assistant\n")[-1].strip()
-        
+
         return response
-    
+
     def _build_system_prompt(self, user_context: Dict) -> str:
         if not user_context:
             return "You are an expert fitness coach assistant."
-        
+
         return f"""You are an expert fitness coach for {user_context.get('name', 'the user')}.
 
 User Profile:
@@ -125,7 +127,7 @@ def chat():
     data = request.json
     messages = data.get('messages', [])
     user_context = data.get('user_context', {})
-    
+
     try:
         response = coach_model.generate_response(messages, user_context)
         return jsonify({'response': response, 'status': 'success'})
@@ -159,14 +161,14 @@ model = whisper.load_model("base")
 def transcribe():
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file'}), 400
-    
+
     audio_file = request.files['audio']
     language = request.form.get('language', 'en')
-    
+
     with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as tmp:
         audio_file.save(tmp.name)
         tmp_path = tmp.name
-    
+
     try:
         result = model.transcribe(tmp_path, language=language)
         return jsonify({'text': result['text'], 'language': result['language']})
@@ -195,11 +197,11 @@ def synthesize():
     text = request.json.get('text', '')
     if not text:
         return jsonify({'error': 'No text provided'}), 400
-    
+
     audio_bytes = io.BytesIO()
     voice.synthesize(text, audio_bytes)
     audio_bytes.seek(0)
-    
+
     return send_file(audio_bytes, mimetype='audio/wav')
 
 if __name__ == '__main__':
@@ -262,19 +264,19 @@ public class CoachController : ControllerBase
     public async Task<ActionResult<VoiceResponse>> VoiceChat(IFormFile audio)
     {
         var userId = GetCurrentUserId();
-        
+
         using var audioStream = audio.OpenReadStream();
         var transcribedText = await _speechToText.TranscribeAudio(audioStream);
-        
+
         var coachResponse = await _coachService.SendMessage(new CoachRequest
         {
             UserId = userId,
             Message = transcribedText
         });
-        
+
         var audioResponse = await _textToSpeech.GenerateSpeech(coachResponse.Response);
         var audioBytes = await ReadStreamAsync(audioResponse);
-        
+
         return Ok(new VoiceResponse
         {
             TranscribedText = transcribedText,
@@ -292,8 +294,8 @@ public class CoachController : ControllerBase
 ### 3.1 Voice Chat Component
 
 ```typescript
-import React, { useState, useRef } from 'react';
-import { Mic, Send } from 'lucide-react';
+import React, { useState, useRef } from "react";
+import { Mic, Send } from "lucide-react";
 
 export const VoiceChat: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -303,15 +305,15 @@ export const VoiceChat: React.FC = () => {
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder.current = new MediaRecorder(stream);
-    
+
     const chunks: Blob[] = [];
     mediaRecorder.current.ondataavailable = (e) => chunks.push(e.data);
-    
+
     mediaRecorder.current.onstop = async () => {
-      const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+      const audioBlob = new Blob(chunks, { type: "audio/webm" });
       await sendVoiceMessage(audioBlob);
     };
-    
+
     mediaRecorder.current.start();
     setIsRecording(true);
   };
@@ -323,21 +325,21 @@ export const VoiceChat: React.FC = () => {
 
   const sendVoiceMessage = async (audioBlob: Blob) => {
     const formData = new FormData();
-    formData.append('audio', audioBlob);
-    
-    const response = await fetch('/api/coach/voice/chat', {
-      method: 'POST',
-      body: formData
+    formData.append("audio", audioBlob);
+
+    const response = await fetch("/api/coach/voice/chat", {
+      method: "POST",
+      body: formData,
     });
-    
+
     const data = await response.json();
-    
-    setMessages(prev => [
+
+    setMessages((prev) => [
       ...prev,
-      { role: 'user', content: data.transcribedText },
-      { role: 'assistant', content: data.responseText }
+      { role: "user", content: data.transcribedText },
+      { role: "assistant", content: data.responseText },
     ]);
-    
+
     playAudio(data.audioData);
   };
 
@@ -348,12 +350,12 @@ export const VoiceChat: React.FC = () => {
 
   return (
     <div className="voice-chat">
-      <button 
-        onMouseDown={startRecording} 
+      <button
+        onMouseDown={startRecording}
         onMouseUp={stopRecording}
         className="mic-button"
       >
-        <Mic className={isRecording ? 'recording' : ''} />
+        <Mic className={isRecording ? "recording" : ""} />
       </button>
     </div>
   );
@@ -381,12 +383,12 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-  
+
   whisper-server:
     build: ./ml_models/whisper_server
     ports:
       - "5003:5003"
-  
+
   tts-server:
     build: ./ml_models/tts_server
     ports:
@@ -396,6 +398,7 @@ services:
 ### Requirements
 
 **Python (ml_models/requirements.txt):**
+
 ```
 transformers==4.36.0
 torch==2.1.0
@@ -407,6 +410,7 @@ accelerate==0.25.0
 ```
 
 **Hardware:**
+
 - GPU: RTX 4050 (6GB VRAM) - Sufficient for Llama 3.2 3B
 - RAM: 16GB
 - Storage: 10GB for models
@@ -437,5 +441,21 @@ accelerate==0.25.0
 ---
 
 **Total Implementation Time:** 12-16 hours
+
+---
+
+Practical Recommendation (updated):
+
+- For the MVP keep focus on text chat and structured ML outputs (nutrition/workout). Voice (STT/TTS) adds complexity and GPU/memory requirements — defer until text-first flows are stable.
+- Updated Python requirements: include `sentence-transformers`, `transformers`, `torch`, `huggingface-hub` for embedding and small-model prototyping; keep Whisper/Piper as optional components and add them later when voice is prioritized.
+
+Optional small requirements snippet (add to `ml_models/requirements.txt` when enabling voice):
+
+```
+# Optional voice (defer until later)
+openai-whisper==20231117
+piper-tts==1.2.0
+```
+
 **Total Cost:** $0 (100% free)
 **GPU Memory Usage:** 4-6GB VRAM

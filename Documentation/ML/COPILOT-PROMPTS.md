@@ -8,6 +8,7 @@ Use these prompts to generate code with GitHub Copilot or Claude 3.5 Sonnet.
 Create a complete ML.NET workout recommendation system for a fitness platform.
 
 **Context:**
+
 - .NET 8 class library project
 - Clean Architecture with separate ML project layer
 - PostgreSQL database with exercises table
@@ -16,6 +17,7 @@ Create a complete ML.NET workout recommendation system for a fitness platform.
 **Requirements:**
 
 1. Create WorkoutUserProfile class:
+
    - Age (float)
    - Weight (float)
    - Height (float)
@@ -26,11 +28,13 @@ Create a complete ML.NET workout recommendation system for a fitness platform.
    - DaysPerWeek (int)
 
 2. Create WorkoutPrediction class:
+
    - PredictedExerciseIds (int array)
    - Scores (float array)
    - Confidence (float)
 
 3. Create WorkoutModelTrainer class:
+
    - TrainModel(string trainingDataPath) method
    - Uses SdcaMaximumEntropy for multi-class classification
    - Features: Age, Weight, Height, BMI, FitnessLevel, FitnessGoal
@@ -44,6 +48,7 @@ Create a complete ML.NET workout recommendation system for a fitness platform.
    - Returns ranked list of exercise recommendations
 
 Include:
+
 - Full error handling
 - Logging with ILogger
 - XML documentation comments
@@ -53,10 +58,11 @@ Include:
 
 ## Prompt 2: ASP.NET Core AI Workout Controller
 
-```markdown
+````markdown
 Create a complete ASP.NET Core Web API controller for AI-powered workout generation.
 
 **Context:**
+
 - Clean Architecture project
 - ML.NET prediction service already exists
 - PostgreSQL with EF Core
@@ -67,7 +73,9 @@ Create a complete ASP.NET Core Web API controller for AI-powered workout generat
 1. Create AIWorkoutController with endpoints:
 
    POST /api/ai/workout/generate
+
    - Accepts: AIWorkoutRequestDto
+
    ```csharp
    public class AIWorkoutRequestDto
    {
@@ -82,19 +90,24 @@ Create a complete ASP.NET Core Web API controller for AI-powered workout generat
        public int DurationWeeks { get; set; }
    }
    ```
-   - Returns: Complete WorkoutPlanDto with exercises organized by day
-   - Applies workout science: muscle group rotation, progressive overload
-   - Saves plan to database
+````
 
-   GET /api/ai/workout/recommend/{userId}/exercises?muscleGroup={group}
-   - Returns top 10 exercise recommendations for specific muscle group
+- Returns: Complete WorkoutPlanDto with exercises organized by day
+- Applies workout science: muscle group rotation, progressive overload
+- Saves plan to database
 
-   POST /api/ai/workout/similar
-   - Accepts: ExerciseId or description
-   - Uses vector search to find similar exercises
-   - Returns: List of similar exercises with similarity scores
+GET /api/ai/workout/recommend/{userId}/exercises?muscleGroup={group}
+
+- Returns top 10 exercise recommendations for specific muscle group
+
+POST /api/ai/workout/similar
+
+- Accepts: ExerciseId or description
+- Uses vector search to find similar exercises
+- Returns: List of similar exercises with similarity scores
 
 2. Create IMLWorkoutService interface and implementation:
+
    - GenerateWorkoutPlan(AIWorkoutRequestDto) method
    - RecommendExercises(int userId, string muscleGroup) method
    - FindSimilarExercises(int exerciseId) method
@@ -106,7 +119,8 @@ Create a complete ASP.NET Core Web API controller for AI-powered workout generat
    - Error handling with ProblemDetails
    - Logging
    - Response caching
-```
+
+````
 
 ## Prompt 3: PostgreSQL Vector Search Service
 
@@ -114,10 +128,6 @@ Create a complete ASP.NET Core Web API controller for AI-powered workout generat
 Create a complete vector search service for PostgreSQL with pgvector extension.
 
 **Context:**
-- ASP.NET Core with EF Core
-- PostgreSQL 16 with pgvector extension installed
-- OpenAI API for embeddings
-- Exercises table has Embedding column (vector(384))
 
 **Requirements:**
 
@@ -131,9 +141,10 @@ public interface IVectorSearchService
     Task UpdateExerciseEmbedding(int exerciseId, float[] embedding);
     Task GenerateAllExerciseEmbeddings();
 }
-```
+````
 
 2. Implement VectorSearchService:
+
    - GenerateEmbedding: Call OpenAI API (text-embedding-3-small, 384 dimensions)
    - FindSimilarExercises: Use pgvector cosine similarity search
    - SearchByText: Generate embedding then search
@@ -141,6 +152,7 @@ public interface IVectorSearchService
    - GenerateAllExerciseEmbeddings: Batch process all exercises
 
 3. Use raw SQL with Npgsql for vector operations:
+
 ```sql
 SELECT "Id", "Name", "Description",
        1 - ("Embedding" <=> @embedding) as "Similarity"
@@ -151,18 +163,21 @@ LIMIT @limit;
 ```
 
 4. Create OpenAIEmbeddingService:
+
    - Handles OpenAI API calls
    - Implements retry logic with Polly
    - Handles rate limiting
    - Batch processing support
 
 5. Create EmbeddingGeneratorHostedService (IHostedService):
+
    - Runs on application startup
    - Generates embeddings for exercises without them
    - Processes in batches (10 at a time)
    - Logs progress
 
 6. Configuration in appsettings.json:
+
 ```json
 {
   "OpenAI": {
@@ -176,11 +191,76 @@ LIMIT @limit;
 ```
 
 Include:
-- Error handling for API failures
+
+````
+## Prompt 3: PostgreSQL Vector Search Service
+
+```markdown
+Create a complete vector search service for PostgreSQL with pgvector extension.
+
+**Context:**
+- ASP.NET Core with EF Core
+- PostgreSQL 16 with pgvector extension installed
+- Local/OSS embeddings using `sentence-transformers` (preferred: `all-MiniLM-L6-v2`)
+- Exercises table has Embedding column (vector(384))
+
+**Requirements:**
+
+1. Create IVectorSearchService interface:
+```csharp
+public interface IVectorSearchService
+{
+      Task<float[]> GenerateEmbedding(string text);
+      /* Lines 130-133 omitted */
+      Task GenerateAllExerciseEmbeddings();
+}
+````
+
+2. Implement VectorSearchService:
+
+   - GenerateEmbedding: Use a local `EmbeddingService` that calls a Python microservice (embedding_server) built on `sentence-transformers/all-MiniLM-L6-v2` (384 dims).
+   - GenerateAllExerciseEmbeddings: Batch process all exercises and upsert into `Exercises.Embedding` using `pgvector`.
+
+3. Use raw SQL with Npgsql for vector operations (example):
+
+```sql
+SELECT "Id", "Name", "Description",
+          1 - ("Embedding" <=> @embedding) as "Similarity"
+FROM "Exercises"
+WHERE "Embedding" IS NOT NULL
+ORDER BY "Embedding" <=> @embedding
+LIMIT @limit;
+```
+
+4. Create EmbeddingService (Python microservice):
+
+   - Handles embedding generation using `sentence-transformers`.
+   - Exposes a small HTTP API for single/batch text -> vector and a CLI for full dataset upsert.
+
+5. Create EmbeddingGeneratorHostedService (IHostedService) in .NET:
+
+   - Optionally runs at startup to ensure embeddings exist for all exercises.
+   - Logs progress and supports resume.
+
+6. Configuration in appsettings.json:
+
+```json
+{
+  "Embeddings": {
+    "ServiceUrl": "http://embedder:5100",
+    "Model": "all-MiniLM-L6-v2"
+  }
+}
+```
+
+Include:
+
+- Error handling for service failures
 - Caching of embeddings
 - Logging
-- Unit tests with mock HTTP client
-```
+- Unit tests with mocked HTTP client
+
+````
 
 ## Prompt 4: Python TensorFlow Nutrition Model
 
@@ -200,7 +280,7 @@ Create a complete TensorFlow deep learning model for nutrition plan generation.
 class NutritionDeepLearningModel:
     def __init__(self, config):
         # Initialize model with configuration
-        
+
     def build_model(self):
         # Build neural network:
         # Input layer (10 features)
@@ -209,16 +289,17 @@ class NutritionDeepLearningModel:
         # Dense 128 units, ReLU, Dropout 0.2
         # Dense 64 units, ReLU
         # Output layer 4 units (calories, protein, carbs, fats)
-        
+
     def custom_nutrition_loss(self, y_true, y_pred):
         # Custom loss enforcing nutritional constraints:
         # - Protein should be 15-30% of calories
         # - Carbs should be 40-60% of calories
         # - Fats should be 20-35% of calories
         # - Energy equation: calories = (protein*4) + (carbs*4) + (fats*9)
-```
+````
 
 2. Create data preprocessing pipeline:
+
 ```python
 class NutritionDataPreprocessor:
     def preprocess(self, df):
@@ -231,6 +312,7 @@ class NutritionDataPreprocessor:
 ```
 
 3. Create training script (train_nutrition.py):
+
    - Load diet_recommendations.csv
    - Preprocess data
    - Build and compile model
@@ -244,12 +326,14 @@ class NutritionDataPreprocessor:
    - Save preprocessor with joblib
 
 4. Create evaluation script:
+
    - Calculate MAE, MSE, RMSE for each macro
    - Check nutritional constraint violations
    - Generate prediction vs actual plots
    - Create confusion matrix for calorie ranges
 
 5. Configuration (config.yaml):
+
 ```yaml
 model:
   input_dim: 10
@@ -262,7 +346,7 @@ training:
   epochs: 100
   learning_rate: 0.001
   validation_split: 0.15
-  
+
 constraints:
   protein_cal_ratio: [0.15, 0.30]
   carbs_cal_ratio: [0.40, 0.60]
@@ -270,13 +354,15 @@ constraints:
 ```
 
 Include:
+
 - Full type hints
 - Docstrings
 - Error handling
 - Progress logging
 - Model versioning
 - Example usage in Jupyter notebook
-```
+
+````
 
 ## Prompt 5: React Frontend AI Integration
 
@@ -310,9 +396,10 @@ export class AIService {
   async generateNutritionPlan(request: NutritionRequest): Promise<NutritionPlan>;
   async searchExercises(query: string): Promise<Exercise[]>;
 }
-```
+````
 
 2. Create WorkoutGenerator component:
+
    - Multi-step form (user profile -> preferences -> equipment)
    - Form validation with react-hook-form
    - Loading state with skeleton loaders
@@ -321,6 +408,7 @@ export class AIService {
    - Save plan button
 
 3. Create NutritionPlanner component:
+
    - User profile form
    - Dietary preferences and restrictions
    - Loading animation
@@ -329,6 +417,7 @@ export class AIService {
    - Shopping list generation
 
 4. Redux slices:
+
    - aiSlice for workout/nutrition state
    - Async thunks for API calls
    - Loading and error states
@@ -341,11 +430,13 @@ export class AIService {
    - Success/error notifications
 
 Include:
+
 - Full TypeScript types
 - Error boundary
 - Loading states
 - Form validation
 - Accessibility (ARIA labels)
+
 ```
 
 ## Tips for Using These Prompts
@@ -373,3 +464,4 @@ Include:
    - Add features incrementally
    - Refine with follow-up prompts
    - Test thoroughly at each step
+```

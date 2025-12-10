@@ -2,6 +2,7 @@
 tensorflow==2.15.0
 tensorflow-hub==0.15.0
 
+
 # Data Processing
 pandas==2.1.4
 numpy==1.24.3
@@ -40,3 +41,11 @@ tensorflow-model-optimization==0.7.5
 # Logging and Monitoring
 wandb==0.16.1  # Optional: for experiment tracking
 mlflow==2.9.2  # Optional: for ML lifecycle management
+
+# Embeddings & Transformers (open-source, free)
+sentence-transformers==2.2.2
+transformers==4.36.0
+torch==2.1.0
+accelerate==0.25.0
+huggingface-hub==0.18.0
+pgvector==0.6.0

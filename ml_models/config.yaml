@@ -1,6 +1,7 @@
 # TensorFlow Model Configuration
 # IntelliFit AI Nutrition & Workout Models
 
+
 # ===== Nutrition Model Configuration =====
 nutrition_model:
   # Model Architecture
@@ -108,6 +109,16 @@ serving:
   port: 8501
   rest_api_port: 8501
   grpc_port: 8500
+
+# ===== Embeddings Configuration =====
+embeddings:
+  # Use a lightweight, high-quality free model from sentence-transformers
+  # `all-MiniLM-L6-v2` -> 384 dimensions and fast CPU inference for production
+  model_name: 'sentence-transformers/all-MiniLM-L6-v2'
+  dimension: 384
+  batch_size: 64
+  use_gpu: false
+  api_port: 5100
 
 # ===== Preprocessing Configuration =====
 preprocessing:
