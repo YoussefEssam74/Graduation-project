@@ -1,19 +1,26 @@
-namespace DomainLayer.Models;
+using System;
 
-public class InBodyMeasurement
+namespace IntelliFit.Domain.Models
 {
-    public int InBodyID { get; set; }
-    public int UserID { get; set; }
-    public int ReceptionistID { get; set; }
-    public float Weight { get; set; }
-    public float FatPercentage { get; set; }
-    public float MuscleMass { get; set; }
-    public float BMI { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public string? ReceiptPhotoUrl { get; set; }
-    public string? AIInsights { get; set; }
+    public class InBodyMeasurement
+    {
+        public int MeasurementId { get; set; }
+        public int UserId { get; set; }
+        public DateTime MeasurementDate { get; set; } = DateTime.UtcNow; public decimal Weight { get; set; }
+        public decimal? Height { get; set; }
+        public decimal? BodyFatPercentage { get; set; }
+        public decimal? MuscleMass { get; set; }
+        public decimal? BodyWaterPercentage { get; set; }
+        public decimal? BoneMass { get; set; }
+        public int? VisceralFatLevel { get; set; }
+        public int? Bmr { get; set; }
+        public int? MetabolicAge { get; set; }
+        public decimal? ProteinPercentage { get; set; }
+        public string? BodyType { get; set; }
+        public string? Notes { get; set; }
+        public int? MeasuredBy { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation Properties
-    public virtual User User { get; set; } = null!;
-    public virtual Receptionist Receptionist { get; set; } = null!;
+        public virtual User User { get; set; } = null!; public virtual User? MeasuredByUser { get; set; }
+    }
 }

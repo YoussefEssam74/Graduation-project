@@ -1,0 +1,37 @@
+-- Check row counts for all tables
+SELECT 'users' as table_name, COUNT(*) as row_count FROM users
+UNION ALL SELECT 'members', COUNT(*) FROM members
+UNION ALL SELECT 'coaches', COUNT(*) FROM coaches
+UNION ALL SELECT 'receptionists', COUNT(*) FROM receptionists
+UNION ALL SELECT 'admins', COUNT(*) FROM admins
+UNION ALL SELECT 'member_profiles', COUNT(*) FROM member_profiles
+UNION ALL SELECT 'coach_profiles', COUNT(*) FROM coach_profiles
+UNION ALL SELECT 'subscription_plans', COUNT(*) FROM subscription_plans
+UNION ALL SELECT 'user_subscriptions', COUNT(*) FROM user_subscriptions
+UNION ALL SELECT 'token_packages', COUNT(*) FROM token_packages
+UNION ALL SELECT 'token_transactions', COUNT(*) FROM token_transactions
+UNION ALL SELECT 'payments', COUNT(*) FROM payments
+UNION ALL SELECT 'equipment_categories', COUNT(*) FROM equipment_categories
+UNION ALL SELECT 'equipment', COUNT(*) FROM equipment
+UNION ALL SELECT 'bookings', COUNT(*) FROM bookings
+UNION ALL SELECT 'inbody_measurements', COUNT(*) FROM inbody_measurements
+UNION ALL SELECT 'exercises', COUNT(*) FROM exercises
+UNION ALL SELECT 'workout_plans', COUNT(*) FROM workout_plans
+UNION ALL SELECT 'workout_plan_exercises', COUNT(*) FROM workout_plan_exercises
+UNION ALL SELECT 'workout_logs', COUNT(*) FROM workout_logs
+UNION ALL SELECT 'workout_templates', COUNT(*) FROM workout_templates
+UNION ALL SELECT 'workout_template_exercises', COUNT(*) FROM workout_template_exercises
+UNION ALL SELECT 'nutrition_plans', COUNT(*) FROM nutrition_plans
+UNION ALL SELECT 'meals', COUNT(*) FROM meals
+UNION ALL SELECT 'meal_ingredients', COUNT(*) FROM meal_ingredients
+UNION ALL SELECT 'ingredients', COUNT(*) FROM ingredients
+UNION ALL SELECT 'ai_chat_logs', COUNT(*) FROM ai_chat_logs
+UNION ALL SELECT 'ai_program_generations', COUNT(*) FROM ai_program_generations
+UNION ALL SELECT 'ai_workflow_jobs', COUNT(*) FROM ai_workflow_jobs
+UNION ALL SELECT 'activity_feeds', COUNT(*) FROM activity_feeds
+UNION ALL SELECT 'progress_milestones', COUNT(*) FROM progress_milestones
+UNION ALL SELECT 'user_milestones', COUNT(*) FROM user_milestones
+UNION ALL SELECT 'notifications', COUNT(*) FROM notifications
+UNION ALL SELECT 'coach_reviews', COUNT(*) FROM coach_reviews
+UNION ALL SELECT 'audit_logs', COUNT(*) FROM audit_logs
+ORDER BY table_name;

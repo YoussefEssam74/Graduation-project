@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { subscriptionApi } from '@/lib/api/services';
 import { CreditCard, Check, Zap, Crown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
-import { useAuthStore } from '@/hooks/useAuth';
 
 interface SubscriptionPlan {
   planID: number;
@@ -18,80 +19,57 @@ interface SubscriptionPlan {
   isPopular?: boolean;
 }
 
-// Calculate renewal date outside component
-const MOCK_RENEWAL_DATE = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
-
-const MOCK_PLANS: SubscriptionPlan[] = [
-  {
-    planID: 1,
-    planName: 'Basic',
-    price: 29.99,
-    durationDays: 30,
-    description: 'Perfect for getting started',
-    tokensIncluded: 100,
-    features: [
-      'Access to gym equipment',
-      '100 tokens per month',
-      'Basic workout tracking',
-      'Mobile app access',
-      'Email support',
-    ],
-  },
-  {
-    planID: 2,
-    planName: 'Pro',
-    price: 49.99,
-    durationDays: 30,
-    description: 'Most popular choice',
-    tokensIncluded: 200,
-    isPopular: true,
-    features: [
-      'Everything in Basic',
-      '200 tokens per month',
-      'AI Coach access',
-      'Nutrition plans',
-      'InBody measurements',
-      'Priority booking',
-      'Priority support',
-    ],
-  },
-  {
-    planID: 3,
-    planName: 'Elite',
-    price: 79.99,
-    durationDays: 30,
-    description: 'Ultimate fitness experience',
-    tokensIncluded: 350,
-    features: [
-      'Everything in Pro',
-      '350 tokens per month',
-      'Personal coach sessions',
-      'Custom meal plans',
-      'Advanced analytics',
-      'Unlimited InBody scans',
-      'VIP support 24/7',
-      'Guest passes (2/month)',
-    ],
-  },
-];
-
 export default function SubscriptionPage() {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
-  const [currentPlan] = useState<SubscriptionPlan | null>(MOCK_PLANS[1]); // Mock: User has Pro plan
-  const [renewalDate] = useState<string>(MOCK_RENEWAL_DATE);
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
+  const [renewalDate, setRenewalDate] = useState<string>('');
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [paymentId, setPaymentId] = useState<string>('');
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const plansRes = await subscriptionApi.getPlans();
+        if (plansRes?.success && plansRes.data) setPlans(plansRes.data);
+
+        const hasActive = await subscriptionApi.hasActiveSubscription(user.userId);
+        if (hasActive?.success && hasActive.data) {
+          // if user has active subscription, pick the first active plan from all plans (simple placeholder)
+          setCurrentPlan(plansRes?.data?.[1] ?? null);
+        }
+      } catch (err) {
+        console.error('Failed to load subscription data', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);
 
-  const handleSubscribe = (planId: number) => {
-    const plan = MOCK_PLANS.find((p) => p.planID === planId);
-    alert(`Subscribe to ${plan?.planName} plan - Feature coming soon!`);
+  const handleSubscribe = async (planId: number) => {
+    if (!user?.userId) return alert('Please log in');
+    if (!paymentId) return alert('Enter a payment ID for testing');
+
+    try {
+      const payload = { userId: user.userId, planId, paymentId: Number(paymentId) };
+      const res = await subscriptionApi.createSubscription(payload);
+      if (res?.success) {
+        const plan = plans.find((p) => p.planID === planId) ?? null;
+        setCurrentPlan(plan);
+        alert('Subscription created successfully');
+      } else {
+        alert(res?.message || 'Failed to create subscription');
+      }
+    } catch (err) {
+      console.error('Create subscription error', err);
+      alert('Failed to create subscription');
+    }
   };
 
   if (isLoading) {
@@ -106,13 +84,13 @@ export default function SubscriptionPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Subscription Plans</h1>
-        <p className="text-gray-600 mt-2">Choose the perfect plan for your fitness journey</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Subscription Plans</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Choose the perfect plan for your fitness journey</p>
       </div>
 
       {/* Current Subscription */}
       {currentPlan && (
-        <Card className="border-[#0b4fd4] border-2">
+        <Card className="border-[#0b4fd4] dark:border-[#18cef2] border-2">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Current Plan</CardTitle>
@@ -150,8 +128,13 @@ export default function SubscriptionPage() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           {currentPlan ? 'Upgrade or Change Plan' : 'Available Plans'}
         </h2>
+        <div className="mb-4 flex gap-3 items-center">
+          <input value={paymentId} onChange={(e) => setPaymentId(e.target.value)} placeholder="Payment ID (for testing)" className="px-3 py-2 border rounded-lg" />
+          <div className="text-sm text-gray-600">Enter a payment id to create a subscription (test flow)</div>
+        </div>
+
         <div className="grid md:grid-cols-3 gap-6">
-          {MOCK_PLANS.map((plan) => {
+          {plans.map((plan) => {
             const isCurrent = currentPlan?.planID === plan.planID;
             
             return (
@@ -190,10 +173,10 @@ export default function SubscriptionPage() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, index) => (
+                    {(plan.features || []).map((feature, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm">
                         <Check className="h-5 w-5 text-[#a3e221] flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700">{feature}</span>
+                        <span className="text-gray-700 dark:text-gray-300">{feature}</span>
                       </li>
                     ))}
                   </ul>

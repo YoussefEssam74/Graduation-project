@@ -1,18 +1,21 @@
-using DomainLayer.Enums;
+using System;
+using IntelliFit.Domain.Enums;
 
-namespace DomainLayer.Models;
-
-public class TokenTransaction
+namespace IntelliFit.Domain.Models
 {
-    public int TransactionID { get; set; }
-    public int UserID { get; set; }
-    public int? ReceptionistID { get; set; }
-    public int Amount { get; set; }
-    public TransactionType Type { get; set; }
-    public string PaymentRef { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
+    public class TokenTransaction
+    {
+        public int TransactionId { get; set; }
+        public int UserId { get; set; }
+        public int Amount { get; set; }
+        public TransactionType TransactionType { get; set; }
+        public string? Description { get; set; }
+        public int? ReferenceId { get; set; }
+        public string? ReferenceType { get; set; }
+        public int BalanceBefore { get; set; }
+        public int BalanceAfter { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation Properties
-    public virtual User User { get; set; } = null!;
-    public virtual Receptionist? Receptionist { get; set; }
+        public virtual User User { get; set; } = null!;
+    }
 }

@@ -1,15 +1,12 @@
-using DomainLayer.Enums;
+using System;
 
-namespace DomainLayer.Models;
-
-public class Admin : User
+namespace IntelliFit.Domain.Models
 {
-    public int AdminID { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
-    public UserRole Role { get; set; }
-
-    // Navigation Properties
-    public virtual ICollection<Equipment> ManagedEquipment { get; set; } = new List<Equipment>();
-    public virtual ICollection<User> ManagedUsers { get; set; } = new List<User>();
+    // TPT derived type for Admin users
+    public class Admin : User
+    {
+        public bool IsSuperAdmin { get; set; } = false;
+        // Simple permissions store (comma-separated keys); consider normalizing later
+        public string? Permissions { get; set; }
+    }
 }

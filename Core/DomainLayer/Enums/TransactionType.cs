@@ -1,9 +1,12 @@
-namespace DomainLayer.Enums;
-
-public enum TransactionType
+namespace IntelliFit.Domain.Enums
 {
-    Purchase,
-    Deduction,
-    Refund,
-    Bonus
+
+    public enum TransactionType
+    {
+        Purchase,
+        Deduction,
+        Refund,
+        Bonus,
+        Earned
+    }
 }

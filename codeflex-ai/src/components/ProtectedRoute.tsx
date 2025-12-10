@@ -10,6 +10,18 @@ interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
 }
 
+// Map backend role strings to frontend UserRole enum
+const normalizeRole = (role: string): UserRole => {
+  const roleMap: Record<string, UserRole> = {
+    'Member': UserRole.Member,
+    'Coach': UserRole.Coach,
+    'Receptionist': UserRole.Reception,
+    'Reception': UserRole.Reception,
+    'Admin': UserRole.Admin,
+  };
+  return roleMap[role] || UserRole.Member;
+};
+
 export default function ProtectedRoute({
   children,
   allowedRoles,
@@ -21,15 +33,18 @@ export default function ProtectedRoute({
     if (!isLoading) {
       if (!isAuthenticated) {
         router.push("/login");
-      } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        // Redirect to appropriate dashboard if user doesn't have permission
-        const roleRoutes: Record<UserRole, string> = {
-          [UserRole.Member]: "/dashboard",
-          [UserRole.Coach]: "/coach-dashboard",
-          [UserRole.Reception]: "/reception-dashboard",
-          [UserRole.Admin]: "/admin-dashboard",
-        };
-        router.push(roleRoutes[user.role]);
+      } else if (allowedRoles && user) {
+        const normalizedRole = normalizeRole(user.role);
+        if (!allowedRoles.includes(normalizedRole)) {
+          // Redirect to appropriate dashboard if user doesn't have permission
+          const roleRoutes: Record<UserRole, string> = {
+            [UserRole.Member]: "/dashboard",
+            [UserRole.Coach]: "/coach-dashboard",
+            [UserRole.Reception]: "/reception-dashboard",
+            [UserRole.Admin]: "/admin-dashboard",
+          };
+          router.push(roleRoutes[normalizedRole] || "/dashboard");
+        }
       }
     }
   }, [isLoading, isAuthenticated, user, allowedRoles, router]);
@@ -46,8 +61,11 @@ export default function ProtectedRoute({
     return null;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return null;
+  if (allowedRoles && user) {
+    const normalizedRole = normalizeRole(user.role);
+    if (!allowedRoles.includes(normalizedRole)) {
+      return null;
+    }
   }
 
   return <>{children}</>;

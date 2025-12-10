@@ -1,28 +1,32 @@
-using DomainLayer.Enums;
+using System;
+using IntelliFit.Domain.Enums;
 
-namespace DomainLayer.Models;
-
-public class NutritionPlan
+namespace IntelliFit.Domain.Models
 {
-    public int PlanID { get; set; }
-    public int UserID { get; set; }
-    public int AI_ID { get; set; }
-    public int? ReviewedByCoachID { get; set; }
-    public string PlanName { get; set; } = string.Empty;
-    public int DailyCalories { get; set; }
-    public float ProteinGrams { get; set; }
-    public float CarbsGrams { get; set; }
-    public float FatsGrams { get; set; }
-    public DateTime GeneratedAt { get; set; }
-    public ApprovalStatus ApprovalStatus { get; set; }
-    public DateTime? ReviewedAt { get; set; }
-    public string? ReviewComments { get; set; }
-    public bool IsActive { get; set; }
-    public PlanSource PlanSource { get; set; }
+    public class NutritionPlan
+    {
+        public int PlanId { get; set; }
+        public int UserId { get; set; }
+        public string PlanName { get; set; } = null!; public string? Description { get; set; }
+        public string PlanType { get; set; } = "Custom"; public int DailyCalories { get; set; }
+        public int ProteinGrams { get; set; }
+        public int CarbsGrams { get; set; }
+        public int FatsGrams { get; set; }
+        public string[]? DietaryRestrictions { get; set; }
+        public int? GeneratedByCoachId { get; set; }
+        public string? AiPrompt { get; set; }
+        public string Status { get; set; } = "Draft"; public string? ApprovalNotes { get; set; }
+        public int? ApprovedByCoachId { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+        public int TokensSpent { get; set; } = 0; public bool IsActive { get; set; } = false; public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation Properties
-    public virtual User User { get; set; } = null!;
-    public virtual AI_Agent AIAgent { get; set; } = null!;
-    public virtual Coach? ReviewedByCoach { get; set; }
-    public virtual ICollection<Meal> Meals { get; set; } = new List<Meal>();
+        public virtual User User { get; set; } = null!;
+        public virtual Coach? GeneratedByCoach { get; set; }
+        public virtual Coach? ApprovedByCoach { get; set; }
+        public virtual ICollection<AiProgramGeneration> AiGenerations { get; set; } = new List<AiProgramGeneration>();
+        public virtual ICollection<Meal> Meals { get; set; } = new List<Meal>();
+    }
 }

@@ -1,21 +1,23 @@
-namespace DomainLayer.Models;
+using System;
 
-public class Meal
+namespace IntelliFit.Domain.Models
 {
-    public int MealId { get; set; }
-    public int NutritionPlanId { get; set; }
-    public string MealType { get; set; } = string.Empty; // Breakfast, Lunch, Dinner, Snack
-    public string Name { get; set; } = string.Empty;
-    public int Calories { get; set; }
-    public float ProteinGrams { get; set; }
-    public float CarbsGrams { get; set; }
-    public float FatsGrams { get; set; }
-    public TimeOnly RecommendedTime { get; set; }
-    public bool IsAddedByCoach { get; set; } // Track if coach added this meal
-    public int? AddedByCoachID { get; set; }
+    public class Meal
+    {
+        public int MealId { get; set; }
+        public int NutritionPlanId { get; set; }
+        public string MealType { get; set; } = null!;
+        public string Name { get; set; } = null!;
+        public int Calories { get; set; }
+        public int ProteinGrams { get; set; }
+        public int CarbsGrams { get; set; }
+        public int FatsGrams { get; set; }
+        public TimeSpan RecommendedTime { get; set; }
+        public int? CreatedByCoachId { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation Properties
-    public virtual NutritionPlan NutritionPlan { get; set; } = null!;
-    public virtual Coach? AddedByCoach { get; set; }
-    public virtual ICollection<MealIngredient> Ingredients { get; set; } = new List<MealIngredient>();
+        public virtual NutritionPlan NutritionPlan { get; set; } = null!;
+        public virtual Coach? CreatedByCoach { get; set; }
+        public virtual ICollection<MealIngredient> Ingredients { get; set; } = new List<MealIngredient>();
+    }
 }

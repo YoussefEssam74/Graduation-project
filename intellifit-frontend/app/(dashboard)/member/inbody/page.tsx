@@ -1,82 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { inBodyApi } from '@/lib/api/services';
 import { Activity, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { InBodyMeasurement } from '@/types';
 
 // Mock data
-const MOCK_MEASUREMENTS: InBodyMeasurement[] = [
-  {
-    inBodyID: 1,
-    userID: 1,
-    measurementDate: new Date(Date.now() - 7776000000).toISOString(), // 90 days ago
-    weight: 80.5,
-    bodyFatPercentage: 22.5,
-    muscleMass: 32.5,
-    visceralFatLevel: 8,
-    bodyWaterPercentage: 58.2,
-    boneMass: 3.2,
-    bmr: 1680,
-    bmi: 25.8,
-    receptionistID: 3,
-  },
-  {
-    inBodyID: 2,
-    userID: 1,
-    measurementDate: new Date(Date.now() - 5184000000).toISOString(), // 60 days ago
-    weight: 78.2,
-    bodyFatPercentage: 20.8,
-    muscleMass: 33.8,
-    visceralFatLevel: 7,
-    bodyWaterPercentage: 59.1,
-    boneMass: 3.3,
-    bmr: 1720,
-    bmi: 25.1,
-    receptionistID: 3,
-  },
-  {
-    inBodyID: 3,
-    userID: 1,
-    measurementDate: new Date(Date.now() - 2592000000).toISOString(), // 30 days ago
-    weight: 76.8,
-    bodyFatPercentage: 19.5,
-    muscleMass: 34.9,
-    visceralFatLevel: 6,
-    bodyWaterPercentage: 60.2,
-    boneMass: 3.3,
-    bmr: 1750,
-    bmi: 24.6,
-    receptionistID: 3,
-  },
-  {
-    inBodyID: 4,
-    userID: 1,
-    measurementDate: new Date().toISOString(), // Today
-    weight: 75.5,
-    bodyFatPercentage: 18.2,
-    muscleMass: 35.8,
-    visceralFatLevel: 5,
-    bodyWaterPercentage: 61.5,
-    boneMass: 3.4,
-    bmr: 1790,
-    bmi: 24.2,
-    receptionistID: 3,
-  },
-];
+// measurements will be loaded from the API
 
 export default function InBodyPage() {
-  const [measurements] = useState<InBodyMeasurement[]>(MOCK_MEASUREMENTS);
+  const { user } = useAuthStore();
+  const [measurements, setMeasurements] = useState<InBodyMeasurement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const res = await inBodyApi.getMyMeasurements(user.userId);
+        if (res?.success && res.data) setMeasurements(res.data);
+      } catch (err) {
+        console.error('Failed loading measurements', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     loadData();
-  }, []);
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -86,8 +44,8 @@ export default function InBodyPage() {
     );
   }
 
-  const latest = measurements[measurements.length - 1];
-  const previous = measurements[measurements.length - 2];
+  const latest = measurements.length > 0 ? measurements[measurements.length - 1] : null;
+  const previous = measurements.length > 1 ? measurements[measurements.length - 2] : null;
 
   const calculateChange = (current: number, prev: number) => {
     const change = ((current - prev) / prev) * 100;
@@ -97,19 +55,45 @@ export default function InBodyPage() {
     };
   };
 
-  const weightChange = previous ? calculateChange(latest.weight, previous.weight) : null;
-  const fatChange = previous
+  const weightChange = previous && latest ? calculateChange(latest.weight, previous.weight) : null;
+  const fatChange = previous && latest
     ? calculateChange(latest.bodyFatPercentage, previous.bodyFatPercentage)
     : null;
-  const muscleChange = previous ? calculateChange(latest.muscleMass, previous.muscleMass) : null;
+  const muscleChange = previous && latest ? calculateChange(latest.muscleMass, previous.muscleMass) : null;
+
+  // If no measurements, show empty state
+  if (!latest) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">InBody Analysis</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Track your body composition over time</p>
+          </div>
+          <Button>
+            <Calendar className="h-4 w-4 mr-2" />
+            Book InBody Test
+          </Button>
+        </div>
+        <Card className="p-12 text-center">
+          <Activity className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">No Measurements Yet</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Book your first InBody test to start tracking your body composition
+          </p>
+          <Button>Book InBody Test</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">InBody Analysis</h1>
-          <p className="text-gray-600 mt-1">Track your body composition over time</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">InBody Analysis</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Track your body composition over time</p>
         </div>
         <Button>
           <Calendar className="h-4 w-4 mr-2" />
@@ -122,7 +106,7 @@ export default function InBodyPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Latest Measurement</CardTitle>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               {new Date(latest.measurementDate).toLocaleDateString()}
             </span>
           </div>
@@ -243,13 +227,13 @@ export default function InBodyPage() {
               <div className="p-4 bg-green-50 rounded-lg">
                 <p className="font-semibold text-green-800 mb-2">✅ Great Progress!</p>
                 <p className="text-sm text-green-700">
-                  You&apos;ve reduced body fat by {Math.abs(latest.bodyFatPercentage - MOCK_MEASUREMENTS[0].bodyFatPercentage).toFixed(1)}% since your first measurement.
+                  You&apos;ve reduced body fat by {measurements.length > 0 ? Math.abs(latest.bodyFatPercentage - measurements[0].bodyFatPercentage).toFixed(1) : '0.0'}% since your first measurement.
                 </p>
               </div>
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="font-semibold text-blue-800 mb-2">💪 Muscle Gain</p>
                 <p className="text-sm text-blue-700">
-                  You&apos;ve gained {(latest.muscleMass - MOCK_MEASUREMENTS[0].muscleMass).toFixed(1)}kg of muscle mass. Keep up the strength training!
+                  You&apos;ve gained {measurements.length > 0 ? (latest.muscleMass - measurements[0].muscleMass).toFixed(1) : '0.0'}kg of muscle mass. Keep up the strength training!
                 </p>
               </div>
               <div className="p-4 bg-orange-50 rounded-lg">

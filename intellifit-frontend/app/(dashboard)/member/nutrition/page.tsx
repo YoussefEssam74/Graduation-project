@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { nutritionPlanApi } from '@/lib/api/services';
 import { useRouter } from 'next/navigation';
 import { Apple, TrendingUp, Flame, Target, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -8,86 +10,31 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { NutritionPlan, PlanSource, ApprovalStatus } from '@/types';
 
-// Mock data
-const MOCK_NUTRITION_PLAN: NutritionPlan = {
-  planID: 1,
-  userID: 1,
-  ai_ID: 1,
-  planName: 'Balanced Muscle Building Diet',
-  dailyCalories: 2500,
-  proteinGrams: 180,
-  carbsGrams: 250,
-  fatsGrams: 80,
-  generatedAt: new Date(Date.now() - 604800000).toISOString(),
-  approvalStatus: ApprovalStatus.Approved,
-  isActive: true,
-  planSource: PlanSource.AI,
-  meals: [
-    {
-      mealID: 1,
-      name: 'High Protein Breakfast',
-      calories: 550,
-      protein: 45,
-      carbs: 50,
-      fats: 18,
-      description: 'Scrambled eggs, whole grain toast, avocado',
-    },
-    {
-      mealID: 2,
-      name: 'Post-Workout Shake',
-      calories: 350,
-      protein: 40,
-      carbs: 35,
-      fats: 8,
-      description: 'Whey protein, banana, peanut butter',
-    },
-    {
-      mealID: 3,
-      name: 'Lean Protein Lunch',
-      calories: 650,
-      protein: 50,
-      carbs: 60,
-      fats: 20,
-      description: 'Grilled chicken, brown rice, vegetables',
-    },
-    {
-      mealID: 4,
-      name: 'Healthy Dinner',
-      calories: 700,
-      protein: 45,
-      carbs: 75,
-      fats: 22,
-      description: 'Salmon, sweet potato, mixed greens',
-    },
-    {
-      mealID: 5,
-      name: 'Evening Snack',
-      calories: 250,
-      protein: 20,
-      carbs: 30,
-      fats: 12,
-      description: 'Greek yogurt with berries and almonds',
-    },
-  ],
-};
-
-const MOCK_TODAY_INTAKE = {
-  calories: 1850,
-  protein: 135,
-  carbs: 180,
-  fats: 62,
-};
-
 export default function NutritionPage() {
   const router = useRouter();
-  const [nutritionPlan] = useState<NutritionPlan | null>(MOCK_NUTRITION_PLAN);
-  const [todayIntake] = useState(MOCK_TODAY_INTAKE);
+  const { user } = useAuthStore();
+  const [nutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
+  const [todayIntake, setTodayIntake] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const res = await nutritionPlanApi.getMyPlans(user.userId);
+        if (res?.success && res.data && res.data.length > 0) {
+          // take the first active plan if present
+          setNutritionPlan(res.data[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load nutrition plan', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadData();
   }, []);

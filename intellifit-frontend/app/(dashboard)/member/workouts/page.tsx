@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
+import { workoutPlanApi } from '@/lib/api/services';
 import { useRouter } from 'next/navigation';
 import {
   Dumbbell,
@@ -16,89 +18,35 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { MemberWorkoutPlan, WorkoutPlanTemplate, PlanSource, WorkoutPlanStatus, ApprovalStatus, DifficultyLevel } from '@/types';
 
-// Mock data
-const MOCK_PLANS: MemberWorkoutPlan[] = [
-  {
-    planInstanceID: 1,
-    userID: 1,
-    templateID: 1,
-    assignedByCoachID: 2,
-    startDate: new Date(Date.now() - 604800000).toISOString(),
-    endDate: new Date(Date.now() + 5097600000).toISOString(),
-    status: WorkoutPlanStatus.Active,
-    completedWorkouts: 18,
-    planSource: PlanSource.Coach,
-    approvalStatus: ApprovalStatus.Approved,
-    template: {
-      templateID: 1,
-      templateName: 'Strength Building Program',
-      description: 'Focus on compound movements and progressive overload',
-      difficultyLevel: DifficultyLevel.Intermediate,
-      durationWeeks: 8,
-      workoutsPerWeek: 4,
-      isPublic: true,
-      createdAt: new Date().toISOString(),
-    },
-  },
-  {
-    planInstanceID: 2,
-    userID: 1,
-    generatedByAI_ID: 1,
-    startDate: new Date(Date.now() - 1209600000).toISOString(),
-    endDate: new Date(Date.now() + 3888000000).toISOString(),
-    status: WorkoutPlanStatus.Active,
-    completedWorkouts: 6,
-    planSource: PlanSource.AI,
-    approvalStatus: ApprovalStatus.Pending,
-    template: {
-      templateID: 2,
-      templateName: 'AI Personalized Cardio Plan',
-      description: 'Customized cardio workouts based on your goals',
-      difficultyLevel: DifficultyLevel.Beginner,
-      durationWeeks: 6,
-      workoutsPerWeek: 3,
-      isPublic: false,
-      createdAt: new Date().toISOString(),
-    },
-  },
-];
-
-const MOCK_TEMPLATES: WorkoutPlanTemplate[] = [
-  {
-    templateID: 3,
-    templateName: 'Full Body Blast',
-    description: 'Complete full-body workouts for maximum efficiency',
-    difficultyLevel: DifficultyLevel.Intermediate,
-    durationWeeks: 6,
-    workoutsPerWeek: 3,
-    isPublic: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    templateID: 4,
-    templateName: 'Athletic Performance',
-    description: 'Enhance power, speed, and agility',
-    difficultyLevel: DifficultyLevel.Advanced,
-    durationWeeks: 12,
-    workoutsPerWeek: 5,
-    isPublic: true,
-    createdAt: new Date().toISOString(),
-  },
-];
-
 export default function WorkoutsPage() {
   const router = useRouter();
-  const [myPlans] = useState<MemberWorkoutPlan[]>(MOCK_PLANS);
-  const [availableTemplates] = useState<WorkoutPlanTemplate[]>(MOCK_TEMPLATES);
+  const { user } = useAuthStore();
+  const [myPlans, setMyPlans] = useState<MemberWorkoutPlan[]>([]);
+  const [availableTemplates, setAvailableTemplates] = useState<WorkoutPlanTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
+      if (!user?.userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const plansRes = await workoutPlanApi.getMyPlans(user.userId);
+        if (plansRes?.success && plansRes.data) setMyPlans(plansRes.data);
+
+        const templatesRes = await workoutPlanApi.getTemplates();
+        if (templatesRes?.success && templatesRes.data) setAvailableTemplates(templatesRes.data);
+      } catch (err) {
+        console.error('Failed to load workout data', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     loadData();
-  }, []);
+  }, [user]);
 
   if (isLoading) {
     return (

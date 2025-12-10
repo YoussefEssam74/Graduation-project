@@ -1,14 +1,21 @@
-namespace DomainLayer.Models;
+using System;
 
-public class Receptionist : User
+namespace IntelliFit.Domain.Models
 {
-    public int ReceptionistID { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
+    /// <summary>
+    /// TPT derived type for Receptionist users
+    /// </summary>
+    public class Receptionist : User
+    {
+        // Receptionist-specific properties
+        public string? ShiftSchedule { get; set; }
+        public DateTime? HireDate { get; set; }
+        public string? Department { get; set; }
+        public int TotalCheckIns { get; set; } = 0;
+        public int TotalPaymentsProcessed { get; set; } = 0;
 
-    // Navigation Properties
-    public virtual ICollection<InBodyMeasurement> RecordedMeasurements { get; set; } = new List<InBodyMeasurement>();
-    public virtual ICollection<TokenTransaction> ProcessedTransactions { get; set; } = new List<TokenTransaction>();
+        // Navigation properties for activities performed by receptionist
+        public virtual ICollection<InBodyMeasurement> InBodyMeasurementsConducted { get; set; } = new List<InBodyMeasurement>();
+        public virtual ICollection<TokenTransaction> TokenTransactionsProcessed { get; set; } = new List<TokenTransaction>();
+    }
 }

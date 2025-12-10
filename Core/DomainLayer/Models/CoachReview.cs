@@ -1,15 +1,24 @@
-namespace DomainLayer.Models;
+using System;
 
-public class CoachReview
+namespace IntelliFit.Domain.Models
 {
-    public int ReviewID { get; set; }
-    public int UserID { get; set; }
-    public int CoachID { get; set; }
-    public int Rating { get; set; }
-    public string? Comment { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public class CoachReview
+    {
+        public int ReviewId { get; set; }
+        public int CoachId { get; set; }
+        public int UserId { get; set; }
+        public int? BookingId { get; set; }
+        public int Rating { get; set; }
+        public string? ReviewText { get; set; }
+        public bool IsAnonymous { get; set; } = false;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation Properties
-    public virtual User User { get; set; } = null!;
-    public virtual Coach Coach { get; set; } = null!;
+
+        // Navigation properties
+        public virtual Coach Coach { get; set; } = null!;
+        public virtual User User { get; set; } = null!;
+        public virtual Booking? Booking { get; set; }
+    }
 }
+

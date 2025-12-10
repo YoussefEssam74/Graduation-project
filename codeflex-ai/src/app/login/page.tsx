@@ -2,11 +2,8 @@
 
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserRole } from "@/types/gym";
 import { 
   DumbbellIcon, 
-  UserIcon, 
-  Users2Icon, 
   ShieldCheckIcon,
   ZapIcon,
   MailIcon,
@@ -16,45 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const ROLE_CONFIG = [
-  {
-    role: UserRole.Member,
-    label: "Member",
-    icon: DumbbellIcon,
-    color: "bg-blue-500",
-    hoverColor: "hover:bg-blue-600",
-    description: "Access workouts, bookings & AI coach",
-  },
-  {
-    role: UserRole.Coach,
-    label: "Coach",
-    icon: UserIcon,
-    color: "bg-green-500",
-    hoverColor: "hover:bg-green-600",
-    description: "Manage clients & training programs",
-  },
-  {
-    role: UserRole.Reception,
-    label: "Receptionist",
-    icon: Users2Icon,
-    color: "bg-purple-500",
-    hoverColor: "hover:bg-purple-600",
-    description: "Handle bookings & member support",
-  },
-  {
-    role: UserRole.Admin,
-    label: "Admin",
-    icon: ShieldCheckIcon,
-    color: "bg-red-500",
-    hoverColor: "hover:bg-red-600",
-    description: "Full system control & analytics",
-  },
-];
+import Link from "next/link";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.Member);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -67,15 +29,13 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password, selectedRole);
+      await login(email, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
-
-  const selectedConfig = ROLE_CONFIG.find((r) => r.role === selectedRole)!;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
@@ -88,7 +48,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-5xl">
         <div className="grid md:grid-cols-2 gap-0 bg-background rounded-2xl shadow-2xl overflow-hidden border border-border/50">
           {/* Left Side - Branding */}
-          <div className={`${selectedConfig.color} p-12 text-white flex flex-col justify-between relative overflow-hidden`}>
+          <div className="bg-primary p-12 text-white flex flex-col justify-between relative overflow-hidden">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-10 right-10 w-64 h-64 border-2 border-white rounded-full"></div>
               <div className="absolute bottom-10 left-10 w-48 h-48 border-2 border-white rounded-full"></div>
@@ -147,38 +107,7 @@ export default function LoginPage() {
           <div className="p-12 bg-background">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-foreground mb-2">Sign In</h2>
-              <p className="text-muted-foreground">Choose your role and access your dashboard</p>
-            </div>
-
-            {/* Role Selector */}
-            <div className="mb-8">
-              <Label className="text-sm font-medium mb-3 block">Select Role</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {ROLE_CONFIG.map((config) => {
-                  const Icon = config.icon;
-                  const isSelected = selectedRole === config.role;
-                  return (
-                    <button
-                      key={config.role}
-                      type="button"
-                      onClick={() => setSelectedRole(config.role)}
-                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                        isSelected
-                          ? `${config.color} text-white border-transparent shadow-lg scale-105`
-                          : "border-border bg-card hover:border-primary/50 hover:shadow-md"
-                      }`}
-                    >
-                      <Icon className={`w-6 h-6 mb-2 ${isSelected ? "text-white" : "text-primary"}`} />
-                      <div className={`font-semibold text-sm ${isSelected ? "text-white" : "text-foreground"}`}>
-                        {config.label}
-                      </div>
-                      <div className={`text-xs mt-1 ${isSelected ? "text-white/90" : "text-muted-foreground"}`}>
-                        {config.description}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <p className="text-muted-foreground">Enter your credentials to access your dashboard</p>
             </div>
 
             {/* Login Form */}
@@ -240,9 +169,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full h-12 ${selectedConfig.color} ${selectedConfig.hoverColor} text-white font-semibold text-base shadow-lg transition-all duration-200 ${
-                  isLoading ? "opacity-70 cursor-not-allowed" : "hover:scale-[1.02]"
-                }`}
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-semibold text-base shadow-lg transition-all duration-200"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -250,7 +177,7 @@ export default function LoginPage() {
                     Signing in...
                   </div>
                 ) : (
-                  `Sign in as ${selectedConfig.label}`
+                  "Sign In"
                 )}
               </Button>
             </form>
@@ -264,6 +191,16 @@ export default function LoginPage() {
                 <p>📋 Receptionist: receptionist@intellifit.com / password</p>
                 <p>⚙️ Admin: admin@intellifit.com / password</p>
               </div>
+            </div>
+
+            {/* Sign Up Link */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="text-primary hover:underline font-medium">
+                  Sign Up
+                </Link>
+              </p>
             </div>
           </div>
         </div>

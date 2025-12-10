@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Users,
   Calendar,
@@ -12,6 +13,7 @@ import {
   Search,
   DollarSign,
   Activity,
+  RefreshCw,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,38 +22,136 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
-import { useState } from "react";
+import { bookingsApi, type BookingDto } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+
+// Map booking status from number to string
+const mapBookingStatus = (status: number): string => {
+  switch (status) {
+    case 0: return "Pending";
+    case 1: return "Confirmed";
+    case 2: return "Completed";
+    case 3: return "Cancelled";
+    default: return "Pending";
+  }
+};
 
 function ReceptionDashboardContent() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Real data states
+  const [todaysBookings, setTodaysBookings] = useState<BookingDto[]>([]);
+  const [stats, setStats] = useState({
+    checkedInToday: 0,
+    activeMembers: 0,
+    pendingBookings: 0,
+    todayRevenue: 0,
+  });
 
-  // Mock data for receptionist
-  const mockStats = {
-    checkedInToday: 87,
-    activeMembers: 342,
-    pendingBookings: 12,
-    todayRevenue: 2450,
+  // Fetch today's bookings and stats
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      // First try to get today's bookings
+      const todayResponse = await bookingsApi.getTodaysBookings();
+      
+      if (todayResponse.success && todayResponse.data && todayResponse.data.length > 0) {
+        setTodaysBookings(todayResponse.data);
+        
+        // Calculate stats from today's bookings
+        const pending = todayResponse.data.filter(b => b.status === 0).length;
+        const confirmed = todayResponse.data.filter(b => b.status === 1).length;
+        const completed = todayResponse.data.filter(b => b.status === 2).length;
+        
+        setStats({
+          checkedInToday: confirmed + completed,
+          activeMembers: confirmed,
+          pendingBookings: pending,
+          todayRevenue: todayResponse.data.reduce((sum, b) => sum + (b.tokensCost || 0), 0),
+        });
+      } else {
+        // Fallback: Get all bookings if no today's bookings
+        const allResponse = await bookingsApi.getAllBookings();
+        if (allResponse.success && allResponse.data) {
+          // Show pending bookings from all bookings
+          const allPending = allResponse.data.filter(b => b.status === 0);
+          setTodaysBookings(allPending.slice(0, 10)); // Show up to 10 pending
+          
+          setStats({
+            checkedInToday: allResponse.data.filter(b => b.status === 1 || b.status === 2).length,
+            activeMembers: allResponse.data.filter(b => b.status === 1).length,
+            pendingBookings: allPending.length,
+            todayRevenue: allResponse.data.reduce((sum, b) => sum + (b.tokensCost || 0), 0),
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+      showToast("Failed to load dashboard data", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const recentCheckIns = [
-    { id: 1, name: "Ahmed Hassan", memberID: "M-1024", time: "Just now", status: "active" },
-    { id: 2, name: "Sara Mohamed", memberID: "M-0987", time: "5 min ago", status: "active" },
-    { id: 3, name: "Omar Ali", memberID: "M-1156", time: "12 min ago", status: "active" },
-    { id: 4, name: "Fatma Ibrahim", memberID: "M-0845", time: "18 min ago", status: "active" },
-  ];
+  useEffect(() => {
+    fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const pendingBookings = [
-    { id: 1, member: "Karim Youssef", equipment: "Treadmill 3", time: "10:00 AM - 11:00 AM", status: "pending" },
-    { id: 2, member: "Nour Ahmed", coach: "Coach Sarah", time: "11:30 AM - 12:30 PM", status: "pending" },
-    { id: 3, member: "Hassan Ali", equipment: "Bench Press 2", time: "2:00 PM - 3:00 PM", status: "pending" },
-  ];
+  // Get pending bookings for display
+  const pendingBookings = todaysBookings
+    .filter(b => b.status === 0)
+    .slice(0, 5);
 
-  const upcomingVisits = [
-    { id: 1, name: "Mohamed Ibrahim", subscription: "Premium", expiresIn: "3 days", status: "warning" },
-    { id: 2, name: "Layla Hassan", subscription: "Basic", expiresIn: "1 day", status: "critical" },
-    { id: 3, name: "Ali Youssef", subscription: "Gold", expiresIn: "7 days", status: "good" },
-  ];
+  // Get recent check-ins (confirmed bookings)
+  const recentCheckIns = todaysBookings
+    .filter(b => b.status === 1 || b.status === 2)
+    .slice(0, 4)
+    .map(b => ({
+      id: b.bookingId,
+      name: b.userName,
+      memberID: `M-${String(b.userId).padStart(4, '0')}`,
+      time: new Date(b.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: "active"
+    }));
+
+  const handleConfirmBooking = async (bookingId: number) => {
+    setIsProcessing(true);
+    try {
+      const response = await bookingsApi.confirmBooking(bookingId);
+      if (response.success) {
+        showToast("Booking confirmed successfully", "success");
+        fetchDashboardData(); // Refresh data
+      } else {
+        showToast(response.message || "Failed to confirm booking", "error");
+      }
+    } catch {
+      showToast("Failed to confirm booking", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectBooking = async (bookingId: number) => {
+    setIsProcessing(true);
+    try {
+      const response = await bookingsApi.cancelBooking(bookingId, "Rejected by receptionist");
+      if (response.success) {
+        showToast("Booking rejected", "success");
+        fetchDashboardData(); // Refresh data
+      } else {
+        showToast(response.message || "Failed to reject booking", "error");
+      }
+    } catch {
+      showToast("Failed to reject booking", "error");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const quickActions = [
     { icon: UserPlus, label: "New Member", color: "text-blue-500", bgColor: "bg-blue-100", href: "/reception-new-member" },
@@ -59,6 +159,16 @@ function ReceptionDashboardContent() {
     { icon: CreditCard, label: "Process Payment", color: "text-green-500", bgColor: "bg-green-100", href: "/reception-payments" },
     { icon: Bell, label: "Notifications", color: "text-orange-500", bgColor: "bg-orange-100", href: "/reception-notifications" },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -82,10 +192,16 @@ function ReceptionDashboardContent() {
               className="pl-10 h-11"
             />
           </div>
-          <Button className="h-11">
-            <UserPlus className="h-5 w-5 mr-2" />
-            New Member
+          <Button className="h-11 gap-2" onClick={fetchDashboardData} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
+          <Link href="/reception-new-member">
+            <Button className="h-11">
+              <UserPlus className="h-5 w-5 mr-2" />
+              New Member
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -98,7 +214,7 @@ function ReceptionDashboardContent() {
             </div>
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
-          <div className="text-2xl font-bold mb-1">{mockStats.checkedInToday}</div>
+          <div className="text-2xl font-bold mb-1">{stats.checkedInToday}</div>
           <div className="text-sm text-muted-foreground">Checked In Today</div>
         </Card>
 
@@ -108,7 +224,7 @@ function ReceptionDashboardContent() {
               <Users className="h-6 w-6 text-blue-500" />
             </div>
           </div>
-          <div className="text-2xl font-bold mb-1">{mockStats.activeMembers}</div>
+          <div className="text-2xl font-bold mb-1">{stats.activeMembers}</div>
           <div className="text-sm text-muted-foreground">Active Members</div>
         </Card>
 
@@ -118,10 +234,10 @@ function ReceptionDashboardContent() {
               <Calendar className="h-6 w-6 text-orange-500" />
             </div>
             <span className="px-2 py-1 text-xs font-bold bg-orange-100 text-orange-600 rounded-full">
-              {mockStats.pendingBookings}
+              {stats.pendingBookings}
             </span>
           </div>
-          <div className="text-2xl font-bold mb-1">{mockStats.pendingBookings}</div>
+          <div className="text-2xl font-bold mb-1">{stats.pendingBookings}</div>
           <div className="text-sm text-muted-foreground">Pending Bookings</div>
         </Card>
 
@@ -131,8 +247,8 @@ function ReceptionDashboardContent() {
               <DollarSign className="h-6 w-6 text-purple-500" />
             </div>
           </div>
-          <div className="text-2xl font-bold mb-1">${mockStats.todayRevenue}</div>
-          <div className="text-sm text-muted-foreground">Today's Revenue</div>
+          <div className="text-2xl font-bold mb-1">{stats.todayRevenue} Tokens</div>
+          <div className="text-sm text-muted-foreground">Today&apos;s Revenue</div>
         </Card>
       </div>
 
@@ -189,11 +305,18 @@ function ReceptionDashboardContent() {
                 </div>
               </div>
             ))}
+            {recentCheckIns.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No check-ins yet today
+              </div>
+            )}
           </div>
 
-          <Button variant="outline" className="w-full mt-4">
-            View All Check-Ins
-          </Button>
+          <Link href="/reception-bookings">
+            <Button variant="outline" className="w-full mt-4">
+              View All Check-Ins
+            </Button>
+          </Link>
         </Card>
 
         {/* Pending Bookings */}
@@ -204,86 +327,79 @@ function ReceptionDashboardContent() {
               Pending Bookings
             </h3>
             <span className="px-3 py-1 text-xs font-bold bg-orange-100 text-orange-600 rounded-full">
-              {mockStats.pendingBookings} Pending
+              {stats.pendingBookings} Pending
             </span>
           </div>
 
           <div className="space-y-3">
             {pendingBookings.map((booking) => (
               <div
-                key={booking.id}
+                key={booking.bookingId}
                 className="p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">{booking.member}</h4>
+                  <h4 className="font-semibold">{booking.userName}</h4>
                   <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
-                    Pending
+                    {mapBookingStatus(booking.status)}
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground space-y-1">
-                  <p>{booking.equipment || booking.coach}</p>
+                  <p>{booking.coachName || booking.equipmentName || booking.bookingType}</p>
                   <p className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    {booking.time}
+                    {new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(booking.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <Button size="sm" variant="outline" className="flex-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => handleRejectBooking(booking.bookingId)}
+                    disabled={isProcessing}
+                  >
                     Reject
                   </Button>
-                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
+                  <Button 
+                    size="sm" 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => handleConfirmBooking(booking.bookingId)}
+                    disabled={isProcessing}
+                  >
                     Confirm
                   </Button>
                 </div>
               </div>
             ))}
+            {pendingBookings.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No pending bookings
+              </div>
+            )}
           </div>
 
-          <Button variant="outline" className="w-full mt-4">
-            View All Bookings
-          </Button>
+          <Link href="/reception-bookings">
+            <Button variant="outline" className="w-full mt-4">
+              View All Bookings
+            </Button>
+          </Link>
         </Card>
       </div>
 
-      {/* Subscription Expiry Alerts */}
+      {/* Subscription Expiry Alerts - Coming Soon */}
       <Card className="p-6 border border-border">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <Bell className="h-6 w-6 text-orange-500" />
             Subscription Expiry Alerts
           </h3>
-          <span className="text-sm text-muted-foreground">{upcomingVisits.length} members</span>
+          <span className="text-sm text-muted-foreground">Coming soon</span>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
-          {upcomingVisits.map((visit) => (
-            <div
-              key={visit.id}
-              className={`p-4 border-2 rounded-lg ${
-                visit.status === "critical"
-                  ? "border-red-200 bg-red-50"
-                  : visit.status === "warning"
-                  ? "border-orange-200 bg-orange-50"
-                  : "border-green-200 bg-green-50"
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  visit.status === "critical" ? "bg-red-500" : visit.status === "warning" ? "bg-orange-500" : "bg-green-500"
-                }`}></div>
-                <h4 className="font-semibold">{visit.name}</h4>
-              </div>
-              <p className="text-sm text-muted-foreground mb-1">{visit.subscription} Plan</p>
-              <p className={`text-sm font-medium ${
-                visit.status === "critical" ? "text-red-600" : visit.status === "warning" ? "text-orange-600" : "text-green-600"
-              }`}>
-                Expires in {visit.expiresIn}
-              </p>
-              <Button size="sm" variant="outline" className="w-full mt-3">
-                Contact Member
-              </Button>
-            </div>
-          ))}
+        <div className="text-center py-8 text-muted-foreground">
+          <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Subscription alerts will be available soon</p>
+          <p className="text-sm mt-2">This feature will notify you of expiring memberships</p>
         </div>
       </Card>
     </div>
