@@ -14,6 +14,8 @@ namespace Shared.DTOs.User
         public int TokenBalance { get; set; }
         public bool IsActive { get; set; }
         public bool EmailVerified { get; set; }
+        public bool MustChangePassword { get; set; }
+        public bool IsFirstLogin { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public DateTime CreatedAt { get; set; }
     }

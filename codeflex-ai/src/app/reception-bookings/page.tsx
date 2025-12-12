@@ -619,7 +619,7 @@ function ReceptionBookingsContent() {
 
 export default function ReceptionBookingsPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.Reception]}>
+    <ProtectedRoute allowedRoles={[UserRole.Receptionist]}>
       <ReceptionBookingsContent />
     </ProtectedRoute>
   );

@@ -106,7 +106,8 @@ namespace Service.Services
 
         public async Task<ReceptionStatsDto> GetReceptionStatsAsync()
         {
-            var members = await _unitOfWork.Repository<Member>().GetAllAsync();
+            var users = await _unitOfWork.Repository<User>().GetAllAsync();
+            var members = users.Where(u => u.Role == UserRole.Member).ToList();
             var bookings = await _unitOfWork.Repository<Booking>().GetAllAsync();
             var equipment = await _unitOfWork.Repository<Equipment>().GetAllAsync();
             var inBodyMeasurements = await _unitOfWork.Repository<InBodyMeasurement>().GetAllAsync();
@@ -115,7 +116,7 @@ namespace Service.Services
             var today = DateTime.Today;
             var todayBookings = bookings.Where(b => b.StartTime.Date == today).ToList();
             var totalMembers = members.Count();
-            var activeMembers = totalMembers; // Can be refined with last login logic
+            var activeMembers = members.Count(m => m.IsActive);
             var availableEquipment = equipment.Count(e => e.Status == EquipmentStatus.Available);
             var inUseEquipment = equipment.Count(e => e.Status == EquipmentStatus.InUse);
             var maintenanceEquipment = equipment.Count(e => e.Status == EquipmentStatus.UnderMaintenance);

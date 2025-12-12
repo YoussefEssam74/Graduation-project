@@ -3,7 +3,7 @@
 export enum UserRole {
   Member = 'Member',
   Coach = 'Coach',
-  Reception = 'Reception',
+  Receptionist = 'Receptionist',
   Admin = 'Admin',
 }
 
@@ -19,7 +19,7 @@ export interface User {
   phone?: string;
   dateOfBirth?: string; // Backend uses dateOfBirth instead of age
   gender?: number; // Backend uses 0=Male, 1=Female as number
-  role: string; // Backend returns role as string (Member/Coach/Reception/Admin)
+  role: string; // Backend returns role as string (Member/Coach/Receptionist/Admin)
   profileImageUrl?: string;
   address?: string;
   tokenBalance: number;
@@ -27,6 +27,8 @@ export interface User {
   emailVerified: boolean;
   lastLoginAt?: string;
   createdAt: string;
+  mustChangePassword?: boolean; // True if user must change password on first login
+  isFirstLogin?: boolean; // True if user hasn't completed first login setup
 }
 
 // Booking Types

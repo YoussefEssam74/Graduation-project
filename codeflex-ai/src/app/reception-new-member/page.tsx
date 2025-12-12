@@ -598,7 +598,7 @@ function ReceptionNewMemberContent() {
 
 export default function ReceptionNewMemberPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.Reception]}>
+    <ProtectedRoute allowedRoles={[UserRole.Receptionist]}>
       <ReceptionNewMemberContent />
     </ProtectedRoute>
   );

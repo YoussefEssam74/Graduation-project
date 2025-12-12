@@ -7,23 +7,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Presistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateWithChat : Migration
+    public partial class InitialCreateUsersProfilesRefactor : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Drop existing enum types if they exist (from previous migrations)
-            migrationBuilder.Sql(@"
-                DROP TYPE IF EXISTS booking_status CASCADE;
-                DROP TYPE IF EXISTS equipment_status CASCADE;
-                DROP TYPE IF EXISTS gender_type CASCADE;
-                DROP TYPE IF EXISTS notification_type CASCADE;
-                DROP TYPE IF EXISTS payment_status CASCADE;
-                DROP TYPE IF EXISTS subscription_status CASCADE;
-                DROP TYPE IF EXISTS transaction_type CASCADE;
-                DROP TYPE IF EXISTS user_role CASCADE;
-            ");
-
             migrationBuilder.AlterDatabase()
                 .Annotation("Npgsql:Enum:booking_status", "pending,confirmed,cancelled,completed,no_show")
                 .Annotation("Npgsql:Enum:equipment_status", "available,in_use,under_maintenance,out_of_service,reserved")
@@ -31,8 +19,7 @@ namespace Presistence.Migrations
                 .Annotation("Npgsql:Enum:notification_type", "booking_reminder,maintenance_alert,payment_due,workout_complete,milestone_achieved,coach_message,system_alert,promotional_offer")
                 .Annotation("Npgsql:Enum:payment_status", "pending,completed,failed,refunded,cancelled")
                 .Annotation("Npgsql:Enum:subscription_status", "active,expired,cancelled,suspended,pending_payment")
-                .Annotation("Npgsql:Enum:transaction_type", "purchase,deduction,refund,bonus,earned")
-                .Annotation("Npgsql:Enum:user_role", "member,coach,reception,admin");
+                .Annotation("Npgsql:Enum:transaction_type", "purchase,deduction,refund,bonus,earned");
 
             migrationBuilder.CreateTable(
                 name: "equipment_categories",
@@ -142,6 +129,7 @@ namespace Presistence.Migrations
                     Phone = table.Column<string>(type: "text", nullable: true),
                     DateOfBirth = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     Gender = table.Column<int>(type: "integer", nullable: true),
+                    Role = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "Member"),
                     ProfileImageUrl = table.Column<string>(type: "text", nullable: true),
                     Address = table.Column<string>(type: "text", nullable: true),
                     EmergencyContactName = table.Column<string>(type: "text", nullable: true),
@@ -212,25 +200,6 @@ namespace Presistence.Migrations
                     table.PrimaryKey("PK_activity_feeds", x => x.ActivityId);
                     table.ForeignKey(
                         name: "FK_activity_feeds_users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "admins",
-                columns: table => new
-                {
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    IsSuperAdmin = table.Column<bool>(type: "boolean", nullable: false),
-                    Permissions = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_admins", x => x.UserId);
-                    table.ForeignKey(
-                        name: "FK_admins_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "UserId",
@@ -314,7 +283,8 @@ namespace Presistence.Migrations
                         name: "FK_audit_logs_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
-                        principalColumn: "UserId");
+                        principalColumn: "UserId",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -354,7 +324,7 @@ namespace Presistence.Migrations
                 name: "coach_profiles",
                 columns: table => new
                 {
-                    CoachId = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<int>(type: "integer", nullable: false),
                     Specialization = table.Column<string>(type: "text", nullable: true),
@@ -372,36 +342,9 @@ namespace Presistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_coach_profiles", x => x.CoachId);
+                    table.PrimaryKey("PK_coach_profiles", x => x.Id);
                     table.ForeignKey(
                         name: "FK_coach_profiles_users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "coaches",
-                columns: table => new
-                {
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    Specialization = table.Column<string>(type: "text", nullable: true),
-                    Certifications = table.Column<string[]>(type: "text[]", nullable: true),
-                    ExperienceYears = table.Column<int>(type: "integer", nullable: true),
-                    Bio = table.Column<string>(type: "text", nullable: true),
-                    HourlyRate = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
-                    Rating = table.Column<decimal>(type: "numeric(3,2)", precision: 3, scale: 2, nullable: false),
-                    TotalReviews = table.Column<int>(type: "integer", nullable: false),
-                    TotalClients = table.Column<int>(type: "integer", nullable: false),
-                    AvailabilitySchedule = table.Column<string>(type: "text", nullable: true),
-                    IsAvailable = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_coaches", x => x.UserId);
-                    table.ForeignKey(
-                        name: "FK_coaches_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "UserId",
@@ -452,47 +395,8 @@ namespace Presistence.Migrations
                 name: "member_profiles",
                 columns: table => new
                 {
-                    MemberId = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    FitnessGoal = table.Column<string>(type: "text", nullable: true),
-                    MedicalConditions = table.Column<string>(type: "text", nullable: true),
-                    Allergies = table.Column<string>(type: "text", nullable: true),
-                    FitnessLevel = table.Column<string>(type: "text", nullable: true),
-                    PreferredWorkoutTime = table.Column<string>(type: "text", nullable: true),
-                    SubscriptionPlanId = table.Column<int>(type: "integer", nullable: true),
-                    MembershipStartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    MembershipEndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CurrentWeight = table.Column<decimal>(type: "numeric", nullable: true),
-                    TargetWeight = table.Column<decimal>(type: "numeric", nullable: true),
-                    Height = table.Column<decimal>(type: "numeric", nullable: true),
-                    TotalWorkoutsCompleted = table.Column<int>(type: "integer", nullable: false),
-                    TotalCaloriesBurned = table.Column<int>(type: "integer", nullable: false),
-                    Achievements = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_member_profiles", x => x.MemberId);
-                    table.ForeignKey(
-                        name: "FK_member_profiles_subscription_plans_SubscriptionPlanId",
-                        column: x => x.SubscriptionPlanId,
-                        principalTable: "subscription_plans",
-                        principalColumn: "PlanId",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_member_profiles_users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "members",
-                columns: table => new
-                {
                     UserId = table.Column<int>(type: "integer", nullable: false),
                     FitnessGoal = table.Column<string>(type: "text", nullable: true),
                     MedicalConditions = table.Column<string>(type: "text", nullable: true),
@@ -507,19 +411,21 @@ namespace Presistence.Migrations
                     Height = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: true),
                     TotalWorkoutsCompleted = table.Column<int>(type: "integer", nullable: false),
                     TotalCaloriesBurned = table.Column<int>(type: "integer", nullable: false),
-                    Achievements = table.Column<string>(type: "text", nullable: false)
+                    Achievements = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_members", x => x.UserId);
+                    table.PrimaryKey("PK_member_profiles", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_members_subscription_plans_SubscriptionPlanId",
+                        name: "FK_member_profiles_subscription_plans_SubscriptionPlanId",
                         column: x => x.SubscriptionPlanId,
                         principalTable: "subscription_plans",
                         principalColumn: "PlanId",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_members_users_UserId",
+                        name: "FK_member_profiles_users_UserId",
                         column: x => x.UserId,
                         principalTable: "users",
                         principalColumn: "UserId",
@@ -600,28 +506,6 @@ namespace Presistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "receptionists",
-                columns: table => new
-                {
-                    UserId = table.Column<int>(type: "integer", nullable: false),
-                    ShiftSchedule = table.Column<string>(type: "text", nullable: true),
-                    HireDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    Department = table.Column<string>(type: "text", nullable: true),
-                    TotalCheckIns = table.Column<int>(type: "integer", nullable: false),
-                    TotalPaymentsProcessed = table.Column<int>(type: "integer", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_receptionists", x => x.UserId);
-                    table.ForeignKey(
-                        name: "FK_receptionists_users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "token_transactions",
                 columns: table => new
                 {
@@ -697,22 +581,16 @@ namespace Presistence.Migrations
                     CheckInTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CheckOutTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CoachProfileCoachId = table.Column<int>(type: "integer", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_bookings", x => x.BookingId);
                     table.ForeignKey(
-                        name: "FK_bookings_coach_profiles_CoachProfileCoachId",
-                        column: x => x.CoachProfileCoachId,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_bookings_coaches_CoachId",
+                        name: "FK_bookings_coach_profiles_CoachId",
                         column: x => x.CoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_bookings_equipment_EquipmentId",
@@ -746,22 +624,16 @@ namespace Presistence.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedByCoachId = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CoachProfileCoachId = table.Column<int>(type: "integer", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_exercises", x => x.ExerciseId);
                     table.ForeignKey(
-                        name: "FK_exercises_coach_profiles_CoachProfileCoachId",
-                        column: x => x.CoachProfileCoachId,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_exercises_coaches_CreatedByCoachId",
+                        name: "FK_exercises_coach_profiles_CreatedByCoachId",
                         column: x => x.CreatedByCoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                 });
 
@@ -791,34 +663,22 @@ namespace Presistence.Migrations
                     StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CoachProfileCoachId = table.Column<int>(type: "integer", nullable: true),
-                    CoachProfileCoachId1 = table.Column<int>(type: "integer", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_nutrition_plans", x => x.PlanId);
                     table.ForeignKey(
-                        name: "FK_nutrition_plans_coach_profiles_CoachProfileCoachId",
-                        column: x => x.CoachProfileCoachId,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_nutrition_plans_coach_profiles_CoachProfileCoachId1",
-                        column: x => x.CoachProfileCoachId1,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_nutrition_plans_coaches_ApprovedByCoachId",
+                        name: "FK_nutrition_plans_coach_profiles_ApprovedByCoachId",
                         column: x => x.ApprovedByCoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_nutrition_plans_coaches_GeneratedByCoachId",
+                        name: "FK_nutrition_plans_coach_profiles_GeneratedByCoachId",
                         column: x => x.GeneratedByCoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_nutrition_plans_users_UserId",
@@ -853,34 +713,22 @@ namespace Presistence.Migrations
                     StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CoachProfileCoachId = table.Column<int>(type: "integer", nullable: true),
-                    CoachProfileCoachId1 = table.Column<int>(type: "integer", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_workout_plans", x => x.PlanId);
                     table.ForeignKey(
-                        name: "FK_workout_plans_coach_profiles_CoachProfileCoachId",
-                        column: x => x.CoachProfileCoachId,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_workout_plans_coach_profiles_CoachProfileCoachId1",
-                        column: x => x.CoachProfileCoachId1,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_workout_plans_coaches_ApprovedBy",
+                        name: "FK_workout_plans_coach_profiles_ApprovedBy",
                         column: x => x.ApprovedBy,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_workout_plans_coaches_GeneratedByCoachId",
+                        name: "FK_workout_plans_coach_profiles_GeneratedByCoachId",
                         column: x => x.GeneratedByCoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_workout_plans_users_UserId",
@@ -905,22 +753,16 @@ namespace Presistence.Migrations
                     IsPublic = table.Column<bool>(type: "boolean", nullable: false),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CoachProfileCoachId = table.Column<int>(type: "integer", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_workout_templates", x => x.TemplateId);
                     table.ForeignKey(
-                        name: "FK_workout_templates_coach_profiles_CoachProfileCoachId",
-                        column: x => x.CoachProfileCoachId,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_workout_templates_coaches_CreatedByCoachId",
+                        name: "FK_workout_templates_coach_profiles_CreatedByCoachId",
                         column: x => x.CreatedByCoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -977,8 +819,7 @@ namespace Presistence.Migrations
                     ReviewText = table.Column<string>(type: "text", nullable: true),
                     IsAnonymous = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CoachProfileCoachId = table.Column<int>(type: "integer", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -989,15 +830,10 @@ namespace Presistence.Migrations
                         principalTable: "bookings",
                         principalColumn: "BookingId");
                     table.ForeignKey(
-                        name: "FK_coach_reviews_coach_profiles_CoachProfileCoachId",
-                        column: x => x.CoachProfileCoachId,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_coach_reviews_coaches_CoachId",
+                        name: "FK_coach_reviews_coach_profiles_CoachId",
                         column: x => x.CoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_coach_reviews_users_UserId",
@@ -1022,22 +858,16 @@ namespace Presistence.Migrations
                     FatsGrams = table.Column<int>(type: "integer", nullable: false),
                     RecommendedTime = table.Column<TimeSpan>(type: "interval", nullable: false),
                     CreatedByCoachId = table.Column<int>(type: "integer", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    CoachProfileCoachId = table.Column<int>(type: "integer", nullable: true)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_meals", x => x.MealId);
                     table.ForeignKey(
-                        name: "FK_meals_coach_profiles_CoachProfileCoachId",
-                        column: x => x.CoachProfileCoachId,
-                        principalTable: "coach_profiles",
-                        principalColumn: "CoachId");
-                    table.ForeignKey(
-                        name: "FK_meals_coaches_CreatedByCoachId",
+                        name: "FK_meals_coach_profiles_CreatedByCoachId",
                         column: x => x.CreatedByCoachId,
-                        principalTable: "coaches",
-                        principalColumn: "UserId",
+                        principalTable: "coach_profiles",
+                        principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_meals_nutrition_plans_NutritionPlanId",
@@ -1225,9 +1055,14 @@ namespace Presistence.Migrations
                 columns: new[] { "UserId", "CreatedAt" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ai_chat_logs_UserId",
+                name: "IX_ai_chat_logs_CreatedAt",
                 table: "ai_chat_logs",
-                column: "UserId");
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ai_chat_logs_UserId_SessionId",
+                table: "ai_chat_logs",
+                columns: new[] { "UserId", "SessionId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ai_program_generations_NutritionPlanId",
@@ -1265,19 +1100,19 @@ namespace Presistence.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_bookings_CoachId",
+                name: "IX_bookings_CoachId_StartTime",
                 table: "bookings",
-                column: "CoachId");
+                columns: new[] { "CoachId", "StartTime" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_bookings_CoachProfileCoachId",
+                name: "IX_bookings_EquipmentId_StartTime",
                 table: "bookings",
-                column: "CoachProfileCoachId");
+                columns: new[] { "EquipmentId", "StartTime" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_bookings_EquipmentId",
+                name: "IX_bookings_Status",
                 table: "bookings",
-                column: "EquipmentId");
+                column: "Status");
 
             migrationBuilder.CreateIndex(
                 name: "IX_bookings_UserId_StartTime",
@@ -1326,14 +1161,14 @@ namespace Presistence.Migrations
                 column: "BookingId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_coach_reviews_CoachId",
+                name: "IX_coach_reviews_CoachId_CreatedAt",
                 table: "coach_reviews",
-                column: "CoachId");
+                columns: new[] { "CoachId", "CreatedAt" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_coach_reviews_CoachProfileCoachId",
+                name: "IX_coach_reviews_Rating",
                 table: "coach_reviews",
-                column: "CoachProfileCoachId");
+                column: "Rating");
 
             migrationBuilder.CreateIndex(
                 name: "IX_coach_reviews_UserId",
@@ -1346,14 +1181,19 @@ namespace Presistence.Migrations
                 column: "CategoryId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_exercises_CoachProfileCoachId",
-                table: "exercises",
-                column: "CoachProfileCoachId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_exercises_CreatedByCoachId",
                 table: "exercises",
                 column: "CreatedByCoachId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_exercises_DifficultyLevel",
+                table: "exercises",
+                column: "DifficultyLevel");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_exercises_MuscleGroup",
+                table: "exercises",
+                column: "MuscleGroup");
 
             migrationBuilder.CreateIndex(
                 name: "IX_exercises_Name",
@@ -1386,11 +1226,6 @@ namespace Presistence.Migrations
                 column: "MealId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_meals_CoachProfileCoachId",
-                table: "meals",
-                column: "CoachProfileCoachId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_meals_CreatedByCoachId",
                 table: "meals",
                 column: "CreatedByCoachId");
@@ -1412,11 +1247,6 @@ namespace Presistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_members_SubscriptionPlanId",
-                table: "members",
-                column: "SubscriptionPlanId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_notifications_UserId_IsRead",
                 table: "notifications",
                 columns: new[] { "UserId", "IsRead" });
@@ -1427,14 +1257,9 @@ namespace Presistence.Migrations
                 column: "ApprovedByCoachId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_nutrition_plans_CoachProfileCoachId",
+                name: "IX_nutrition_plans_CreatedAt",
                 table: "nutrition_plans",
-                column: "CoachProfileCoachId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_nutrition_plans_CoachProfileCoachId1",
-                table: "nutrition_plans",
-                column: "CoachProfileCoachId1");
+                column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_nutrition_plans_GeneratedByCoachId",
@@ -1452,9 +1277,19 @@ namespace Presistence.Migrations
                 column: "PackageId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_payments_UserId",
+                name: "IX_payments_Status",
                 table: "payments",
-                column: "UserId");
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_payments_UserId_CreatedAt",
+                table: "payments",
+                columns: new[] { "UserId", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_token_transactions_TransactionType",
+                table: "token_transactions",
+                column: "TransactionType");
 
             migrationBuilder.CreateIndex(
                 name: "IX_token_transactions_UserId_CreatedAt",
@@ -1472,6 +1307,11 @@ namespace Presistence.Migrations
                 columns: new[] { "UserId", "MilestoneId" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_user_subscriptions_EndDate",
+                table: "user_subscriptions",
+                column: "EndDate");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_user_subscriptions_PaymentId",
                 table: "user_subscriptions",
                 column: "PaymentId");
@@ -1482,9 +1322,14 @@ namespace Presistence.Migrations
                 column: "PlanId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_user_subscriptions_UserId",
+                name: "IX_user_subscriptions_UserId_Status",
                 table: "user_subscriptions",
-                column: "UserId");
+                columns: new[] { "UserId", "Status" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_users_CreatedAt",
+                table: "users",
+                column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_users_Email",
@@ -1498,14 +1343,29 @@ namespace Presistence.Migrations
                 column: "IsActive");
 
             migrationBuilder.CreateIndex(
+                name: "IX_users_LastLoginAt",
+                table: "users",
+                column: "LastLoginAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_users_Role",
+                table: "users",
+                column: "Role");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_workout_logs_PlanId",
                 table: "workout_logs",
                 column: "PlanId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_workout_logs_UserId",
+                name: "IX_workout_logs_UserId_WorkoutDate",
                 table: "workout_logs",
-                column: "UserId");
+                columns: new[] { "UserId", "WorkoutDate" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_workout_logs_WorkoutDate",
+                table: "workout_logs",
+                column: "WorkoutDate");
 
             migrationBuilder.CreateIndex(
                 name: "IX_workout_plan_exercises_ExerciseId",
@@ -1523,14 +1383,9 @@ namespace Presistence.Migrations
                 column: "ApprovedBy");
 
             migrationBuilder.CreateIndex(
-                name: "IX_workout_plans_CoachProfileCoachId",
+                name: "IX_workout_plans_CreatedAt",
                 table: "workout_plans",
-                column: "CoachProfileCoachId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_workout_plans_CoachProfileCoachId1",
-                table: "workout_plans",
-                column: "CoachProfileCoachId1");
+                column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_workout_plans_GeneratedByCoachId",
@@ -1553,11 +1408,6 @@ namespace Presistence.Migrations
                 column: "TemplateId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_workout_templates_CoachProfileCoachId",
-                table: "workout_templates",
-                column: "CoachProfileCoachId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_workout_templates_CreatedByCoachId",
                 table: "workout_templates",
                 column: "CreatedByCoachId");
@@ -1568,9 +1418,6 @@ namespace Presistence.Migrations
         {
             migrationBuilder.DropTable(
                 name: "activity_feeds");
-
-            migrationBuilder.DropTable(
-                name: "admins");
 
             migrationBuilder.DropTable(
                 name: "ai_chat_logs");
@@ -1600,13 +1447,7 @@ namespace Presistence.Migrations
                 name: "member_profiles");
 
             migrationBuilder.DropTable(
-                name: "members");
-
-            migrationBuilder.DropTable(
                 name: "notifications");
-
-            migrationBuilder.DropTable(
-                name: "receptionists");
 
             migrationBuilder.DropTable(
                 name: "token_transactions");
@@ -1667,9 +1508,6 @@ namespace Presistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "coach_profiles");
-
-            migrationBuilder.DropTable(
-                name: "coaches");
 
             migrationBuilder.DropTable(
                 name: "users");

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Presistence.Migrations
 {
     [DbContext(typeof(IntelliFitDbContext))]
-    [Migration("20251204151036_InitialCreateWithChat")]
-    partial class InitialCreateWithChat
+    [Migration("20251212205141_AddFirstLoginFlags")]
+    partial class AddFirstLoginFlags
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -30,7 +30,6 @@ namespace Presistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "payment_status", new[] { "pending", "completed", "failed", "refunded", "cancelled" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "subscription_status", new[] { "active", "expired", "cancelled", "suspended", "pending_payment" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "transaction_type", new[] { "purchase", "deduction", "refund", "bonus", "earned" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "user_role", new[] { "member", "coach", "reception", "admin" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("IntelliFit.Domain.Models.ActivityFeed", b =>
@@ -113,7 +112,9 @@ namespace Presistence.Migrations
 
                     b.HasKey("ChatId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId", "SessionId");
 
                     b.ToTable("ai_chat_logs", (string)null);
                 });
@@ -290,9 +291,6 @@ namespace Presistence.Migrations
                     b.Property<int?>("CoachId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("CoachProfileCoachId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -322,11 +320,11 @@ namespace Presistence.Migrations
 
                     b.HasKey("BookingId");
 
-                    b.HasIndex("CoachId");
+                    b.HasIndex("Status");
 
-                    b.HasIndex("CoachProfileCoachId");
+                    b.HasIndex("CoachId", "StartTime");
 
-                    b.HasIndex("EquipmentId");
+                    b.HasIndex("EquipmentId", "StartTime");
 
                     b.HasIndex("UserId", "StartTime");
 
@@ -390,11 +388,11 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.CoachProfile", b =>
                 {
-                    b.Property<int>("CoachId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CoachId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AvailabilitySchedule")
                         .HasColumnType("text");
@@ -437,7 +435,7 @@ namespace Presistence.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
-                    b.HasKey("CoachId");
+                    b.HasKey("Id");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -457,9 +455,6 @@ namespace Presistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("CoachId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CoachProfileCoachId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAt")
@@ -485,11 +480,11 @@ namespace Presistence.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.HasIndex("CoachId");
-
-                    b.HasIndex("CoachProfileCoachId");
+                    b.HasIndex("Rating");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("CoachId", "CreatedAt");
 
                     b.ToTable("coach_reviews", (string)null);
                 });
@@ -596,9 +591,6 @@ namespace Presistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int?>("CoachProfileCoachId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -636,9 +628,11 @@ namespace Presistence.Migrations
 
                     b.HasKey("ExerciseId");
 
-                    b.HasIndex("CoachProfileCoachId");
-
                     b.HasIndex("CreatedByCoachId");
+
+                    b.HasIndex("DifficultyLevel");
+
+                    b.HasIndex("MuscleGroup");
 
                     b.HasIndex("Name");
 
@@ -771,9 +765,6 @@ namespace Presistence.Migrations
                     b.Property<int>("CarbsGrams")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("CoachProfileCoachId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -801,8 +792,6 @@ namespace Presistence.Migrations
                         .HasColumnType("interval");
 
                     b.HasKey("MealId");
-
-                    b.HasIndex("CoachProfileCoachId");
 
                     b.HasIndex("CreatedByCoachId");
 
@@ -843,11 +832,11 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.MemberProfile", b =>
                 {
-                    b.Property<int>("MemberId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("MemberId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Achievements")
                         .IsRequired()
@@ -860,7 +849,8 @@ namespace Presistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("CurrentWeight")
-                        .HasColumnType("numeric");
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<string>("FitnessGoal")
                         .HasColumnType("text");
@@ -869,7 +859,8 @@ namespace Presistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<decimal?>("Height")
-                        .HasColumnType("numeric");
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<string>("MedicalConditions")
                         .HasColumnType("text");
@@ -887,7 +878,8 @@ namespace Presistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<decimal?>("TargetWeight")
-                        .HasColumnType("numeric");
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<int>("TotalCaloriesBurned")
                         .HasColumnType("integer");
@@ -901,7 +893,7 @@ namespace Presistence.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
-                    b.HasKey("MemberId");
+                    b.HasKey("Id");
 
                     b.HasIndex("SubscriptionPlanId");
 
@@ -1003,12 +995,6 @@ namespace Presistence.Migrations
                     b.Property<int>("CarbsGrams")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("CoachProfileCoachId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CoachProfileCoachId1")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1064,9 +1050,7 @@ namespace Presistence.Migrations
 
                     b.HasIndex("ApprovedByCoachId");
 
-                    b.HasIndex("CoachProfileCoachId");
-
-                    b.HasIndex("CoachProfileCoachId1");
+                    b.HasIndex("CreatedAt");
 
                     b.HasIndex("GeneratedByCoachId");
 
@@ -1133,7 +1117,9 @@ namespace Presistence.Migrations
 
                     b.HasIndex("PackageId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("payments", (string)null);
                 });
@@ -1298,6 +1284,8 @@ namespace Presistence.Migrations
 
                     b.HasKey("TransactionId");
 
+                    b.HasIndex("TransactionType");
+
                     b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("token_transactions", (string)null);
@@ -1340,8 +1328,14 @@ namespace Presistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsFirstLogin")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1358,6 +1352,13 @@ namespace Presistence.Migrations
                     b.Property<string>("ProfileImageUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Member");
+
                     b.Property<int>("TokenBalance")
                         .HasColumnType("integer");
 
@@ -1366,14 +1367,18 @@ namespace Presistence.Migrations
 
                     b.HasKey("UserId");
 
+                    b.HasIndex("CreatedAt");
+
                     b.HasIndex("Email")
                         .IsUnique();
 
                     b.HasIndex("IsActive");
 
-                    b.ToTable("users", (string)null);
+                    b.HasIndex("LastLoginAt");
 
-                    b.UseTptMappingStrategy();
+                    b.HasIndex("Role");
+
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.UserMilestone", b =>
@@ -1451,11 +1456,13 @@ namespace Presistence.Migrations
 
                     b.HasKey("SubscriptionId");
 
+                    b.HasIndex("EndDate");
+
                     b.HasIndex("PaymentId");
 
                     b.HasIndex("PlanId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "Status");
 
                     b.ToTable("user_subscriptions", (string)null);
                 });
@@ -1502,7 +1509,9 @@ namespace Presistence.Migrations
 
                     b.HasIndex("PlanId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("WorkoutDate");
+
+                    b.HasIndex("UserId", "WorkoutDate");
 
                     b.ToTable("workout_logs", (string)null);
                 });
@@ -1525,12 +1534,6 @@ namespace Presistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("ApprovedBy")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CoachProfileCoachId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CoachProfileCoachId1")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1588,9 +1591,7 @@ namespace Presistence.Migrations
 
                     b.HasIndex("ApprovedBy");
 
-                    b.HasIndex("CoachProfileCoachId");
-
-                    b.HasIndex("CoachProfileCoachId1");
+                    b.HasIndex("CreatedAt");
 
                     b.HasIndex("GeneratedByCoachId");
 
@@ -1654,9 +1655,6 @@ namespace Presistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("TemplateId"));
 
-                    b.Property<int?>("CoachProfileCoachId")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1689,8 +1687,6 @@ namespace Presistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("TemplateId");
-
-                    b.HasIndex("CoachProfileCoachId");
 
                     b.HasIndex("CreatedByCoachId");
 
@@ -1742,135 +1738,6 @@ namespace Presistence.Migrations
                     b.HasIndex("TemplateId");
 
                     b.ToTable("workout_template_exercises", (string)null);
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Admin", b =>
-                {
-                    b.HasBaseType("IntelliFit.Domain.Models.User");
-
-                    b.Property<bool>("IsSuperAdmin")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Permissions")
-                        .HasColumnType("text");
-
-                    b.ToTable("admins", (string)null);
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Coach", b =>
-                {
-                    b.HasBaseType("IntelliFit.Domain.Models.User");
-
-                    b.Property<string>("AvailabilitySchedule")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Bio")
-                        .HasColumnType("text");
-
-                    b.Property<string[]>("Certifications")
-                        .HasColumnType("text[]");
-
-                    b.Property<int?>("ExperienceYears")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal?>("HourlyRate")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<bool>("IsAvailable")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("Rating")
-                        .HasPrecision(3, 2)
-                        .HasColumnType("numeric(3,2)");
-
-                    b.Property<string>("Specialization")
-                        .HasColumnType("text");
-
-                    b.Property<int>("TotalClients")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TotalReviews")
-                        .HasColumnType("integer");
-
-                    b.ToTable("coaches", (string)null);
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Member", b =>
-                {
-                    b.HasBaseType("IntelliFit.Domain.Models.User");
-
-                    b.Property<string>("Achievements")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Allergies")
-                        .HasColumnType("text");
-
-                    b.Property<decimal?>("CurrentWeight")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
-                    b.Property<string>("FitnessGoal")
-                        .HasColumnType("text");
-
-                    b.Property<string>("FitnessLevel")
-                        .HasColumnType("text");
-
-                    b.Property<decimal?>("Height")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
-                    b.Property<string>("MedicalConditions")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("MembershipEndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("MembershipStartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PreferredWorkoutTime")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("SubscriptionPlanId")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal?>("TargetWeight")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
-                    b.Property<int>("TotalCaloriesBurned")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TotalWorkoutsCompleted")
-                        .HasColumnType("integer");
-
-                    b.HasIndex("SubscriptionPlanId");
-
-                    b.ToTable("members", (string)null);
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Receptionist", b =>
-                {
-                    b.HasBaseType("IntelliFit.Domain.Models.User");
-
-                    b.Property<string>("Department")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("HireDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ShiftSchedule")
-                        .HasColumnType("text");
-
-                    b.Property<int>("TotalCheckIns")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TotalPaymentsProcessed")
-                        .HasColumnType("integer");
-
-                    b.ToTable("receptionists", (string)null);
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.ActivityFeed", b =>
@@ -1935,21 +1802,18 @@ namespace Presistence.Migrations
                 {
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.Booking", b =>
                 {
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "Coach")
-                        .WithMany("CoachBookings")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "Coach")
+                        .WithMany("Bookings")
                         .HasForeignKey("CoachId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("Bookings")
-                        .HasForeignKey("CoachProfileCoachId");
 
                     b.HasOne("IntelliFit.Domain.Models.Equipment", "Equipment")
                         .WithMany("Bookings")
@@ -1991,8 +1855,8 @@ namespace Presistence.Migrations
             modelBuilder.Entity("IntelliFit.Domain.Models.CoachProfile", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
+                        .WithOne("CoachProfile")
+                        .HasForeignKey("IntelliFit.Domain.Models.CoachProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2005,15 +1869,11 @@ namespace Presistence.Migrations
                         .WithMany()
                         .HasForeignKey("BookingId");
 
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "Coach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "Coach")
                         .WithMany("Reviews")
                         .HasForeignKey("CoachId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("Reviews")
-                        .HasForeignKey("CoachProfileCoachId");
 
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
                         .WithMany("CoachReviews")
@@ -2041,11 +1901,7 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.Exercise", b =>
                 {
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("ExercisesCreated")
-                        .HasForeignKey("CoachProfileCoachId");
-
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "CreatedByCoach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "CreatedByCoach")
                         .WithMany("ExercisesCreated")
                         .HasForeignKey("CreatedByCoachId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -2073,11 +1929,7 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.Meal", b =>
                 {
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("MealsCreated")
-                        .HasForeignKey("CoachProfileCoachId");
-
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "CreatedByCoach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "CreatedByCoach")
                         .WithMany("MealsCreated")
                         .HasForeignKey("CreatedByCoachId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -2120,8 +1972,8 @@ namespace Presistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
+                        .WithOne("MemberProfile")
+                        .HasForeignKey("IntelliFit.Domain.Models.MemberProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2143,20 +1995,12 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.NutritionPlan", b =>
                 {
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "ApprovedByCoach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "ApprovedByCoach")
                         .WithMany("NutritionPlansApproved")
                         .HasForeignKey("ApprovedByCoachId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("NutritionPlansApproved")
-                        .HasForeignKey("CoachProfileCoachId");
-
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("NutritionPlansCreated")
-                        .HasForeignKey("CoachProfileCoachId1");
-
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "GeneratedByCoach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "GeneratedByCoach")
                         .WithMany("NutritionPlansCreated")
                         .HasForeignKey("GeneratedByCoachId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -2268,20 +2112,12 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutPlan", b =>
                 {
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "ApprovedByCoach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "ApprovedByCoach")
                         .WithMany("WorkoutPlansApproved")
                         .HasForeignKey("ApprovedBy")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("WorkoutPlansApproved")
-                        .HasForeignKey("CoachProfileCoachId");
-
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("WorkoutPlansCreated")
-                        .HasForeignKey("CoachProfileCoachId1");
-
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "Coach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "Coach")
                         .WithMany("WorkoutPlansCreated")
                         .HasForeignKey("GeneratedByCoachId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -2320,11 +2156,7 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutTemplate", b =>
                 {
-                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", null)
-                        .WithMany("WorkoutTemplatesCreated")
-                        .HasForeignKey("CoachProfileCoachId");
-
-                    b.HasOne("IntelliFit.Domain.Models.Coach", "CreatedByCoach")
+                    b.HasOne("IntelliFit.Domain.Models.CoachProfile", "CreatedByCoach")
                         .WithMany("WorkoutTemplatesCreated")
                         .HasForeignKey("CreatedByCoachId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -2350,49 +2182,6 @@ namespace Presistence.Migrations
                     b.Navigation("Exercise");
 
                     b.Navigation("Template");
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Admin", b =>
-                {
-                    b.HasOne("IntelliFit.Domain.Models.User", null)
-                        .WithOne()
-                        .HasForeignKey("IntelliFit.Domain.Models.Admin", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Coach", b =>
-                {
-                    b.HasOne("IntelliFit.Domain.Models.User", null)
-                        .WithOne()
-                        .HasForeignKey("IntelliFit.Domain.Models.Coach", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Member", b =>
-                {
-                    b.HasOne("IntelliFit.Domain.Models.SubscriptionPlan", "SubscriptionPlan")
-                        .WithMany()
-                        .HasForeignKey("SubscriptionPlanId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("IntelliFit.Domain.Models.User", null)
-                        .WithOne()
-                        .HasForeignKey("IntelliFit.Domain.Models.Member", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SubscriptionPlan");
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Receptionist", b =>
-                {
-                    b.HasOne("IntelliFit.Domain.Models.User", null)
-                        .WithOne()
-                        .HasForeignKey("IntelliFit.Domain.Models.Receptionist", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.CoachProfile", b =>
@@ -2477,9 +2266,13 @@ namespace Presistence.Migrations
 
                     b.Navigation("Bookings");
 
+                    b.Navigation("CoachProfile");
+
                     b.Navigation("CoachReviews");
 
                     b.Navigation("InBodyMeasurements");
+
+                    b.Navigation("MemberProfile");
 
                     b.Navigation("Notifications");
 
@@ -2510,27 +2303,6 @@ namespace Presistence.Migrations
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutTemplate", b =>
                 {
                     b.Navigation("TemplateExercises");
-                });
-
-            modelBuilder.Entity("IntelliFit.Domain.Models.Coach", b =>
-                {
-                    b.Navigation("CoachBookings");
-
-                    b.Navigation("ExercisesCreated");
-
-                    b.Navigation("MealsCreated");
-
-                    b.Navigation("NutritionPlansApproved");
-
-                    b.Navigation("NutritionPlansCreated");
-
-                    b.Navigation("Reviews");
-
-                    b.Navigation("WorkoutPlansApproved");
-
-                    b.Navigation("WorkoutPlansCreated");
-
-                    b.Navigation("WorkoutTemplatesCreated");
                 });
 #pragma warning restore 612, 618
         }

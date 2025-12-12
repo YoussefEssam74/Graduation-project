@@ -15,8 +15,7 @@ const normalizeRole = (role: string): UserRole => {
   const roleMap: Record<string, UserRole> = {
     'Member': UserRole.Member,
     'Coach': UserRole.Coach,
-    'Receptionist': UserRole.Reception,
-    'Reception': UserRole.Reception,
+    'Receptionist': UserRole.Receptionist,
     'Admin': UserRole.Admin,
   };
   return roleMap[role] || UserRole.Member;
@@ -40,7 +39,7 @@ export default function ProtectedRoute({
           const roleRoutes: Record<UserRole, string> = {
             [UserRole.Member]: "/dashboard",
             [UserRole.Coach]: "/coach-dashboard",
-            [UserRole.Reception]: "/reception-dashboard",
+            [UserRole.Receptionist]: "/reception-dashboard",
             [UserRole.Admin]: "/admin-dashboard",
           };
           router.push(roleRoutes[normalizedRole] || "/dashboard");

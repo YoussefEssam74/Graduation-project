@@ -517,7 +517,7 @@ function ReceptionPaymentsContent() {
 
 export default function ReceptionPaymentsPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.Reception]}>
+    <ProtectedRoute allowedRoles={[UserRole.Receptionist]}>
       <ReceptionPaymentsContent />
     </ProtectedRoute>
   );

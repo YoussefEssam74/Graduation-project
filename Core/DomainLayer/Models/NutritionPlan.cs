@@ -24,8 +24,8 @@ namespace IntelliFit.Domain.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public virtual User User { get; set; } = null!;
-        public virtual Coach? GeneratedByCoach { get; set; }
-        public virtual Coach? ApprovedByCoach { get; set; }
+        public virtual CoachProfile? GeneratedByCoach { get; set; }
+        public virtual CoachProfile? ApprovedByCoach { get; set; }
         public virtual ICollection<AiProgramGeneration> AiGenerations { get; set; } = new List<AiProgramGeneration>();
         public virtual ICollection<Meal> Meals { get; set; } = new List<Meal>();
     }

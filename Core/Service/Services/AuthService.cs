@@ -19,21 +19,6 @@ namespace Service.Services
             _tokenService = tokenService;
         }
 
-        /// <summary>
-        /// Helper method to determine User Role from TPT derived type
-        /// </summary>
-        private string GetUserRole(User user)
-        {
-            return user switch
-            {
-                Member => "Member",
-                Coach => "Coach",
-                Receptionist => "Receptionist",
-                Admin => "Admin",
-                _ => throw new InvalidOperationException($"Unknown user type: {user.GetType().Name}")
-            };
-        }
-
         // Ensure DateTime values persisted to PostgreSQL with timestamptz are UTC
         private DateTime? EnsureUtc(DateTime? value)
         {
@@ -64,15 +49,12 @@ namespace Service.Services
                 throw new UnauthorizedAccessException("Account is deactivated");
             }
 
-            // Detect role from TPT derived type
-            var userRole = GetUserRole(user);
-
             // Update last login
             user.LastLoginAt = DateTime.UtcNow;
             _unitOfWork.Repository<User>().Update(user);
             await _unitOfWork.SaveChangesAsync();
 
-            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, userRole);
+            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, user.Role.ToString());
 
             return new AuthResponseDto
             {
@@ -82,6 +64,9 @@ namespace Service.Services
             };
         }
 
+        /// <summary>
+        /// Public registration - always creates Member role
+        /// </summary>
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto registerDto)
         {
             if (await EmailExistsAsync(registerDto.Email))
@@ -89,64 +74,107 @@ namespace Service.Services
                 throw new InvalidOperationException("Email already exists");
             }
 
-            // Create correct derived user type based on Role (TPT pattern)
-            User user = registerDto.Role.ToLowerInvariant() switch
+            // Public signup always creates Member role (security requirement)
+            var user = new User
             {
-                "member" => new Member
-                {
-                    Email = registerDto.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                    Name = registerDto.Name,
-                    Phone = registerDto.Phone,
-                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
-                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                "coach" => new Coach
-                {
-                    Email = registerDto.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                    Name = registerDto.Name,
-                    Phone = registerDto.Phone,
-                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
-                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                "receptionist" => new Receptionist
-                {
-                    Email = registerDto.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                    Name = registerDto.Name,
-                    Phone = registerDto.Phone,
-                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
-                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                "admin" => new Admin
-                {
-                    Email = registerDto.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                    Name = registerDto.Name,
-                    Phone = registerDto.Phone,
-                    DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
-                    Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                },
-                _ => throw new InvalidOperationException($"Invalid role: {registerDto.Role}")
+                Email = registerDto.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                Name = registerDto.Name,
+                Phone = registerDto.Phone,
+                DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
+                Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                Role = UserRole.Member, // Always Member for public signup
+                IsActive = true,
+                MustChangePassword = false, // Members set their own password during signup
+                IsFirstLogin = false, // Members enter their data during signup
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _unitOfWork.Repository<User>().AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, GetUserRole(user));
+            // Create MemberProfile for the new member
+            var memberProfile = new MemberProfile
+            {
+                UserId = user.UserId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Repository<MemberProfile>().AddAsync(memberProfile);
+            await _unitOfWork.SaveChangesAsync();
+
+            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, user.Role.ToString());
+
+            return new AuthResponseDto
+            {
+                User = MapToUserDto(user),
+                Token = token,
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            };
+        }
+
+        /// <summary>
+        /// Admin-only registration - can create any role
+        /// </summary>
+        public async Task<AuthResponseDto> CreateUserWithRoleAsync(RegisterRequestDto registerDto, string role)
+        {
+            if (await EmailExistsAsync(registerDto.Email))
+            {
+                throw new InvalidOperationException("Email already exists");
+            }
+
+            // Parse the role
+            if (!Enum.TryParse<UserRole>(role, true, out var userRole))
+            {
+                throw new InvalidOperationException($"Invalid role: {role}");
+            }
+
+            var user = new User
+            {
+                Email = registerDto.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
+                Name = registerDto.Name,
+                Phone = registerDto.Phone,
+                DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
+                Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                Role = userRole,
+                IsActive = true,
+                // Admin-created accounts must change password and complete profile on first login
+                MustChangePassword = userRole != UserRole.Member,
+                IsFirstLogin = userRole != UserRole.Member,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<User>().AddAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Create appropriate profile based on role
+            if (userRole == UserRole.Member)
+            {
+                var memberProfile = new MemberProfile
+                {
+                    UserId = user.UserId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<MemberProfile>().AddAsync(memberProfile);
+            }
+            else if (userRole == UserRole.Coach)
+            {
+                var coachProfile = new CoachProfile
+                {
+                    UserId = user.UserId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<CoachProfile>().AddAsync(coachProfile);
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+
+            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, user.Role.ToString());
 
             return new AuthResponseDto
             {
@@ -169,6 +197,54 @@ namespace Service.Services
             return user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
         }
 
+        /// <summary>
+        /// Change password for a user (used for first-login password change)
+        /// </summary>
+        public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException("User not found");
+            }
+
+            // Verify current password
+            if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+            {
+                throw new UnauthorizedAccessException("Current password is incorrect");
+            }
+
+            // Update password
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.MustChangePassword = false;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<User>().Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Complete first login setup (marks IsFirstLogin as false)
+        /// </summary>
+        public async Task<UserDto> CompleteFirstLoginSetupAsync(int userId)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException("User not found");
+            }
+
+            user.IsFirstLogin = false;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<User>().Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return MapToUserDto(user);
+        }
+
         private UserDto MapToUserDto(User user)
         {
             return new UserDto
@@ -179,12 +255,14 @@ namespace Service.Services
                 Phone = user.Phone,
                 DateOfBirth = user.DateOfBirth,
                 Gender = user.Gender.HasValue ? (int)user.Gender.Value : null,
-                Role = GetUserRole(user),
+                Role = user.Role.ToString(),
                 ProfileImageUrl = user.ProfileImageUrl,
                 Address = user.Address,
                 TokenBalance = user.TokenBalance,
                 IsActive = user.IsActive,
                 EmailVerified = user.EmailVerified,
+                MustChangePassword = user.MustChangePassword,
+                IsFirstLogin = user.IsFirstLogin,
                 LastLoginAt = user.LastLoginAt,
                 CreatedAt = user.CreatedAt
             };

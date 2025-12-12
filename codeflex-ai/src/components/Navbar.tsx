@@ -24,8 +24,7 @@ const normalizeRole = (role: string): UserRole => {
   const roleMap: Record<string, UserRole> = {
     'Member': UserRole.Member,
     'Coach': UserRole.Coach,
-    'Receptionist': UserRole.Reception,
-    'Reception': UserRole.Reception,
+    'Receptionist': UserRole.Receptionist,
     'Admin': UserRole.Admin,
   };
   return roleMap[role] || UserRole.Member;
@@ -42,6 +41,7 @@ export default function Navbar() {
   // Role-based navigation items
   const getMemberNav = () => [
     { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
+    { href: "/book-coach", icon: UserCogIcon, label: "Book Coach" },
     { href: "/bookings", icon: CalendarIcon, label: "Bookings" },
     { href: "/inbody", icon: ActivityIcon, label: "InBody" },
     { href: "/ai-coach", icon: BrainIcon, label: "AI Coach" },
@@ -54,6 +54,7 @@ export default function Navbar() {
     { href: "/coach-clients", icon: Users2Icon, label: "Clients" },
     { href: "/coach-programs", icon: DumbbellIcon, label: "Programs" },
     { href: "/coach-schedule", icon: CalendarIcon, label: "Schedule" },
+    { href: "/coach-profile", icon: UserIcon, label: "My Profile" },
   ];
 
   const getReceptionNav = () => [
@@ -65,6 +66,7 @@ export default function Navbar() {
 
   const getAdminNav = () => [
     { href: "/admin-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
+    { href: "/admin-users", icon: Users2Icon, label: "Manage Staff" },
     { href: "/admin-members", icon: Users2Icon, label: "Members" },
     { href: "/admin-coaches", icon: UserCogIcon, label: "Coaches" },
     { href: "/admin-equipment", icon: DumbbellIcon, label: "Equipment" },
@@ -79,7 +81,7 @@ export default function Navbar() {
         return getMemberNav();
       case UserRole.Coach:
         return getCoachNav();
-      case UserRole.Reception:
+      case UserRole.Receptionist:
         return getReceptionNav();
       case UserRole.Admin:
         return getAdminNav();
@@ -96,7 +98,7 @@ export default function Navbar() {
         return "bg-blue-500";
       case UserRole.Coach:
         return "bg-green-500";
-      case UserRole.Reception:
+      case UserRole.Receptionist:
         return "bg-purple-500";
       case UserRole.Admin:
         return "bg-red-500";
@@ -116,7 +118,7 @@ export default function Navbar() {
         return "/dashboard";
       case UserRole.Coach:
         return "/coach-dashboard";
-      case UserRole.Reception:
+      case UserRole.Receptionist:
         return "/reception-dashboard";
       case UserRole.Admin:
         return "/admin-dashboard";
@@ -178,7 +180,7 @@ export default function Navbar() {
                   <div className={`w-8 h-8 rounded-full ${getRoleBadgeColor()} flex items-center justify-center`}>
                     {normalizeRole(user?.role || '') === UserRole.Admin && <ShieldIcon className="w-4 h-4 text-white" />}
                     {normalizeRole(user?.role || '') === UserRole.Coach && <UserCogIcon className="w-4 h-4 text-white" />}
-                    {normalizeRole(user?.role || '') === UserRole.Reception && <Users2Icon className="w-4 h-4 text-white" />}
+                    {normalizeRole(user?.role || '') === UserRole.Receptionist && <Users2Icon className="w-4 h-4 text-white" />}
                     {normalizeRole(user?.role || '') === UserRole.Member && <UserIcon className="w-4 h-4 text-white" />}
                   </div>
                   <div className="text-sm">

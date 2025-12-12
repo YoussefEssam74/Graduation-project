@@ -2,9 +2,12 @@ using System;
 
 namespace IntelliFit.Domain.Models
 {
+    /// <summary>
+    /// Member-specific profile data linked to User via UserId
+    /// </summary>
     public class MemberProfile
     {
-        public int MemberId { get; set; }
+        public int Id { get; set; }
         public int UserId { get; set; }
         public string? FitnessGoal { get; set; }
         public string? MedicalConditions { get; set; }

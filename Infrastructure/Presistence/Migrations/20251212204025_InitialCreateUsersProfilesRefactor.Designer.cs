@@ -3,6 +3,7 @@ using System;
 using IntelliFit.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Presistence.Migrations
 {
     [DbContext(typeof(IntelliFitDbContext))]
-    partial class IntelliFitDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251212204025_InitialCreateUsersProfilesRefactor")]
+    partial class InitialCreateUsersProfilesRefactor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1325,14 +1328,8 @@ namespace Presistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsFirstLogin")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("MustChangePassword")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()

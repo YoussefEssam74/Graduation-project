@@ -4,10 +4,10 @@ using IntelliFit.Domain.Enums;
 namespace IntelliFit.Domain.Models
 {
     /// <summary>
-    /// Base User entity for TPT (Table-Per-Type) inheritance
-    /// Derived types: Member, Coach, Receptionist, Admin
+    /// User entity - single table approach with Role column
+    /// Role-specific data is stored in MemberProfile/CoachProfile tables
     /// </summary>
-    public abstract class User
+    public class User
     {
         public int UserId { get; set; }
         public string Email { get; set; } = null!;
@@ -16,7 +16,12 @@ namespace IntelliFit.Domain.Models
         public string? Phone { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public GenderType? Gender { get; set; }
-        // Note: Role is determined by TPT inheritance (Member/Coach/Receptionist/Admin tables)
+
+        /// <summary>
+        /// User role - stored as string in database
+        /// </summary>
+        public UserRole Role { get; set; } = UserRole.Member;
+
         public string? ProfileImageUrl { get; set; }
         public string? Address { get; set; }
         public string? EmergencyContactName { get; set; }
@@ -24,11 +29,24 @@ namespace IntelliFit.Domain.Models
         public int TokenBalance { get; set; } = 0;
         public bool IsActive { get; set; } = true;
         public bool EmailVerified { get; set; } = false;
+
+        /// <summary>
+        /// Indicates if user must change password on next login (for admin-created accounts)
+        /// </summary>
+        public bool MustChangePassword { get; set; } = false;
+
+        /// <summary>
+        /// Indicates if this is the user's first login (for profile setup)
+        /// </summary>
+        public bool IsFirstLogin { get; set; } = true;
+
         public DateTime? LastLoginAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation properties (common to all user types)
+        public virtual MemberProfile? MemberProfile { get; set; }
+        public virtual CoachProfile? CoachProfile { get; set; }
         public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
         public virtual ICollection<UserSubscription> UserSubscriptions { get; set; } = new List<UserSubscription>();
         public virtual ICollection<TokenTransaction> TokenTransactions { get; set; } = new List<TokenTransaction>();

@@ -10,14 +10,10 @@ namespace IntelliFit.Infrastructure.Persistence
         {
         }
 
-        // Core - TPT (Table-Per-Type) Inheritance
+        // Core Users (single table with Role column)
         public DbSet<User> Users { get; set; }
-        public DbSet<Member> Members { get; set; }
-        public DbSet<Coach> Coaches { get; set; }
-        public DbSet<Receptionist> Receptionists { get; set; }
-        public DbSet<Admin> Admins { get; set; }
 
-        // Deprecated - Use TPT derived types instead
+        // User Profiles (role-specific data)
         public DbSet<MemberProfile> MemberProfiles { get; set; }
         public DbSet<CoachProfile> CoachProfiles { get; set; }
 
@@ -71,7 +67,6 @@ namespace IntelliFit.Infrastructure.Persistence
             base.OnModelCreating(modelBuilder);
 
             // PostgreSQL enum mappings
-            modelBuilder.HasPostgresEnum<UserRole>();
             modelBuilder.HasPostgresEnum<GenderType>();
             modelBuilder.HasPostgresEnum<SubscriptionStatus>();
             modelBuilder.HasPostgresEnum<BookingStatus>();
@@ -80,14 +75,8 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.HasPostgresEnum<PaymentStatus>();
             modelBuilder.HasPostgresEnum<NotificationType>();
 
-            // Configure TPT (Table-Per-Type) inheritance for User roles
+            // Table mappings
             modelBuilder.Entity<User>().ToTable("users");
-            modelBuilder.Entity<Member>().ToTable("members");
-            modelBuilder.Entity<Coach>().ToTable("coaches");
-            modelBuilder.Entity<Receptionist>().ToTable("receptionists");
-            modelBuilder.Entity<Admin>().ToTable("admins");
-
-            // Deprecated Profile tables (to be removed after data migration)
             modelBuilder.Entity<MemberProfile>().ToTable("member_profiles");
             modelBuilder.Entity<CoachProfile>().ToTable("coach_profiles");
             modelBuilder.Entity<SubscriptionPlan>().ToTable("subscription_plans");
@@ -120,7 +109,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<CoachReview>().ToTable("coach_reviews");
             modelBuilder.Entity<AuditLog>().ToTable("audit_logs");
 
-            // User Configuration (Base TPT table)
+            // User Configuration (single table with Role column)
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasKey(e => e.UserId);
@@ -128,11 +117,31 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.Property(e => e.PasswordHash).IsRequired();
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
                 entity.HasIndex(e => e.Email).IsUnique();
+
+                // Role stored as string
+                entity.Property(e => e.Role)
+                    .HasConversion<string>()
+                    .HasMaxLength(50)
+                    .IsRequired()
+                    .HasDefaultValue(UserRole.Member);
+
+                // One-to-one relationships with profiles
+                entity.HasOne(e => e.MemberProfile)
+                    .WithOne(p => p.User)
+                    .HasForeignKey<MemberProfile>(p => p.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.CoachProfile)
+                    .WithOne(p => p.User)
+                    .HasForeignKey<CoachProfile>(p => p.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Member Configuration (TPT derived type)
-            modelBuilder.Entity<Member>(entity =>
+            // MemberProfile Configuration
+            modelBuilder.Entity<MemberProfile>(entity =>
             {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.UserId).IsUnique();
                 entity.Property(e => e.CurrentWeight).HasPrecision(5, 2);
                 entity.Property(e => e.TargetWeight).HasPrecision(5, 2);
                 entity.Property(e => e.Height).HasPrecision(5, 2);
@@ -144,42 +153,10 @@ namespace IntelliFit.Infrastructure.Persistence
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // Coach Configuration (TPT derived type)
-            modelBuilder.Entity<Coach>(entity =>
-            {
-                entity.Property(e => e.Rating).HasPrecision(3, 2);
-                entity.Property(e => e.HourlyRate).HasPrecision(10, 2);
-            });
-
-            // Receptionist Configuration (TPT derived type)
-            modelBuilder.Entity<Receptionist>(entity =>
-            {
-                // Add any specific configuration for receptionists here
-            });
-
-            // Admin Configuration (TPT derived type)
-            modelBuilder.Entity<Admin>(entity =>
-            {
-                // Add any specific configuration for admins here
-            });
-
-            // MemberProfile Configuration
-            modelBuilder.Entity<MemberProfile>(entity =>
-            {
-                entity.HasKey(e => e.MemberId);
-                entity.HasIndex(e => e.UserId).IsUnique();
-
-                // FK to SubscriptionPlan
-                entity.HasOne(e => e.SubscriptionPlan)
-                    .WithMany()
-                    .HasForeignKey(e => e.SubscriptionPlanId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
             // CoachProfile Configuration
             modelBuilder.Entity<CoachProfile>(entity =>
             {
-                entity.HasKey(e => e.CoachId);
+                entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.UserId).IsUnique();
                 entity.Property(e => e.Rating).HasPrecision(3, 2);
                 entity.Property(e => e.HourlyRate).HasPrecision(10, 2);
@@ -193,7 +170,6 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // UserSubscription Configuration
-            // NOTE: Database has CHECK constraint: chk_subscription_has_payment (PaymentId IS NOT NULL)
             modelBuilder.Entity<UserSubscription>(entity =>
             {
                 entity.HasKey(e => e.SubscriptionId);
@@ -208,7 +184,6 @@ namespace IntelliFit.Infrastructure.Persistence
                     .HasForeignKey(e => e.PlanId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Subscriptions reference payments via PaymentId
                 entity.HasOne(e => e.Payment)
                     .WithMany()
                     .HasForeignKey(e => e.PaymentId)
@@ -268,9 +243,6 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // Booking Configuration
-            // NOTE: Database has CHECK constraints enforcing:
-            //   - chk_booking_xor: (EquipmentId IS NOT NULL XOR CoachId IS NOT NULL)
-            //   - chk_booking_type_match: BookingType matches FK reference
             modelBuilder.Entity<Booking>(entity =>
             {
                 entity.HasKey(e => e.BookingId);
@@ -285,9 +257,9 @@ namespace IntelliFit.Infrastructure.Persistence
                     .HasForeignKey(e => e.EquipmentId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Coach relationship uses CoachBookings navigation property
+                // Coach relationship now uses CoachProfile
                 entity.HasOne(e => e.Coach)
-                    .WithMany(c => c.CoachBookings)
+                    .WithMany(c => c.Bookings)
                     .HasForeignKey(e => e.CoachId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
@@ -314,12 +286,6 @@ namespace IntelliFit.Infrastructure.Persistence
                     .HasForeignKey(e => e.MeasuredBy)
                     .OnDelete(DeleteBehavior.SetNull);
             });
-
-            // Ignore Receptionist-specific navigations to avoid conflicts (no FK in related tables)
-            modelBuilder.Entity<Receptionist>()
-                .Ignore(r => r.InBodyMeasurementsConducted);
-            modelBuilder.Entity<Receptionist>()
-                .Ignore(r => r.TokenTransactionsProcessed);
 
             // Exercise Configuration
             modelBuilder.Entity<Exercise>(entity =>
@@ -489,9 +455,6 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // AiProgramGeneration Configuration
-            // NOTE: Database has CHECK constraints enforcing:
-            //   - chk_ai_program_xor: (WorkoutPlanId IS NOT NULL XOR NutritionPlanId IS NOT NULL)
-            //   - chk_program_type_match: ProgramType matches plan reference
             modelBuilder.Entity<AiProgramGeneration>(entity =>
             {
                 entity.HasKey(e => e.GenerationId);
@@ -576,7 +539,6 @@ namespace IntelliFit.Infrastructure.Persistence
             {
                 entity.HasKey(e => e.ChatMessageId);
 
-                // Indexes for fast querying
                 entity.HasIndex(e => e.ConversationId);
                 entity.HasIndex(e => new { e.SenderId, e.ReceiverId });
                 entity.HasIndex(e => e.CreatedAt);
@@ -585,13 +547,11 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.Property(e => e.Message).IsRequired();
                 entity.Property(e => e.ConversationId).IsRequired().HasMaxLength(50);
 
-                // Sender relationship
                 entity.HasOne(e => e.Sender)
                     .WithMany()
                     .HasForeignKey(e => e.SenderId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Receiver relationship
                 entity.HasOne(e => e.Receiver)
                     .WithMany()
                     .HasForeignKey(e => e.ReceiverId)
@@ -623,7 +583,6 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.HasIndex(e => e.Action);
                 entity.HasIndex(e => e.UserId);
 
-                // FK to User for audit trail
                 entity.HasOne(e => e.User)
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
@@ -631,50 +590,44 @@ namespace IntelliFit.Infrastructure.Persistence
             });
 
             // Performance Indexes
-            // Note: Role is determined by TPT inheritance (Member/Coach/Receptionist/Admin tables)
             modelBuilder.Entity<User>().HasIndex(e => e.IsActive);
-            modelBuilder.Entity<User>().HasIndex(e => e.CreatedAt); // For recent users queries
-            modelBuilder.Entity<User>().HasIndex(e => e.LastLoginAt); // For activity tracking
+            modelBuilder.Entity<User>().HasIndex(e => e.Role);
+            modelBuilder.Entity<User>().HasIndex(e => e.CreatedAt);
+            modelBuilder.Entity<User>().HasIndex(e => e.LastLoginAt);
 
             modelBuilder.Entity<WorkoutPlan>().HasIndex(e => new { e.UserId, e.IsActive });
-            modelBuilder.Entity<WorkoutPlan>().HasIndex(e => e.CreatedAt); // For recent plans
+            modelBuilder.Entity<WorkoutPlan>().HasIndex(e => e.CreatedAt);
 
             modelBuilder.Entity<NutritionPlan>().HasIndex(e => new { e.UserId, e.IsActive });
             modelBuilder.Entity<NutritionPlan>().HasIndex(e => e.CreatedAt);
 
             modelBuilder.Entity<Booking>().HasIndex(e => new { e.UserId, e.StartTime });
-            modelBuilder.Entity<Booking>().HasIndex(e => new { e.CoachId, e.StartTime }); // Coach availability
-            modelBuilder.Entity<Booking>().HasIndex(e => new { e.EquipmentId, e.StartTime }); // Equipment availability
-            modelBuilder.Entity<Booking>().HasIndex(e => e.Status); // Filter by status
+            modelBuilder.Entity<Booking>().HasIndex(e => new { e.CoachId, e.StartTime });
+            modelBuilder.Entity<Booking>().HasIndex(e => new { e.EquipmentId, e.StartTime });
+            modelBuilder.Entity<Booking>().HasIndex(e => e.Status);
 
             modelBuilder.Entity<TokenTransaction>().HasIndex(e => new { e.UserId, e.CreatedAt });
-            modelBuilder.Entity<TokenTransaction>().HasIndex(e => e.TransactionType); // Filter by type
+            modelBuilder.Entity<TokenTransaction>().HasIndex(e => e.TransactionType);
 
             modelBuilder.Entity<ChatMessage>().HasIndex(e => new { e.ConversationId, e.CreatedAt });
 
-            // WorkoutLog indexes for user workout history and stats
             modelBuilder.Entity<WorkoutLog>().HasIndex(e => new { e.UserId, e.WorkoutDate });
-            modelBuilder.Entity<WorkoutLog>().HasIndex(e => e.WorkoutDate); // For date-range queries
+            modelBuilder.Entity<WorkoutLog>().HasIndex(e => e.WorkoutDate);
 
-            // AiChatLog indexes for conversation lookup
             modelBuilder.Entity<AiChatLog>().HasIndex(e => new { e.UserId, e.SessionId });
             modelBuilder.Entity<AiChatLog>().HasIndex(e => e.CreatedAt);
 
-            // CoachReview indexes
             modelBuilder.Entity<CoachReview>().HasIndex(e => new { e.CoachId, e.CreatedAt });
-            modelBuilder.Entity<CoachReview>().HasIndex(e => e.Rating); // For filtering by rating
+            modelBuilder.Entity<CoachReview>().HasIndex(e => e.Rating);
 
-            // UserSubscription indexes
             modelBuilder.Entity<UserSubscription>().HasIndex(e => new { e.UserId, e.Status });
-            modelBuilder.Entity<UserSubscription>().HasIndex(e => e.EndDate); // For expiration checks
+            modelBuilder.Entity<UserSubscription>().HasIndex(e => e.EndDate);
 
-            // Payment indexes
             modelBuilder.Entity<Payment>().HasIndex(e => new { e.UserId, e.CreatedAt });
             modelBuilder.Entity<Payment>().HasIndex(e => e.Status);
 
-            // Exercise indexes for search
-            modelBuilder.Entity<Exercise>().HasIndex(e => e.MuscleGroup); // Filter by muscle group
-            modelBuilder.Entity<Exercise>().HasIndex(e => e.DifficultyLevel); // Filter by difficulty
+            modelBuilder.Entity<Exercise>().HasIndex(e => e.MuscleGroup);
+            modelBuilder.Entity<Exercise>().HasIndex(e => e.DifficultyLevel);
         }
     }
 }

@@ -18,8 +18,6 @@ import { Label } from "@/components/ui/label";
 
 export default function SignUpPage() {
   const { register } = useAuth();
-  const [step, setStep] = useState<'role' | 'details'>('role');
-  const [selectedRole, setSelectedRole] = useState<string>('');
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -68,7 +66,8 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      await register(email, password, name, selectedRole, phone, gender);
+      // Always register as Member - public registration is Members only
+      await register(email, password, name, 'Member', phone, gender);
     } catch (err) {
       console.error("Registration error:", err);
       const errorMessage = err instanceof Error ? err.message : "Registration failed. Please try again.";
@@ -77,101 +76,6 @@ export default function SignUpPage() {
       setIsLoading(false);
     }
   };
-
-  // Role selection step
-  if (step === 'role') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
-        {/* Background Animation */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        </div>
-
-        <div className="relative w-full max-w-4xl">
-          <div className="bg-background rounded-2xl shadow-2xl p-12 border border-border/50">
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="p-3 bg-primary/20 rounded-xl backdrop-blur-sm">
-                  <ZapIcon className="w-8 h-8 text-primary" />
-                </div>
-                <h1 className="text-3xl font-bold text-foreground">IntelliFit</h1>
-              </div>
-              <h2 className="text-3xl font-bold text-foreground mb-2">Choose Your Role</h2>
-              <p className="text-muted-foreground">Select how you want to access IntelliFit</p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 mb-8">
-              {/* Member Role */}
-              <button
-                onClick={() => {
-                  setSelectedRole('Member');
-                  setStep('details');
-                }}
-                className="group relative p-6 bg-card border-2 border-border rounded-xl hover:border-blue-500 hover:shadow-lg transition-all duration-200"
-              >
-                <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity"></div>
-                <div className="relative">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-blue-500/10 rounded-full flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                    <UserCircleIcon className="w-8 h-8 text-blue-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Member</h3>
-                  <p className="text-sm text-muted-foreground">Access workouts, book sessions, and track your fitness progress</p>
-                </div>
-              </button>
-
-              {/* Coach Role */}
-              <button
-                onClick={() => {
-                  setSelectedRole('Coach');
-                  setStep('details');
-                }}
-                className="group relative p-6 bg-card border-2 border-border rounded-xl hover:border-green-500 hover:shadow-lg transition-all duration-200"
-              >
-                <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity"></div>
-                <div className="relative">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-green-500/10 rounded-full flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
-                    <CheckCircleIcon className="w-8 h-8 text-green-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Coach</h3>
-                  <p className="text-sm text-muted-foreground">Manage clients, create workout plans, and track performance</p>
-                </div>
-              </button>
-
-              {/* Reception Role */}
-              <button
-                onClick={() => {
-                  setSelectedRole('Receptionist');
-                  setStep('details');
-                }}
-                className="group relative p-6 bg-card border-2 border-border rounded-xl hover:border-purple-500 hover:shadow-lg transition-all duration-200"
-              >
-                <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity"></div>
-                <div className="relative">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-purple-500/10 rounded-full flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
-                    <MailIcon className="w-8 h-8 text-purple-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Reception</h3>
-                  <p className="text-sm text-muted-foreground">Handle check-ins, InBody tests, and equipment management</p>
-                </div>
-              </button>
-            </div>
-
-            <div className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link href="/login" className="text-primary font-semibold hover:underline">
-                Sign in here
-              </Link>
-            </div>
-          </div>
-
-          <div className="text-center mt-6 text-sm text-muted-foreground">
-            © 2025 IntelliFit. Smart Gym Management System.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black flex items-center justify-center p-4">
@@ -200,9 +104,9 @@ export default function SignUpPage() {
 
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Join Our Community</h2>
+                  <h2 className="text-2xl font-bold mb-2">Start Your Fitness Journey</h2>
                   <p className="text-white/90 text-lg">
-                    Create your account and start your fitness journey with intelligent training solutions
+                    Create your member account and unlock intelligent training solutions
                   </p>
                 </div>
 
@@ -250,15 +154,15 @@ export default function SignUpPage() {
 
           {/* Right Side - Sign Up Form */}
           <div className="p-12 bg-background">
-            <button
-              onClick={() => setStep('role')}
-              className="mb-4 text-sm text-primary hover:underline flex items-center gap-1"
-            >
-              ← Change role
-            </button>
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-2">Create Account as {selectedRole}</h2>
-              <p className="text-muted-foreground">Fill in your details to get started</p>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
+                  <UserCircleIcon className="w-5 h-5 text-blue-500" />
+                </div>
+                <span className="text-sm font-medium text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full">Member Account</span>
+              </div>
+              <h2 className="text-3xl font-bold text-foreground mb-2">Create Your Account</h2>
+              <p className="text-muted-foreground">Fill in your details to get started with IntelliFit</p>
             </div>
 
             {/* Sign Up Form */}
@@ -389,7 +293,7 @@ export default function SignUpPage() {
                     Creating Account...
                   </div>
                 ) : (
-                  "Create Account"
+                  "Create Member Account"
                 )}
               </Button>
             </form>

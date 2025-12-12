@@ -4,7 +4,7 @@ namespace IntelliFit.Domain.Models
 {
     public class CoachProfile
     {
-        public int CoachId { get; set; }
+        public int Id { get; set; }
         public int UserId { get; set; }
         public string? Specialization { get; set; }
         public string[]? Certifications { get; set; }
@@ -18,6 +18,8 @@ namespace IntelliFit.Domain.Models
         public bool IsAvailable { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // Navigation properties
         public virtual User User { get; set; } = null!;
         public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
         public virtual ICollection<WorkoutPlan> WorkoutPlansCreated { get; set; } = new List<WorkoutPlan>();

@@ -13,6 +13,7 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
+  User,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -349,12 +350,20 @@ function CoachDashboardContent() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-4 gap-6">
         <Link href="/coach-clients">
           <Card className="p-6 border border-border hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg">
             <Users className="h-8 w-8 text-blue-500 mb-3" />
             <h4 className="font-semibold mb-2">Manage Clients</h4>
             <p className="text-sm text-muted-foreground">View and manage all your clients</p>
+          </Card>
+        </Link>
+
+        <Link href="/coach-profile">
+          <Card className="p-6 border border-border hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg">
+            <User className="h-8 w-8 text-purple-500 mb-3" />
+            <h4 className="font-semibold mb-2">My Profile</h4>
+            <p className="text-sm text-muted-foreground">Manage your profile and availability</p>
           </Card>
         </Link>
 

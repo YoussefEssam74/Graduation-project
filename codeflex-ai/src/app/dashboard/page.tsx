@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Star,
   X,
+  UserCheck,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -177,6 +178,14 @@ function DashboardContent() {
       href: "/ai-coach",
       color: "text-purple-500",
       bgColor: "bg-purple-50",
+    },
+    {
+      icon: UserCheck,
+      title: "Book a Coach",
+      description: "Book sessions with coaches",
+      href: "/book-coach",
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-50",
     },
     {
       icon: Dumbbell,

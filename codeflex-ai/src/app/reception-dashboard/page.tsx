@@ -408,7 +408,7 @@ function ReceptionDashboardContent() {
 
 export default function ReceptionDashboardPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.Reception]}>
+    <ProtectedRoute allowedRoles={[UserRole.Receptionist]}>
       <ReceptionDashboardContent />
     </ProtectedRoute>
   );

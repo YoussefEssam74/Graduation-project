@@ -16,21 +16,6 @@ namespace Service.Services
             _unitOfWork = unitOfWork;
         }
 
-        /// <summary>
-        /// Helper method to determine User Role from TPT derived type
-        /// </summary>
-        private string GetUserRole(User user)
-        {
-            return user switch
-            {
-                Member => "Member",
-                Coach => "Coach",
-                Receptionist => "Receptionist",
-                Admin => "Admin",
-                _ => throw new InvalidOperationException($"Unknown user type: {user.GetType().Name}")
-            };
-        }
-
         public async Task<UserDto?> GetUserByIdAsync(int userId)
         {
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
@@ -56,7 +41,7 @@ namespace Service.Services
             user.Name = updateDto.Name;
             user.Phone = updateDto.Phone;
             user.DateOfBirth = updateDto.DateOfBirth;
-            user.Gender = updateDto.Gender.HasValue ? (IntelliFit.Domain.Enums.GenderType)updateDto.Gender.Value : null;
+            user.Gender = updateDto.Gender.HasValue ? (GenderType)updateDto.Gender.Value : null;
             user.ProfileImageUrl = updateDto.ProfileImageUrl;
             user.Address = updateDto.Address;
             user.EmergencyContactName = updateDto.EmergencyContactName;
@@ -111,7 +96,9 @@ namespace Service.Services
 
         public async Task<IEnumerable<UserDto>> GetCoachesListAsync()
         {
-            var coaches = await _unitOfWork.Repository<Coach>().GetAllAsync();
+            // Get all users with Coach role
+            var coaches = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.Role == UserRole.Coach && u.IsActive);
             return coaches.Select(c => MapToUserDto(c));
         }
 
@@ -125,7 +112,7 @@ namespace Service.Services
                 Phone = user.Phone,
                 DateOfBirth = user.DateOfBirth,
                 Gender = user.Gender.HasValue ? (int)user.Gender.Value : null,
-                Role = GetUserRole(user),
+                Role = user.Role.ToString(),
                 ProfileImageUrl = user.ProfileImageUrl,
                 Address = user.Address,
                 TokenBalance = user.TokenBalance,
@@ -138,41 +125,46 @@ namespace Service.Services
 
         public async Task<UserMetricsDto?> GetUserMetricsAsync(int userId)
         {
-            var member = await _unitOfWork.Repository<Member>()
+            // Get user and their member profile
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+            if (user == null)
+                return null;
+
+            var memberProfile = await _unitOfWork.Repository<MemberProfile>()
                 .FirstOrDefaultAsync(m => m.UserId == userId);
 
-            if (member == null)
+            if (memberProfile == null)
                 return null;
 
             // Calculate BMI if height and weight are available
             decimal? bmi = null;
-            if (member.CurrentWeight.HasValue && member.Height.HasValue && member.Height.Value > 0)
+            if (memberProfile.CurrentWeight.HasValue && memberProfile.Height.HasValue && memberProfile.Height.Value > 0)
             {
-                var heightInMeters = member.Height.Value / 100m;
-                bmi = Math.Round(member.CurrentWeight.Value / (heightInMeters * heightInMeters), 2);
+                var heightInMeters = memberProfile.Height.Value / 100m;
+                bmi = Math.Round(memberProfile.CurrentWeight.Value / (heightInMeters * heightInMeters), 2);
             }
 
             // Calculate age from DateOfBirth
             int? age = null;
-            if (member.DateOfBirth.HasValue)
+            if (user.DateOfBirth.HasValue)
             {
                 var today = DateTime.Today;
-                age = today.Year - member.DateOfBirth.Value.Year;
-                if (member.DateOfBirth.Value.Date > today.AddYears(-age.Value))
+                age = today.Year - user.DateOfBirth.Value.Year;
+                if (user.DateOfBirth.Value.Date > today.AddYears(-age.Value))
                     age--;
             }
 
             return new UserMetricsDto
             {
                 UserId = userId,
-                CurrentWeight = member.CurrentWeight,
-                TargetWeight = member.TargetWeight,
-                Height = member.Height,
+                CurrentWeight = memberProfile.CurrentWeight,
+                TargetWeight = memberProfile.TargetWeight,
+                Height = memberProfile.Height,
                 BMI = bmi,
                 Age = age,
-                FitnessGoal = member.FitnessGoal?.ToString(),
-                FitnessLevel = member.FitnessLevel?.ToString(),
-                Gender = member.Gender?.ToString()
+                FitnessGoal = memberProfile.FitnessGoal,
+                FitnessLevel = memberProfile.FitnessLevel,
+                Gender = user.Gender?.ToString()
             };
         }
 
@@ -284,17 +276,28 @@ namespace Service.Services
                 .Select(w => new RecentWorkoutDto
                 {
                     Date = w.WorkoutDate,
-                    Type = null, // WorkoutType not available in WorkoutLog model
+                    Type = null,
                     DurationMinutes = w.DurationMinutes ?? 0,
                     CaloriesBurned = w.CaloriesBurned ?? 0,
-                    Intensity = null, // Intensity not available in WorkoutLog model
+                    Intensity = null,
                     Notes = w.Notes
                 })
                 .ToList();
 
-            // Health conditions and dietary preferences - can be added later if Member model has these fields
+            // Get health conditions and dietary preferences from MemberProfile
+            var memberProfile = await _unitOfWork.Repository<MemberProfile>()
+                .FirstOrDefaultAsync(m => m.UserId == userId);
+
             var healthConditions = new List<string>();
             var dietaryPreferences = new List<string>();
+
+            if (memberProfile != null)
+            {
+                if (!string.IsNullOrEmpty(memberProfile.MedicalConditions))
+                    healthConditions.Add(memberProfile.MedicalConditions);
+                if (!string.IsNullOrEmpty(memberProfile.Allergies))
+                    dietaryPreferences.Add(memberProfile.Allergies);
+            }
 
             return new UserAIContextDto
             {

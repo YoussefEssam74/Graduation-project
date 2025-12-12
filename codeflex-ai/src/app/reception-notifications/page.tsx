@@ -339,7 +339,7 @@ function ReceptionNotificationsContent() {
 
 export default function ReceptionNotificationsPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.Reception]}>
+    <ProtectedRoute allowedRoles={[UserRole.Receptionist]}>
       <ReceptionNotificationsContent />
     </ProtectedRoute>
   );

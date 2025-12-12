@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { User, UserRole, Gender } from "@/types/gym";
+import { User, UserRole } from "@/types/gym";
 import { authApi, getAuthToken } from "@/lib/api";
 import { tokenTransactionsApi } from "@/lib/api/tokenTransactions";
 
@@ -22,6 +22,12 @@ interface AuthContextType {
   deductTokens: (amount?: number) => void;
   // refresh user data from server (e.g., after token purchase)
   refreshUser: () => Promise<void>;
+  // Change password (for first-login flow)
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) => Promise<void>;
+  // Complete first login setup
+  completeFirstLoginSetup: () => Promise<void>;
+  // Admin: Create user with role
+  adminCreateUser: (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,8 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const roleMap: Record<string, UserRole> = {
         'Member': UserRole.Member,
         'Coach': UserRole.Coach,
-        'Receptionist': UserRole.Reception,
-        'Reception': UserRole.Reception,
+        'Receptionist': UserRole.Receptionist,
         'Admin': UserRole.Admin,
       };
 
@@ -87,14 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailVerified: userData.emailVerified,
         lastLoginAt: userData.lastLoginAt,
         createdAt: userData.createdAt,
-      };
-
-      // Redirect based on role returned from backend
-      const roleRoutes: Record<UserRole, string> = {
-        [UserRole.Member]: "/dashboard",
-        [UserRole.Coach]: "/coach-dashboard",
-        [UserRole.Reception]: "/reception-dashboard",
-        [UserRole.Admin]: "/admin-dashboard",
+        mustChangePassword: userData.mustChangePassword,
+        isFirstLogin: userData.isFirstLogin,
       };
 
       // Save to state and localStorage
@@ -105,6 +104,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Set redirecting state
       setIsRedirecting(true);
+
+      // Check if user needs to complete first-login setup (for Coach/Receptionist created by admin)
+      if (userData.mustChangePassword || userData.isFirstLogin) {
+        window.location.href = "/setup-account";
+        return;
+      }
+
+      // Redirect based on role returned from backend
+      const roleRoutes: Record<UserRole, string> = {
+        [UserRole.Member]: "/dashboard",
+        [UserRole.Coach]: "/coach-dashboard",
+        [UserRole.Receptionist]: "/reception-dashboard",
+        [UserRole.Admin]: "/admin-dashboard",
+      };
 
       // Force immediate redirect using window.location
       window.location.href = roleRoutes[mappedRole];
@@ -138,25 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { user: userData, token: authToken } = response.data;
       
-      // Calculate age from dateOfBirth
-      const calculateAge = (dob: string | null | undefined): number => {
-        if (!dob) return 25;
-        const birthDate = new Date(dob);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-        return age;
-      };
-      
       // Map backend role string to frontend UserRole enum
       const roleMap: Record<string, UserRole> = {
         'Member': UserRole.Member,
         'Coach': UserRole.Coach,
-        'Receptionist': UserRole.Reception,
-        'Reception': UserRole.Reception,
+        'Receptionist': UserRole.Receptionist,
         'Admin': UserRole.Admin,
       };
 
@@ -177,13 +176,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailVerified: userData.emailVerified,
         lastLoginAt: userData.lastLoginAt,
         createdAt: userData.createdAt,
+        mustChangePassword: userData.mustChangePassword,
+        isFirstLogin: userData.isFirstLogin,
       };
 
       // Redirect based on role
       const roleRoutes: Record<UserRole, string> = {
         [UserRole.Member]: "/dashboard",
         [UserRole.Coach]: "/coach-dashboard",
-        [UserRole.Reception]: "/reception-dashboard",
+        [UserRole.Receptionist]: "/reception-dashboard",
         [UserRole.Admin]: "/admin-dashboard",
       };
 
@@ -201,6 +202,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Registration error:", error);
       setIsRedirecting(false);
+      throw error;
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string, confirmPassword: string) => {
+    try {
+      const response = await authApi.changePassword({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+
+      if (!response.success) {
+        throw new Error(response.message || "Failed to change password");
+      }
+
+      // Update user state to reflect password change
+      if (user) {
+        const updatedUser = { ...user, mustChangePassword: false };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+    } catch (error) {
+      console.error("Change password error:", error);
+      throw error;
+    }
+  };
+
+  const completeFirstLoginSetup = async () => {
+    try {
+      const response = await authApi.completeSetup();
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to complete setup");
+      }
+
+      // Update user state with new data
+      const userData = response.data;
+      const updatedUser: User = {
+        ...user!,
+        mustChangePassword: userData.mustChangePassword,
+        isFirstLogin: userData.isFirstLogin,
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // Redirect to appropriate dashboard
+      const roleMap: Record<string, UserRole> = {
+        'Member': UserRole.Member,
+        'Coach': UserRole.Coach,
+        'Receptionist': UserRole.Receptionist,
+        'Admin': UserRole.Admin,
+      };
+
+      const roleRoutes: Record<UserRole, string> = {
+        [UserRole.Member]: "/dashboard",
+        [UserRole.Coach]: "/coach-dashboard",
+        [UserRole.Receptionist]: "/reception-dashboard",
+        [UserRole.Admin]: "/admin-dashboard",
+      };
+
+      const mappedRole = roleMap[updatedUser.role] || UserRole.Member;
+      window.location.href = roleRoutes[mappedRole];
+    } catch (error) {
+      console.error("Complete setup error:", error);
+      throw error;
+    }
+  };
+
+  const adminCreateUser = async (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => {
+    try {
+      const response = await authApi.createUserWithRole({
+        email,
+        password,
+        name,
+        phone,
+        gender,
+        role,
+      }, role);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to create user");
+      }
+
+      // Return the created user data (don't log in as them)
+      return;
+    } catch (error) {
+      console.error("Admin create user error:", error);
       throw error;
     }
   };
@@ -254,8 +344,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const roleMap: Record<string, UserRole> = {
       'Member': UserRole.Member,
       'Coach': UserRole.Coach,
-      'Receptionist': UserRole.Reception,
-      'Reception': UserRole.Reception,
+      'Receptionist': UserRole.Receptionist,
       'Admin': UserRole.Admin,
     };
     return roleMap[role] || UserRole.Member;
@@ -283,6 +372,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         hasRole,
+        changePassword,
+        completeFirstLoginSetup,
+        adminCreateUser,
       }}
     >
       {children}

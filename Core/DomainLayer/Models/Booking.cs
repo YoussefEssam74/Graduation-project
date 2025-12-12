@@ -23,6 +23,6 @@ namespace IntelliFit.Domain.Models
 
         public virtual User User { get; set; } = null!;
         public virtual Equipment? Equipment { get; set; }
-        public virtual Coach? Coach { get; set; }
+        public virtual CoachProfile? Coach { get; set; }
     }
 }

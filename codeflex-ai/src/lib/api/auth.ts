@@ -12,7 +12,13 @@ export interface RegisterRequest {
   phone?: string;
   dateOfBirth?: string;
   gender?: number; // 0 = Male, 1 = Female
-  role: string; // Member, Coach, Reception, Admin
+  role: string; // Member, Coach, Receptionist, Admin
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface UserDto {
@@ -30,6 +36,8 @@ export interface UserDto {
   emailVerified: boolean;
   lastLoginAt?: string;
   createdAt: string;
+  mustChangePassword?: boolean;
+  isFirstLogin?: boolean;
 }
 
 export interface AuthResponse {
@@ -65,7 +73,7 @@ export const authApi = {
   },
 
   /**
-   * Register new user
+   * Register new user (public - always creates Member)
    */
   async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
     const response = await apiFetch<AuthResponse>('/auth/register', {
@@ -79,6 +87,37 @@ export const authApi = {
     }
 
     return response;
+  },
+
+  /**
+   * Admin-only: Create user with specific role (Coach, Receptionist, Admin)
+   */
+  async createUserWithRole(data: RegisterRequest, role: string): Promise<ApiResponse<AuthResponse>> {
+    const response = await apiFetch<AuthResponse>(`/auth/create-with-role?role=${encodeURIComponent(role)}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    return response;
+  },
+
+  /**
+   * Change password (for authenticated users)
+   */
+  async changePassword(data: ChangePasswordRequest): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Complete first login setup (marks isFirstLogin=false, mustChangePassword=false)
+   */
+  async completeSetup(): Promise<ApiResponse<UserDto>> {
+    return apiFetch<UserDto>('/auth/complete-setup', {
+      method: 'POST',
+    });
   },
 
   /**

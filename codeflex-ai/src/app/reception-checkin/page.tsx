@@ -336,7 +336,7 @@ function ReceptionCheckInContent() {
 
 export default function ReceptionCheckInPage() {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.Reception]}>
+    <ProtectedRoute allowedRoles={[UserRole.Receptionist]}>
       <ReceptionCheckInContent />
     </ProtectedRoute>
   );
