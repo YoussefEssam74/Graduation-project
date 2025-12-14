@@ -1,6 +1,7 @@
 -- IntelliFit Database Complete Seed Data - PostgreSQL
 -- ==========================================
--- All passwords are BCrypt hashed "password": $2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm
+-- Password for admin@intellifit.com: 224466 (BCrypt hashed)
+-- Password for all other test accounts: password (BCrypt hashed)
 -- ==========================================
 
 -- ==========================================
@@ -12,27 +13,27 @@ meal_ingredients, meals, nutrition_plans, workout_templates, workout_template_ex
 workout_logs, workout_plan_exercises, workout_plans, bookings, equipment, equipment_categories,
 ai_program_generations, ai_chat_logs, ai_workflow_jobs, audit_logs, exercises, ingredients,
 progress_milestones, subscription_plans, token_packages,
-admins, coaches, receptionists, members, users RESTART IDENTITY CASCADE;
-
+member_profiles, coach_profiles, users RESTART IDENTITY CASCADE;
 -- ==========================================
--- USERS (Base Table - TPT)
--- Note: UserId is auto-generated. Role determined by derived table (members/coaches/receptionists/admins)
--- All attributes included: UserId (auto), Email, PasswordHash, Name, Phone, DateOfBirth, Gender, ProfileImageUrl, 
--- Address, EmergencyContactName, EmergencyContactPhone, TokenBalance, IsActive, EmailVerified, LastLoginAt, CreatedAt, UpdatedAt
+-- USERS (Main Table - Single table with Role column)
+-- Note: UserId is auto-generated. Role determines user type (Member, Coach, Admin)
+-- All attributes: UserId (auto), Email, PasswordHash, Name, Phone, DateOfBirth, Gender, Role, ProfileImageUrl, 
+-- Address, EmergencyContactName, EmergencyContactPhone, TokenBalance, IsActive, EmailVerified, MustChangePassword, IsFirstLogin, LastLoginAt, CreatedAt, UpdatedAt
 -- ==========================================
-INSERT INTO users ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "ProfileImageUrl", "Address", "EmergencyContactName", "EmergencyContactPhone", "TokenBalance", "IsActive", "EmailVerified", "LastLoginAt", "CreatedAt", "UpdatedAt") VALUES
-('john.doe@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'John Doe', '+1234567890', '1995-05-15', 0, NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, NULL, NOW(), NOW()),
-('sarah.johnson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, NULL, '456 Oak Ave, Brooklyn, NY 11201', 'Mike Johnson', '+1234567801', 0, true, true, NULL, NOW(), NOW()),
-('michael.smith@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Michael Smith', '+1234567892', '1992-08-18', 0, NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, NULL, NOW(), NOW()),
-('emily.davis@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Emily Davis', '+1234567893', '1988-11-30', 1, NULL, '321 Elm St, Manhattan, NY 10002', 'Tom Davis', '+1234567803', 0, true, true, NULL, NOW(), NOW()),
-('david.wilson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'David Wilson', '+1234567894', '1998-03-10', 0, NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, NULL, NOW(), NOW()),
-('jessica.brown@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Jessica Brown', '+1234567895', '1996-11-05', 1, NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, NULL, NOW(), NOW()),
-('robert.taylor@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Robert Taylor', '+1234567896', '1985-07-14', 0, NULL, '147 Birch St, Long Island, NY 11530', 'Mary Taylor', '+1234567806', 0, true, true, NULL, NOW(), NOW()),
-('lisa.anderson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGm', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, NULL, '258 Spruce Way, White Plains, NY 10601', 'John Anderson', '+1234567807', 25, true, true, NULL, NOW(), NOW()),
-('james.martinez@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'James Martinez', '+1234567898', '1982-01-25', 0, NULL, '369 Willow Ct, Yonkers, NY 10701', 'Maria Martinez', '+1234567808', 0, true, true, NULL, NOW(), NOW()),
-('amanda.garcia@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, NULL, '741 Ash Pl, New Rochelle, NY 10801', 'Carlos Garcia', '+1234567809', 60, true, true, NULL, NOW(), NOW()),
-('admin@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Admin User', '555-0011', '1985-01-01', 0, NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, NULL, NOW(), NOW()),
-('superadmin@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Super Admin', '555-0012', '1980-01-01', 0, NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, NULL, NOW(), NOW());
+INSERT INTO users ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "Role", "ProfileImageUrl", "Address", "EmergencyContactName", "EmergencyContactPhone", "TokenBalance", "IsActive", "EmailVerified", "MustChangePassword", "IsFirstLogin", "LastLoginAt", "CreatedAt", "UpdatedAt") VALUES
+-- Members (UserId: 1-6)
+('john.doe@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'John Doe', '+1234567890', '1995-05-15', 0, 'Member', NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, false, false, NULL, NOW(), NOW()),
+('michael.smith@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Member', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NULL, NOW(), NOW()),
+('david.wilson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'David Wilson', '+1234567894', '1998-03-10', 0, 'Member', NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, false, false, NULL, NOW(), NOW()),
+('jessica.brown@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Jessica Brown', '+1234567895', '1996-11-05', 1, 'Member', NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, false, false, NULL, NOW(), NOW()),
+('lisa.anderson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGm', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, 'Member', NULL, '258 Spruce Way, White Plains, NY 10601', 'John Anderson', '+1234567807', 25, true, true, false, false, NULL, NOW(), NOW()),
+('amanda.garcia@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, 'Member', NULL, '741 Ash Pl, New Rochelle, NY 10801', 'Carlos Garcia', '+1234567809', 60, true, true, false, false, NULL, NOW(), NOW()),
+-- Coaches (UserId: 7-9)
+('sarah.johnson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, 'Coach', NULL, '456 Oak Ave, Brooklyn, NY 11201', 'Mike Johnson', '+1234567801', 0, true, true, false, false, NULL, NOW(), NOW()),
+('emily.davis@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Emily Davis', '+1234567893', '1988-11-30', 1, 'Coach', NULL, '321 Elm St, Manhattan, NY 10002', 'Tom Davis', '+1234567803', 0, true, true, false, false, NULL, NOW(), NOW()),
+('robert.taylor@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Robert Taylor', '+1234567896', '1985-07-14', 0, 'Coach', NULL, '147 Birch St, Long Island, NY 11530', 'Mary Taylor', '+1234567806', 0, true, true, false, false, NULL, NOW(), NOW()),
+-- Admin (UserId: 10) - Password: 224466
+('admin@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Admin User', '+1234567810', '1985-01-01', 0, 'Admin', NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, false, false, NULL, NOW(), NOW());
 
 -- ==========================================
 -- SUBSCRIPTION PLANS (Must be inserted BEFORE members due to FK constraint)
@@ -60,43 +61,28 @@ INSERT INTO token_packages ("PackageName", "TokenAmount", "Price", "BonusTokens"
 ('Ultimate Pack', 1000, 119.99, 250, 'Best value for power users', true, NOW());
 
 -- ==========================================
--- MEMBERS (TPT Derived)
--- All attributes: UserId (PK/FK), FitnessGoal, MedicalConditions, Allergies, FitnessLevel, 
+-- MEMBER PROFILES (Role-specific data for Members)
+-- All attributes: Id (PK auto), UserId (FK), FitnessGoal, MedicalConditions, Allergies, FitnessLevel, 
 -- PreferredWorkoutTime, SubscriptionPlanId, MembershipStartDate, MembershipEndDate,
--- CurrentWeight, TargetWeight, Height, TotalWorkoutsCompleted, TotalCaloriesBurned, Achievements
+-- CurrentWeight, TargetWeight, Height, TotalWorkoutsCompleted, TotalCaloriesBurned, Achievements, CreatedAt, UpdatedAt
 -- ==========================================
-INSERT INTO members ("UserId", "FitnessGoal", "MedicalConditions", "Allergies", "FitnessLevel", "PreferredWorkoutTime", "SubscriptionPlanId", "MembershipStartDate", "MembershipEndDate", "CurrentWeight", "TargetWeight", "Height", "TotalWorkoutsCompleted", "TotalCaloriesBurned", "Achievements") VALUES
-(1, 'Weight Loss', 'None', 'None', 'Intermediate', 'Morning', 2, '2024-11-01', '2024-12-01', 85.5, 75.0, 175.0, 15, 4500, '["First Workout"]'),
-(3, 'Muscle Gain', 'Asthma', 'Peanuts', 'Advanced', 'Evening', 3, '2024-10-15', '2024-11-15', 78.5, 85.0, 180.0, 42, 12600, '["Week Warrior", "Month Champion"]'),
-(5, 'General Fitness', 'None', 'None', 'Beginner', 'Afternoon', 1, '2024-11-10', '2024-12-10', 70.0, 70.0, 170.0, 8, 2400, '["First Workout"]'),
-(6, 'Weight Loss', 'None', 'Lactose', 'Intermediate', 'Morning', 2, '2024-10-20', '2024-11-20', 92.0, 80.0, 165.0, 28, 8400, '["Week Warrior"]'),
-(8, 'Endurance', 'Previous knee injury', 'None', 'Intermediate', 'Evening', NULL, NULL, NULL, 75.0, 72.0, 178.0, 12, 3600, '["First Workout"]'),
-(10, 'Flexibility', 'None', 'Shellfish', 'Beginner', 'Morning', NULL, NULL, NULL, 65.0, 65.0, 168.0, 6, 1800, '[]');
+INSERT INTO member_profiles ("UserId", "FitnessGoal", "MedicalConditions", "Allergies", "FitnessLevel", "PreferredWorkoutTime", "SubscriptionPlanId", "MembershipStartDate", "MembershipEndDate", "CurrentWeight", "TargetWeight", "Height", "TotalWorkoutsCompleted", "TotalCaloriesBurned", "Achievements", "CreatedAt", "UpdatedAt") VALUES
+(1, 'Weight Loss', 'None', 'None', 'Intermediate', 'Morning', 2, '2024-11-01', '2024-12-01', 85.5, 75.0, 175.0, 15, 4500, '["First Workout"]', NOW(), NOW()),
+(2, 'Muscle Gain', 'Asthma', 'Peanuts', 'Advanced', 'Evening', 3, '2024-10-15', '2024-11-15', 78.5, 85.0, 180.0, 42, 12600, '["Week Warrior", "Month Champion"]', NOW(), NOW()),
+(3, 'General Fitness', 'None', 'None', 'Beginner', 'Afternoon', 1, '2024-11-10', '2024-12-10', 70.0, 70.0, 170.0, 8, 2400, '["First Workout"]', NOW(), NOW()),
+(4, 'Weight Loss', 'None', 'Lactose', 'Intermediate', 'Morning', 2, '2024-10-20', '2024-11-20', 92.0, 80.0, 165.0, 28, 8400, '["Week Warrior"]', NOW(), NOW()),
+(5, 'Endurance', 'Previous knee injury', 'None', 'Intermediate', 'Evening', NULL, NULL, NULL, 75.0, 72.0, 178.0, 12, 3600, '["First Workout"]', NOW(), NOW()),
+(6, 'Flexibility', 'None', 'Shellfish', 'Beginner', 'Morning', NULL, NULL, NULL, 65.0, 65.0, 168.0, 6, 1800, '[]', NOW(), NOW());
 
 -- ==========================================
--- COACHES (TPT Derived)
--- All attributes: UserId (PK/FK), Specialization, Certifications, ExperienceYears, Bio,
--- HourlyRate, Rating, TotalReviews, TotalClients, AvailabilitySchedule, IsAvailable
+-- COACH PROFILES (Role-specific data for Coaches)
+-- All attributes: Id (PK auto), UserId (FK), Specialization, Certifications, ExperienceYears, Bio,
+-- HourlyRate, Rating, TotalReviews, TotalClients, AvailabilitySchedule, IsAvailable, CreatedAt, UpdatedAt
 -- ==========================================
-INSERT INTO coaches ("UserId", "Specialization", "Certifications", "ExperienceYears", "Bio", "HourlyRate", "Rating", "TotalReviews", "TotalClients", "AvailabilitySchedule", "IsAvailable") VALUES
-(2, 'Strength Training & Weight Loss', ARRAY['NASM-CPT', 'CSCS'], 5, 'Certified personal trainer specializing in strength training', 75.00, 4.8, 45, 28, 'Mon-Fri: 6AM-8PM, Sat: 8AM-2PM', true),
-(4, 'Powerlifting & Muscle Building', ARRAY['CSCS', 'ISSA'], 8, 'Former competitive powerlifter', 95.00, 4.9, 67, 35, 'Mon-Fri: 7AM-9PM, Sat-Sun: 8AM-4PM', true),
-(7, 'CrossFit & Athletic Performance', ARRAY['CrossFit L2', 'NASM-CPT'], 7, 'CrossFit Level 2 trainer', 85.00, 4.7, 52, 41, 'Mon-Sat: 5AM-7PM', true);
-
--- ==========================================
--- RECEPTIONISTS (TPT Derived)
--- All attributes: UserId (PK/FK), ShiftSchedule, HireDate, Department, TotalCheckIns, TotalPaymentsProcessed
--- ==========================================
-INSERT INTO receptionists ("UserId", "ShiftSchedule", "HireDate", "Department", "TotalCheckIns", "TotalPaymentsProcessed") VALUES
-(9, 'Monday-Friday 9AM-5PM', '2024-01-15', 'Front Desk', 150, 75);
-
--- ==========================================
--- ADMINS (TPT Derived)
--- All attributes: UserId (PK/FK), IsSuperAdmin, Permissions
--- ==========================================
-INSERT INTO admins ("UserId", "IsSuperAdmin", "Permissions") VALUES
-(11, false, '["ManageMembers", "ManageBookings", "ViewReports"]'),
-(12, true, '["FullAccess"]');
+INSERT INTO coach_profiles ("UserId", "Specialization", "Certifications", "ExperienceYears", "Bio", "HourlyRate", "Rating", "TotalReviews", "TotalClients", "AvailabilitySchedule", "IsAvailable", "CreatedAt", "UpdatedAt") VALUES
+(7, 'Strength Training & Weight Loss', ARRAY['NASM-CPT', 'CSCS'], 5, 'Certified personal trainer specializing in strength training', 75.00, 4.8, 45, 28, 'Mon-Fri: 6AM-8PM, Sat: 8AM-2PM', true, NOW(), NOW()),
+(8, 'Powerlifting & Muscle Building', ARRAY['CSCS', 'ISSA'], 8, 'Former competitive powerlifter', 95.00, 4.9, 67, 35, 'Mon-Fri: 7AM-9PM, Sat-Sun: 8AM-4PM', true, NOW(), NOW()),
+(9, 'CrossFit & Athletic Performance', ARRAY['CrossFit L2', 'NASM-CPT'], 7, 'CrossFit Level 2 trainer', 85.00, 4.7, 52, 41, 'Mon-Sat: 5AM-7PM', true, NOW(), NOW());
 
 -- ==========================================
 -- EQUIPMENT CATEGORIES
@@ -122,11 +108,11 @@ INSERT INTO equipment ("CategoryId", "Name", "Model", "Manufacturer", "SerialNum
 -- EXERCISES
 -- ==========================================
 INSERT INTO exercises ("Name", "Description", "Category", "MuscleGroup", "DifficultyLevel", "EquipmentRequired", "Instructions", "VideoUrl", "CaloriesPerMinute", "IsActive", "CreatedByCoachId", "CreatedAt", "UpdatedAt") VALUES
-('Barbell Squat', 'Fundamental lower body compound exercise', 'Strength', 'Legs', 'Intermediate', 'Barbell, Squat Rack', '["Stand with feet shoulder-width apart", "Bar on upper back", "Lower until thighs parallel", "Drive through heels to stand"]', 'https://videos.intellifit.com/squat', 8, true, 2, NOW(), NOW()),
-('Bench Press', 'Upper body pressing exercise for chest', 'Strength', 'Chest', 'Intermediate', 'Barbell, Bench', '["Lie on bench, feet flat", "Grip bar slightly wider than shoulders", "Lower to chest", "Press up explosively"]', 'https://videos.intellifit.com/benchpress', 7, true, 4, NOW(), NOW()),
-('Deadlift', 'Full body compound pulling exercise', 'Strength', 'Back', 'Advanced', 'Barbell', '["Stand with bar over mid-foot", "Grip bar, chest up", "Drive through floor", "Stand tall, squeeze glutes"]', 'https://videos.intellifit.com/deadlift', 10, true, 4, NOW(), NOW()),
-('Pull-ups', 'Bodyweight back and bicep exercise', 'Bodyweight', 'Back', 'Intermediate', 'Pull-up Bar', '["Hang from bar, full extension", "Pull chest to bar", "Control descent", "Repeat"]', 'https://videos.intellifit.com/pullups', 9, true, 7, NOW(), NOW()),
-('Plank', 'Core stability exercise', 'Core', 'Core', 'Beginner', 'None', '["Forearms on ground, body straight", "Engage core", "Hold position", "Breathe steadily"]', 'https://videos.intellifit.com/plank', 5, true, 7, NOW(), NOW());
+('Barbell Squat', 'Fundamental lower body compound exercise', 'Strength', 'Legs', 'Intermediate', 'Barbell, Squat Rack', '["Stand with feet shoulder-width apart", "Bar on upper back", "Lower until thighs parallel", "Drive through heels to stand"]', 'https://videos.intellifit.com/squat', 8, true, 1, NOW(), NOW()),
+('Bench Press', 'Upper body pressing exercise for chest', 'Strength', 'Chest', 'Intermediate', 'Barbell, Bench', '["Lie on bench, feet flat", "Grip bar slightly wider than shoulders", "Lower to chest", "Press up explosively"]', 'https://videos.intellifit.com/benchpress', 7, true, 2, NOW(), NOW()),
+('Deadlift', 'Full body compound pulling exercise', 'Strength', 'Back', 'Advanced', 'Barbell', '["Stand with bar over mid-foot", "Grip bar, chest up", "Drive through floor", "Stand tall, squeeze glutes"]', 'https://videos.intellifit.com/deadlift', 10, true, 2, NOW(), NOW()),
+('Pull-ups', 'Bodyweight back and bicep exercise', 'Bodyweight', 'Back', 'Intermediate', 'Pull-up Bar', '["Hang from bar, full extension", "Pull chest to bar", "Control descent", "Repeat"]', 'https://videos.intellifit.com/pullups', 9, true, 3, NOW(), NOW()),
+('Plank', 'Core stability exercise', 'Core', 'Core', 'Beginner', 'None', '["Forearms on ground, body straight", "Engage core", "Hold position", "Breathe steadily"]', 'https://videos.intellifit.com/plank', 5, true, 3, NOW(), NOW());
 
 -- ==========================================
 -- INGREDIENTS
@@ -153,32 +139,32 @@ INSERT INTO progress_milestones ("MilestoneName", "Description", "Category", "Ta
 -- ==========================================
 INSERT INTO bookings ("UserId", "EquipmentId", "CoachId", "BookingType", "StartTime", "EndTime", "Status", "TokensCost", "Notes", "CreatedAt", "UpdatedAt") VALUES
 (1, 1, NULL, 'Equipment', '2024-12-02 08:00:00+00', '2024-12-02 09:00:00+00', 1, 5, 'Morning cardio session', NOW(), NOW()),
-(3, 3, 2, 'Coach', '2024-12-02 10:00:00+00', '2024-12-02 11:00:00+00', 1, 15, 'Squat training with coach', NOW(), NOW()),
-(5, 5, NULL, 'Equipment', '2024-12-02 14:00:00+00', '2024-12-02 15:00:00+00', 1, 6, 'HIIT workout', NOW(), NOW());
+(2, 3, 1, 'Coach', '2024-12-02 10:00:00+00', '2024-12-02 11:00:00+00', 1, 15, 'Squat training with coach', NOW(), NOW()),
+(3, 5, NULL, 'Equipment', '2024-12-02 14:00:00+00', '2024-12-02 15:00:00+00', 1, 6, 'HIIT workout', NOW(), NOW());
 
 -- ==========================================
 -- WORKOUT PLANS
 -- ==========================================
 INSERT INTO workout_plans ("UserId", "PlanName", "Description", "PlanType", "DifficultyLevel", "DurationWeeks", "Schedule", "GeneratedByCoachId", "Status", "ApprovalNotes", "ApprovedBy", "ApprovedAt", "TokensSpent", "IsActive", "StartDate", "EndDate", "CreatedAt", "UpdatedAt") VALUES
-(1, 'Weight Loss Transformation', '8-week fat loss program', 'Custom', 'Intermediate', 8, '5 days per week', 2, 'Active', 'Approved - great plan', 2, '2024-10-30', 0, true, '2024-11-01', '2024-12-26', NOW(), NOW()),
-(3, 'Muscle Building Program', '12-week hypertrophy training', 'Custom', 'Advanced', 12, '6 days per week', 4, 'Active', 'Excellent plan', 4, '2024-10-13', 20, true, '2024-10-15', '2025-01-07', NOW(), NOW()),
-(5, 'AI Generated Strength Plan', 'AI-generated 10-week strength training program', 'Custom', 'Intermediate', 10, '4 days per week', NULL, 'PendingApproval', NULL, NULL, NULL, 30, true, '2024-12-01', '2025-02-09', NOW(), NOW());
+(1, 'Weight Loss Transformation', '8-week fat loss program', 'Custom', 'Intermediate', 8, '5 days per week', 1, 'Active', 'Approved - great plan', 1, '2024-10-30', 0, true, '2024-11-01', '2024-12-26', NOW(), NOW()),
+(2, 'Muscle Building Program', '12-week hypertrophy training', 'Custom', 'Advanced', 12, '6 days per week', 2, 'Active', 'Excellent plan', 2, '2024-10-13', 20, true, '2024-10-15', '2025-01-07', NOW(), NOW()),
+(3, 'AI Generated Strength Plan', 'AI-generated 10-week strength training program', 'Custom', 'Intermediate', 10, '4 days per week', NULL, 'PendingApproval', NULL, NULL, NULL, 30, true, '2024-12-01', '2025-02-09', NOW(), NOW());
 
 -- ==========================================
 -- NUTRITION PLANS
 -- ==========================================
 INSERT INTO nutrition_plans ("UserId", "PlanName", "Description", "PlanType", "DailyCalories", "ProteinGrams", "CarbsGrams", "FatsGrams", "GeneratedByCoachId", "Status", "ApprovalNotes", "ApprovedByCoachId", "ApprovedAt", "TokensSpent", "IsActive", "StartDate", "EndDate", "CreatedAt", "UpdatedAt") VALUES
-(1, 'Weight Loss Nutrition', 'Calorie deficit plan', 'Custom', 1800, 150, 180, 50, 4, 'Active', 'Well balanced plan', 4, '2024-10-30', 0, true, '2024-11-01', '2024-12-31', NOW(), NOW()),
-(3, 'Muscle Gain Diet', 'Calorie surplus for bulking', 'Custom', 2800, 200, 350, 80, 4, 'Active', 'Great for bulking', 4, '2024-10-13', 25, true, '2024-10-15', '2025-01-07', NOW(), NOW());
+(1, 'Weight Loss Nutrition', 'Calorie deficit plan', 'Custom', 1800, 150, 180, 50, 2, 'Active', 'Well balanced plan', 2, '2024-10-30', 0, true, '2024-11-01', '2024-12-31', NOW(), NOW()),
+(2, 'Muscle Gain Diet', 'Calorie surplus for bulking', 'Custom', 2800, 200, 350, 80, 2, 'Active', 'Great for bulking', 2, '2024-10-13', 25, true, '2024-10-15', '2025-01-07', NOW(), NOW());
 
 -- ==========================================
 -- MEALS
 -- ==========================================
 INSERT INTO meals ("NutritionPlanId", "MealType", "Name", "Calories", "ProteinGrams", "CarbsGrams", "FatsGrams", "RecommendedTime", "CreatedByCoachId", "CreatedAt") VALUES
-(1, 'Lunch', 'Grilled Chicken with Rice', 450, 45, 50, 8, '12:00:00'::interval, 4, NOW()),
-(1, 'Breakfast', 'Greek Yogurt Parfait', 280, 25, 35, 6, '08:00:00'::interval, 4, NOW()),
-(2, 'Dinner', 'Salmon Power Bowl', 650, 55, 60, 22, '19:00:00'::interval, 4, NOW()),
-(2, 'Breakfast', 'Protein Pancakes', 520, 38, 65, 12, '08:00:00'::interval, 4, NOW());
+(1, 'Lunch', 'Grilled Chicken with Rice', 450, 45, 50, 8, '12:00:00'::interval, 2, NOW()),
+(1, 'Breakfast', 'Greek Yogurt Parfait', 280, 25, 35, 6, '08:00:00'::interval, 2, NOW()),
+(2, 'Dinner', 'Salmon Power Bowl', 650, 55, 60, 22, '19:00:00'::interval, 2, NOW()),
+(2, 'Breakfast', 'Protein Pancakes', 520, 38, 65, 12, '08:00:00'::interval, 2, NOW());
 
 -- ==========================================
 -- MEAL INGREDIENTS
@@ -195,9 +181,9 @@ INSERT INTO meal_ingredients ("MealId", "IngredientId", "Quantity", "Unit") VALU
 -- WORKOUT TEMPLATES
 -- ==========================================
 INSERT INTO workout_templates ("CreatedByCoachId", "TemplateName", "Description", "DifficultyLevel", "DurationWeeks", "WorkoutsPerWeek", "IsPublic", "IsActive", "CreatedAt", "UpdatedAt") VALUES
-(2, 'Push Day - Upper Body', 'Chest, shoulders, and triceps workout', 'Intermediate', 4, 3, true, true, NOW(), NOW()),
-(4, 'Pull Day - Back & Biceps', 'Back and bicep focused training', 'Intermediate', 4, 3, true, true, NOW(), NOW()),
-(4, 'Leg Day Hypertrophy', 'Complete lower body workout', 'Advanced', 6, 4, true, true, NOW(), NOW());
+(1, 'Push Day - Upper Body', 'Chest, shoulders, and triceps workout', 'Intermediate', 4, 3, true, true, NOW(), NOW()),
+(2, 'Pull Day - Back & Biceps', 'Back and bicep focused training', 'Intermediate', 4, 3, true, true, NOW(), NOW()),
+(2, 'Leg Day Hypertrophy', 'Complete lower body workout', 'Advanced', 6, 4, true, true, NOW(), NOW());
 
 -- ==========================================
 -- WORKOUT TEMPLATE EXERCISES
@@ -325,10 +311,8 @@ INSERT INTO ai_chat_logs ("UserId", "SessionId", "MessageType", "MessageContent"
 -- VERIFICATION
 -- ==========================================
 SELECT 'users' as table_name, COUNT(*) FROM users
-UNION ALL SELECT 'members', COUNT(*) FROM members
-UNION ALL SELECT 'coaches', COUNT(*) FROM coaches
-UNION ALL SELECT 'receptionists', COUNT(*) FROM receptionists
-UNION ALL SELECT 'admins', COUNT(*) FROM admins
+UNION ALL SELECT 'member_profiles', COUNT(*) FROM member_profiles
+UNION ALL SELECT 'coach_profiles', COUNT(*) FROM coach_profiles
 UNION ALL SELECT 'subscription_plans', COUNT(*) FROM subscription_plans
 UNION ALL SELECT 'token_packages', COUNT(*) FROM token_packages
 UNION ALL SELECT 'equipment_categories', COUNT(*) FROM equipment_categories
