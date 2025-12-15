@@ -124,35 +124,33 @@ LEFT JOIN bookings b ON e."EquipmentId" = b."EquipmentId"
 LEFT JOIN users u ON b."UserId" = u."UserId"
 WHERE e."IsActive" = true
 ORDER BY e."Name", b."StartTime";
--- 11. Get daily attendance summary from [StartDate] to [EndDate]
+-- 11. Get member bookings from [StartDate] to [EndDate]
 -- Parameters: @StartDate, @EndDate
-SELECT DATE(b."StartTime") as attendance_date,
-       COUNT(DISTINCT b."UserId") as unique_members,
-       COUNT(b."BookingId") as total_bookings,
-       COUNT(CASE WHEN b."BookingType" = 'Equipment' THEN 1 END) as equipment_bookings,
-       COUNT(CASE WHEN b."BookingType" = 'Coach' THEN 1 END) as coach_sessions
+SELECT u."UserId", u."Name" as member_name, u."Email",
+       b."BookingId", b."BookingType", b."StartTime", b."EndTime", b."Status",
+       COALESCE(e."Name", coach_u."Name") as resource_name,
+       b."TokensCost"
 FROM bookings b
+JOIN users u ON b."UserId" = u."UserId"
+LEFT JOIN equipment e ON b."EquipmentId" = e."EquipmentId"
+LEFT JOIN coach_profiles cp ON b."CoachId" = cp."Id"
+LEFT JOIN users coach_u ON cp."UserId" = coach_u."UserId"
 WHERE b."StartTime" BETWEEN '2024-01-01' AND '2024-12-31' -- Replace with parameters
   AND b."Status" IN (1, 2, 3) -- Confirmed, InProgress, Completed
-GROUP BY DATE(b."StartTime")
-ORDER BY attendance_date DESC;
+ORDER BY b."StartTime" DESC, u."Name";
 
--- 12. Get member workout activity from [StartDate] to [EndDate]
+-- 12. Get member workout logs from [StartDate] to [EndDate]
 -- Parameters: @StartDate, @EndDate
-SELECT u."UserId", u."Name", u."Email",
-       mp."FitnessGoal", mp."FitnessLevel",
-       COUNT(wl."LogId") as total_workouts,
-       SUM(wl."DurationMinutes") as total_minutes,
-       SUM(wl."CaloriesBurned") as total_calories,
-       MAX(wl."WorkoutDate") as last_workout,
-       ROUND(AVG(wl."FeelingRating"), 2) as avg_satisfaction
+SELECT u."UserId", u."Name", wl."WorkoutDate",
+       wl."DurationMinutes", wl."CaloriesBurned", 
+       wl."ExercisesCompleted", wl."FeelingRating",
+       wl."Notes", wl."Completed"
 FROM users u
 INNER JOIN member_profiles mp ON u."UserId" = mp."UserId"
-LEFT JOIN workout_logs wl ON u."UserId" = wl."UserId"
-  AND wl."WorkoutDate" BETWEEN '2024-01-01' AND '2024-12-31' -- Replace with parameters
-WHERE u."IsActive" = true
-GROUP BY u."UserId", u."Name", u."Email", mp."FitnessGoal", mp."FitnessLevel"
-ORDER BY total_workouts DESC;
+INNER JOIN workout_logs wl ON u."UserId" = wl."UserId"
+WHERE wl."WorkoutDate" BETWEEN '2024-01-01' AND '2024-12-31' -- Replace with parameters
+  AND u."IsActive" = true
+ORDER BY wl."WorkoutDate" DESC, u."Name";
 
 -- 13. Get inactive members from [LastActivityDate] to now (no activity in X days)
 -- Parameters: @DaysSinceLastActivity
@@ -230,36 +228,43 @@ WHERE e."NextMaintenanceDate" <= CURRENT_DATE + INTERVAL '14 days' -- Replace wi
    OR e."Status" = 2 -- Under Maintenance
 ORDER BY e."NextMaintenanceDate";
 
--- 17. Get equipment usage patterns by category from [StartDate] to [EndDate]
+-- 17. Get equipment bookings by machine in each category from [StartDate] to [EndDate]
 -- Parameters: @StartDate, @EndDate
 SELECT ec."CategoryName",
-       COUNT(DISTINCT e."EquipmentId") as total_equipment,
+       e."EquipmentId", e."Name" as equipment_name, e."Location",
        COUNT(b."BookingId") as total_bookings,
-       ROUND(COUNT(b."BookingId")::numeric / NULLIF(COUNT(DISTINCT e."EquipmentId"), 0), 2) as avg_bookings_per_equipment,
        ROUND(AVG(EXTRACT(EPOCH FROM (b."EndTime" - b."StartTime"))/60), 0) as avg_duration_minutes
 FROM equipment_categories ec
-LEFT JOIN equipment e ON ec."CategoryId" = e."CategoryId"
+JOIN equipment e ON ec."CategoryId" = e."CategoryId"
 LEFT JOIN bookings b ON e."EquipmentId" = b."EquipmentId"
-  AND b."StartTime" BETWEEN '2024-01-01' AND '2024-12-31' -- Replace with parameters
-  AND b."Status" = 3 -- Completed
-GROUP BY ec."CategoryId", ec."CategoryName"
-ORDER BY total_bookings DESC;
+  AND b."StartTime" BETWEEN '2025-01-01' AND '2025-12-31' -- Replace with parameters
+  AND b."BookingType" = 'Equipment'
+WHERE e."IsActive" = true
+GROUP BY ec."CategoryName", e."EquipmentId", e."Name", e."Location"
+ORDER BY ec."CategoryName", total_bookings DESC;
 
 -- ==========================================
 -- SECTION 5: AI USAGE & TOKEN ANALYTICS (Admin)
 -- ==========================================
 
--- 18. Get AI token consumption from [StartDate] to [EndDate]
+-- 18. Get AI generated workout and nutrition plan details from [StartDate] to [EndDate]
 -- Parameters: @StartDate, @EndDate
-SELECT ag."ProgramType",
-       COUNT(ag."GenerationId") as total_generations,
-       SUM(ag."TokensUsed") as total_tokens_consumed,
-       ROUND(AVG(ag."TokensUsed"), 0) as avg_tokens_per_generation,
-       COUNT(DISTINCT ag."UserId") as unique_users
+SELECT ag."ProgramType", u."UserId", u."Name" as member_name,
+       COALESCE(wp."PlanName", np."PlanName") as plan_name,
+       COALESCE(wp."Description", np."Description") as plan_description,
+       COALESCE(wp."DurationWeeks"::text, np."DailyCalories"::text || ' cal') as plan_details,
+       COALESCE(wp."DifficultyLevel", np."PlanType") as plan_type,
+       COALESCE(wp."Status", np."Status") as status,
+       ag."TokensUsed", ag."CreatedAt"
 FROM ai_program_generations ag
-WHERE ag."CreatedAt" BETWEEN '2024-01-01' AND '2024-12-31' -- Replace with parameters
-GROUP BY ag."ProgramType"
-ORDER BY total_tokens_consumed DESC;
+JOIN users u ON ag."UserId" = u."UserId"
+LEFT JOIN workout_plans wp ON ag."ProgramType" = 'WorkoutPlan' 
+    AND wp."UserId" = ag."UserId"
+LEFT JOIN nutrition_plans np ON ag."ProgramType" = 'NutritionPlan' 
+    AND np."UserId" = ag."UserId"
+WHERE ag."CreatedAt" >= '2024-01-01' -- Replace with parameters
+  AND ag."ProgramType" IN ('WorkoutPlan', 'NutritionPlan')
+ORDER BY ag."CreatedAt" DESC;
 
 -- 19. Get members with highest AI usage from [StartDate] to [EndDate]
 -- Parameters: @StartDate, @EndDate
@@ -286,23 +291,29 @@ ORDER BY tokens_consumed DESC;
 -- For proactive member retention
 SELECT u."UserId", u."Name", u."Email", u."Phone", u."TokenBalance",
        us."EndDate" as subscription_end,
-       CASE 
-           WHEN us."EndDate" <= CURRENT_DATE + INTERVAL '7 days' THEN 'Subscription Expiring Soon'
-           WHEN u."TokenBalance" < 10 THEN 'Low Token Balance'
-           WHEN u."LastLoginAt" < CURRENT_DATE - INTERVAL '14 days' THEN 'Inactive Member'
-           ELSE 'Other'
-       END as attention_reason,
-       u."LastLoginAt"
+       CONCAT_WS(', ',
+           CASE WHEN us."EndDate" <= CURRENT_DATE + INTERVAL '7 days' AND us."EndDate" IS NOT NULL 
+                THEN 'Subscription Expiring Soon' END,
+           CASE WHEN u."TokenBalance" < 50 THEN 'Low Token Balance' END,
+           CASE WHEN u."LastLoginAt" IS NULL OR u."LastLoginAt" < CURRENT_DATE - INTERVAL '7 days' 
+                THEN 'Inactive Member' END
+       ) as attention_reasons,
+       u."LastLoginAt",
+       CASE WHEN u."LastLoginAt" IS NOT NULL 
+            THEN CURRENT_DATE - DATE(u."LastLoginAt") 
+            ELSE NULL END as days_since_login
 FROM users u
 INNER JOIN member_profiles mp ON u."UserId" = mp."UserId"
 LEFT JOIN user_subscriptions us ON u."UserId" = us."UserId" AND us."Status" = 0
 WHERE u."IsActive" = true
+  AND u."Role" = 'Member'
   AND (
-      us."EndDate" <= CURRENT_DATE + INTERVAL '7 days'
-      OR u."TokenBalance" < 10
-      OR u."LastLoginAt" < CURRENT_DATE - INTERVAL '14 days'
+      (us."EndDate" IS NOT NULL AND us."EndDate" <= CURRENT_DATE + INTERVAL '7 days')
+      OR u."TokenBalance" < 50
+      OR u."LastLoginAt" IS NULL
+      OR u."LastLoginAt" < CURRENT_DATE - INTERVAL '7 days'
   )
-ORDER BY us."EndDate" NULLS LAST, u."TokenBalance";
+ORDER BY u."TokenBalance", u."LastLoginAt" NULLS FIRST, us."EndDate" NULLS LAST;
 
 -- 21. Get milestone achievements from [StartDate] to [EndDate]
 -- Parameters: @StartDate, @EndDate
