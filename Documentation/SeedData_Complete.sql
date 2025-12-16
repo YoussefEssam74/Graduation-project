@@ -14,6 +14,8 @@ workout_logs, workout_plan_exercises, workout_plans, bookings, equipment, equipm
 ai_program_generations, ai_chat_logs, ai_workflow_jobs, audit_logs, exercises, ingredients,
 progress_milestones, subscription_plans, token_packages,
 member_profiles, coach_profiles, users RESTART IDENTITY CASCADE;
+
+TRUNCATE TABLE "users" RESTART IDENTITY CASCADE;
 -- ==========================================
 -- USERS (Main Table - Single table with Role column)
 -- Note: UserId is auto-generated. Role determines user type (Member, Coach, Admin)
@@ -22,17 +24,19 @@ member_profiles, coach_profiles, users RESTART IDENTITY CASCADE;
 -- ==========================================
 INSERT INTO users ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "Role", "ProfileImageUrl", "Address", "EmergencyContactName", "EmergencyContactPhone", "TokenBalance", "IsActive", "EmailVerified", "MustChangePassword", "IsFirstLogin", "LastLoginAt", "CreatedAt", "UpdatedAt") VALUES
 -- Members (UserId: 1-6)
-('john.doe@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'John Doe', '+1234567890', '1995-05-15', 0, 'Member', NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, false, false, NULL, NOW(), NOW()),
-('michael.smith@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Member', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NULL, NOW(), NOW()),
-('david.wilson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'David Wilson', '+1234567894', '1998-03-10', 0, 'Member', NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, false, false, NULL, NOW(), NOW()),
-('jessica.brown@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Jessica Brown', '+1234567895', '1996-11-05', 1, 'Member', NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, false, false, NULL, NOW(), NOW()),
-('lisa.anderson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGm', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, 'Member', NULL, '258 Spruce Way, White Plains, NY 10601', 'John Anderson', '+1234567807', 25, true, true, false, false, NULL, NOW(), NOW()),
-('amanda.garcia@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, 'Member', NULL, '741 Ash Pl, New Rochelle, NY 10801', 'Carlos Garcia', '+1234567809', 60, true, true, false, false, NULL, NOW(), NOW()),
+('member@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'John Doe', '+1234567890', '1995-05-15', 0, 'Member', NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, false, false, NULL, NOW(), NOW()),
+('michael.smith@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Member', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NULL, NOW(), NOW()),
+('david.wilson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'David Wilson', '+1234567894', '1998-03-10', 0, 'Member', NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, false, false, NULL, NOW(), NOW()),
+('jessica.brown@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Jessica Brown', '+1234567895', '1996-11-05', 1, 'Member', NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, false, false, NULL, NOW(), NOW()),
+('lisa.anderson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, 'Member', NULL, '258 Spruce Way, White Plains, NY 10601', 'John Anderson', '+1234567807', 25, true, true, false, false, NULL, NOW(), NOW()),
+('amanda.garcia@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, 'Member', NULL, '741 Ash Pl, New Rochelle, NY 10801', 'Carlos Garcia', '+1234567809', 60, true, true, false, false, NULL, NOW(), NOW()),
 -- Coaches (UserId: 7-9)
-('sarah.johnson@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, 'Coach', NULL, '456 Oak Ave, Brooklyn, NY 11201', 'Mike Johnson', '+1234567801', 0, true, true, false, false, NULL, NOW(), NOW()),
-('emily.davis@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Emily Davis', '+1234567893', '1988-11-30', 1, 'Coach', NULL, '321 Elm St, Manhattan, NY 10002', 'Tom Davis', '+1234567803', 0, true, true, false, false, NULL, NOW(), NOW()),
-('robert.taylor@intellifit.com', '$2a$11$TDXqE3Rq5Oe5Ju5fYZ3pGeEwHqLlEWWDWZ8i3qYjHvZnXqLGXGXGm', 'Robert Taylor', '+1234567896', '1985-07-14', 0, 'Coach', NULL, '147 Birch St, Long Island, NY 11530', 'Mary Taylor', '+1234567806', 0, true, true, false, false, NULL, NOW(), NOW()),
--- Admin (UserId: 10) - Password: 224466
+('sarah.johnson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, 'Coach', NULL, '456 Oak Ave, Brooklyn, NY 11201', 'Mike Johnson', '+1234567801', 0, true, true, false, false, NULL, NOW(), NOW()),
+('emily.davis@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Emily Davis', '+1234567893', '1988-11-30', 1, 'Coach', NULL, '321 Elm St, Manhattan, NY 10002', 'Tom Davis', '+1234567803', 0, true, true, false, false, NULL, NOW(), NOW()),
+('robert.taylor@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Robert Taylor', '+1234567896', '1985-07-14', 0, 'Coach', NULL, '147 Birch St, Long Island, NY 11530', 'Mary Taylor', '+1234567806', 0, true, true, false, false, NULL, NOW(), NOW()),
+-- Receptionists (UserId: 10)
+('reception@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Receptionist', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NULL, NOW(), NOW()),
+-- Admin (UserId: 11) - Password: 224466
 ('admin@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Admin User', '+1234567810', '1985-01-01', 0, 'Admin', NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, false, false, NULL, NOW(), NOW());
 
 -- ==========================================

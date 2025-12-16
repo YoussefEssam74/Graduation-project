@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PulseGym Member Dashboard</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#25f46a",
+              "primary-hover": "#1ee05e",
+              "background-light": "#f5f8f6",
+              "background-dark": "#102216",
+              "accent-blue": "#3B82F6",
+              "accent-orange": "#F97316",
+            },
+            fontFamily: {
+              "display": ["Lexend", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "1.5rem", "xl": "2rem", "2xl": "2.5rem", "full": "9999px"},
+            backgroundImage: {
+                'gym-pattern': "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop')",
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Scrollbar for sidebar/content */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#0d1c12] overflow-hidden h-screen flex relative">
+<!-- Background Image with Overlay -->
+<div class="absolute inset-0 z-0 bg-gym-pattern bg-cover bg-center" data-alt="Blurred background image of a modern gym interior with blue lighting"></div>
+<div class="absolute inset-0 z-0 bg-white/80 dark:bg-black/80 backdrop-blur-sm"></div>
+<!-- Layout Container -->
+<div class="relative z-10 flex w-full h-full max-w-[1920px] mx-auto p-4 gap-4">
+<!-- LEFT SIDEBAR -->
+<aside class="w-20 lg:w-72 flex flex-col justify-between glass-panel rounded-xl h-full shadow-sm transition-all duration-300 group">
+<div class="flex flex-col h-full p-4">
+<!-- Logo -->
+<div class="flex items-center gap-3 px-2 mb-8">
+<div class="flex items-center justify-center size-10 rounded-full bg-primary text-black shrink-0">
+<span class="material-symbols-outlined text-[24px]">ecg_heart</span>
+</div>
+<span class="text-xl font-black tracking-tight hidden lg:block text-[#0d1c12]">PulseGym</span>
+</div>
+<!-- User Profile Summary (Desktop) -->
+<div class="hidden lg:flex flex-col items-center p-4 bg-white/50 rounded-xl mb-6 border border-white/60">
+<div class="size-20 rounded-full bg-cover bg-center mb-3 border-4 border-white shadow-sm" data-alt="Portrait of Sarah Jenkins smiling in fitness attire" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDw3Odfikw5sVd11euuTViePAB-G_aDLm4Q-2EvkYHsSuHqUvCMo94Jy5eAwlrkYThdPRSCsW4SiVr0a0qZGQCWMIpJnusSzKsRUTaRuvjsUdLHVydPrwX4TmZarGUX-xF2gJ2laFhLpYQrlt80IATUB8GIGAXVnkK6np5iI3GJiIgzf8jYPw5Jcs38VAdMMyrteQYSHX28NgxWrttvUAtNJQagjj1SR9cP1sp00E8CxlU95O-6GKP51LqqtS-1cF1I067uJd3TCWo");'></div>
+<h2 class="text-base font-bold text-[#0d1c12]">Sarah Jenkins</h2>
+<p class="text-sm text-gray-500 font-medium">Premium Member</p>
+<button class="mt-3 w-full py-2 bg-primary text-[#0d1c12] text-xs font-bold rounded-full hover:bg-primary-hover transition-colors">
+                        Upgrade Plan
+                    </button>
+</div>
+<!-- Navigation -->
+<nav class="flex flex-col gap-2 flex-1 overflow-y-auto">
+<a class="flex items-center gap-4 px-3 py-3 rounded-xl bg-[#e7f4eb] text-[#0d1c12] group-hover:bg-[#e7f4eb] transition-colors" href="#">
+<span class="material-symbols-outlined text-primary lg:text-[#0d1c12]">dashboard</span>
+<span class="text-sm font-semibold hidden lg:block">Dashboard</span>
+</a>
+<a class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/50 text-gray-600 transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="text-sm font-medium hidden lg:block">Schedule</span>
+</a>
+<a class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/50 text-gray-600 transition-colors" href="#">
+<span class="material-symbols-outlined">fitness_center</span>
+<span class="text-sm font-medium hidden lg:block">Programs</span>
+</a>
+<a class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/50 text-gray-600 transition-colors" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="text-sm font-medium hidden lg:block">Community</span>
+</a>
+<a class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-white/50 text-gray-600 transition-colors" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="text-sm font-medium hidden lg:block">Analytics</span>
+</a>
+</nav>
+<!-- Logout -->
+<div class="mt-auto pt-4 border-t border-gray-200/50">
+<a class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-red-50 text-gray-600 hover:text-red-500 transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="text-sm font-medium hidden lg:block">Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- MAIN CONTENT -->
+<main class="flex-1 flex flex-col h-full overflow-hidden gap-4">
+<!-- Header / Welcome Banner -->
+<div class="w-full shrink-0">
+<div class="relative w-full h-[180px] rounded-xl overflow-hidden shadow-sm group">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="High energy gym background with weights and neon lights" style='background-image: linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuA2q77MbVeP6ElcVvZf2LJZvLFmtzwHtfiWfFJbKcu666Hh3hZUDJTTsIcgx5gmE3pyvX8_FWukTtC8BLat60qYpFWwJQlp_0a-lPTDb1liIWvrdlIUcFkcZGAxvbDEpzVcmkq1pHK0MdXyve0wSh93C3_lxjs6qLOiNIm1C7Q9gjuZp_GgQK5D1-MOH_T9V9qJVQml4Ff9Ra3is7erqKVM2-uAzglAQ71j2fUrYDCEuPEAZ2MApKSIOcm0w73yb_cvC8eMPVn48mI");'></div>
+<div class="absolute inset-0 flex flex-col justify-center p-8 text-white">
+<h1 class="text-3xl md:text-4xl font-bold mb-2">Welcome back, Sarah!</h1>
+<p class="text-white/90 text-lg max-w-lg">"The only bad workout is the one that didn't happen."</p>
+<div class="mt-4 flex gap-3">
+<span class="inline-flex items-center gap-1 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-sm font-medium border border-white/30">
+<span class="material-symbols-outlined text-[18px] text-primary">local_fire_department</span> High Energy
+                            </span>
+<span class="inline-flex items-center gap-1 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-sm font-medium border border-white/30">
+<span class="material-symbols-outlined text-[18px] text-accent-blue">water_drop</span> Hydrated
+                            </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Scrollable Middle Section -->
+<div class="flex-1 overflow-y-auto pr-2 pb-4">
+<div class="flex flex-col gap-6">
+<!-- Stats Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="glass-panel p-5 rounded-xl flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300">
+<div class="flex justify-between items-start">
+<div class="bg-blue-100 p-2 rounded-lg text-accent-blue">
+<span class="material-symbols-outlined">token</span>
+</div>
+<span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">+5%</span>
+</div>
+<div class="mt-4">
+<p class="text-gray-500 text-sm font-medium">Token Balance</p>
+<h3 class="text-3xl font-bold text-[#0d1c12]">1,250</h3>
+</div>
+</div>
+<div class="glass-panel p-5 rounded-xl flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300">
+<div class="flex justify-between items-start">
+<div class="bg-orange-100 p-2 rounded-lg text-accent-orange">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">+1 Day</span>
+</div>
+<div class="mt-4">
+<p class="text-gray-500 text-sm font-medium">Active Streak</p>
+<h3 class="text-3xl font-bold text-[#0d1c12]">12 Days</h3>
+</div>
+</div>
+<div class="glass-panel p-5 rounded-xl flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300">
+<div class="flex justify-between items-start">
+<div class="bg-primary/20 p-2 rounded-lg text-green-700">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<span class="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">+1.2 Hrs</span>
+</div>
+<div class="mt-4">
+<p class="text-gray-500 text-sm font-medium">Weekly Hours</p>
+<h3 class="text-3xl font-bold text-[#0d1c12]">5.4 Hours</h3>
+</div>
+</div>
+</div>
+<!-- Main Content Grid: Charts & Actions -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+<!-- Left Column: Quick Actions (Takes up 1 col on XL) -->
+<div class="xl:col-span-1 flex flex-col gap-4">
+<h3 class="text-lg font-bold text-[#0d1c12] flex items-center gap-2">
+<span class="material-symbols-outlined text-accent-blue">bolt</span> Quick Actions
+                            </h3>
+<div class="grid grid-cols-2 gap-3">
+<!-- Action Card -->
+<button class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 text-center hover:bg-white transition-colors group">
+<div class="size-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">chat_bubble</span>
+</div>
+<span class="text-sm font-bold leading-tight">AI Coach</span>
+</button>
+<!-- Action Card -->
+<button class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 text-center hover:bg-white transition-colors group">
+<div class="size-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">calendar_add_on</span>
+</div>
+<span class="text-sm font-bold leading-tight">Book Coach</span>
+</button>
+<!-- Action Card -->
+<button class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 text-center hover:bg-white transition-colors group">
+<div class="size-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">fitness_center</span>
+</div>
+<span class="text-sm font-bold leading-tight">Book Equip</span>
+</button>
+<!-- Action Card -->
+<button class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 text-center hover:bg-white transition-colors group">
+<div class="size-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">monitor_weight</span>
+</div>
+<span class="text-sm font-bold leading-tight">InBody</span>
+</button>
+<!-- Action Card -->
+<button class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 text-center hover:bg-white transition-colors group">
+<div class="size-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">list_alt</span>
+</div>
+<span class="text-sm font-bold leading-tight">Programs</span>
+</button>
+<!-- Action Card -->
+<button class="glass-panel p-4 rounded-xl flex flex-col items-center justify-center gap-2 text-center hover:bg-white transition-colors group">
+<div class="size-10 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">auto_awesome</span>
+</div>
+<span class="text-sm font-bold leading-tight">New Plan</span>
+</button>
+</div>
+</div>
+<!-- Right Column: Charts (Takes up 2 cols on XL) -->
+<div class="xl:col-span-2 glass-panel p-6 rounded-xl flex flex-col gap-4">
+<div class="flex justify-between items-center mb-2">
+<div>
+<p class="text-gray-500 text-sm font-medium">Strain vs. Recovery</p>
+<h3 class="text-2xl font-bold text-[#0d1c12]">High Performance</h3>
+</div>
+<div class="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span class="text-sm font-bold">+12%</span>
+</div>
+</div>
+<!-- Chart SVG -->
+<div class="w-full h-48 md:h-64 relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 500 150">
+<!-- Grid lines -->
+<line stroke="#e2e8f0" stroke-dasharray="4" stroke-width="1" x1="0" x2="500" y1="30" y2="30"></line>
+<line stroke="#e2e8f0" stroke-dasharray="4" stroke-width="1" x1="0" x2="500" y1="75" y2="75"></line>
+<line stroke="#e2e8f0" stroke-dasharray="4" stroke-width="1" x1="0" x2="500" y1="120" y2="120"></line>
+<!-- Area Fill -->
+<path d="M0 120 C50 120 50 40 100 40 C150 40 150 90 200 90 C250 90 250 30 300 30 C350 30 350 80 400 80 C450 80 450 20 500 20 V150 H0 Z" fill="url(#gradient)" opacity="0.2"></path>
+<!-- Line -->
+<path d="M0 120 C50 120 50 40 100 40 C150 40 150 90 200 90 C250 90 250 30 300 30 C350 30 350 80 400 80 C450 80 450 20 500 20" fill="none" stroke="#25f46a" stroke-linecap="round" stroke-width="4"></path>
+<!-- Dots -->
+<circle cx="100" cy="40" fill="#ffffff" r="4" stroke="#25f46a" stroke-width="2"></circle>
+<circle cx="200" cy="90" fill="#ffffff" r="4" stroke="#25f46a" stroke-width="2"></circle>
+<circle cx="300" cy="30" fill="#ffffff" r="4" stroke="#25f46a" stroke-width="2"></circle>
+<circle cx="400" cy="80" fill="#ffffff" r="4" stroke="#25f46a" stroke-width="2"></circle>
+<circle cx="500" cy="20" fill="#ffffff" r="4" stroke="#25f46a" stroke-width="2"></circle>
+<defs>
+<lineargradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#25f46a;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#25f46a;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+<div class="flex justify-between text-xs font-bold text-gray-400 px-2 uppercase tracking-wider">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- RIGHT SIDEBAR (Desktop Only) -->
+<aside class="hidden lg:flex w-80 flex-col gap-4">
+<!-- Upcoming Schedule -->
+<div class="glass-panel p-5 rounded-xl flex flex-col flex-1 max-h-[50%]">
+<h3 class="text-lg font-bold mb-4 flex items-center justify-between">
+<span>Upcoming</span>
+<button class="text-primary text-sm font-semibold hover:underline">See all</button>
+</h3>
+<div class="overflow-y-auto pr-2 space-y-3">
+<!-- Today Item -->
+<div class="p-3 bg-white/60 rounded-lg border-l-4 border-accent-blue">
+<p class="text-xs font-bold text-accent-blue mb-1">TODAY, 14:00</p>
+<h4 class="font-bold text-[#0d1c12]">HIIT Training</h4>
+<p class="text-sm text-gray-500">with Coach Mike</p>
+</div>
+<!-- Tomorrow Item -->
+<div class="p-3 bg-white/60 rounded-lg border-l-4 border-primary">
+<p class="text-xs font-bold text-green-600 mb-1">TOMORROW, 09:30</p>
+<h4 class="font-bold text-[#0d1c12]">Yoga Flow</h4>
+<p class="text-sm text-gray-500">Studio B</p>
+</div>
+<!-- Future Item -->
+<div class="p-3 bg-white/60 rounded-lg border-l-4 border-accent-orange">
+<p class="text-xs font-bold text-accent-orange mb-1">FRI, 18:00</p>
+<h4 class="font-bold text-[#0d1c12]">InBody Checkup</h4>
+<p class="text-sm text-gray-500">Wellness Center</p>
+</div>
+</div>
+</div>
+<!-- Recent Achievements -->
+<div class="glass-panel p-5 rounded-xl flex flex-col flex-1 max-h-[50%]">
+<h3 class="text-lg font-bold mb-4">Achievements</h3>
+<div class="grid grid-cols-2 gap-3 overflow-y-auto">
+<div class="aspect-square bg-gradient-to-br from-yellow-100 to-orange-100 rounded-2xl flex flex-col items-center justify-center p-2 text-center">
+<span class="text-3xl mb-1">🔥</span>
+<p class="font-bold text-xs text-orange-800">10 Day Streak</p>
+</div>
+<div class="aspect-square bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex flex-col items-center justify-center p-2 text-center opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer">
+<span class="text-3xl mb-1">💪</span>
+<p class="font-bold text-xs text-blue-800">Power Lifter</p>
+</div>
+<div class="aspect-square bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex flex-col items-center justify-center p-2 text-center">
+<span class="text-3xl mb-1">🏃‍♀️</span>
+<p class="font-bold text-xs text-green-800">Early Bird</p>
+</div>
+<div class="aspect-square bg-white border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center p-2 text-center">
+<span class="text-gray-400 text-sm font-medium">Next Reward</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Floating Action Button -->
+<button class="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 bg-[#0d1c12] hover:bg-black text-white p-4 rounded-full shadow-2xl flex items-center gap-3 transition-transform hover:scale-105 z-50 group border border-primary/30">
+<div class="relative">
+<span class="material-symbols-outlined text-primary">smart_toy</span>
+<span class="absolute -top-1 -right-1 size-3 bg-primary rounded-full animate-pulse border-2 border-black"></span>
+</div>
+<span class="font-bold pr-2 hidden md:block">AI Coach</span>
+</button>
+</div>
+</body></html>

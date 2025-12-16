@@ -79,10 +79,22 @@ namespace Service.Services
 
                 if (createDto.CoachId.HasValue)
                 {
-                    if (!await IsCoachAvailableAsync(createDto.CoachId.Value, createDto.StartTime, createDto.EndTime))
+                    // Convert User ID to CoachProfile ID
+                    var coachProfile = await _unitOfWork.Repository<CoachProfile>()
+                        .FirstOrDefaultAsync(cp => cp.UserId == createDto.CoachId.Value);
+
+                    if (coachProfile == null)
+                    {
+                        throw new InvalidOperationException("Coach profile not found");
+                    }
+
+                    if (!await IsCoachAvailableAsync(coachProfile.Id, createDto.StartTime, createDto.EndTime))
                     {
                         throw new InvalidOperationException("Coach is not available for the selected time slot");
                     }
+
+                    // Store the actual CoachProfile ID
+                    createDto.CoachId = coachProfile.Id;
                 }
             }
 
@@ -213,8 +225,18 @@ namespace Service.Services
 
         public async Task<IEnumerable<BookingDto>> GetCoachBookingsAsync(int coachId, DateTime startDate, DateTime endDate)
         {
+            // Convert User ID to CoachProfile ID
+            var coachProfile = await _unitOfWork.Repository<CoachProfile>()
+                .FirstOrDefaultAsync(cp => cp.UserId == coachId);
+
+            if (coachProfile == null)
+            {
+                // If no coach profile found, return empty list instead of throwing error
+                return new List<BookingDto>();
+            }
+
             var bookings = await _unitOfWork.Repository<Booking>()
-                .FindAsync(b => b.CoachId == coachId &&
+                .FindAsync(b => b.CoachId == coachProfile.Id &&
                                b.StartTime >= startDate &&
                                b.EndTime <= endDate);
 
