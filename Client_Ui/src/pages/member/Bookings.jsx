@@ -4,47 +4,90 @@ import { useAuth } from '../../contexts/AuthContext'
 import { equipmentService } from '../../services/equipmentService'
 import { bookingService } from '../../services/bookingService'
 import { useToast } from '../../contexts/ToastContext'
+import './Bookings.css'
 
-// Icons
+// Modern Filled Icons
 const CalendarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
   </svg>
 )
 
 const ClockIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
   </svg>
 )
 
 const DumbbellIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/>
   </svg>
 )
 
 const ZapIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
   </svg>
 )
 
 const XIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
   </svg>
 )
 
 const CheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
   </svg>
 )
 
 const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12h14"/><path d="M12 5v14"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+  </svg>
+)
+
+const QrCodeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM19 19h2v2h-2zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM15 19h2v2h-2zM17 17h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2z"/>
+  </svg>
+)
+
+const SyncIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+  </svg>
+)
+
+const SearchIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+  </svg>
+)
+
+const FilterIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
+  </svg>
+)
+
+const PersonIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </svg>
+)
+
+const ChartIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/>
+  </svg>
+)
+
+const EditIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
   </svg>
 )
 
@@ -58,6 +101,8 @@ function Bookings() {
   const [bookingDate, setBookingDate] = useState('')
   const [bookingTime, setBookingTime] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState('upcoming')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Equipment images for gym vibes
   const equipmentImages = [
@@ -164,370 +209,292 @@ function Bookings() {
 
   return (
     <DashboardLayout role="Member">
-      {/* Hero Banner */}
-      <div className="hero-banner" style={{
-        backgroundImage: 'linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop)',
-        marginBottom: '2rem'
-      }}>
-        <div className="hero-content">
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>
-            Equipment <span style={{ color: '#ff6b35' }}>Booking</span>
-          </h1>
-          <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>
-            Reserve gym equipment for your workout sessions
-          </p>
-          <div style={{ 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '0.5rem',
-            background: 'rgba(255,107,53,0.2)',
-            padding: '0.5rem 1rem',
-            borderRadius: '2rem',
-            marginTop: '1rem',
-            border: '1px solid rgba(255,107,53,0.5)'
-          }}>
-            <ZapIcon style={{ width: 18, height: 18, color: '#ff6b35' }} />
-            <span style={{ color: 'white', fontWeight: '600' }}>5 tokens per booking</span>
-          </div>
-        </div>
-      </div>
-
-      {/* My Bookings Section */}
-      {myBookings.length > 0 && (
-        <div className="card" style={{ marginBottom: '2rem', border: '2px solid #ff6b35' }}>
-          <div className="card-header" style={{ 
-            background: 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)',
-            color: 'white',
-            borderRadius: '0.5rem 0.5rem 0 0'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <CalendarIcon style={{ width: 24, height: 24 }} />
-                My Bookings
-              </h3>
-              <span className="badge" style={{ background: 'white', color: '#ff6b35', fontWeight: '600' }}>
-                {myBookings.length} total
+      <div className="bookings-page">
+        {/* Hero Section */}
+        <section className="bookings-hero">
+          <div className="bookings-hero-content">
+            <h1 className="bookings-hero-title">
+              Ready to crush it, {user?.name?.split(' ')[0] || 'there'}? <span>⚡</span>
+            </h1>
+            <p className="bookings-hero-subtitle">
+              You have <strong>{myBookings.filter(b => b.status === 1 || b.status === 'Confirmed').length} upcoming sessions</strong> this week. 
+              Your consistency streak is <span className="streak">🔥 12 days</span>!
+            </p>
+            <div className="bookings-hero-tags">
+              <span className="bookings-hero-tag blue">
+                <ZapIcon style={{ width: 14, height: 14 }} /> High Intensity
+              </span>
+              <span className="bookings-hero-tag purple">
+                <ChartIcon style={{ width: 14, height: 14 }} /> AI Recommended
               </span>
             </div>
           </div>
-          <div className="card-content" style={{ padding: 0 }}>
-            <table className="data-table" style={{ marginBottom: 0 }}>
-              <thead>
-                <tr style={{ background: '#f8f9fa' }}>
-                  <th style={{ color: '#333', fontWeight: '600' }}>Equipment</th>
-                  <th style={{ color: '#333', fontWeight: '600' }}>Date</th>
-                  <th style={{ color: '#333', fontWeight: '600' }}>Time</th>
-                  <th style={{ color: '#333', fontWeight: '600' }}>Status</th>
-                  <th style={{ color: '#333', fontWeight: '600' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myBookings.slice(0, 5).map(booking => {
-                  const status = getStatusBadge(booking.status)
-                  return (
-                    <tr key={booking.bookingId} style={{ borderBottom: '1px solid #eee' }}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ 
-                            width: 40, 
-                            height: 40, 
-                            borderRadius: '0.5rem', 
-                            background: 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
-                            <DumbbellIcon style={{ width: 20, height: 20, color: 'white' }} />
-                          </div>
-                          <span style={{ fontWeight: '600', color: '#333' }}>{booking.equipmentName || 'Equipment'}</span>
-                        </div>
-                      </td>
-                      <td style={{ color: '#555' }}>{formatDate(booking.startTime)}</td>
-                      <td style={{ color: '#555' }}>{formatTime(booking.startTime)}</td>
-                      <td><span className={`badge ${status.class}`}>{status.text}</span></td>
-                      <td>
-                        {(booking.status === 0 || booking.status === 1 || booking.status === 'Pending' || booking.status === 'Confirmed') && (
-                          <button 
-                            className="btn btn-sm"
-                            onClick={() => handleCancel(booking.bookingId, booking.equipmentName)}
-                            style={{ 
-                              background: '#ff4444', 
-                              color: 'white',
-                              border: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            <XIcon style={{ width: 14, height: 14 }} />
-                            Cancel
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="bookings-hero-actions">
+            <button className="bookings-hero-btn primary">
+              <QrCodeIcon style={{ width: 18, height: 18 }} />
+              Scan to Check-In
+            </button>
+            <button className="bookings-hero-btn secondary">
+              <SyncIcon style={{ width: 18, height: 18 }} />
+              Sync Calendar
+            </button>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Available Equipment Section */}
-      <div className="card" style={{ border: '1px solid #e0e0e0' }}>
-        <div className="card-header" style={{ background: '#f8f9fa', borderBottom: '2px solid #ff6b35' }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#333', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <DumbbellIcon style={{ width: 24, height: 24, color: '#ff6b35' }} />
-            Available <span style={{ color: '#ff6b35' }}>Equipment</span>
-          </h3>
-        </div>
-        <div className="card-content" style={{ padding: '1.5rem' }}>
-          {loading ? (
-            <div className="empty-state" style={{ padding: '3rem' }}>
-              <div className="loading-spinner"></div>
-              <p style={{ marginTop: '1rem', color: '#666' }}>Loading equipment...</p>
+        {/* Tabs & Filters */}
+        <section className="bookings-controls">
+          <div className="bookings-tabs">
+            <button 
+              className={`bookings-tab ${activeTab === 'upcoming' ? 'active' : ''}`}
+              onClick={() => setActiveTab('upcoming')}
+            >
+              Upcoming
+            </button>
+            <button 
+              className={`bookings-tab ${activeTab === 'past' ? 'active' : ''}`}
+              onClick={() => setActiveTab('past')}
+            >
+              Past
+            </button>
+            <button 
+              className={`bookings-tab ${activeTab === 'cancelled' ? 'active' : ''}`}
+              onClick={() => setActiveTab('cancelled')}
+            >
+              Cancelled
+            </button>
+          </div>
+          <div className="bookings-filters">
+            <div className="bookings-search">
+              <SearchIcon className="bookings-search-icon" style={{ width: 18, height: 18 }} />
+              <input 
+                type="text" 
+                placeholder="Search coach, equipment..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-          ) : equipment.length === 0 ? (
-            <div className="empty-state" style={{ padding: '3rem' }}>
-              <DumbbellIcon style={{ width: 48, height: 48, color: '#ccc' }} />
-              <p style={{ marginTop: '1rem', color: '#666', fontWeight: '600' }}>No equipment available</p>
-              <p style={{ color: '#999' }}>Check back later for available equipment</p>
-            </div>
-          ) : (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
-              gap: '1.5rem' 
-            }}>
-              {equipment.map((item, index) => (
-                <div 
-                  key={item.equipmentId} 
-                  className="card equipment-card"
-                  style={{ 
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '1rem',
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-                  }}
-                >
-                  {/* Equipment Image */}
-                  <div style={{
-                    height: '160px',
-                    background: `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.4)), url(${equipmentImages[index % equipmentImages.length]})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    padding: '1rem'
-                  }}>
-                    <span className={`badge ${item.status === 0 ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.75rem' }}>
-                      {item.status === 0 ? '✓ Available' : '⏳ In Use'}
+            <button className="bookings-filter-btn">
+              <FilterIcon style={{ width: 18, height: 18 }} />
+              Filters
+            </button>
+            <button className="bookings-filter-btn">
+              <CalendarIcon style={{ width: 18, height: 18 }} />
+              Date
+            </button>
+          </div>
+        </section>
+
+        {/* Bookings Grid */}
+        {loading ? (
+          <div className="bookings-loading">
+            <div className="bookings-loading-spinner"></div>
+            <p style={{ color: '#64748b' }}>Loading your bookings...</p>
+          </div>
+        ) : myBookings.length === 0 && equipment.length === 0 ? (
+          <div className="bookings-empty">
+            <CalendarIcon />
+            <h3 className="bookings-empty-title">No bookings yet</h3>
+            <p className="bookings-empty-text">Start your fitness journey by booking a session</p>
+            <button className="bookings-empty-btn">
+              <PlusIcon style={{ width: 18, height: 18 }} />
+              Book New Session
+            </button>
+          </div>
+        ) : (
+          <div className="bookings-grid">
+            {/* My Bookings */}
+            {myBookings.map((booking, index) => {
+              const status = getStatusBadge(booking.status)
+              return (
+                <article key={booking.bookingId} className="booking-card">
+                  <div className="booking-card-image">
+                    <img 
+                      src={equipmentImages[index % equipmentImages.length]} 
+                      alt={booking.equipmentName || 'Booking'}
+                    />
+                    <span className="booking-card-type equipment">
+                      <DumbbellIcon style={{ width: 14, height: 14 }} />
+                      Equipment
+                    </span>
+                    <span className={`booking-card-status ${status.text.toLowerCase()}`}>
+                      <CheckIcon style={{ width: 12, height: 12 }} />
+                      {status.text}
                     </span>
                   </div>
-
-                  <div style={{ padding: '1.25rem' }}>
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <h4 style={{ fontWeight: '700', fontSize: '1.1rem', color: '#333', marginBottom: '0.25rem' }}>
-                        {item.name}
-                      </h4>
-                      <p style={{ 
-                        fontSize: '0.8rem', 
-                        color: '#ff6b35',
-                        fontWeight: '600',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        {item.category || 'General Equipment'}
-                      </p>
+                  <div className="booking-card-content">
+                    <div className="booking-card-header">
+                      <div>
+                        <h3 className="booking-card-title">{booking.equipmentName || 'Equipment Session'}</h3>
+                        <p className="booking-card-subtitle">Fitness Area</p>
+                      </div>
+                      <div className={`booking-card-time ${booking.status === 1 ? '' : 'default'}`}>
+                        <span className="booking-card-time-day">{formatDate(booking.startTime).split(',')[0]}</span>
+                        <span className="booking-card-time-hour">{formatTime(booking.startTime)}</span>
+                      </div>
                     </div>
-                    
-                    <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem', lineHeight: 1.5 }}>
-                      {item.description || 'Professional gym equipment for your workout sessions.'}
-                    </p>
-
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem', 
-                      marginBottom: '1rem',
-                      padding: '0.5rem',
-                      background: '#fff8f5',
-                      borderRadius: '0.5rem',
-                      border: '1px solid #ffe0d0'
-                    }}>
-                      <ZapIcon style={{ width: 16, height: 16, color: '#ff6b35' }} />
-                      <span style={{ fontSize: '0.85rem', color: '#666' }}>
-                        <strong style={{ color: '#ff6b35' }}>5 tokens</strong> per session
-                      </span>
+                    <div className="booking-card-details">
+                      <div className="booking-card-detail">
+                        <ClockIcon />
+                        <span>60 min session</span>
+                      </div>
+                      <div className="booking-card-detail">
+                        <ZapIcon />
+                        <span>5 Tokens</span>
+                      </div>
                     </div>
-                    
+                    <div className="booking-card-actions">
+                      <button className="booking-card-btn primary">View</button>
+                      <button className="booking-card-btn outline">
+                        <EditIcon style={{ width: 16, height: 16 }} />
+                      </button>
+                      {(booking.status === 0 || booking.status === 1 || booking.status === 'Pending' || booking.status === 'Confirmed') && (
+                        <button 
+                          className="booking-card-btn outline danger"
+                          onClick={() => handleCancel(booking.bookingId, booking.equipmentName)}
+                        >
+                          <XIcon style={{ width: 16, height: 16 }} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+
+            {/* Available Equipment for Booking */}
+            {equipment.filter(item => item.status === 0).map((item, index) => (
+              <article key={item.equipmentId} className="booking-card">
+                <div className="booking-card-image">
+                  <img 
+                    src={equipmentImages[(index + myBookings.length) % equipmentImages.length]} 
+                    alt={item.name}
+                  />
+                  <span className="booking-card-type equipment">
+                    <DumbbellIcon style={{ width: 14, height: 14 }} />
+                    Equipment
+                  </span>
+                  <span className="booking-card-status confirmed">
+                    <CheckIcon style={{ width: 12, height: 12 }} />
+                    Available
+                  </span>
+                </div>
+                <div className="booking-card-content">
+                  <div className="booking-card-header">
+                    <div>
+                      <h3 className="booking-card-title">{item.name}</h3>
+                      <p className="booking-card-subtitle">{item.category || 'General Equipment'}</p>
+                    </div>
+                    <div className="booking-card-time default">
+                      <span className="booking-card-time-day">Book</span>
+                      <span className="booking-card-time-hour" style={{ color: '#10B981' }}>Now</span>
+                    </div>
+                  </div>
+                  <div className="booking-card-details">
+                    <div className="booking-card-detail">
+                      <ClockIcon />
+                      <span>60 min session</span>
+                    </div>
+                    <div className="booking-card-detail">
+                      <ZapIcon />
+                      <span>5 Tokens</span>
+                    </div>
+                  </div>
+                  <div className="booking-card-actions">
                     <button 
-                      className="btn btn-primary"
-                      style={{ 
-                        width: '100%',
-                        background: item.status === 0 ? 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)' : '#ccc',
-                        border: 'none',
-                        padding: '0.75rem',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem'
-                      }}
+                      className="booking-card-btn primary"
                       onClick={() => setBookingModal({ show: true, equipment: item })}
-                      disabled={item.status !== 0}
+                      style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
                     >
-                      <PlusIcon style={{ width: 18, height: 18 }} />
-                      {item.status === 0 ? 'Book Now' : 'Not Available'}
+                      <PlusIcon style={{ width: 16, height: 16 }} />
+                      Book Now
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              </article>
+            ))}
+          </div>
+        )}
 
-      {/* Booking Modal */}
-      {bookingModal.show && (
-        <div className="modal-overlay" onClick={() => setBookingModal({ show: false, equipment: null })}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ 
-            maxWidth: '450px',
-            borderRadius: '1rem',
-            overflow: 'hidden'
-          }}>
-            <div className="modal-header" style={{ 
-              background: 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)',
-              color: 'white',
-              padding: '1.5rem'
-            }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '700' }}>
-                Book {bookingModal.equipment?.name}
-              </h3>
-              <button 
-                className="modal-close"
-                onClick={() => setBookingModal({ show: false, equipment: null })}
-                style={{ color: 'white' }}
-              >
-                <XIcon />
-              </button>
-            </div>
-            <div className="modal-body" style={{ padding: '1.5rem' }}>
-              <p style={{ color: '#666', marginBottom: '1.5rem' }}>
-                Select your preferred date and time for the booking.
-              </p>
-              
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ fontWeight: '600', color: '#333', marginBottom: '0.5rem', display: 'block' }}>
-                  <CalendarIcon style={{ width: 16, height: 16, display: 'inline', marginRight: '0.5rem' }} />
-                  Date
-                </label>
-                <input
-                  type="date"
-                  className="input"
-                  value={bookingDate}
-                  onChange={(e) => setBookingDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.75rem',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '0.5rem',
-                    fontSize: '1rem'
-                  }}
-                />
+        {/* Booking Modal */}
+        {bookingModal.show && (
+          <div className="bookings-modal-overlay" onClick={() => setBookingModal({ show: false, equipment: null })}>
+            <div className="bookings-modal" onClick={e => e.stopPropagation()}>
+              <div className="bookings-modal-header">
+                <h3 className="bookings-modal-title">Book {bookingModal.equipment?.name}</h3>
+                <button 
+                  className="bookings-modal-close"
+                  onClick={() => setBookingModal({ show: false, equipment: null })}
+                >
+                  <XIcon style={{ width: 18, height: 18 }} />
+                </button>
               </div>
-              
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ fontWeight: '600', color: '#333', marginBottom: '0.5rem', display: 'block' }}>
-                  <ClockIcon style={{ width: 16, height: 16, display: 'inline', marginRight: '0.5rem' }} />
-                  Time
-                </label>
-                <input
-                  type="time"
-                  className="input"
-                  value={bookingTime}
-                  onChange={(e) => setBookingTime(e.target.value)}
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.75rem',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '0.5rem',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
-
-              <div style={{ 
-                padding: '1rem', 
-                background: '#fff8f5',
-                borderRadius: '0.75rem',
-                border: '1px solid #ffe0d0',
-                marginTop: '1.5rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <ZapIcon style={{ width: 18, height: 18, color: '#ff6b35' }} />
-                  <span style={{ fontWeight: '700', color: '#ff6b35', fontSize: '1.1rem' }}>Cost: 5 tokens</span>
+              <div className="bookings-modal-body">
+                <p>Select your preferred date and time for the booking.</p>
+                
+                <div className="bookings-form-group">
+                  <label className="bookings-form-label">
+                    <CalendarIcon />
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    className="bookings-form-input"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
-                <p style={{ fontSize: '0.85rem', color: '#666' }}>
-                  ⏱️ Duration: 1 hour session
-                </p>
+                
+                <div className="bookings-form-group">
+                  <label className="bookings-form-label">
+                    <ClockIcon />
+                    Time
+                  </label>
+                  <input
+                    type="time"
+                    className="bookings-form-input"
+                    value={bookingTime}
+                    onChange={(e) => setBookingTime(e.target.value)}
+                  />
+                </div>
+
+                <div className="bookings-modal-cost">
+                  <div className="bookings-modal-cost-title">
+                    <ZapIcon style={{ width: 18, height: 18 }} />
+                    Cost: 5 tokens
+                  </div>
+                  <p className="bookings-modal-cost-text">⏱️ Duration: 1 hour session</p>
+                </div>
               </div>
-            </div>
-            <div className="modal-footer" style={{ 
-              padding: '1rem 1.5rem', 
-              background: '#f8f9fa',
-              borderTop: '1px solid #e0e0e0',
-              display: 'flex',
-              gap: '0.75rem'
-            }}>
-              <button 
-                className="btn"
-                onClick={() => setBookingModal({ show: false, equipment: null })}
-                style={{ 
-                  flex: 1,
-                  padding: '0.75rem',
-                  border: '2px solid #e0e0e0',
-                  background: 'white',
-                  color: '#666',
-                  fontWeight: '600'
-                }}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-primary"
-                onClick={handleBook}
-                disabled={submitting}
-                style={{ 
-                  flex: 1,
-                  padding: '0.75rem',
-                  background: 'linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%)',
-                  border: 'none',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                {submitting ? (
-                  <>
-                    <div className="loading-spinner" style={{ width: 18, height: 18 }}></div>
-                    Booking...
-                  </>
-                ) : (
-                  <>
-                    <CheckIcon style={{ width: 18, height: 18 }} />
-                    Confirm
-                  </>
-                )}
-              </button>
+              <div className="bookings-modal-footer">
+                <button 
+                  className="bookings-modal-btn cancel"
+                  onClick={() => setBookingModal({ show: false, equipment: null })}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="bookings-modal-btn confirm"
+                  onClick={handleBook}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <div className="bookings-loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }}></div>
+                      Booking...
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon style={{ width: 18, height: 18 }} />
+                      Confirm
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </DashboardLayout>
   )
 }

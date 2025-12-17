@@ -5,53 +5,72 @@ import { useAuth } from '../../contexts/AuthContext'
 import { statsService } from '../../services/statsService'
 import { bookingService } from '../../services/bookingService'
 import { useToast } from '../../contexts/ToastContext'
+import './Dashboard.css'
 
 // Icons
+const TokenIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"/>
+  </svg>
+)
+
+const FireIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/>
+  </svg>
+)
+
+const TimerIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+  </svg>
+)
+
+const CalendarCheckIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zm-7.5-5.23l-2.12-2.12-1.41 1.41L11.5 16.5l5.5-5.5-1.41-1.41z"/>
+  </svg>
+)
+
+const RobotIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z"/>
+  </svg>
+)
+
+const PersonAddIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </svg>
+)
+
 const DumbbellIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/>
   </svg>
 )
 
-const CalendarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+const ScaleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm0-4c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1zm0 8c-2.33 0-7 1.17-7 3.5V17h14v1.5c0-2.33-4.67-3.5-7-3.5z"/>
   </svg>
 )
 
-const ActivityIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+const AssignmentIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+  </svg>
+)
+
+const MagicIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7.5 5.6L10 7 8.6 4.5 10 2 7.5 3.4 5 2l1.4 2.5L5 7zm12 9.8L17 14l1.4 2.5L17 19l2.5-1.4L22 19l-1.4-2.5L22 14zM22 2l-2.5 1.4L17 2l1.4 2.5L17 7l2.5-1.4L22 7l-1.4-2.5zm-7.63 5.29c-.39-.39-1.02-.39-1.41 0L1.29 18.96c-.39.39-.39 1.02 0 1.41l2.34 2.34c.39.39 1.02.39 1.41 0L16.7 11.05c.39-.39.39-1.02 0-1.41l-2.33-2.35zm-1.03 5.49l-2.12-2.12 2.44-2.44 2.12 2.12-2.44 2.44z"/>
   </svg>
 )
 
 const TrophyIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
-  </svg>
-)
-
-const ZapIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-  </svg>
-)
-
-const BrainIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
-  </svg>
-)
-
-const UserCheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>
-  </svg>
-)
-
-const CreditCardIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>
   </svg>
 )
 
@@ -62,8 +81,26 @@ const XIcon = () => (
 )
 
 const ArrowRightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+  </svg>
+)
+
+const PlayIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+)
+
+const CalendarTodayIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/>
+  </svg>
+)
+
+const ChatBubbleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
   </svg>
 )
 
@@ -110,308 +147,289 @@ function MemberDashboard() {
     }
   }
 
-  const displayStats = {
-    tokenBalance: user?.tokenBalance ?? 0,
-    totalBookings: stats?.totalBookings ?? 0,
-    completedWorkouts: stats?.totalWorkoutsCompleted ?? 0,
-    currentWeight: stats?.currentWeight ?? 0,
-    bodyFatPercentage: stats?.currentBodyFat ?? 0,
-  }
-
   const quickActions = [
-    {
-      icon: BrainIcon,
-      title: "AI Coach",
-      description: "Get workout & nutrition plans",
-      href: "/member/ai-coach",
-      color: "#8b5cf6",
-      bgImage: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=400"
-    },
-    {
-      icon: UserCheckIcon,
-      title: "Book Coach",
-      description: "Personal training sessions",
-      href: "/member/bookings",
-      color: "#22c55e",
-      bgImage: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400"
-    },
-    {
-      icon: DumbbellIcon,
-      title: "My Programs",
-      description: "View workout plans",
-      href: "/member/programs",
-      color: "#3b82f6",
-      bgImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400"
-    },
-    {
-      icon: CreditCardIcon,
-      title: "Subscriptions",
-      description: "Manage your plan",
-      href: "/member/subscriptions",
-      color: "#f59e0b",
-      bgImage: "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=400"
-    },
+    { icon: RobotIcon, title: "AI Coach Chat", href: "/member/ai-coach", color: "primary" },
+    { icon: PersonAddIcon, title: "Book Coach", href: "/member/bookings", color: "secondary" },
+    { icon: DumbbellIcon, title: "Book Equipment", href: "/member/bookings", color: "accent" },
+    { icon: ScaleIcon, title: "InBody Scan", href: "/member/progress", color: "purple" },
+    { icon: AssignmentIcon, title: "View Programs", href: "/member/programs", color: "slate" },
+    { icon: MagicIcon, title: "New Program", href: "/member/ai-coach", color: "pink" },
   ]
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      0: { text: "Pending", class: "badge-warning" },
-      1: { text: "Confirmed", class: "badge-success" },
-      2: { text: "Cancelled", class: "badge-danger" },
-      3: { text: "Completed", class: "badge-info" },
-      4: { text: "No Show", class: "badge-secondary" },
+      0: { text: "Pending", class: "badge-pending" },
+      1: { text: "Confirmed", class: "badge-confirmed" },
+      2: { text: "Cancelled", class: "badge-cancelled" },
+      3: { text: "Completed", class: "badge-completed" },
+      4: { text: "No Show", class: "badge-noshow" },
     }
-    return statusMap[status] || { text: "Unknown", class: "badge-secondary" }
+    return statusMap[status] || { text: "Unknown", class: "badge-pending" }
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
+    const date = new Date(dateString)
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    const isToday = date.toDateString() === now.toDateString()
+    const isTomorrow = date.toDateString() === tomorrow.toDateString()
+    
+    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    
+    if (isToday) return `TODAY, ${timeStr}`
+    if (isTomorrow) return `TOMORROW, ${timeStr}`
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase() + `, ${timeStr}`
+  }
+
+  const displayStats = {
+    tokenBalance: user?.tokenBalance ?? 0,
+    totalBookings: stats?.totalBookings ?? 0,
+    completedWorkouts: stats?.totalWorkoutsCompleted ?? 0,
+    streak: 14, // Mock streak data
+    activityHours: 4.5,
+    targetHours: 6,
   }
 
   return (
     <DashboardLayout role="Member">
-      {/* Hero Banner with Gym Background */}
-      <div className="hero-banner" style={{
-        background: 'linear-gradient(135deg, #ff6b35 0%, #dc2626 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-        marginBottom: '2rem'
-      }}>
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          width: '50%',
-          height: '100%',
-          backgroundImage: 'url(https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.3,
-          maskImage: 'linear-gradient(to left, black, transparent)',
-          WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
-        }} />
-        <div className="hero-content" style={{ position: 'relative', zIndex: 1 }}>
-          <h1 className="hero-title" style={{ color: 'white', fontSize: '2rem' }}>
-            Welcome back, {user?.name?.split(' ')[0] || "Champion"}! 💪
-          </h1>
-          <p className="hero-subtitle" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            Ready to crush your fitness goals today?
-          </p>
-        </div>
-        {/* Token Balance Badge */}
-        <div style={{
-          position: 'absolute',
-          top: '1.5rem',
-          right: '1.5rem',
-          background: 'rgba(255,255,255,0.2)',
-          backdropFilter: 'blur(10px)',
-          padding: '0.75rem 1.25rem',
-          borderRadius: '1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          color: 'white'
-        }}>
-          <ZapIcon style={{ width: 20, height: 20 }} />
-          <span style={{ fontWeight: 700, fontSize: '1.25rem' }}>{user?.tokenBalance ?? 0}</span>
-          <span style={{ opacity: 0.9 }}>tokens</span>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid-cols-4 mb-8">
-        <div className="stat-card orange">
-          <div className="stat-icon" style={{ background: 'rgba(255, 107, 53, 0.1)', color: '#ff6b35' }}>
-            <DumbbellIcon />
+      <div className="member-dashboard">
+        {/* Hero Section */}
+        <div className="hero-section">
+          <div className="hero-background">
+            <img 
+              src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200" 
+              alt="Gym background"
+            />
+            <div className="hero-overlay"></div>
           </div>
-          <div>
-            <div className="stat-value">{loading ? "..." : displayStats.completedWorkouts}</div>
-            <div className="stat-label">Workouts Completed</div>
-          </div>
-        </div>
-
-        <div className="stat-card green">
-          <div className="stat-icon" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
-            <ActivityIcon />
-          </div>
-          <div>
-            <div className="stat-value">
-              {loading ? "..." : displayStats.bodyFatPercentage > 0 ? `${displayStats.bodyFatPercentage}%` : "N/A"}
-            </div>
-            <div className="stat-label">Body Fat</div>
-          </div>
-        </div>
-
-        <div className="stat-card blue">
-          <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-            <CalendarIcon />
-          </div>
-          <div>
-            <div className="stat-value">{loading ? "..." : displayStats.totalBookings}</div>
-            <div className="stat-label">Total Bookings</div>
-          </div>
-        </div>
-
-        <div className="stat-card purple">
-          <div className="stat-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}>
-            <TrophyIcon />
-          </div>
-          <div>
-            <div className="stat-value">
-              {loading ? "..." : displayStats.currentWeight > 0 ? `${displayStats.currentWeight}kg` : "N/A"}
-            </div>
-            <div className="stat-label">Current Weight</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions with Gym Images */}
-      <div className="mb-8">
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--foreground)' }}>
-          Quick Actions
-        </h2>
-        <div className="grid-cols-4">
-          {quickActions.map((action, index) => (
-            <Link key={index} to={action.href} style={{ textDecoration: 'none' }}>
-              <div className="quick-action-card" style={{
-                position: 'relative',
-                overflow: 'hidden',
-                minHeight: '160px'
-              }}>
-                {/* Background Image */}
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundImage: `url(${action.bgImage})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  opacity: 0.15
-                }} />
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  <div className="quick-action-icon" style={{ background: `${action.color}15`, color: action.color }}>
-                    <action.icon />
-                  </div>
-                  <h3 className="quick-action-title">{action.title}</h3>
-                  <p className="quick-action-subtitle">{action.description}</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Two Column Layout */}
-      <div className="grid-cols-2">
-        {/* Recent Bookings */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Recent Bookings</h3>
-            <Link to="/member/bookings" className="btn btn-ghost btn-sm">
-              View All <ArrowRightIcon style={{ width: 16, height: 16 }} />
-            </Link>
-          </div>
-          <div className="card-content" style={{ padding: 0 }}>
-            {loading ? (
-              <div className="empty-state">
-                <div className="loading-spinner"></div>
-              </div>
-            ) : recentBookings.length === 0 ? (
-              <div className="empty-state">
-                <CalendarIcon style={{ width: 48, height: 48, opacity: 0.3 }} />
-                <p className="empty-state-title">No bookings yet</p>
-                <p className="empty-state-description">Start by booking equipment or a coach session</p>
-                <Link to="/member/bookings" className="btn btn-primary btn-sm" style={{ marginTop: '1rem' }}>
-                  Make a Booking
+          <div className="hero-content">
+            <div className="hero-text">
+              <h1>Good Morning, {user?.name?.split(' ')[0] || "Champion"}!</h1>
+              <p>You're crushing it! You've hit a <span className="streak-highlight">{displayStats.streak}-day streak</span>. Let's keep the momentum going.</p>
+              <div className="hero-actions">
+                <Link to="/member/programs" className="btn-hero-primary">
+                  <PlayIcon /> Resume Workout
+                </Link>
+                <Link to="/member/bookings" className="btn-hero-secondary">
+                  <CalendarTodayIcon /> View Schedule
                 </Link>
               </div>
-            ) : (
-              <div>
-                {recentBookings.map((booking) => {
-                  const status = getStatusBadge(booking.status)
-                  return (
-                    <div key={booking.bookingId} style={{
-                      padding: '1rem 1.5rem',
-                      borderBottom: '1px solid var(--border)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: 'var(--foreground)' }}>
-                          {booking.equipmentName || booking.coachName || 'Session'}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--foreground-muted)' }}>
-                          {formatDate(booking.startTime)}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className={`badge ${status.class}`}>{status.text}</span>
-                        {(booking.status === 0 || booking.status === 1) && (
-                          <button 
-                            className="btn btn-ghost btn-sm"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              handleCancelBooking(booking.bookingId, booking.equipmentName || booking.coachName)
-                            }}
-                            title="Cancel booking"
-                            style={{ padding: '0.25rem' }}
-                          >
-                            <XIcon style={{ width: 16, height: 16 }} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* Fitness Progress */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Fitness Progress</h3>
-            <Link to="/member/progress" className="btn btn-ghost btn-sm">
-              Details <ArrowRightIcon style={{ width: 16, height: 16 }} />
-            </Link>
+        {/* Stats Grid */}
+        <div className="stats-grid">
+          <div className="stat-card stat-primary">
+            <div className="stat-card-header">
+              <div className="stat-icon-wrapper primary">
+                <TokenIcon />
+              </div>
+              <span className="stat-badge">Wallet</span>
+            </div>
+            <p className="stat-label">Token Balance</p>
+            <div className="stat-value-row">
+              <h3 className="stat-value">{loading ? "..." : displayStats.tokenBalance}</h3>
+              <Link to="/member/subscriptions" className="stat-link">Buy More</Link>
+            </div>
           </div>
-          <div className="card-content">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--foreground-muted)' }}>Active Workout Plans</span>
-                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{stats?.activeWorkoutPlans || 0}</span>
+
+          <div className="stat-card stat-secondary">
+            <div className="stat-card-header">
+              <div className="stat-icon-wrapper secondary">
+                <FireIcon />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--foreground-muted)' }}>Active Nutrition Plans</span>
-                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{stats?.activeNutritionPlans || 0}</span>
+              <span className="stat-badge">Streak</span>
+            </div>
+            <p className="stat-label">Current Streak</p>
+            <div className="stat-value-row">
+              <h3 className="stat-value">{displayStats.streak} <span className="stat-unit secondary">Days</span></h3>
+            </div>
+          </div>
+
+          <div className="stat-card stat-accent">
+            <div className="stat-card-header">
+              <div className="stat-icon-wrapper accent">
+                <TimerIcon />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--foreground-muted)' }}>InBody Measurements</span>
-                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{stats?.inBodyMeasurements || 0}</span>
+              <span className="stat-badge">Weekly</span>
+            </div>
+            <p className="stat-label">Activity Hours</p>
+            <div className="stat-value-row">
+              <h3 className="stat-value">{displayStats.activityHours}<span className="stat-unit muted">/{displayStats.targetHours}h</span></h3>
+              <div className="progress-ring">
+                <svg viewBox="0 0 36 36">
+                  <path className="progress-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path 
+                    className="progress-fill accent" 
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                    strokeDasharray={`${(displayStats.activityHours / displayStats.targetHours) * 100}, 100`}
+                  />
+                </svg>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--foreground-muted)' }}>Latest BMI</span>
-                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{stats?.latestBmi?.toFixed(1) || 'N/A'}</span>
+            </div>
+          </div>
+
+          <div className="stat-card stat-blue">
+            <div className="stat-card-header">
+              <div className="stat-icon-wrapper blue">
+                <CalendarCheckIcon />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0' }}>
-                <span style={{ color: 'var(--foreground-muted)' }}>Subscription Status</span>
-                <span className={`badge ${stats?.activeSubscriptionId ? 'badge-success' : 'badge-warning'}`}>
-                  {stats?.activeSubscriptionId ? 'Active' : 'Inactive'}
-                </span>
+              <span className="stat-badge">Upcoming</span>
+            </div>
+            <p className="stat-label">Active Bookings</p>
+            <div className="stat-value-row">
+              <h3 className="stat-value">{loading ? "..." : displayStats.totalBookings} <span className="stat-unit muted">Sessions</span></h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Grid Layout */}
+        <div className="main-grid">
+          {/* Left Column */}
+          <div className="left-column">
+            {/* Quick Actions */}
+            <div className="section">
+              <h3 className="section-title">
+                <span className="section-icon">⚡</span> Quick Actions
+              </h3>
+              <div className="quick-actions-grid">
+                {quickActions.map((action, index) => (
+                  <Link key={index} to={action.href} className={`quick-action-btn ${action.color}`}>
+                    <div className={`quick-action-icon ${action.color}`}>
+                      <action.icon />
+                    </div>
+                    <span className="quick-action-label">{action.title}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Progress Chart */}
+            <div className="chart-card">
+              <div className="chart-header">
+                <div>
+                  <h3 className="chart-title">Progress Tracking</h3>
+                  <p className="chart-subtitle">Weight & Body Fat %</p>
+                </div>
+                <div className="chart-tabs">
+                  <button className="chart-tab active">1M</button>
+                  <button className="chart-tab">3M</button>
+                  <button className="chart-tab">6M</button>
+                </div>
+              </div>
+              <div className="chart-container">
+                <svg className="chart-svg" preserveAspectRatio="none" viewBox="0 0 600 200">
+                  <defs>
+                    <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.2"/>
+                      <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,180 C50,160 100,170 150,140 C200,100 250,120 300,80 C350,50 400,70 450,55 C500,40 550,50 600,30 L600,200 L0,200 Z" fill="url(#chartGradient)"/>
+                  <path d="M0,180 C50,160 100,170 150,140 C200,100 250,120 300,80 C350,50 400,70 450,55 C500,40 550,50 600,30" fill="none" stroke="#3B82F6" strokeWidth="3" strokeLinecap="round"/>
+                  <circle cx="150" cy="140" r="4" fill="white" stroke="#3B82F6" strokeWidth="2"/>
+                  <circle cx="300" cy="80" r="4" fill="white" stroke="#3B82F6" strokeWidth="2"/>
+                  <circle cx="450" cy="55" r="4" fill="white" stroke="#3B82F6" strokeWidth="2"/>
+                  <circle cx="600" cy="30" r="6" fill="#3B82F6" stroke="white" strokeWidth="2"/>
+                </svg>
+                <div className="chart-labels">
+                  <span>Week 1</span>
+                  <span>Week 2</span>
+                  <span>Week 3</span>
+                  <span>Week 4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="right-column">
+            {/* Schedule */}
+            <div className="schedule-card">
+              <div className="schedule-header">
+                <h3>Schedule</h3>
+                <Link to="/member/bookings" className="view-all-link">View All</Link>
+              </div>
+              <div className="schedule-timeline">
+                {loading ? (
+                  <div className="schedule-loading">Loading...</div>
+                ) : recentBookings.length === 0 ? (
+                  <div className="schedule-empty">
+                    <CalendarCheckIcon />
+                    <p>No upcoming sessions</p>
+                    <Link to="/member/bookings" className="btn-small-primary">Book Now</Link>
+                  </div>
+                ) : (
+                  recentBookings.map((booking, index) => {
+                    const status = getStatusBadge(booking.status)
+                    const isFirst = index === 0
+                    return (
+                      <div key={booking.bookingId} className="schedule-item">
+                        <div className={`timeline-dot ${isFirst ? 'active' : ''}`}></div>
+                        <div className={`schedule-content ${isFirst ? 'highlight' : ''}`}>
+                          <div className="schedule-top">
+                            <span className="schedule-time">{formatDate(booking.startTime)}</span>
+                            <span className={`schedule-badge ${status.class}`}>{status.text}</span>
+                          </div>
+                          <h4 className="schedule-title">{booking.equipmentName || booking.coachName || 'Session'}</h4>
+                          <p className="schedule-subtitle">{booking.coachName ? `with ${booking.coachName}` : 'Main Floor'}</p>
+                          {(booking.status === 0 || booking.status === 1) && (
+                            <button 
+                              className="cancel-btn"
+                              onClick={() => handleCancelBooking(booking.bookingId, booking.equipmentName || booking.coachName)}
+                            >
+                              <XIcon /> Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Achievements */}
+            <div className="achievements-card">
+              <h3>Recent Achievements</h3>
+              <div className="achievements-grid">
+                <div className="achievement unlocked">
+                  <div className="achievement-icon yellow">
+                    <TrophyIcon />
+                  </div>
+                  <span className="achievement-label">Early Bird</span>
+                </div>
+                <div className="achievement unlocked">
+                  <div className="achievement-icon red">
+                    <DumbbellIcon />
+                  </div>
+                  <span className="achievement-label">Heavy Lifter</span>
+                </div>
+                <div className="achievement locked">
+                  <div className="achievement-icon">
+                    <PlayIcon />
+                  </div>
+                  <span className="achievement-label">Marathoner</span>
+                </div>
+                <div className="achievement locked">
+                  <div className="achievement-icon">
+                    <TrophyIcon />
+                  </div>
+                  <span className="achievement-label">Elite</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Floating AI Button */}
+        <Link to="/member/ai-coach" className="floating-ai-btn">
+          <span className="ai-ping"></span>
+          <ChatBubbleIcon />
+        </Link>
       </div>
     </DashboardLayout>
   )

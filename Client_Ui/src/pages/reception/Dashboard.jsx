@@ -15,6 +15,7 @@ import DashboardLayout from '../../components/layouts/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
 import { statsService } from '../../services/statsService'
 import { bookingService } from '../../services/bookingService'
+import './Dashboard.css'
 
 ChartJS.register(
   CategoryScale,
@@ -26,58 +27,64 @@ ChartJS.register(
   Legend
 )
 
-// Icons
+// Icons - Modern Filled Style
 const UsersIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
   </svg>
 )
 
-const ActivityIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+const TrendingUpIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
   </svg>
 )
 
-const UserPlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>
+const FitnessIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43L16.29 22l2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43L22 16.29z"/>
   </svg>
 )
 
-const CreditCardIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>
+const HeartIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+  </svg>
+)
+
+const AccessibilityIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z"/>
+  </svg>
+)
+
+const QrCodeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2zM17 17h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z"/>
+  </svg>
+)
+
+const PersonAddIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
   </svg>
 )
 
 const CalendarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>
   </svg>
 )
 
-const AlertIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+const CreditCardIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
   </svg>
 )
 
-const ClockIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-  </svg>
-)
-
-const LogInIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/>
-  </svg>
-)
-
-const LogOutIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
+const CheckIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
   </svg>
 )
 
@@ -120,8 +127,8 @@ function ReceptionDashboard() {
     }
   }
 
-  const gymOrange = '#ff6b35'
-  const gymOrangeDark = '#e55a2b'
+  const gymGreen = '#10B981'
+  const gymGreenDark = '#059669'
 
   const hourlyChartData = {
     labels: ['8AM', '10AM', '12PM', '2PM', '4PM', '6PM', '8PM'],
@@ -131,8 +138,8 @@ function ReceptionDashboard() {
       backgroundColor: (context) => {
         const ctx = context.chart.ctx
         const gradient = ctx.createLinearGradient(0, 0, 0, 200)
-        gradient.addColorStop(0, gymOrange)
-        gradient.addColorStop(1, gymOrangeDark)
+        gradient.addColorStop(0, gymGreen)
+        gradient.addColorStop(1, gymGreenDark)
         return gradient
       },
       borderRadius: 6,
@@ -144,7 +151,7 @@ function ReceptionDashboard() {
     labels: ['Monthly', 'Quarterly', 'Annual', 'Pay-per-visit'],
     datasets: [{
       data: [45, 25, 20, 10],
-      backgroundColor: [gymOrange, '#3b82f6', '#22c55e', '#f59e0b'],
+      backgroundColor: [gymGreen, '#3b82f6', '#8b5cf6', '#f59e0b'],
       borderWidth: 0
     }]
   }
@@ -193,10 +200,17 @@ function ReceptionDashboard() {
   }
 
   const quickActions = [
-    { icon: LogInIcon, title: "Check-in", description: "Member check-in", href: "/reception/checkin", iconClass: "icon-blue" },
-    { icon: UserPlusIcon, title: "New Member", description: "Register member", href: "/reception/new-member", iconClass: "icon-purple" },
-    { icon: CalendarIcon, title: "Bookings", description: "View bookings", href: "/reception/bookings", iconClass: "icon-green" },
-    { icon: CreditCardIcon, title: "Payments", description: "Process payments", href: "/reception/payments", iconClass: "icon-emerald" }
+    { icon: QrCodeIcon, title: "Check-In", href: "/reception/checkin", primary: true },
+    { icon: PersonAddIcon, title: "Register", href: "/reception/new-member" },
+    { icon: CalendarIcon, title: "Bookings", href: "/reception/bookings" },
+    { icon: CreditCardIcon, title: "Payment", href: "/reception/payments" }
+  ]
+
+  const statCards = [
+    { icon: <UsersIcon />, label: 'Members Checked In', value: stats?.totalMembersToday || 0, change: '+12%', iconClass: 'blue' },
+    { icon: <FitnessIcon />, label: 'Active Sessions', value: 8, change: '0%', iconClass: 'orange', neutral: true },
+    { icon: <HeartIcon />, label: 'Equip. in Use', value: stats?.equipmentBookings || 42, change: '+5%', iconClass: 'purple' },
+    { icon: <AccessibilityIcon />, label: 'Scans Scheduled', value: 14, change: '+2%', iconClass: 'teal' }
   ]
 
   if (loading) {
@@ -211,180 +225,115 @@ function ReceptionDashboard() {
 
   return (
     <DashboardLayout role="Reception">
-      {/* Header */}
-      <div className="page-header">
-        <div className="page-header-content">
-          <h1>
-            <span className="text-foreground">Reception </span>
-            <span className="text-primary">Dashboard</span>
-          </h1>
-          <p>Welcome back, {user?.name?.split(' ')[0] || 'Receptionist'}</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <ActivityIcon style={{ width: 20, height: 20, color: 'var(--success)' }} />
-          <span style={{ fontWeight: 600, color: 'var(--success)' }}>{stats?.currentlyInGym || 0}</span>
-          <span style={{ color: 'var(--muted-foreground)' }}>currently in gym</span>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid-cols-4 mb-6">
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon">
-              <UsersIcon />
-            </div>
+      <div className="reception-dashboard">
+        {/* Header */}
+        <div className="reception-header">
+          <div className="reception-greeting">
+            <h1>Good Morning, {user?.name?.split(' ')[0] || 'Sarah'} 👋</h1>
+            <p>Here's what's happening at PulseGym today.</p>
           </div>
-          <div className="stat-value">{stats?.totalMembersToday || 0}</div>
-          <div className="stat-label">Members Today</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon" style={{ color: 'var(--success)' }}>
-              <UserPlusIcon />
-            </div>
-            <span className="badge badge-success">New</span>
+          <div className="reception-live-indicator">
+            <span className="reception-live-dot"></span>
+            <span className="reception-live-count">{stats?.currentlyInGym || 23}</span>
+            <span className="reception-live-label">currently in gym</span>
           </div>
-          <div className="stat-value">{stats?.newRegistrations || 0}</div>
-          <div className="stat-label">New Registrations</div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon" style={{ color: 'var(--warning)' }}>
-              <CreditCardIcon />
-            </div>
-            {stats?.pendingPayments > 0 && <span className="badge badge-warning">Pending</span>}
-          </div>
-          <div className="stat-value">{stats?.pendingPayments || 0}</div>
-          <div className="stat-label">Pending Payments</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon" style={{ color: 'var(--danger)' }}>
-              <AlertIcon />
-            </div>
-            {stats?.expiringSubscriptions > 0 && <span className="badge badge-danger">Alert</span>}
-          </div>
-          <div className="stat-value">{stats?.expiringSubscriptions || 0}</div>
-          <div className="stat-label">Expiring Soon</div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="mb-6">
-        <h2 className="mb-4">
-          <span className="text-foreground">Quick </span>
-          <span className="text-primary">Actions</span>
-        </h2>
-        <div className="grid-cols-4">
-          {quickActions.map((action, index) => (
-            <Link key={index} to={action.href}>
-              <div className="quick-action-card">
-                <div className={`quick-action-icon ${action.iconClass}`}>
-                  <action.icon />
+        {/* Stats Grid */}
+        <div className="reception-stats-grid">
+          {statCards.map((stat, idx) => (
+            <div key={idx} className="reception-stat-card">
+              <div className="reception-stat-top">
+                <div className={`reception-stat-icon ${stat.iconClass}`}>
+                  {stat.icon}
                 </div>
-                <h3 className="quick-action-title">{action.title}</h3>
-                <p className="quick-action-description">{action.description}</p>
+                <span className={`reception-stat-badge ${stat.neutral ? 'neutral' : 'positive'}`}>
+                  {!stat.neutral && <TrendingUpIcon />}
+                  {stat.change}
+                </span>
               </div>
-            </Link>
+              <div className="reception-stat-bottom">
+                <p className="reception-stat-label">{stat.label}</p>
+                <h2 className="reception-stat-value">{stat.value}</h2>
+              </div>
+            </div>
           ))}
         </div>
-      </div>
 
-      <div className="grid-cols-2" style={{ gap: '1.5rem' }}>
-        {/* Hourly Check-ins Chart */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">
-              <span className="text-foreground">Hourly </span>
-              <span className="text-primary">Traffic</span>
-            </h3>
+        {/* Quick Actions */}
+        <div className="reception-quick-actions">
+          <h3 className="reception-section-title">Quick Actions</h3>
+          <div className="reception-actions-grid">
+            {quickActions.map((action, index) => (
+              <Link 
+                key={index} 
+                to={action.href} 
+                className={`reception-action-btn ${action.primary ? 'primary' : 'secondary'}`}
+              >
+                <div className="reception-action-icon">
+                  <action.icon />
+                </div>
+                <span className="reception-action-label">{action.title}</span>
+              </Link>
+            ))}
           </div>
-          <div className="card-content">
-            <div style={{ height: 250 }}>
-              <Bar data={hourlyChartData} options={chartOptions} />
+        </div>
+
+        {/* Cards Grid */}
+        <div className="reception-cards-grid">
+          {/* Live Activity Feed */}
+          <div className="reception-card">
+            <div className="reception-card-header">
+              <h3 className="reception-card-title">Live Activity</h3>
+              <Link to="/reception/checkin" className="reception-card-link">View All</Link>
+            </div>
+            <div className="reception-card-content">
+              <div className="reception-activity-list">
+                {recentCheckins.map(checkin => (
+                  <div key={checkin.id} className="reception-activity-item">
+                    <div className="reception-activity-avatar">
+                      <div className={`reception-avatar ${checkin.status === 'in' ? 'checkin' : 'checkout'}`}>
+                        {checkin.name.charAt(0)}
+                      </div>
+                      <div className={`reception-avatar-badge ${checkin.status === 'in' ? 'success' : 'info'}`}>
+                        <CheckIcon />
+                      </div>
+                    </div>
+                    <div className="reception-activity-content">
+                      <p className="reception-activity-message">
+                        <strong>{checkin.name}</strong> {checkin.status === 'in' ? 'checked in' : 'checked out'}
+                      </p>
+                    </div>
+                    <span className="reception-activity-time">{checkin.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Hourly Traffic Chart */}
+          <div className="reception-card">
+            <div className="reception-card-header">
+              <h3 className="reception-card-title">Hourly Traffic</h3>
+            </div>
+            <div className="reception-card-content">
+              <div className="reception-chart-container">
+                <Bar data={hourlyChartData} options={chartOptions} />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Membership Distribution */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">
-              <span className="text-foreground">Membership </span>
-              <span className="text-primary">Types</span>
-            </h3>
+        <div className="reception-card">
+          <div className="reception-card-header">
+            <h3 className="reception-card-title">Membership Distribution</h3>
           </div>
-          <div className="card-content">
-            <div style={{ height: 250 }}>
+          <div className="reception-card-content">
+            <div className="reception-chart-container">
               <Doughnut data={membershipChartData} options={doughnutOptions} />
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Check-ins */}
-      <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div className="card-header" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 className="card-title">
-            <span className="text-foreground">Recent </span>
-            <span className="text-primary">Activity</span>
-          </h3>
-          <Link to="/reception/checkin" className="btn btn-ghost btn-sm">View All</Link>
-        </div>
-        <div className="card-content">
-          {recentCheckins.length === 0 ? (
-            <div className="empty-state">
-              <UsersIcon className="empty-state-icon" />
-              <p className="empty-state-title">No activity yet</p>
-              <p className="empty-state-description">Check-ins will appear here</p>
-            </div>
-          ) : (
-            <div className="data-list">
-              {recentCheckins.map(checkin => (
-                <div key={checkin.id} className="data-list-item">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                    <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '50%',
-                      background: checkin.status === 'in' 
-                        ? 'linear-gradient(135deg, #ff6b35, #e55a2b)'
-                        : '#f1f5f9',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      color: checkin.status === 'in' ? '#ffffff' : '#64748b'
-                    }}>
-                      {checkin.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{checkin.name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                        <ClockIcon />
-                        {checkin.time}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {checkin.status === 'in' ? (
-                      <LogInIcon style={{ color: 'var(--success)' }} />
-                    ) : (
-                      <LogOutIcon style={{ color: 'var(--muted-foreground)' }} />
-                    )}
-                    <span className={`badge ${checkin.status === 'in' ? 'badge-success' : 'badge-secondary'}`}>
-                      {checkin.type}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </DashboardLayout>
