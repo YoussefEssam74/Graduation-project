@@ -3,59 +3,114 @@ import DashboardLayout from '../../components/layouts/DashboardLayout'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { subscriptionService } from '../../services/subscriptionService'
+import './Subscriptions.css'
 
-// Icons
+// Modern Filled Icons
 const CrownIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
   </svg>
 )
 
-const CheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
+const CheckCircleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
   </svg>
 )
 
 const XIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
   </svg>
 )
 
-const ZapIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+const CancelIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/>
   </svg>
 )
 
-const CalendarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+const LayersIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="m11.99 18.54-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/>
   </svg>
 )
 
-const DumbbellIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>
+const GroupsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/>
   </svg>
 )
 
-const UsersIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+const MoneyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
   </svg>
 )
 
-const StarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+const AIIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.5 10c-2.48 0-4.5 2.02-4.5 4.5s2.02 4.5 4.5 4.5 4.5-2.02 4.5-4.5-2.02-4.5-4.5-4.5zm.5 6h-1v1h-1v-1h-1v-1h1v-1h1v1h1v1zM10 3H3v7h7V3zm-1 6H4V4h5v5zm1 4H3v7h7v-7zm-1 6H4v-5h5v5zM20 3h-7v7h7V3zm-1 6h-5V4h5v5z"/>
+  </svg>
+)
+
+const TrendingUpIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="m16 6 2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+  </svg>
+)
+
+const FilterIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
+  </svg>
+)
+
+const SortIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>
+  </svg>
+)
+
+const CopyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+  </svg>
+)
+
+const DeleteIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+  </svg>
+)
+
+const CheckIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+  </svg>
+)
+
+const MinusIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 13H5v-2h14v2z"/>
+  </svg>
+)
+
+const SearchIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+  </svg>
+)
+
+const ExpandIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
   </svg>
 )
 
 const CreditCardIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
   </svg>
 )
 
@@ -180,299 +235,359 @@ function Subscriptions() {
 
   const displayPlans = plans.length > 0 ? plans : defaultPlans
 
+  // Comparison table data
+  const comparisonFeatures = [
+    { name: 'Gym Access Hours', basic: '6 AM - 10 PM', pro: '24/7', elite: '24/7 + VIP' },
+    { name: 'Monthly Tokens', basic: '10', pro: '25', elite: '100' },
+    { name: 'Personal Training', basic: false, pro: '1/month', elite: '4/month' },
+    { name: 'Group Classes', basic: 'Limited', pro: 'Unlimited', elite: 'Unlimited + Priority' },
+    { name: 'AI Coach Access', basic: false, pro: true, elite: true },
+    { name: 'Nutrition Plans', basic: false, pro: false, elite: true },
+    { name: 'InBody Analysis', basic: false, pro: '1/month', elite: 'Unlimited' },
+    { name: 'Spa & Sauna', basic: false, pro: true, elite: true },
+    { name: 'Guest Passes', basic: '0', pro: '2/month', elite: '5/month' }
+  ]
+
+  const getTierClass = (planName) => {
+    const name = planName?.toLowerCase() || ''
+    if (name.includes('elite') || name.includes('premium')) return 'elite'
+    if (name.includes('pro') || name.includes('athlete')) return 'pro'
+    return 'basic'
+  }
+
   return (
     <DashboardLayout role="Member">
-      {/* Hero Banner */}
-      <div className="hero-banner" style={{
-        background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-        marginBottom: '2rem',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          width: '50%',
-          height: '100%',
-          backgroundImage: 'url(https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          opacity: 0.2,
-          maskImage: 'linear-gradient(to left, black, transparent)',
-          WebkitMaskImage: 'linear-gradient(to left, black, transparent)'
-        }} />
-        <div className="hero-content" style={{ position: 'relative', zIndex: 1 }}>
-          <h1 className="hero-title" style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <CrownIcon style={{ width: 32, height: 32 }} />
-            Subscription Plans
-          </h1>
-          <p className="hero-subtitle" style={{ color: 'rgba(255,255,255,0.9)' }}>
-            Choose the perfect plan to achieve your fitness goals
-          </p>
+      <div className="subscriptions-page">
+        {/* Hero Section */}
+        <div className="subscriptions-hero">
+          <div className="subscriptions-hero-content">
+            <div className="subscriptions-hero-badge">
+              <LayersIcon />
+              <span>Membership Plans</span>
+            </div>
+            <h1 className="subscriptions-hero-title">Subscription Plans</h1>
+            <p className="subscriptions-hero-subtitle">
+              Choose the perfect membership tier to unlock your fitness potential
+            </p>
+          </div>
         </div>
+
+        {/* Current Subscription Card */}
         {currentSubscription && (
-          <div style={{
-            position: 'absolute',
-            top: '1.5rem',
-            right: '1.5rem',
-            background: 'rgba(255,255,255,0.2)',
-            backdropFilter: 'blur(10px)',
-            padding: '0.75rem 1.25rem',
-            borderRadius: '0.75rem',
-            color: 'white'
-          }}>
-            <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>Current Plan</span>
-            <div style={{ fontWeight: 700 }}>{currentSubscription.planName || 'Active'}</div>
+          <div className="subscriptions-current-card">
+            <div className="subscriptions-current-icon">
+              <CheckCircleIcon />
+            </div>
+            <div className="subscriptions-current-info">
+              <h3>Active Subscription</h3>
+              <p>Your {currentSubscription.planName || 'subscription'} is active until {new Date(currentSubscription.endDate).toLocaleDateString()}</p>
+            </div>
+            <div className="subscriptions-current-badge">
+              <span className="status-dot"></span>
+              Active
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Current Subscription Status */}
-      {currentSubscription && (
-        <div className="card" style={{ marginBottom: '2rem', borderLeft: '4px solid #22c55e' }}>
-          <div className="card-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{
-                width: 56,
-                height: 56,
-                borderRadius: '1rem',
-                background: 'rgba(34, 197, 94, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#22c55e'
-              }}>
-                <CheckIcon style={{ width: 28, height: 28 }} />
+        {/* Stats Grid */}
+        <div className="subscriptions-stats-grid">
+          <div className="subscriptions-stat-card">
+            <div className="subscriptions-stat-icon plans">
+              <LayersIcon />
+            </div>
+            <div className="subscriptions-stat-info">
+              <span className="subscriptions-stat-value">{displayPlans.length}</span>
+              <span className="subscriptions-stat-label">Available Plans</span>
+            </div>
+          </div>
+          <div className="subscriptions-stat-card">
+            <div className="subscriptions-stat-icon subscribers">
+              <GroupsIcon />
+            </div>
+            <div className="subscriptions-stat-info">
+              <span className="subscriptions-stat-value">1,847</span>
+              <span className="subscriptions-stat-label">Total Subscribers</span>
+            </div>
+          </div>
+          <div className="subscriptions-stat-card">
+            <div className="subscriptions-stat-icon revenue">
+              <MoneyIcon />
+            </div>
+            <div className="subscriptions-stat-info">
+              <span className="subscriptions-stat-value">350K</span>
+              <span className="subscriptions-stat-label">Monthly Revenue</span>
+            </div>
+          </div>
+          <div className="subscriptions-stat-card">
+            <div className="subscriptions-stat-icon ai">
+              <AIIcon />
+            </div>
+            <div className="subscriptions-stat-info">
+              <span className="subscriptions-stat-value">89%</span>
+              <span className="subscriptions-stat-label">AI Usage Rate</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section Title */}
+        <div className="subscriptions-section-title">
+          <h2>Membership Tiers</h2>
+          <p>Select the plan that best fits your fitness journey</p>
+        </div>
+
+        {/* Plans Grid */}
+        <div className="subscriptions-plans-grid">
+          {loading ? (
+            <div className="subscriptions-loading">
+              <div className="loading-spinner"></div>
+              <p>Loading plans...</p>
+            </div>
+          ) : (
+            displayPlans.map((plan, index) => {
+              const tierClass = getTierClass(plan.name)
+              const isPopular = plan.popular || index === 1
+              
+              return (
+                <div 
+                  key={plan.planId}
+                  className={`subscriptions-plan-card ${tierClass} ${isPopular ? 'popular' : ''}`}
+                >
+                  {isPopular && (
+                    <div className="subscriptions-popular-badge">
+                      <TrendingUpIcon />
+                      Most Popular
+                    </div>
+                  )}
+                  
+                  <div className="subscriptions-plan-header">
+                    <div className={`subscriptions-tier-badge ${tierClass}`}>
+                      {tierClass === 'elite' ? 'Elite Tier' : tierClass === 'pro' ? 'Pro Tier' : 'Basic Tier'}
+                    </div>
+                    <div className="subscriptions-status-indicator">
+                      <span className="subscriptions-status-dot active"></span>
+                      Active
+                    </div>
+                  </div>
+                  
+                  <div className="subscriptions-plan-icon">
+                    <CrownIcon />
+                  </div>
+                  
+                  <h3 className="subscriptions-plan-name">{plan.name}</h3>
+                  <p className="subscriptions-plan-description">
+                    {tierClass === 'elite' ? 'Complete fitness experience with premium perks' : 
+                     tierClass === 'pro' ? 'Enhanced features for serious athletes' : 
+                     'Essential access to start your journey'}
+                  </p>
+                  
+                  <div className="subscriptions-plan-price">
+                    <span className="subscriptions-price-amount">{plan.price}</span>
+                    <span className="subscriptions-price-period">EGP/month</span>
+                  </div>
+                  
+                  <ul className="subscriptions-plan-features">
+                    {(plan.features || []).map((feature, idx) => (
+                      <li key={idx} className="subscriptions-feature included">
+                        <CheckCircleIcon />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                    {(plan.notIncluded || []).map((feature, idx) => (
+                      <li key={`not-${idx}`} className="subscriptions-feature excluded">
+                        <CancelIcon />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <div className="subscriptions-plan-actions">
+                    <button 
+                      className={`subscriptions-btn-subscribe ${tierClass}`}
+                      onClick={() => {
+                        setSelectedPlan(plan)
+                        setShowModal(true)
+                      }}
+                    >
+                      {currentSubscription?.planId === plan.planId ? 'Current Plan' : 'Subscribe Now'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Bottom Grid: Comparison + Quick Assign */}
+        <div className="subscriptions-bottom-grid">
+          {/* Feature Comparison Table */}
+          <div className="subscriptions-comparison-card">
+            <div className="subscriptions-comparison-header">
+              <h3>Feature Comparison</h3>
+              <p>Compare what's included in each tier</p>
+            </div>
+            <div className="subscriptions-comparison-table-wrapper">
+              <table className="subscriptions-comparison-table">
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th className="tier-basic">Basic</th>
+                    <th className="tier-pro">Pro</th>
+                    <th className="tier-elite">Elite</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonFeatures.map((feature, idx) => (
+                    <tr key={idx}>
+                      <td className="feature-name">{feature.name}</td>
+                      <td className="feature-value">
+                        {feature.basic === true ? (
+                          <span className="feature-check"><CheckIcon /></span>
+                        ) : feature.basic === false ? (
+                          <span className="feature-x"><MinusIcon /></span>
+                        ) : (
+                          <span className="feature-text">{feature.basic}</span>
+                        )}
+                      </td>
+                      <td className="feature-value">
+                        {feature.pro === true ? (
+                          <span className="feature-check"><CheckIcon /></span>
+                        ) : feature.pro === false ? (
+                          <span className="feature-x"><MinusIcon /></span>
+                        ) : (
+                          <span className="feature-text">{feature.pro}</span>
+                        )}
+                      </td>
+                      <td className="feature-value">
+                        {feature.elite === true ? (
+                          <span className="feature-check"><CheckIcon /></span>
+                        ) : feature.elite === false ? (
+                          <span className="feature-x"><MinusIcon /></span>
+                        ) : (
+                          <span className="feature-text">{feature.elite}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Quick Assign Card */}
+          <div className="subscriptions-assign-card">
+            <div className="subscriptions-assign-header">
+              <h3>Quick Upgrade</h3>
+              <p>Upgrade your membership tier</p>
+            </div>
+            <div className="subscriptions-assign-form">
+              <div className="subscriptions-form-group">
+                <label>Current Plan</label>
+                <div className="subscriptions-input-wrapper">
+                  <CrownIcon />
+                  <input 
+                    type="text" 
+                    value={currentSubscription?.planName || 'No active plan'} 
+                    disabled 
+                  />
+                </div>
               </div>
-              <div>
-                <h3 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Active Subscription</h3>
-                <p style={{ color: 'var(--foreground-muted)' }}>
-                  Your {currentSubscription.planName || 'subscription'} is active until {new Date(currentSubscription.endDate).toLocaleDateString()}
+              <div className="subscriptions-form-group">
+                <label>Upgrade To</label>
+                <div className="subscriptions-select-wrapper">
+                  <LayersIcon />
+                  <select>
+                    <option value="">Select a plan...</option>
+                    {displayPlans.map(plan => (
+                      <option key={plan.planId} value={plan.planId}>
+                        {plan.name} - {plan.price} EGP/month
+                      </option>
+                    ))}
+                  </select>
+                  <ExpandIcon />
+                </div>
+              </div>
+              <button className="subscriptions-upgrade-btn">
+                <TrendingUpIcon />
+                Upgrade Plan
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Subscribe Modal */}
+        {showModal && selectedPlan && (
+          <div className="subscriptions-modal-overlay" onClick={() => { setShowModal(false); setSelectedPlan(null) }}>
+            <div className="subscriptions-modal" onClick={e => e.stopPropagation()}>
+              <div className="subscriptions-modal-header">
+                <div className="subscriptions-modal-icon">
+                  <CrownIcon />
+                </div>
+                <h3>Confirm Subscription</h3>
+                <button 
+                  className="subscriptions-modal-close"
+                  onClick={() => { setShowModal(false); setSelectedPlan(null) }}
+                >
+                  <XIcon />
+                </button>
+              </div>
+              
+              <div className="subscriptions-modal-body">
+                <div className="subscriptions-modal-plan-info">
+                  <div className={`subscriptions-modal-tier ${getTierClass(selectedPlan.name)}`}>
+                    {selectedPlan.name} Plan
+                  </div>
+                  <div className="subscriptions-modal-price">
+                    <span className="amount">{selectedPlan.price}</span>
+                    <span className="period">EGP/month</span>
+                  </div>
+                </div>
+
+                <div className="subscriptions-modal-features">
+                  <h4>What's included:</h4>
+                  <ul>
+                    {(selectedPlan.features || []).slice(0, 6).map((feature, idx) => (
+                      <li key={idx}>
+                        <CheckCircleIcon />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <p className="subscriptions-modal-note">
+                  Your subscription will start immediately and renew monthly.
                 </p>
               </div>
-            </div>
-            <span className="badge badge-success" style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}>Active</span>
-          </div>
-        </div>
-      )}
-
-      {/* Plans Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
-        {loading ? (
-          <div style={{ gridColumn: '1 / -1' }} className="empty-state">
-            <div className="loading-spinner"></div>
-          </div>
-        ) : (
-          displayPlans.map((plan) => (
-            <div 
-              key={plan.planId}
-              className="pricing-card"
-              style={{
-                borderColor: plan.popular ? '#ff6b35' : 'var(--border)',
-                position: 'relative'
-              }}
-            >
-              {plan.popular && (
-                <div style={{
-                  position: 'absolute',
-                  top: '-12px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: 'linear-gradient(135deg, #ff6b35, #dc2626)',
-                  color: 'white',
-                  padding: '0.25rem 1rem',
-                  borderRadius: '1rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
-                }}>
-                  <StarIcon style={{ width: 12, height: 12 }} />
-                  MOST POPULAR
-                </div>
-              )}
               
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h3 className="pricing-title">{plan.name}</h3>
-                <div className="pricing-price">
-                  {plan.price}
-                  <span> EGP/mo</span>
-                </div>
+              <div className="subscriptions-modal-footer">
+                <button 
+                  className="subscriptions-modal-btn cancel"
+                  onClick={() => { setShowModal(false); setSelectedPlan(null) }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="subscriptions-modal-btn confirm"
+                  onClick={handleSubscribe}
+                  disabled={subscribing}
+                >
+                  {subscribing ? (
+                    <>
+                      <div className="loading-spinner small"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCardIcon />
+                      Subscribe for {selectedPlan.price} EGP
+                    </>
+                  )}
+                </button>
               </div>
-
-              <ul className="pricing-features">
-                {(plan.features || []).map((feature, idx) => (
-                  <li key={idx}>
-                    <CheckIcon style={{ width: 16, height: 16, color: '#22c55e' }} />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-                {(plan.notIncluded || []).map((feature, idx) => (
-                  <li key={`not-${idx}`} style={{ color: 'var(--foreground-muted)', opacity: 0.6 }}>
-                    <XIcon style={{ width: 16, height: 16, color: '#ef4444' }} />
-                    <span style={{ textDecoration: 'line-through' }}>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                className={`btn w-full ${plan.popular ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => {
-                  setSelectedPlan(plan)
-                  setShowModal(true)
-                }}
-                style={{ marginTop: '1rem' }}
-              >
-                {currentSubscription?.planId === plan.planId ? 'Current Plan' : 'Subscribe Now'}
-              </button>
             </div>
-          ))
+          </div>
         )}
       </div>
-
-      {/* Features Comparison */}
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">Why Subscribe?</h3>
-        </div>
-        <div className="card-content">
-          <div className="grid-cols-4" style={{ gap: '1.5rem' }}>
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <div style={{ 
-                width: 56, height: 56, borderRadius: '1rem', 
-                background: 'rgba(255, 107, 53, 0.1)', 
-                color: '#ff6b35',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 1rem'
-              }}>
-                <DumbbellIcon />
-              </div>
-              <h4 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Premium Equipment</h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--foreground-muted)' }}>Access to state-of-the-art fitness equipment</p>
-            </div>
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <div style={{ 
-                width: 56, height: 56, borderRadius: '1rem', 
-                background: 'rgba(59, 130, 246, 0.1)', 
-                color: '#3b82f6',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 1rem'
-              }}>
-                <UsersIcon />
-              </div>
-              <h4 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Group Classes</h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--foreground-muted)' }}>Join yoga, HIIT, spinning & more</p>
-            </div>
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <div style={{ 
-                width: 56, height: 56, borderRadius: '1rem', 
-                background: 'rgba(139, 92, 246, 0.1)', 
-                color: '#8b5cf6',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 1rem'
-              }}>
-                <ZapIcon />
-              </div>
-              <h4 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>AI Coach</h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--foreground-muted)' }}>Get personalized fitness guidance</p>
-            </div>
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <div style={{ 
-                width: 56, height: 56, borderRadius: '1rem', 
-                background: 'rgba(34, 197, 94, 0.1)', 
-                color: '#22c55e',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 1rem'
-              }}>
-                <CalendarIcon />
-              </div>
-              <h4 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Flexible Access</h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--foreground-muted)' }}>Train anytime with 24/7 access</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Subscribe Modal */}
-      {showModal && selectedPlan && (
-        <div className="modal-overlay" onClick={() => { setShowModal(false); setSelectedPlan(null) }}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
-            <div className="modal-header" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}>
-              <h3 className="modal-title" style={{ color: 'white' }}>
-                <CrownIcon style={{ marginRight: '0.5rem' }} />
-                Confirm Subscription
-              </h3>
-              <button 
-                className="modal-close"
-                onClick={() => { setShowModal(false); setSelectedPlan(null) }}
-                style={{ color: 'white' }}
-              >
-                <XIcon />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '2rem', 
-                background: 'var(--background-secondary)', 
-                borderRadius: '1rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div style={{ fontSize: '0.875rem', color: 'var(--foreground-muted)', marginBottom: '0.5rem' }}>
-                  {selectedPlan.name} Plan
-                </div>
-                <div style={{ fontSize: '3rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.25rem' }}>
-                  {selectedPlan.price}
-                  <span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--foreground-muted)' }}> EGP/mo</span>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h4 style={{ fontWeight: 600, marginBottom: '0.75rem' }}>What's included:</h4>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                  {(selectedPlan.features || []).slice(0, 5).map((feature, idx) => (
-                    <li key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0', color: 'var(--foreground-muted)' }}>
-                      <CheckIcon style={{ width: 16, height: 16, color: '#22c55e' }} />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <p style={{ fontSize: '0.75rem', color: 'var(--foreground-muted)', textAlign: 'center' }}>
-                Your subscription will start immediately and renew monthly.
-              </p>
-            </div>
-            <div className="modal-footer">
-              <button 
-                className="btn btn-secondary"
-                onClick={() => { setShowModal(false); setSelectedPlan(null) }}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-primary"
-                onClick={handleSubscribe}
-                disabled={subscribing}
-              >
-                {subscribing ? (
-                  <>
-                    <div className="loading-spinner" style={{ width: 16, height: 16 }}></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CreditCardIcon style={{ width: 18, height: 18 }} />
-                    Subscribe for {selectedPlan.price} EGP
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </DashboardLayout>
   )
 }

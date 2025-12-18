@@ -1,57 +1,47 @@
 import { useState, useEffect } from 'react'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
+import { Link } from 'react-router-dom'
 import DashboardLayout from '../../components/layouts/DashboardLayout'
 import { statsService } from '../../services/statsService'
+import './Dashboard.css'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
-// Icons
+// Icons - Filled modern style
 const UsersIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
   </svg>
 )
 
 const DollarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
   </svg>
 )
 
 const TrendingUpIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
   </svg>
 )
 
 const ActivityIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
   </svg>
 )
 
-const DumbbellIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>
+const DownloadIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
   </svg>
 )
 
-const CalendarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
-  </svg>
-)
-
-const ArrowUpIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" x2="12" y1="19" y2="5"/><polyline points="5 12 12 5 19 12"/>
-  </svg>
-)
-
-const UserPlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>
+const PlusIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
   </svg>
 )
 
@@ -164,21 +154,11 @@ function AdminDashboard() {
   }
 
   const statCards = [
-    { icon: <UsersIcon />, label: 'Total Members', value: stats.totalMembers, change: '+12%', color: '#ff6b35' },
-    { icon: <UserPlusIcon />, label: 'New This Month', value: stats.newMembersThisMonth, change: '+8%', color: '#22c55e' },
-    { icon: <ActivityIcon />, label: 'Active Members', value: stats.activeMembers, change: '+5%', color: '#8b5cf6' },
-    { icon: <DollarIcon />, label: 'Monthly Revenue', value: `${(stats.monthlyRevenue / 1000).toFixed(0)}K`, change: '+15%', color: '#f59e0b' }
+    { icon: <UsersIcon />, label: 'Total Members', value: stats.totalMembers, change: '+12%', hint: 'All registered members' },
+    { icon: <TrendingUpIcon />, label: 'New This Month', value: stats.newMembersThisMonth, change: '+8%', hint: 'New registrations' },
+    { icon: <ActivityIcon />, label: 'Active Now', value: stats.activeMembers, change: 'Live', hint: 'Currently in gym', isLive: true },
+    { icon: <DollarIcon />, label: 'Monthly Revenue', value: `${(stats.monthlyRevenue / 1000).toFixed(0)}K EGP`, change: '+15%', hint: 'This month' }
   ]
-
-  const getActivityColor = (type) => {
-    switch (type) {
-      case 'registration': return '#22c55e'
-      case 'payment': return '#ff6b35'
-      case 'booking': return '#3b82f6'
-      case 'checkin': return '#8b5cf6'
-      default: return '#666'
-    }
-  }
 
   if (loading) {
     return (
@@ -192,194 +172,112 @@ function AdminDashboard() {
 
   return (
     <DashboardLayout role="Admin">
-      {/* Hero Banner */}
-      <div className="hero-banner" style={{
-        backgroundImage: 'linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&h=400&fit=crop)',
-        marginBottom: '2rem'
-      }}>
-        <div className="hero-content">
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>
-            Admin <span style={{ color: '#ff6b35' }}>Dashboard</span>
-          </h1>
-          <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>
-            System overview and analytics
-          </p>
-          <div style={{ 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '0.5rem',
-            background: 'rgba(255,107,53,0.2)',
-            padding: '0.5rem 1rem',
-            borderRadius: '2rem',
-            marginTop: '1rem',
-            border: '1px solid rgba(255,107,53,0.5)'
-          }}>
-            <CalendarIcon style={{ width: 18, height: 18, color: '#ff6b35' }} />
-            <span style={{ color: 'white', fontWeight: '600' }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </span>
+      <div className="admin-dashboard">
+        {/* Header */}
+        <div className="admin-header">
+          <div className="admin-greeting">
+            <h1>Admin Dashboard</h1>
+            <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
           </div>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
-        gap: '1.5rem',
-        marginBottom: '2rem'
-      }}>
-        {statCards.map((stat, idx) => (
-          <div key={idx} className="card" style={{
-            background: 'white',
-            border: '1px solid #e0e0e0',
-            borderRadius: '1rem',
-            padding: '1.5rem',
-            transition: 'transform 0.3s ease, box-shadow 0.3s ease'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                background: `${stat.color}15`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: stat.color
-              }}>
-                {stat.icon}
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                background: '#dcfce7',
-                color: '#22c55e',
-                padding: '0.25rem 0.5rem',
-                borderRadius: '1rem',
-                fontSize: '0.75rem',
-                fontWeight: '600'
-              }}>
-                <ArrowUpIcon />
-                {stat.change}
-              </div>
-            </div>
-            <div style={{ marginTop: '1rem' }}>
-              <p style={{ fontSize: '2rem', fontWeight: '700', color: '#333' }}>{stat.value}</p>
-              <p style={{ fontSize: '0.875rem', color: '#666' }}>{stat.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Charts Row */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '2fr 1fr', 
-        gap: '1.5rem',
-        marginBottom: '2rem'
-      }}>
-        {/* Revenue Chart */}
-        <div className="card" style={{
-          background: 'white',
-          border: '1px solid #e0e0e0',
-          borderRadius: '1rem',
-          padding: '1.5rem'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div>
-              <h3 style={{ fontWeight: '700', fontSize: '1.1rem', color: '#333' }}>Revenue Overview</h3>
-              <p style={{ fontSize: '0.875rem', color: '#666' }}>Monthly revenue trends</p>
-            </div>
-            <div style={{
-              background: 'rgba(255,107,53,0.1)',
-              color: '#ff6b35',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              fontWeight: '600',
-              fontSize: '0.875rem'
-            }}>
-              Last 6 Months
-            </div>
-          </div>
-          <div style={{ height: '280px' }}>
-            <Line data={revenueChartData} options={chartOptions} />
+          <div className="admin-header-actions">
+            <button className="btn-export">
+              <DownloadIcon />
+              Export Report
+            </button>
+            <Link to="/admin/members/add" className="btn-add-member">
+              <PlusIcon />
+              Add Member
+            </Link>
           </div>
         </div>
 
-        {/* Membership Distribution */}
-        <div className="card" style={{
-          background: 'white',
-          border: '1px solid #e0e0e0',
-          borderRadius: '1rem',
-          padding: '1.5rem'
-        }}>
-          <h3 style={{ fontWeight: '700', fontSize: '1.1rem', color: '#333', marginBottom: '0.5rem' }}>
-            Membership Plans
-          </h3>
-          <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '1rem' }}>Distribution by plan</p>
-          <div style={{ height: '250px' }}>
-            <Doughnut data={membershipChartData} options={doughnutOptions} />
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Row */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr 1fr', 
-        gap: '1.5rem' 
-      }}>
-        {/* Weekly Check-ins */}
-        <div className="card" style={{
-          background: 'white',
-          border: '1px solid #e0e0e0',
-          borderRadius: '1rem',
-          padding: '1.5rem'
-        }}>
-          <h3 style={{ fontWeight: '700', fontSize: '1.1rem', color: '#333', marginBottom: '0.5rem' }}>
-            Weekly Check-ins
-          </h3>
-          <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '1rem' }}>Member attendance this week</p>
-          <div style={{ height: '220px' }}>
-            <Bar data={checkinsChartData} options={chartOptions} />
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="card" style={{
-          background: 'white',
-          border: '1px solid #e0e0e0',
-          borderRadius: '1rem',
-          padding: '1.5rem'
-        }}>
-          <h3 style={{ fontWeight: '700', fontSize: '1.1rem', color: '#333', marginBottom: '1rem' }}>
-            Recent Activity
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {recentActivity.map(activity => (
-              <div key={activity.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                padding: '0.75rem',
-                background: '#f9fafb',
-                borderRadius: '0.75rem',
-                border: '1px solid #e0e0e0'
-              }}>
-                <div style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  background: getActivityColor(activity.type)
-                }}></div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: '600', color: '#333', fontSize: '0.875rem' }}>{activity.message}</p>
-                  <p style={{ fontSize: '0.75rem', color: '#999' }}>{activity.time}</p>
+        {/* Stats Grid */}
+        <div className="admin-stats-grid">
+          {statCards.map((stat, idx) => (
+            <div key={idx} className="admin-stat-card">
+              <div className="admin-stat-bg-icon">{stat.icon}</div>
+              <div className="admin-stat-content">
+                <p className="admin-stat-label">{stat.label}</p>
+                <div className="admin-stat-value-row">
+                  <h2 className="admin-stat-value">
+                    {stat.value}
+                    {stat.isLive && <span className="admin-live-dot"></span>}
+                  </h2>
+                  <span className={`admin-stat-badge ${stat.isLive ? 'stable' : 'positive'}`}>
+                    {!stat.isLive && <TrendingUpIcon />}
+                    {stat.change}
+                  </span>
                 </div>
+                <p className="admin-stat-hint">{stat.hint}</p>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Charts Grid */}
+        <div className="admin-charts-grid">
+          {/* Revenue Chart */}
+          <div className="admin-chart-card">
+            <div className="admin-chart-header">
+              <div>
+                <h3 className="admin-chart-title">Revenue Overview</h3>
+                <p className="admin-chart-subtitle">Monthly revenue trends</p>
+              </div>
+              <span className="admin-chart-period">Last 6 Months</span>
+            </div>
+            <div className="admin-chart-container">
+              <Line data={revenueChartData} options={chartOptions} />
+            </div>
+          </div>
+
+          {/* Membership Distribution */}
+          <div className="admin-chart-card">
+            <div className="admin-chart-header">
+              <div>
+                <h3 className="admin-chart-title">Membership Plans</h3>
+                <p className="admin-chart-subtitle">Distribution by plan</p>
+              </div>
+            </div>
+            <div className="admin-chart-container">
+              <Doughnut data={membershipChartData} options={doughnutOptions} />
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Grid */}
+        <div className="admin-bottom-grid">
+          {/* Weekly Check-ins */}
+          <div className="admin-chart-card">
+            <div className="admin-chart-header">
+              <div>
+                <h3 className="admin-chart-title">Weekly Check-ins</h3>
+                <p className="admin-chart-subtitle">Member attendance this week</p>
+              </div>
+            </div>
+            <div className="admin-chart-container" style={{ height: '220px' }}>
+              <Bar data={checkinsChartData} options={chartOptions} />
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="admin-chart-card">
+            <div className="admin-chart-header">
+              <div>
+                <h3 className="admin-chart-title">Recent Activity</h3>
+                <p className="admin-chart-subtitle">Latest system events</p>
+              </div>
+            </div>
+            <div className="admin-activity-list">
+              {recentActivity.map(activity => (
+                <div key={activity.id} className="admin-activity-item">
+                  <div className={`admin-activity-dot ${activity.type}`}></div>
+                  <div className="admin-activity-content">
+                    <p className="admin-activity-message">{activity.message}</p>
+                    <p className="admin-activity-time">{activity.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

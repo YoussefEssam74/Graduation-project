@@ -1,0 +1,789 @@
+/* Coach Dashboard - Modern PulseGym Design */
+
+.coach-dashboard {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+}
+
+/* ===== Glass Panel Effect ===== */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ===== Header Section ===== */
+.coach-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.coach-greeting h1 {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+
+.coach-greeting h1 .emoji {
+  margin-left: 0.25rem;
+}
+
+.coach-greeting p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0.25rem 0 0;
+}
+
+.coach-greeting .highlight {
+  color: #3B82F6;
+  font-weight: 700;
+}
+
+.coach-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rating-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  background: white;
+  border-radius: 9999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.rating-badge svg {
+  color: #fbbf24;
+}
+
+.rating-badge .rating-value {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.875rem;
+}
+
+.rating-badge .rating-count {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ===== Stats Grid ===== */
+.coach-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .coach-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .coach-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.coach-stat-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  transition: all 0.2s;
+}
+
+.coach-stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.coach-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.coach-stat-icon {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.coach-stat-card:hover .coach-stat-icon {
+  transform: scale(1.1);
+}
+
+.coach-stat-icon.blue { background: rgba(59, 130, 246, 0.1); color: #3B82F6; }
+.coach-stat-icon.orange { background: rgba(249, 115, 22, 0.1); color: #F97316; }
+.coach-stat-icon.green { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+.coach-stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; }
+
+.coach-stat-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.coach-stat-badge.green { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+.coach-stat-badge.slate { background: #f1f5f9; color: #64748b; }
+.coach-stat-badge.purple { background: rgba(139, 92, 246, 0.1); color: #8B5CF6; }
+
+.coach-stat-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0;
+}
+
+.coach-stat-value {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0.25rem 0 0;
+  line-height: 1;
+}
+
+/* ===== Alert Banner ===== */
+.alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(to right, rgba(249, 115, 22, 0.08), white);
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.alert-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.alert-icon {
+  padding: 0.5rem;
+  background: rgba(249, 115, 22, 0.1);
+  border-radius: 9999px;
+  color: #F97316;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.alert-text h4 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.alert-text p {
+  font-size: 0.875rem;
+  color: #475569;
+  margin: 0.125rem 0 0;
+}
+
+.alert-text .accent {
+  font-weight: 700;
+  color: #F97316;
+}
+
+.alert-btn {
+  padding: 0.5rem 1rem;
+  background: #F97316;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.alert-btn:hover {
+  background: #ea580c;
+}
+
+/* ===== Main Grid ===== */
+.coach-main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .coach-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Schedule Card ===== */
+.coach-schedule-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.coach-schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.coach-schedule-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.coach-schedule-header h3 svg {
+  color: #3B82F6;
+}
+
+.coach-schedule-header a {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #3B82F6;
+  text-decoration: none;
+}
+
+.coach-schedule-header a:hover {
+  text-decoration: underline;
+}
+
+.coach-timeline {
+  padding: 1.25rem;
+}
+
+.coach-timeline-item {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 1rem;
+  position: relative;
+}
+
+.coach-timeline-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.coach-timeline-time span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.coach-timeline-time.active span {
+  color: #0f172a;
+}
+
+.coach-timeline-line {
+  width: 2px;
+  flex: 1;
+  background: #e2e8f0;
+  margin: 0.5rem 0;
+  position: relative;
+}
+
+.coach-timeline-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  border: 2px solid white;
+}
+
+.coach-timeline-dot.completed {
+  background: #10B981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+}
+
+.coach-timeline-dot.active {
+  width: 16px;
+  height: 16px;
+  background: #3B82F6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  animation: pulse 2s infinite;
+}
+
+.coach-timeline-content {
+  padding-bottom: 2rem;
+}
+
+.coach-timeline-item:last-child .coach-timeline-content {
+  padding-bottom: 0;
+}
+
+.coach-session-card {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: white;
+  transition: all 0.2s;
+}
+
+.coach-session-card:hover {
+  background: #f8fafc;
+}
+
+.coach-session-card.completed {
+  background: #f8fafc;
+  opacity: 0.75;
+}
+
+.coach-session-card.active {
+  background: white;
+  border-left: 4px solid #3B82F6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.coach-session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.coach-session-client {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.coach-client-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: #e2e8f0;
+}
+
+.coach-client-info h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.coach-session-card.completed .coach-client-info h4 {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.coach-client-info p {
+  font-size: 0.875rem;
+  margin: 0.125rem 0 0;
+}
+
+.coach-client-info p.primary {
+  color: #3B82F6;
+  font-weight: 500;
+}
+
+.coach-client-info p.muted {
+  color: #64748b;
+}
+
+.coach-session-status {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.coach-session-status.completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+}
+
+.coach-session-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.btn-check-in {
+  padding: 0.5rem 1rem;
+  background: #3B82F6;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s;
+}
+
+.btn-check-in:hover {
+  background: #2563EB;
+}
+
+.btn-no-show {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: white;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-no-show:hover {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.coach-session-focus {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+
+.coach-session-focus p {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin: 0 0 0.5rem;
+}
+
+.coach-focus-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.coach-focus-tag {
+  padding: 0.25rem 0.5rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+/* ===== Quick Actions ===== */
+.coach-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.coach-quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 112px;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.coach-quick-action:hover {
+  transform: translateY(-4px);
+}
+
+.coach-quick-action.primary {
+  background: #3B82F6;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.coach-quick-action.primary:hover {
+  background: #2563EB;
+}
+
+.coach-quick-action.secondary {
+  background: white;
+  color: #475569;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.coach-quick-action.secondary:hover {
+  background: #f8fafc;
+}
+
+.coach-quick-action svg {
+  width: 32px;
+  height: 32px;
+}
+
+.coach-quick-action.secondary svg.green { color: #10B981; }
+.coach-quick-action.secondary svg.orange { color: #F97316; }
+.coach-quick-action.secondary svg.purple { color: #8B5CF6; }
+
+.coach-quick-action span {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ===== Messages Widget ===== */
+.coach-messages-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.coach-messages-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.coach-messages-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.coach-messages-header a {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #3B82F6;
+  text-decoration: none;
+}
+
+.coach-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.coach-message-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.coach-message-item:hover {
+  background: #f8fafc;
+}
+
+.coach-message-avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.coach-message-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.coach-message-avatar .online-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #10B981;
+  border: 2px solid white;
+}
+
+.coach-message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.coach-message-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.coach-message-top h4 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coach-message-top span {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.coach-message-content p {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0.125rem 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coach-message-input {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.coach-message-input input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: #f8fafc;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.coach-message-input input:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.coach-message-input input::placeholder {
+  color: #94a3b8;
+}
+
+/* ===== Upcoming Week Card ===== */
+.coach-upcoming-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1.25rem;
+}
+
+.coach-upcoming-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.75rem;
+}
+
+.coach-upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.coach-upcoming-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.coach-upcoming-day {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.coach-upcoming-day svg {
+  width: 20px;
+  height: 20px;
+  padding: 0.25rem;
+  background: #f1f5f9;
+  border-radius: 0.25rem;
+  color: #64748b;
+}
+
+.coach-upcoming-day span {
+  font-weight: 500;
+  color: #475569;
+}
+
+.coach-upcoming-count {
+  font-weight: 700;
+  color: #0f172a;
+  background: #f1f5f9;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.coach-availability-btn {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.625rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.coach-availability-btn:hover {
+  background: #f8fafc;
+}
