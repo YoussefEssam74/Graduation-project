@@ -15,11 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Dumbbell,
-  Users,
-  Video,
-  MapPin,
-  CalendarDays,
   Plus,
+  Loader2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,12 +32,11 @@ interface ScheduleEvent {
   date: Date;
   description?: string;
   status?: string;
-  location?: string;
 }
 
 function ScheduleContent() {
   const { user } = useAuth();
-  useToast(); // Initialize toast hook
+  const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingDto[]>([]);
   const [workoutPlans, setWorkoutPlans] = useState<MemberWorkoutPlanDto[]>([]);
@@ -50,8 +46,6 @@ function ScheduleContent() {
     const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     return new Date(today.setDate(diff));
   });
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [viewMode, setViewMode] = useState<"week" | "list">("week");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,13 +65,14 @@ function ScheduleContent() {
         }
       } catch (error) {
         console.error("Failed to fetch schedule data:", error);
+        showToast("Failed to load schedule", "error");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [user?.userId]);
+  }, [user?.userId, showToast]);
 
   // Generate week days
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -96,51 +91,16 @@ function ScheduleContent() {
       events.push({
         id: `booking-${booking.bookingId}`,
         type: "booking",
-        title: booking.coachName || "Coach Session",
+        title: booking.coachName || booking.equipmentName || "Booking",
         time: bookingDate.toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
         }),
         date: bookingDate,
         description: booking.notes,
-        status: booking.status,
-        location: booking.sessionType === 1 ? "In Person" : "Online",
+        status: booking.statusText,
       });
     });
-
-    // Add workout days from active plan
-    const activePlan = workoutPlans.find((p) => p.isActive);
-    if (activePlan?.workoutDays) {
-      const dayMap: Record<string, number> = {
-        sunday: 0,
-        monday: 1,
-        tuesday: 2,
-        wednesday: 3,
-        thursday: 4,
-        friday: 5,
-        saturday: 6,
-      };
-
-      activePlan.workoutDays.forEach((day) => {
-        const dayName = day.dayName.toLowerCase();
-        const dayNum = dayMap[dayName] ?? -1;
-
-        if (dayNum >= 0) {
-          weekDays.forEach((weekDay) => {
-            if (weekDay.getDay() === dayNum) {
-              events.push({
-                id: `workout-${day.dayName}-${weekDay.getTime()}`,
-                type: "workout",
-                title: day.dayName,
-                time: "Workout Day",
-                date: weekDay,
-                description: `${day.exercises?.length || 0} exercises`,
-              });
-            }
-          });
-        }
-      });
-    }
 
     return events.sort((a, b) => a.date.getTime() - b.date.getTime());
   };
@@ -169,7 +129,6 @@ function ScheduleContent() {
     const dayOfWeek = today.getDay();
     const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     setCurrentWeekStart(new Date(today.setDate(diff)));
-    setSelectedDate(new Date());
   };
 
   const isToday = (date: Date) => {
@@ -196,337 +155,210 @@ function ScheduleContent() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
+      <div className="flex items-center justify-center min-h-[calc(100vh-6rem)]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   const upcomingBookings = bookings.filter(
-    (b) => new Date(b.startTime) >= new Date() && b.status === "Confirmed"
+    (b) => new Date(b.startTime) >= new Date() && b.status !== 3
   );
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold flex items-center gap-3">
-            <CalendarDays className="h-10 w-10 text-primary" />
-            <span>
-              <span className="text-foreground">Your </span>
-              <span className="text-primary">Schedule</span>
-            </span>
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your workouts and coaching sessions
-          </p>
-        </div>
-        <Link href="/bookings">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Book Session
-          </Button>
-        </Link>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 border border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Calendar className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{upcomingBookings.length}</div>
-              <div className="text-xs text-muted-foreground">Upcoming Sessions</div>
-            </div>
+    <div className="min-h-[calc(100vh-6rem)] bg-slate-50 p-4 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900">My Schedule</h1>
+            <p className="text-slate-500">Manage your bookings and workouts</p>
           </div>
-        </Card>
-        <Card className="p-4 border border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <Dumbbell className="h-5 w-5 text-green-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">
-                {workoutPlans.find((p) => p.isActive)?.workoutDays?.length || 0}
+          <div className="flex gap-3">
+            <Link href="/book-coach">
+              <Button className="bg-blue-600 hover:bg-blue-700 rounded-xl font-bold gap-2">
+                <Plus className="h-4 w-4" />
+                Book Coach
+              </Button>
+            </Link>
+            <Link href="/book-equipment">
+              <Button variant="outline" className="rounded-xl font-bold gap-2">
+                <Plus className="h-4 w-4" />
+                Book Equipment
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="p-6 bg-white border-0 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Calendar className="h-6 w-6 text-blue-600" />
               </div>
-              <div className="text-xs text-muted-foreground">Workout Days/Week</div>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 border border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <Users className="h-5 w-5 text-purple-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{bookings.length}</div>
-              <div className="text-xs text-muted-foreground">Total Bookings</div>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 border border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-500/10 rounded-lg">
-              <Clock className="h-5 w-5 text-orange-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">
-                {events.filter((e) => isToday(e.date)).length}
+              <div>
+                <p className="text-2xl font-black text-slate-900">{upcomingBookings.length}</p>
+                <p className="text-sm text-slate-500">Upcoming Bookings</p>
               </div>
-              <div className="text-xs text-muted-foreground">Today's Events</div>
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-white border-0 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <Dumbbell className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900">{workoutPlans.length}</p>
+                <p className="text-sm text-slate-500">Active Plans</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 bg-white border-0 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <Clock className="h-6 w-6 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-slate-900">{bookings.length}</p>
+                <p className="text-sm text-slate-500">Total Bookings</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Week Navigation */}
+        <Card className="bg-white border-0 shadow-sm mb-8">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold text-slate-900">{formatWeekRange()}</h2>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigateWeek("prev")}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goToToday}
+                  className="h-8 px-3 text-sm font-semibold"
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigateWeek("next")}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </Card>
-      </div>
 
-      {/* Week Navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigateWeek("prev")}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => navigateWeek("next")}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            Today
-          </Button>
-        </div>
-        <h2 className="text-xl font-bold">{formatWeekRange()}</h2>
-        <div className="flex gap-2">
-          <Button
-            variant={viewMode === "week" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("week")}
-          >
-            Week View
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-          >
-            List View
-          </Button>
-        </div>
-      </div>
-
-      {/* Week View */}
-      {viewMode === "week" ? (
-        <Card className="p-4 border border-border bg-card/50 overflow-x-auto">
-          <div className="grid grid-cols-7 gap-2 min-w-[700px]">
+          {/* Week Grid */}
+          <div className="grid grid-cols-7 divide-x divide-slate-100">
             {weekDays.map((date, idx) => {
               const dayEvents = getEventsForDate(date);
               const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
               const dayNum = date.getDate();
-              const isSelected =
-                selectedDate &&
-                date.getDate() === selectedDate.getDate() &&
-                date.getMonth() === selectedDate.getMonth();
 
               return (
                 <div
                   key={idx}
-                  className={`min-h-[200px] p-2 rounded-lg border transition-all cursor-pointer ${
-                    isToday(date)
-                      ? "border-primary bg-primary/5"
-                      : isSelected
-                      ? "border-primary/50 bg-primary/5"
-                      : "border-border hover:border-primary/30"
-                  }`}
-                  onClick={() => setSelectedDate(date)}
+                  className={`min-h-[200px] p-3 ${isToday(date) ? "bg-blue-50" : ""}`}
                 >
-                  {/* Day Header */}
-                  <div className="text-center mb-2 pb-2 border-b border-border">
-                    <div className="text-xs text-muted-foreground uppercase">
-                      {dayName}
-                    </div>
-                    <div
-                      className={`text-lg font-bold ${
-                        isToday(date) ? "text-primary" : ""
-                      }`}
-                    >
+                  <div className="text-center mb-3">
+                    <p className="text-xs font-semibold text-slate-400 uppercase">{dayName}</p>
+                    <p className={`text-lg font-bold ${isToday(date) ? "text-blue-600" : "text-slate-700"}`}>
                       {dayNum}
-                    </div>
+                    </p>
                   </div>
 
-                  {/* Events */}
                   <div className="space-y-2">
-                    {dayEvents.length === 0 ? (
-                      <div className="text-xs text-muted-foreground text-center py-4">
-                        No events
-                      </div>
-                    ) : (
-                      dayEvents.map((event) => (
-                        <div
-                          key={event.id}
-                          className={`p-2 rounded text-xs ${
-                            event.type === "booking"
-                              ? "bg-blue-500/10 border border-blue-500/20"
-                              : "bg-green-500/10 border border-green-500/20"
+                    {dayEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className={`p-2 rounded-lg text-xs ${event.type === "booking"
+                            ? "bg-blue-100 border-l-2 border-blue-500 text-blue-800"
+                            : "bg-green-100 border-l-2 border-green-500 text-green-800"
                           }`}
-                        >
-                          <div className="font-medium truncate">{event.title}</div>
-                          <div className="text-muted-foreground">{event.time}</div>
-                        </div>
-                      ))
-                    )}
+                      >
+                        <p className="font-semibold truncate">{event.title}</p>
+                        <p className="text-[10px] opacity-80">{event.time}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
             })}
           </div>
         </Card>
-      ) : (
-        /* List View */
-        <Card className="border border-border bg-card/50 divide-y divide-border">
-          {weekDays.map((date, idx) => {
-            const dayEvents = getEventsForDate(date);
-            if (dayEvents.length === 0) return null;
 
-            return (
-              <div key={idx} className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center ${
-                      isToday(date) ? "bg-primary text-primary-foreground" : "bg-muted"
-                    }`}
-                  >
-                    <div className="text-xs">
-                      {date.toLocaleDateString("en-US", { weekday: "short" })}
-                    </div>
-                    <div className="font-bold">{date.getDate()}</div>
-                  </div>
-                  <h3 className="font-semibold">
-                    {date.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                    {isToday(date) && (
-                      <span className="ml-2 text-xs text-primary">(Today)</span>
-                    )}
-                  </h3>
-                </div>
-
-                <div className="space-y-2 ml-13">
-                  {dayEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className={`flex items-center gap-4 p-3 rounded-lg ${
-                        event.type === "booking"
-                          ? "bg-blue-500/10 border border-blue-500/20"
-                          : "bg-green-500/10 border border-green-500/20"
-                      }`}
-                    >
-                      <div
-                        className={`p-2 rounded-lg ${
-                          event.type === "booking"
-                            ? "bg-blue-500/20"
-                            : "bg-green-500/20"
-                        }`}
-                      >
-                        {event.type === "booking" ? (
-                          <Users className="h-5 w-5 text-blue-500" />
+        {/* Upcoming Bookings List */}
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Upcoming Bookings</h2>
+          {upcomingBookings.length === 0 ? (
+            <Card className="p-8 text-center bg-white border-0 shadow-sm">
+              <Calendar className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">No upcoming bookings</p>
+              <Link href="/book-coach">
+                <Button className="mt-4 bg-blue-600 hover:bg-blue-700 rounded-xl">
+                  Book a Session
+                </Button>
+              </Link>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {upcomingBookings.slice(0, 5).map((booking) => (
+                <Card key={booking.bookingId} className="p-4 bg-white border-0 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        {booking.coachId ? (
+                          <Calendar className="h-6 w-6 text-blue-600" />
                         ) : (
-                          <Dumbbell className="h-5 w-5 text-green-500" />
+                          <Dumbbell className="h-6 w-6 text-blue-600" />
                         )}
                       </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{event.title}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-3">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {event.time}
-                          </span>
-                          {event.location && (
-                            <span className="flex items-center gap-1">
-                              {event.location === "Online" ? (
-                                <Video className="h-3 w-3" />
-                              ) : (
-                                <MapPin className="h-3 w-3" />
-                              )}
-                              {event.location}
-                            </span>
-                          )}
-                        </div>
+                      <div>
+                        <p className="font-bold text-slate-900">
+                          {booking.coachName || booking.equipmentName || "Booking"}
+                        </p>
+                        <p className="text-sm text-slate-500">
+                          {new Date(booking.startTime).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                          })}{" "}
+                          at{" "}
+                          {new Date(booking.startTime).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
                       </div>
-                      {event.status && (
-                        <span
-                          className={`text-xs px-2 py-1 rounded ${
-                            event.status === "Confirmed"
-                              ? "bg-green-500/20 text-green-500"
-                              : event.status === "Pending"
-                              ? "bg-yellow-500/20 text-yellow-500"
-                              : "bg-red-500/20 text-red-500"
-                          }`}
-                        >
-                          {event.status}
-                        </span>
-                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {events.length === 0 && (
-            <div className="p-12 text-center">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-lg font-semibold mb-2">No Events This Week</h3>
-              <p className="text-muted-foreground mb-4">
-                Book a coaching session or start a workout plan
-              </p>
-              <Link href="/bookings">
-                <Button>Book a Session</Button>
-              </Link>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${booking.status === 1
+                        ? "bg-green-100 text-green-700"
+                        : "bg-yellow-100 text-yellow-700"
+                      }`}>
+                      {booking.statusText}
+                    </span>
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
-        </Card>
-      )}
-
-      {/* Selected Date Detail (Mobile) */}
-      {selectedDate && viewMode === "week" && (
-        <Card className="p-4 border border-border bg-card/50 md:hidden">
-          <h3 className="font-semibold mb-3">
-            {selectedDate.toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </h3>
-          <div className="space-y-2">
-            {getEventsForDate(selectedDate).length === 0 ? (
-              <p className="text-muted-foreground text-sm">No events on this day</p>
-            ) : (
-              getEventsForDate(selectedDate).map((event) => (
-                <div
-                  key={event.id}
-                  className={`p-3 rounded-lg ${
-                    event.type === "booking"
-                      ? "bg-blue-500/10 border border-blue-500/20"
-                      : "bg-green-500/10 border border-green-500/20"
-                  }`}
-                >
-                  <div className="font-medium">{event.title}</div>
-                  <div className="text-sm text-muted-foreground">{event.time}</div>
-                  {event.description && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {event.description}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

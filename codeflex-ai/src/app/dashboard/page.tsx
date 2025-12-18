@@ -8,12 +8,19 @@ import {
   Brain,
   TrendingUp,
   Trophy,
-  Zap,
+  Ticket,
   User,
   MessageCircle,
   Star,
   X,
   UserCheck,
+  CheckCircle,
+  XCircle,
+  Search,
+  AlertTriangle,
+  Loader2,
+  Clock, // Added Clock here
+  Plus, // Added Plus here
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +28,7 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
-import { statsApi, bookingsApi, MemberStatsDto, BookingDto } from "@/lib/api";
+import { statsApi, bookingsApi, inbodyApi, MemberStatsDto, BookingDto } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { ChatDialog } from "@/components/Chat/ChatDialog";
 
@@ -29,6 +36,7 @@ function DashboardContent() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [stats, setStats] = useState<MemberStatsDto | null>(null);
+  const [bodyFatChange, setBodyFatChange] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [assignedCoach, setAssignedCoach] = useState<{
     id: number;
@@ -42,7 +50,7 @@ function DashboardContent() {
   useEffect(() => {
     const fetchStats = async () => {
       if (!user?.userId) return;
-      
+
       try {
         const response = await statsApi.getMemberStats(user.userId);
         if (response.success && response.data) {
@@ -55,7 +63,26 @@ function DashboardContent() {
       }
     };
 
+    const fetchInBodyStats = async () => {
+      if (!user?.userId) return;
+      try {
+        const response = await inbodyApi.getUserMeasurements(user.userId);
+        if (response.success && response.data && response.data.length >= 2) {
+          // Sort by date descending
+          const sorted = [...response.data].sort((a, b) =>
+            new Date(b.measurementDate).getTime() - new Date(a.measurementDate).getTime()
+          );
+          const current = sorted[0].bodyFatPercentage;
+          const previous = sorted[1].bodyFatPercentage;
+          setBodyFatChange(current - previous);
+        }
+      } catch (error) {
+        console.error("Failed to fetch inbody stats:", error);
+      }
+    };
+
     fetchStats();
+    fetchInBodyStats();
   }, [user?.userId]);
 
   // Recent bookings state
@@ -65,7 +92,7 @@ function DashboardContent() {
   useEffect(() => {
     const fetchRecentBookings = async () => {
       if (!user?.userId) return;
-      
+
       try {
         const response = await bookingsApi.getUserBookings(user.userId);
         if (response.success && response.data) {
@@ -84,7 +111,7 @@ function DashboardContent() {
   useEffect(() => {
     const fetchCoachInfo = async () => {
       if (!user?.userId) return;
-      
+
       try {
         const response = await bookingsApi.getUserBookings(user.userId);
         if (response.success && response.data) {
@@ -92,35 +119,46 @@ function DashboardContent() {
           const coachBookings = response.data.filter((b: BookingDto) => b.coachId && b.coachName);
           if (coachBookings.length > 0) {
             // Sort by startTime descending to get most recent
-            const sortedBookings = [...coachBookings].sort((a, b) => 
+            const sortedBookings = [...coachBookings].sort((a, b) =>
               new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
             );
             const latestCoach = sortedBookings[0];
-            
+
             // Find next upcoming session (future bookings only)
             const now = new Date();
             const upcomingSession = coachBookings.find(
-              (b: BookingDto) => 
+              (b: BookingDto) =>
                 (b.status === 0 || b.status === 1) && // pending or confirmed
                 new Date(b.startTime) > now
             );
-            
+
             setAssignedCoach({
               id: latestCoach.coachId!,
               name: latestCoach.coachName!,
               specialization: "Personal Training",
-              rating: 4.8,
-              upcomingSession: upcomingSession 
+              rating: 5.0, // Default fallback
+              upcomingSession: upcomingSession
                 ? new Date(upcomingSession.startTime).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                  })
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                })
                 : null,
             });
+
+            // Fetch real coach stats
+            try {
+              const statsRes = await statsApi.getCoachStats(latestCoach.coachId!);
+              if (statsRes.success && statsRes.data) {
+                setAssignedCoach(prev => prev ? ({
+                  ...prev,
+                  rating: statsRes.data!.averageRating || 5.0
+                }) : null);
+              }
+            } catch (ignore) { /* ignore error, keep fallback */ }
           }
         }
       } catch (error) {
@@ -139,7 +177,7 @@ function DashboardContent() {
 
     try {
       const response = await bookingsApi.cancelBooking(bookingId, "Cancelled by user");
-      
+
       if (response.success) {
         showToast("Booking cancelled successfully", "success");
         // Refresh bookings
@@ -167,7 +205,6 @@ function DashboardContent() {
     completedWorkouts: stats?.totalWorkoutsCompleted ?? 0,
     currentWeight: stats?.currentWeight ?? 0,
     bodyFatPercentage: stats?.currentBodyFat ?? 0,
-    nextBooking: "Tomorrow at 10:00 AM",
   };
 
   const quickActions = [
@@ -178,6 +215,8 @@ function DashboardContent() {
       href: "/ai-coach",
       color: "text-purple-500",
       bgColor: "bg-purple-50",
+      hoverBgColor: "group-hover:bg-purple-500",
+      bgImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80",
     },
     {
       icon: UserCheck,
@@ -186,30 +225,48 @@ function DashboardContent() {
       href: "/book-coach",
       color: "text-emerald-500",
       bgColor: "bg-emerald-50",
+      hoverBgColor: "group-hover:bg-emerald-500",
+      bgImage: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&q=80",
     },
     {
       icon: Dumbbell,
-      title: "View Programs",
-      description: "Your workout & diet plans",
-      href: "/profile",
-      color: "text-blue-500",
-      bgColor: "bg-blue-50",
-    },
-    {
-      icon: Calendar,
       title: "Book Equipment",
       description: "Reserve gym equipment",
-      href: "/bookings",
-      color: "text-green-500",
-      bgColor: "bg-green-50",
+      href: "/book-equipment",
+      color: "text-orange-500",
+      bgColor: "bg-orange-50",
+      hoverBgColor: "group-hover:bg-orange-500",
+      bgImage: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=400&q=80",
     },
     {
       icon: Activity,
       title: "InBody Scan",
       description: "Track body composition",
       href: "/inbody",
-      color: "text-orange-500",
-      bgColor: "bg-orange-50",
+      color: "text-blue-500",
+      bgColor: "bg-blue-50",
+      hoverBgColor: "group-hover:bg-blue-500",
+      bgImage: "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=400&q=80",
+    },
+    {
+      icon: Calendar,
+      title: "View Programs",
+      description: "Your workout & diet plans",
+      href: "/programs",
+      color: "text-green-500",
+      bgColor: "bg-green-50",
+      hoverBgColor: "group-hover:bg-green-500",
+      bgImage: "https://images.unsplash.com/photo-1549476464-37392f717541?w=400&q=80",
+    },
+    {
+      icon: Ticket,
+      title: "New Program",
+      description: "Generate AI workout plan",
+      href: "/generate-program",
+      color: "text-pink-500",
+      bgColor: "bg-pink-50",
+      hoverBgColor: "group-hover:bg-pink-500",
+      bgImage: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&q=80",
     },
   ];
 
@@ -237,341 +294,335 @@ function DashboardContent() {
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
     if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     return "Just now";
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold">
-            <span className="text-foreground">Welcome back, </span>
-            <span className="text-primary">{user?.name?.split(' ')[0] || "Member"}</span>
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Here's your fitness overview
-          </p>
-        </div>
-        <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-primary to-secondary rounded-lg border border-primary/20">
-          <Zap className="h-6 w-6 text-white" />
-          <div className="text-white">
-            <div className="text-xs font-medium opacity-80">Token Balance</div>
-            <div className="text-2xl font-bold">{user?.tokenBalance ?? 0}</div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-[calc(100vh-6rem)] relative p-3">
+      {/* Full Page Gym Background */}
+      <div
+        className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+        }}
+      />
+      <div className="fixed inset-0 z-0 pointer-events-none bg-slate-50/80" />
 
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Dumbbell className="h-6 w-6 text-primary" />
-            </div>
-            <TrendingUp className="h-5 w-5 text-green-500" />
+      <div className="relative z-10 mx-auto max-w-7xl space-y-2">
+        {/* Hero Section with Background Image */}
+        <div className="relative overflow-hidden rounded-[20px] bg-[#111827] text-white shadow-xl min-h-[140px]">
+          {/* Background Image with Blur */}
+          <div className="absolute inset-0 z-0">
+            <img
+              className="h-full w-full object-cover opacity-40 blur-[2px]"
+              src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop"
+              alt="Modern gym with weights and equipment"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#111827] via-[#111827]/80 to-transparent"></div>
           </div>
-          <div className="text-2xl font-bold mb-1">
-            {isLoading ? "..." : displayStats.completedWorkouts}
-          </div>
-          <div className="text-sm text-muted-foreground">Workouts Completed</div>
-        </Card>
-
-        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Activity className="h-6 w-6 text-primary" />
-            </div>
-            <span className="text-xs font-medium text-green-500">-2.3%</span>
-          </div>
-          <div className="text-2xl font-bold mb-1">
-            {isLoading ? "..." : displayStats.bodyFatPercentage > 0 ? `${displayStats.bodyFatPercentage}%` : "N/A"}
-          </div>
-          <div className="text-sm text-muted-foreground">Body Fat</div>
-        </Card>
-
-        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Calendar className="h-6 w-6 text-primary" />
-            </div>
-            <span className="text-xs font-medium text-primary">Active</span>
-          </div>
-          <div className="text-2xl font-bold mb-1">
-            {isLoading ? "..." : displayStats.upcomingBookings}
-          </div>
-          <div className="text-sm text-muted-foreground">Total Bookings</div>
-        </Card>
-
-        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <Trophy className="h-6 w-6 text-primary" />
-            </div>
-            <TrendingUp className="h-5 w-5 text-green-500" />
-          </div>
-          <div className="text-2xl font-bold mb-1">
-            {isLoading ? "..." : displayStats.currentWeight > 0 ? `${displayStats.currentWeight} kg` : "N/A"}
-          </div>
-          <div className="text-sm text-muted-foreground">Current Weight</div>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-2xl font-bold mb-6">
-          <span className="text-foreground">Quick </span>
-          <span className="text-primary">Actions</span>
-        </h2>
-        <div className="grid md:grid-cols-4 gap-6">
-          {quickActions.map((action, index) => (
-            <Link key={index} href={action.href}>
-              <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all cursor-pointer group">
-                <div className={`p-3 ${action.bgColor} rounded-full w-fit mb-4 group-hover:scale-110 transition-transform`}>
-                  <action.icon className={`h-6 w-6 ${action.color}`} />
-                </div>
-                <h3 className="font-bold text-lg mb-1">{action.title}</h3>
-                <p className="text-sm text-muted-foreground">{action.description}</p>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Active Plans & Recent Activity Grid */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* My Coach Card */}
-        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-          <h3 className="text-xl font-bold mb-4">
-            <span className="text-foreground">My </span>
-            <span className="text-primary">Coach</span>
-          </h3>
-          {assignedCoach ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
-                <div className="p-4 bg-primary/10 rounded-full">
-                  <User className="h-8 w-8 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-lg">{assignedCoach.name}</h4>
-                  <p className="text-sm text-muted-foreground">{assignedCoach.specialization}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    <span className="text-sm font-medium">{assignedCoach.rating}/5.0</span>
-                  </div>
-                </div>
-              </div>
-              
-              {assignedCoach.upcomingSession && (
-                <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <Calendar className="h-5 w-5 text-green-600" />
-                  <div>
-                    <p className="text-sm font-medium text-green-700 dark:text-green-400">Next Session</p>
-                    <p className="text-xs text-green-600">{assignedCoach.upcomingSession}</p>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex gap-2">
-                <Link href="/bookings" className="flex-1">
-                  <Button variant="outline" className="w-full">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Book Session
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-4 min-h-[120px]">
+            <div className="text-white max-w-2xl mb-4 md:mb-0">
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1">
+                Good {new Date().getHours() < 12 ? "Morning" : new Date().getHours() < 18 ? "Afternoon" : "Evening"}, {user?.name?.split(' ')[0] || "Member"}!
+              </h2>
+              <p className="text-lg text-slate-200 mb-6 font-light">
+                Ready to crush your fitness goals? Let&apos;s make today count!
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                <Link href="/generate-program">
+                  <Button className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-bold text-white shadow-lg shadow-primary/30 hover:bg-blue-600 transition-transform hover:scale-105 active:scale-95">
+                    <Ticket className="h-5 w-5" />
+                    Generate Program
                   </Button>
                 </Link>
-                <Button 
-                  className="flex-1" 
-                  onClick={() => setIsChatOpen(true)}
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Message
-                </Button>
+                <Link href="/bookings">
+                  <Button variant="outline" className="flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 font-bold text-white backdrop-blur-md hover:bg-white/20 border-white/20">
+                    <Calendar className="h-5 w-5" />
+                    View Schedule
+                  </Button>
+                </Link>
               </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <User className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground mb-2">No coach assigned yet</p>
-              <p className="text-sm text-muted-foreground mb-4">Book a session with a coach to get started</p>
-              <Link href="/bookings">
-                <Button>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Find a Coach
-                </Button>
-              </Link>
-            </div>
-          )}
-        </Card>
-
-        {/* Active Plans */}
-        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-          <h3 className="text-xl font-bold mb-4">
-            <span className="text-foreground">Active </span>
-            <span className="text-primary">Plans</span>
-          </h3>
-          <div className="space-y-4">
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading plans...</div>
-            ) : displayStats.activeWorkoutPlan || displayStats.activeDietPlan ? (
-              <>
-                {displayStats.activeWorkoutPlan && (
-                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Dumbbell className="h-5 w-5 text-primary" />
-                        <span className="font-semibold">Active Workout Program</span>
-                      </div>
-                      <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Active</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {stats?.activeWorkoutPlans} active plan{stats?.activeWorkoutPlans !== 1 ? 's' : ''}
-                    </p>
-                    <div className="w-full bg-border rounded-full h-2">
-                      <div className="bg-primary rounded-full h-2 w-1/4"></div>
-                    </div>
-                  </div>
-                )}
-
-                {displayStats.activeDietPlan && (
-                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Activity className="h-5 w-5 text-primary" />
-                        <span className="font-semibold">Active Nutrition Plan</span>
-                      </div>
-                      <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Active</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {stats?.activeNutritionPlans} active plan{stats?.activeNutritionPlans !== 1 ? 's' : ''}
-                    </p>
-                    <div className="w-full bg-border rounded-full h-2">
-                      <div className="bg-primary rounded-full h-2 w-1/3"></div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No active plans</p>
-                <p className="text-sm mt-2">Generate a new plan to get started</p>
+            <div className="hidden md:flex items-center gap-4">
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 min-w-[120px]">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Ticket className="h-5 w-5 text-yellow-300" />
+                  <span className="text-3xl font-bold text-white">{user?.tokenBalance ?? 0}</span>
+                </div>
+                <p className="text-blue-100 text-sm">AI Tokens</p>
               </div>
-            )}
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 min-w-[120px]">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Trophy className="h-5 w-5 text-orange-300" />
+                  <span className="text-3xl font-bold text-white">{isLoading ? "..." : displayStats.completedWorkouts}</span>
+                </div>
+                <p className="text-blue-100 text-sm">Workouts</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            <Link href="/profile">
-              <Button className="w-full" variant="outline">
-                View All Plans
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          {/* Wallet Card */}
+          <Card className="p-4 border-0 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] bg-white rounded-[16px] hover:shadow-lg transition-all duration-300">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-blue-50/80 rounded-2xl">
+                <Ticket className="h-5 w-5 text-blue-500" />
+              </div>
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-lg uppercase tracking-wide">Wallet</span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-slate-500 text-xs font-medium">Token Balance</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-slate-900">{user?.tokenBalance ?? 0}</h3>
+                <span className="text-xs font-bold text-blue-500 cursor-pointer hover:underline">Buy More</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Streak Card */}
+          <Card className="p-4 border-0 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] bg-white rounded-[16px] hover:shadow-lg transition-all duration-300">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-emerald-50/80 rounded-2xl">
+                <Activity className="h-5 w-5 text-emerald-500" />
+              </div>
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-lg uppercase tracking-wide">Streak</span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-slate-500 text-xs font-medium">Current Streak</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-slate-900">14</h3>
+                <span className="text-xs font-bold text-emerald-500">Days</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Activity Card */}
+          <Card className="p-4 border-0 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] bg-white rounded-[16px] hover:shadow-lg transition-all duration-300">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-orange-50/80 rounded-2xl">
+                <Clock className="h-5 w-5 text-orange-500" />
+              </div>
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-lg uppercase tracking-wide">Weekly</span>
+            </div>
+            <div className="flex items-end justify-between">
+              <div className="space-y-1">
+                <p className="text-slate-500 text-xs font-medium">Activity Hours</p>
+                <div className="flex items-baseline gap-1">
+                  <h3 className="text-2xl font-black text-slate-900">4.5</h3>
+                  <span className="text-xs text-slate-400 font-medium">/6h</span>
+                </div>
+              </div>
+              <div className="h-8 w-8 relative">
+                <svg className="h-full w-full rotate-[-90deg]" viewBox="0 0 36 36">
+                  <path className="text-slate-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
+                  <path className="text-orange-500" strokeDasharray="75, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
+                </svg>
+              </div>
+            </div>
+          </Card>
+
+          {/* Upcoming Card */}
+          <Card className="p-4 border-0 shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] bg-white rounded-[16px] hover:shadow-lg transition-all duration-300">
+            <div className="flex items-start justify-between mb-4">
+              <div className="p-3 bg-blue-50/80 rounded-2xl">
+                <Calendar className="h-5 w-5 text-blue-500" />
+              </div>
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-lg uppercase tracking-wide">Upcoming</span>
+            </div>
+            <div className="space-y-1">
+              <p className="text-slate-500 text-xs font-medium">Active Bookings</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-slate-900">{displayStats.upcomingBookings}</h3>
+                <span className="text-xs font-bold text-slate-400">Sessions</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Main Content Layout: Quick Actions & Schedule */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+
+          {/* Left Column: Quick Actions (Span 2) */}
+          <div className="lg:col-span-2">
+            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <Ticket className="h-5 w-5 text-blue-500" />
+              Quick Actions
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {quickActions.map((action, index) => (
+                <Link key={index} href={action.href}>
+                  <Card className="relative overflow-hidden border border-slate-200/50 shadow-md hover:shadow-xl transition-all cursor-pointer group h-[140px] rounded-[20px]">
+                    {/* Background Image - Always visible */}
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+                      style={{ backgroundImage: `url('${action.bgImage}')` }}
+                    />
+                    {/* Dark Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/40 to-slate-900/20 group-hover:from-slate-900/90 group-hover:via-slate-900/50 transition-all" />
+
+                    {/* Content */}
+                    <div className="relative z-10 p-4 h-full flex flex-col items-center justify-center text-center">
+                      <div className={`p-2.5 rounded-xl mb-2 transition-all ${action.bgColor} backdrop-blur-sm group-hover:scale-110 group-hover:shadow-lg`}>
+                        <action.icon className={`h-5 w-5 ${action.color}`} />
+                      </div>
+                      <h3 className="font-bold text-white text-sm mb-0.5 drop-shadow-md">{action.title}</h3>
+                      <p className="text-[10px] text-white/70 line-clamp-1">{action.description}</p>
+                    </div>
+
+                    {/* Hover Glow Effect */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent" />
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+
+            {/* Recent Pages / Active Plans (Simplified) */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900">Recent Activity</h3>
+                <Link href="/bookings" className="text-sm font-bold text-blue-500 hover:underline">View All</Link>
+              </div>
+              <div className="space-y-4">
+                {recentBookings.slice(0, 2).map((booking) => (
+                  <div key={booking.bookingId} className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-xl ${booking.coachId ? 'bg-purple-50' : 'bg-blue-50'}`}>
+                        {booking.coachId ? <User className="h-5 w-5 text-purple-500" /> : <Dumbbell className="h-5 w-5 text-blue-500" />}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{booking.coachName || booking.equipmentName || "Workout Session"}</h4>
+                        <p className="text-xs text-slate-500">{new Date(booking.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${booking.status === 1 ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
+                      {booking.status === 1 ? 'Confirmed' : 'Pending'}
+                    </span>
+                  </div>
+                ))}
+                {recentBookings.length === 0 && (
+                  <div className="text-center py-8 bg-white rounded-2xl border border-slate-100 border-dashed">
+                    <p className="text-slate-400 text-sm">No recent activity</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Schedule (Span 1) */}
+          <div className="lg:col-span-1">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900">Schedule</h2>
+              <span className="text-sm font-bold text-blue-500 cursor-pointer hover:underline">View All</span>
+            </div>
+
+            <Card className="p-6 border-0 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white rounded-[24px] h-fit">
+              <div className="relative border-l-2 border-slate-100 ml-3 space-y-8 py-2">
+                {/* Timeline Item 1 */}
+                <div className="relative pl-8">
+                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-green-500 ring-4 ring-green-50"></div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-400">TODAY, 10:00 AM</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-600">CONFIRMED</span>
+                    </div>
+                    <h4 className="font-bold text-slate-900">HIIT Session</h4>
+                    <p className="text-xs text-slate-500">with {assignedCoach?.name || "Fitness Coach"}</p>
+                  </div>
+                </div>
+
+                {/* Timeline Item 2 */}
+                <div className="relative pl-8">
+                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-slate-300"></div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-400">TOMORROW, 6:00 PM</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">PENDING</span>
+                    </div>
+                    <h4 className="font-bold text-slate-900">Yoga Flow</h4>
+                    <p className="text-xs text-slate-500">Studio B</p>
+                  </div>
+                </div>
+
+                {/* Timeline Item 3 */}
+                <div className="relative pl-8">
+                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-slate-300"></div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">SAT, 9:00 AM</span>
+                    <h4 className="font-bold text-slate-900">Open Gym</h4>
+                    <p className="text-xs text-slate-500">Main Floor</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-slate-50">
+                <Link href="/book-coach">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-6 shadow-lg shadow-blue-500/20">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Book New Session
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          </div>
+
+        </div>
+
+        {/* CTA Banner */}
+        <Card className="p-8 border-2 border-primary/20 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 rounded-2xl overflow-hidden relative">
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full blur-3xl" />
+          </div>
+          <div className="relative flex items-center justify-between">
+            <div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">
+                Ready for Your AI-Powered Program?
+              </h3>
+              <p className="text-slate-600 mb-4 max-w-lg">
+                Generate a personalized workout and nutrition plan through an intelligent AI voice conversation
+              </p>
+              <div className="flex items-center gap-4 text-sm text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <Ticket className="h-4 w-4 text-yellow-500" />
+                  50 tokens
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Activity className="h-4 w-4 text-primary" />
+                  ~3 min conversation
+                </span>
+              </div>
+            </div>
+            <Link href="/generate-program">
+              <Button size="lg" className="px-8 bg-primary hover:bg-primary/90 shadow-lg shadow-blue-500/30">
+                <Brain className="h-5 w-5 mr-2" />
+                Generate Now
               </Button>
             </Link>
           </div>
         </Card>
+
+        {/* Chat Dialog */}
+        {
+          isChatOpen && assignedCoach && (
+            <ChatDialog
+              recipientId={assignedCoach.id}
+              recipientName={assignedCoach.name}
+              recipientRole="coach"
+              onClose={() => setIsChatOpen(false)}
+            />
+          )
+        }
       </div>
-
-      {/* Recent Activity / Bookings */}
-      <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold">
-            <span className="text-foreground">Recent </span>
-            <span className="text-primary">Bookings</span>
-          </h3>
-          <Link href="/bookings">
-            <Button variant="outline" size="sm">View All</Button>
-          </Link>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {recentBookings.length > 0 ? (
-            recentBookings.map((booking) => {
-              const statusBadge = getStatusBadge(booking.status, booking.checkInTime, booking.checkOutTime);
-              const isInProgress = booking.status === 1 && booking.checkInTime && !booking.checkOutTime;
-              const canCancel = (booking.status === 0 || booking.status === 1) && !isInProgress; // Pending or Confirmed (but not in progress)
-              return (
-                <div
-                  key={booking.bookingId}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10 relative group"
-                >
-                  <div className="p-2 bg-card rounded-full border border-border">
-                    {booking.coachId ? (
-                      <User className="h-5 w-5 text-purple-500" />
-                    ) : (
-                      <Dumbbell className="h-5 w-5 text-blue-500" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">
-                      {booking.coachName || booking.equipmentName || booking.bookingType}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${statusBadge.bg} ${statusBadge.color}`}>
-                        {statusBadge.text}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{getTimeAgo(booking.createdAt)}</span>
-                    </div>
-                  </div>
-                  {canCancel && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => handleCancelBooking(
-                        booking.bookingId,
-                        booking.coachName || booking.equipmentName || booking.bookingType
-                      )}
-                      title="Cancel booking"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div className="col-span-4 text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No recent bookings</p>
-              <Link href="/bookings">
-                <Button variant="link" className="mt-2">Make your first booking</Button>
-              </Link>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* CTA Banner */}
-      <Card className="p-8 border-2 border-primary bg-gradient-to-r from-primary/10 to-secondary/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-2xl font-bold mb-2">
-              <span className="text-foreground">Need a New </span>
-              <span className="text-primary">AI Program?</span>
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Generate a personalized workout and nutrition plan through AI voice conversation
-            </p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Zap className="h-4 w-4 text-primary" />
-              <span>Costs 50 tokens • Takes ~3 minutes</span>
-            </div>
-          </div>
-          <Link href="/generate-program">
-            <Button size="lg" className="px-8">
-              <Brain className="h-5 w-5 mr-2" />
-              Generate Now
-            </Button>
-          </Link>
-        </div>
-      </Card>
-
-      {/* Chat Dialog */}
-      {isChatOpen && assignedCoach && (
-        <ChatDialog
-          recipientId={assignedCoach.id}
-          recipientName={assignedCoach.name}
-          recipientRole="coach"
-          onClose={() => setIsChatOpen(false)}
-        />
-      )}
     </div>
   );
 }

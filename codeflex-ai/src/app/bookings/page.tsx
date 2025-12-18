@@ -11,7 +11,7 @@ import {
   User,
   CheckCircle,
   XCircle,
-  Zap,
+  Ticket,
   Search,
   AlertTriangle,
   Loader2,
@@ -30,6 +30,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { CoachReviewForm } from "@/components/CoachReviewForm";
+import Link from "next/link";
 
 interface LocalBooking {
   id: number;
@@ -80,12 +81,12 @@ export default function BookingsPage() {
   const { user, deductTokens, adjustTokens, refreshUser } = useAuth();
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<LocalBooking | null>(null);
-  
+
   // Review modal state
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewCoachId, setReviewCoachId] = useState<number | null>(null);
   const [reviewCoachName, setReviewCoachName] = useState<string>("");
-  
+
   // Loading states
   const [isLoadingEquipment, setIsLoadingEquipment] = useState(true);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
@@ -128,13 +129,8 @@ export default function BookingsPage() {
         }
       } catch (error) {
         console.error("Failed to fetch equipment:", error);
-        showToast("Failed to load equipment. Using sample data.", "warning");
-        // Fallback data
-        setEquipmentList([
-          { id: 1, name: "Bench Press", category: "strength", status: "available", location: "Zone A", tokensCost: 10, nextAvailable: null },
-          { id: 2, name: "Treadmill #3", category: "cardio", status: "available", location: "Zone B", tokensCost: 5, nextAvailable: null },
-          { id: 3, name: "Squat Rack", category: "strength", status: "in_use", location: "Zone A", tokensCost: 10, nextAvailable: "11:00 AM" },
-        ]);
+        showToast("Failed to load equipment.", "error");
+        setEquipmentList([]);
       } finally {
         setIsLoadingEquipment(false);
       }
@@ -154,7 +150,7 @@ export default function BookingsPage() {
         if (response.success && response.data) {
           const upcoming: LocalBooking[] = [];
           const past: LocalBooking[] = [];
-          
+
           response.data.forEach((booking: BookingDto) => {
             const status = mapBookingStatus(booking.status);
             const localBooking: LocalBooking = {
@@ -167,14 +163,14 @@ export default function BookingsPage() {
               tokensCost: booking.tokensCost,
               coachId: booking.coachId,
             };
-            
+
             if (status === "cancelled" || status === "completed") {
               past.push(localBooking);
             } else {
               upcoming.push(localBooking);
             }
           });
-          
+
           setUpcomingBookingsState(upcoming);
           setPastBookingsState(past);
         }
@@ -193,38 +189,30 @@ export default function BookingsPage() {
       try {
         setIsLoadingCoaches(true);
         const response = await usersApi.getCoaches();
-        
+
         if (response.success && response.data) {
           // Map UserDto to Coach interface
           const coachList: Coach[] = response.data.map(coach => ({
             id: coach.userId,
             name: coach.name,
-            specialization: "Personal Training", // Default specialization
-            rating: 4.5 + Math.random() * 0.5, // Random rating between 4.5-5.0
-            sessionsCompleted: Math.floor(Math.random() * 200) + 100,
-            tokensCost: 25 + Math.floor(Math.random() * 15), // 25-40 tokens
-            availability: generateRandomAvailability(),
+            specialization: "Personal Training",
+            rating: 0, // Will be fetched from reviews API
+            sessionsCompleted: 0, // Will be fetched from stats API
+            tokensCost: 30, // Default rate
+            availability: coach.isActive ? "Available" : "Unavailable",
           }));
           setCoaches(coachList);
         }
       } catch (error) {
         console.error('Failed to fetch coaches:', error);
+        showToast("Failed to load coaches.", "error");
       } finally {
         setIsLoadingCoaches(false);
       }
     };
-    
-    fetchCoaches();
-  }, []);
 
-  // Helper to generate random availability time
-  const generateRandomAvailability = () => {
-    const times = [
-      "Today 10:00 AM", "Today 2:00 PM", "Today 4:00 PM",
-      "Tomorrow 9:00 AM", "Tomorrow 11:00 AM", "Tomorrow 3:00 PM"
-    ];
-    return times[Math.floor(Math.random() * times.length)];
-  };
+    fetchCoaches();
+  }, [showToast]);
 
   const filteredEquipment = equipmentList.filter((equipment) => {
     const matchesSearch = equipment.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -388,12 +376,12 @@ export default function BookingsPage() {
     try {
       // Try to cancel via API first
       const response = await bookingsApi.cancelBooking(bookingToCancel.id, "Cancelled by user");
-      
+
       if (response.success) {
         // API cancellation succeeded
         setUpcomingBookingsState((prev) => prev.filter((b) => b.id !== bookingToCancel.id));
         setPastBookingsState((prev) => [{ ...bookingToCancel, status: "cancelled", tokensCost: 0 }, ...prev]);
-        
+
         if (bookingToCancel.status === "confirmed" && bookingToCancel.tokensCost > 0) {
           adjustTokens(bookingToCancel.tokensCost);
           // Refresh authoritative balance from server (in case backend processed a refund)
@@ -463,392 +451,424 @@ export default function BookingsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold">
-          <span className="text-foreground">Book </span>
-          <span className="text-primary">Equipment & Coaches</span>
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Reserve equipment or schedule coaching sessions
-        </p>
-      </div>
-
-      {/* My Bookings Section */}
-      <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-        <h2 className="text-2xl font-bold mb-4">
-          <span className="text-foreground">My </span>
-          <span className="text-primary">Bookings</span>
-        </h2>
-
-        <Tabs defaultValue="upcoming" className="w-full">
-          <TabsList className="w-full max-w-md">
-            <TabsTrigger value="upcoming" className="flex-1">
-              Upcoming
-            </TabsTrigger>
-            <TabsTrigger value="past" className="flex-1">
-              Past
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="upcoming" className="space-y-4 mt-6">
-            {isLoadingBookings ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Loading bookings...</span>
-              </div>
-            ) : upcomingBookingsState.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No upcoming bookings</p>
-                <p className="text-sm">Book equipment or a coach session below!</p>
-              </div>
-            ) : (
-              upcomingBookingsState.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="p-4 bg-primary/5 rounded-lg border border-primary/20 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary/10 rounded-full">
-                      {booking.type === "equipment" ? (
-                        <Dumbbell className="h-6 w-6 text-primary" />
-                      ) : (
-                        <User className="h-6 w-6 text-primary" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-bold">{booking.name}</div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {booking.date}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {booking.time}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Zap className="h-3 w-3 text-primary" />
-                          {booking.tokensCost} tokens
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(booking.status)}
-                    <Button variant="outline" size="sm" onClick={() => handleCancelBooking(booking.id)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="past" className="space-y-4 mt-6">
-            {isLoadingBookings ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Loading history...</span>
-              </div>
-            ) : pastBookingsState.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No past bookings yet</p>
-              </div>
-            ) : (
-              pastBookingsState.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="p-4 bg-card rounded-lg border border-border flex items-center justify-between opacity-75"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-muted rounded-full">
-                      {booking.type === "equipment" ? (
-                        <Dumbbell className="h-6 w-6 text-muted-foreground" />
-                      ) : (
-                        <User className="h-6 w-6 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-bold">{booking.name}</div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {booking.date}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {booking.time}
-                        </span>
-                        {booking.tokensCost > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Zap className="h-3 w-3" />
-                            {booking.tokensCost} tokens
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(booking.status)}
-                    {booking.type === "coach" && booking.status === "completed" && booking.coachId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setReviewCoachId(booking.coachId!);
-                          setReviewCoachName(booking.name);
-                          setReviewModalOpen(true);
-                        }}
-                      >
-                        <Star className="h-4 w-4 mr-1" />
-                        Review
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
-      </Card>
-
-      {/* Browse Equipment */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">
-          <span className="text-foreground">Browse </span>
-          <span className="text-primary">Equipment</span>
-        </h2>
-
-        {/* Search and Filter */}
-        <div className="flex gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search equipment..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant={selectedCategory === "all" ? "default" : "outline"}
-              onClick={() => setSelectedCategory("all")}
-            >
-              All
-            </Button>
-            <Button
-              variant={selectedCategory === "strength" ? "default" : "outline"}
-              onClick={() => setSelectedCategory("strength")}
-            >
-              Strength
-            </Button>
-            <Button
-              variant={selectedCategory === "cardio" ? "default" : "outline"}
-              onClick={() => setSelectedCategory("cardio")}
-            >
-              Cardio
-            </Button>
-          </div>
-        </div>
-
-        {/* Equipment Grid */}
-        {isLoadingEquipment ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Loading equipment...</span>
-          </div>
-        ) : filteredEquipment.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No equipment found</p>
-            <p className="text-sm">Try adjusting your search or filters</p>
-          </div>
-        ) : (
-        <div className="grid md:grid-cols-3 gap-6">
-          {filteredEquipment.map((equipment) => (
-            <Card
-              key={equipment.id}
-              className="p-6 border border-border bg-card/50 backdrop-blur-sm"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-primary/10 rounded-full">
-                  <Dumbbell className="h-6 w-6 text-primary" />
-                </div>
-                {getStatusBadge(equipment.status)}
-              </div>
-              <h3 className="font-bold text-lg mb-2">{equipment.name}</h3>
-              <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                <div className="flex justify-between">
-                  <span>Location:</span>
-                  <span className="font-medium text-foreground">{equipment.location}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cost:</span>
-                  <span className="flex items-center gap-1 font-medium text-primary">
-                    <Zap className="h-3 w-3" />
-                    {equipment.tokensCost} tokens/hour
-                  </span>
-                </div>
-                {equipment.nextAvailable && (
-                  <div className="flex justify-between">
-                    <span>Next Available:</span>
-                    <span className="font-medium text-foreground">
-                      {equipment.nextAvailable}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <Button
-                className="w-full"
-                disabled={equipment.status !== "available"}
-                onClick={() => handleBookEquipment(equipment.id)}
-              >
-                {equipment.status === "available" ? "Book Now" : "Unavailable"}
-              </Button>
-            </Card>
-          ))}
-        </div>
-        )}
-      </div>
-
-      {/* Browse Coaches */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">
-          <span className="text-foreground">Browse </span>
-          <span className="text-primary">Coaches</span>
-        </h2>
-
-        {isLoadingCoaches ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Loading coaches...</span>
-          </div>
-        ) : coaches.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <User className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No coaches available</p>
-          </div>
-        ) : (
-        <div className="grid md:grid-cols-3 gap-6">
-          {coaches.map((coach) => (
-            <Card
-              key={coach.id}
-              className="p-6 border border-border bg-card/50 backdrop-blur-sm"
-            >
-              <div className="flex items-start gap-4 mb-4">
-                <div className="p-4 bg-primary/10 rounded-full">
-                  <User className="h-8 w-8 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg">{coach.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {coach.specialization}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-sm mb-4">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Rating:</span>
-                  <span className="font-medium">⭐ {coach.rating}/5.0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sessions:</span>
-                  <span className="font-medium">{coach.sessionsCompleted}+ completed</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cost:</span>
-                  <span className="flex items-center gap-1 font-medium text-primary">
-                    <Zap className="h-3 w-3" />
-                    {coach.tokensCost} tokens/session
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Next Available:</span>
-                  <span className="font-medium text-green-600">{coach.availability}</span>
-                </div>
-              </div>
-
-              <Button className="w-full" onClick={() => handleBookSession(coach.id)}>
-                Book Session
-              </Button>
-            </Card>
-          ))}
-        </div>
-        )}
-      </div>
-
-      {/* Cancel Booking Confirmation Dialog */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Cancel Booking
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to cancel your booking for{" "}
-              <span className="font-semibold text-foreground">{bookingToCancel?.name}</span>?
-            </DialogDescription>
-          </DialogHeader>
-          
-          {bookingToCancel && (
-            <div className="py-4">
-              <div className="p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Date:</span>
-                  <span className="font-medium">{bookingToCancel.date}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Time:</span>
-                  <span className="font-medium">{bookingToCancel.time}</span>
-                </div>
-                {bookingToCancel.tokensCost > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Refund:</span>
-                    <span className="font-medium text-green-600 flex items-center gap-1">
-                      <Zap className="h-3 w-3" />
-                      {bookingToCancel.tokensCost} tokens
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-              Keep Booking
-            </Button>
-            <Button variant="destructive" onClick={confirmCancelBooking}>
-              <XCircle className="h-4 w-4 mr-2" />
-              Cancel Booking
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Coach Review Modal */}
-      {reviewCoachId && (
-        <CoachReviewForm
-          isOpen={reviewModalOpen}
-          onClose={() => {
-            setReviewModalOpen(false);
-            setReviewCoachId(null);
-            setReviewCoachName("");
-          }}
-          coachId={reviewCoachId}
-          coachName={reviewCoachName}
-          onReviewSubmitted={() => {
-            showToast("Thank you for your review!", "success");
+    <div className="min-h-screen bg-[#f6f7f8]">
+      {/* Fixed Background Pattern */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-5">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-md transform scale-105"
+          style={{
+            backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')"
           }}
         />
-      )}
+      </div>
+
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-7xl space-y-8">
+        {/* Hero Section */}
+        <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-white/85 backdrop-blur-md rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
+          <div className="flex flex-col gap-3 max-w-2xl">
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
+              Ready to crush it? <span className="text-primary">⚡</span>
+            </h1>
+            <p className="text-slate-500 text-base md:text-lg font-normal">
+              You have <span className="font-bold text-slate-900">{upcomingBookingsState.length} upcoming sessions</span> scheduled.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-600 text-xs font-bold">
+                <Ticket className="h-4 w-4" />
+                {user?.tokenBalance ?? 0} Tokens Available
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <Link href="/book-coach">
+              <Button className="flex-1 md:flex-none h-12 px-6 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20">
+                <User className="h-5 w-5" />
+                <span>Book Coach</span>
+              </Button>
+            </Link>
+            <Link href="/book-equipment">
+              <Button variant="outline" className="flex-1 md:flex-none h-12 px-6 bg-white border border-slate-200 text-slate-900 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50 transition-all">
+                <Dumbbell className="h-5 w-5" />
+                <span>Book Equipment</span>
+              </Button>
+            </Link>
+          </div>
+        </section>
+
+        {/* My Bookings Section */}
+        <Card className="p-6 border border-slate-200 bg-white shadow-sm">
+          <h2 className="text-2xl font-bold mb-4 text-slate-900">
+            My Bookings
+          </h2>
+
+          <Tabs defaultValue="upcoming" className="w-full">
+            <TabsList className="w-full max-w-md bg-slate-100">
+              <TabsTrigger value="upcoming" className="flex-1">
+                Upcoming
+              </TabsTrigger>
+              <TabsTrigger value="past" className="flex-1">
+                Past
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upcoming" className="space-y-4 mt-6">
+              {isLoadingBookings ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Loading bookings...</span>
+                </div>
+              ) : upcomingBookingsState.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No upcoming bookings</p>
+                  <p className="text-sm">Book equipment or a coach session below!</p>
+                </div>
+              ) : (
+                upcomingBookingsState.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="p-4 bg-primary/5 rounded-lg border border-primary/20 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-primary/10 rounded-full">
+                        {booking.type === "equipment" ? (
+                          <Dumbbell className="h-6 w-6 text-primary" />
+                        ) : (
+                          <User className="h-6 w-6 text-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-bold">{booking.name}</div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {booking.date}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {booking.time}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Ticket className="h-3 w-3 text-primary" />
+                            {booking.tokensCost} tokens
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(booking.status)}
+                      <Button variant="outline" size="sm" onClick={() => handleCancelBooking(booking.id)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="past" className="space-y-4 mt-6">
+              {isLoadingBookings ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Loading history...</span>
+                </div>
+              ) : pastBookingsState.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No past bookings yet</p>
+                </div>
+              ) : (
+                pastBookingsState.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="p-4 bg-card rounded-lg border border-border flex items-center justify-between opacity-75"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-muted rounded-full">
+                        {booking.type === "equipment" ? (
+                          <Dumbbell className="h-6 w-6 text-muted-foreground" />
+                        ) : (
+                          <User className="h-6 w-6 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-bold">{booking.name}</div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {booking.date}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {booking.time}
+                          </span>
+                          {booking.tokensCost > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Ticket className="h-3 w-3" />
+                              {booking.tokensCost} tokens
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(booking.status)}
+                      {booking.type === "coach" && booking.status === "completed" && booking.coachId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setReviewCoachId(booking.coachId!);
+                            setReviewCoachName(booking.name);
+                            setReviewModalOpen(true);
+                          }}
+                        >
+                          <Star className="h-4 w-4 mr-1" />
+                          Review
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
+        </Card>
+
+        {/* Browse Equipment */}
+        <div>
+          <h2 className="text-2xl font-bold mb-4">
+            <span className="text-foreground">Browse </span>
+            <span className="text-primary">Equipment</span>
+          </h2>
+
+          {/* Search and Filter */}
+          <div className="flex gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search equipment..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={selectedCategory === "all" ? "default" : "outline"}
+                onClick={() => setSelectedCategory("all")}
+              >
+                All
+              </Button>
+              <Button
+                variant={selectedCategory === "strength" ? "default" : "outline"}
+                onClick={() => setSelectedCategory("strength")}
+              >
+                Strength
+              </Button>
+              <Button
+                variant={selectedCategory === "cardio" ? "default" : "outline"}
+                onClick={() => setSelectedCategory("cardio")}
+              >
+                Cardio
+              </Button>
+            </div>
+          </div>
+
+          {/* Equipment Grid */}
+          {isLoadingEquipment ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-3 text-muted-foreground">Loading equipment...</span>
+            </div>
+          ) : filteredEquipment.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No equipment found</p>
+              <p className="text-sm">Try adjusting your search or filters</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {filteredEquipment.map((equipment) => (
+                <Card
+                  key={equipment.id}
+                  className="p-6 border border-border bg-card/50 backdrop-blur-sm"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-primary/10 rounded-full">
+                      <Dumbbell className="h-6 w-6 text-primary" />
+                    </div>
+                    {getStatusBadge(equipment.status)}
+                  </div>
+                  <h3 className="font-bold text-lg mb-2">{equipment.name}</h3>
+                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                    <div className="flex justify-between">
+                      <span>Location:</span>
+                      <span className="font-medium text-foreground">{equipment.location}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cost:</span>
+                      <span className="flex items-center gap-1 font-medium text-primary">
+                        <Ticket className="h-3 w-3" />
+                        {equipment.tokensCost} tokens/hour
+                      </span>
+                    </div>
+                    {equipment.nextAvailable && (
+                      <div className="flex justify-between">
+                        <span>Next Available:</span>
+                        <span className="font-medium text-foreground">
+                          {equipment.nextAvailable}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    className="w-full"
+                    disabled={equipment.status !== "available"}
+                    onClick={() => handleBookEquipment(equipment.id)}
+                  >
+                    {equipment.status === "available" ? "Book Now" : "Unavailable"}
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Browse Coaches */}
+        <div>
+          <h2 className="text-2xl font-bold mb-4">
+            <span className="text-foreground">Browse </span>
+            <span className="text-primary">Coaches</span>
+          </h2>
+
+          {isLoadingCoaches ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-3 text-muted-foreground">Loading coaches...</span>
+            </div>
+          ) : coaches.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <User className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No coaches available</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-3 gap-6">
+              {coaches.map((coach) => (
+                <Card
+                  key={coach.id}
+                  className="p-6 border border-border bg-card/50 backdrop-blur-sm"
+                >
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="p-4 bg-primary/10 rounded-full">
+                      <User className="h-8 w-8 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">{coach.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {coach.specialization}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm mb-4">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Rating:</span>
+                      <span className="font-medium">⭐ {coach.rating}/5.0</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Sessions:</span>
+                      <span className="font-medium">{coach.sessionsCompleted}+ completed</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Cost:</span>
+                      <span className="flex items-center gap-1 font-medium text-primary">
+                        <Ticket className="h-3 w-3" />
+                        {coach.tokensCost} tokens/session
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Next Available:</span>
+                      <span className="font-medium text-green-600">{coach.availability}</span>
+                    </div>
+                  </div>
+
+                  <Button className="w-full" onClick={() => handleBookSession(coach.id)}>
+                    Book Session
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Cancel Booking Confirmation Dialog */}
+        <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                Cancel Booking
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel your booking for{" "}
+                <span className="font-semibold text-foreground">{bookingToCancel?.name}</span>?
+              </DialogDescription>
+            </DialogHeader>
+
+            {bookingToCancel && (
+              <div className="py-4">
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Date:</span>
+                    <span className="font-medium">{bookingToCancel.date}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Time:</span>
+                    <span className="font-medium">{bookingToCancel.time}</span>
+                  </div>
+                  {bookingToCancel.tokensCost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Refund:</span>
+                      <span className="font-medium text-green-600 flex items-center gap-1">
+                        <Ticket className="h-3 w-3" />
+                        {bookingToCancel.tokensCost} tokens
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                Keep Booking
+              </Button>
+              <Button variant="destructive" onClick={confirmCancelBooking}>
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel Booking
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Coach Review Modal */}
+        {reviewCoachId && (
+          <CoachReviewForm
+            isOpen={reviewModalOpen}
+            onClose={() => {
+              setReviewModalOpen(false);
+              setReviewCoachId(null);
+              setReviewCoachName("");
+            }}
+            coachId={reviewCoachId}
+            coachName={reviewCoachName}
+            onReviewSubmitted={() => {
+              showToast("Thank you for your review!", "success");
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

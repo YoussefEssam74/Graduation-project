@@ -1,8 +1,8 @@
 "use client";
 
-import { 
-  UserIcon, 
-  ZapIcon, 
+import {
+  UserIcon,
+  Ticket,
   LayoutDashboardIcon,
   CalendarIcon,
   ActivityIcon,
@@ -128,24 +128,24 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border py-3">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 py-3 shadow-sm">
       <div className="container mx-auto flex items-center justify-between">
         <Link href={isAuthenticated ? getDashboardUrl() : "/"} className="flex items-center gap-2">
-          <div className="p-1 bg-primary/10 rounded">
-            <ZapIcon className="w-4 h-4 text-primary" />
+          <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg shadow-blue-500/20">
+            <Ticket className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold font-mono">
-            Intel<span className="text-primary">Fit</span>
+          <span className="text-xl font-bold">
+            Pulse<span className="text-primary">Gym</span>
           </span>
         </Link>
 
         <nav className="flex items-center gap-5">
           {!isAuthenticated ? (
             <>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50">
                 <Link href="/login">Sign In</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="bg-primary shadow-lg shadow-blue-500/30">
                 <Link href="/signup">Sign Up</Link>
               </Button>
             </>
@@ -157,7 +157,7 @@ export default function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-primary transition-colors"
                   >
                     <Icon size={16} />
                     <span>{item.label}</span>
@@ -169,23 +169,23 @@ export default function Navbar() {
                 <Button
                   asChild
                   variant="outline"
-                  className="ml-2 border-primary/50 text-primary hover:bg-primary hover:text-white"
+                  className="ml-2 border-primary/50 text-primary hover:bg-primary hover:text-white shadow-sm"
                 >
                   <Link href="/generate-program">Generate Program</Link>
                 </Button>
               )}
 
-              <div className="flex items-center gap-3 ml-2 pl-3 border-l border-border">
+              <div className="flex items-center gap-3 ml-2 pl-3 border-l border-slate-200">
                 <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full ${getRoleBadgeColor()} flex items-center justify-center`}>
+                  <div className={`w-8 h-8 rounded-full ${getRoleBadgeColor()} flex items-center justify-center shadow-md`}>
                     {normalizeRole(user?.role || '') === UserRole.Admin && <ShieldIcon className="w-4 h-4 text-white" />}
                     {normalizeRole(user?.role || '') === UserRole.Coach && <UserCogIcon className="w-4 h-4 text-white" />}
                     {normalizeRole(user?.role || '') === UserRole.Receptionist && <Users2Icon className="w-4 h-4 text-white" />}
                     {normalizeRole(user?.role || '') === UserRole.Member && <UserIcon className="w-4 h-4 text-white" />}
                   </div>
                   <div className="text-sm">
-                    <div className="font-semibold">{user?.name?.split(' ')[0]}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{normalizeRole(user?.role || '')}</div>
+                    <div className="font-semibold text-slate-900">{user?.name?.split(' ')[0]}</div>
+                    <div className="text-xs text-slate-500 capitalize">{normalizeRole(user?.role || '')}</div>
                   </div>
                 </div>
 

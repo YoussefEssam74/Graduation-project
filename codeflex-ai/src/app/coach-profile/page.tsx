@@ -157,22 +157,22 @@ function CoachProfileContent() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-[#f6f7f8] text-slate-900">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-800/50 px-6 py-4 lg:px-10">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-6 py-4 lg:px-10 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
-              <div className="text-orange-500">
-                <Award className="h-8 w-8" />
+              <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg shadow-blue-500/20">
+                <Award className="h-6 w-6 text-white" />
               </div>
-              <h2 className="text-xl font-bold">IntelliFit</h2>
+              <h2 className="text-xl font-bold">Pulse<span className="text-primary">Gym</span></h2>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative text-slate-600 hover:bg-slate-100">
               <MessageCircle className="h-5 w-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-orange-500 rounded-full" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
             </Button>
           </div>
         </div>

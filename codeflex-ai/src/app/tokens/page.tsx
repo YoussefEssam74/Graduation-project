@@ -2,24 +2,29 @@
 
 import { useState, useEffect } from "react";
 import {
-  Zap,
+  Ticket,
   TrendingUp,
-  TrendingDown,
+  CreditCard,
+  Wallet,
+  ShoppingBag,
+  Bell,
+  Settings,
+  Search,
+  RefreshCw,
+  Gift,
+  Star,
+  CheckCircle2,
+  HelpCircle,
+  Loader2,
   ArrowUpRight,
   ArrowDownRight,
-  Calendar,
-  Brain,
-  Dumbbell,
-  MessageSquare,
-  ShoppingCart,
-  CheckCircle,
-  CreditCard,
-  Loader2,
+  Filter
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -40,30 +45,74 @@ export default function TokensPage() {
   const [tokensEarnedThisMonth, setTokensEarnedThisMonth] = useState(0);
   const [tokensSpentThisMonth, setTokensSpentThisMonth] = useState(0);
 
-  // Use current user's token balance from auth
   const { user, adjustTokens, refreshUser } = useAuth();
   const tokenBalance = user?.tokenBalance ?? 0;
 
-  // Fetch transactions on load
+  // Add Elite package to match design
+  const packages = [
+    {
+      id: 1,
+      name: "Starter",
+      tokens: 100,
+      price: 10,
+      bonus: 0,
+      popular: false,
+      features: ["Valid for 30 days", "Access to gym floor"],
+      color: "blue"
+    },
+    {
+      id: 2,
+      name: "Fit Pro",
+      tokens: 500,
+      price: 45,
+      originalPrice: 50,
+      bonus: 50,
+      popular: true,
+      features: ["Valid for 60 days", "Save 10% instantly", "Priority Booking"],
+      color: "orange"
+    },
+    {
+      id: 3,
+      name: "Premium",
+      tokens: 1000,
+      price: 85,
+      originalPrice: 100,
+      bonus: 100,
+      popular: false,
+      features: ["No expiry date", "Save 15% instantly", "1 Free Guest Pass"],
+      color: "primary"
+    },
+    {
+      id: 4,
+      name: "Elite",
+      tokens: 2500,
+      price: 200,
+      bonus: 300,
+      popular: false,
+      features: ["Save 20% + Free Merch", "VIP Locker Access", "AI Nutrition Plan"],
+      color: "dark",
+      isElite: true
+    }
+  ];
+
   useEffect(() => {
     const fetchTransactions = async () => {
       if (!user?.userId) return;
-      
+
       try {
         setIsLoadingTransactions(true);
         const response = await tokenTransactionsApi.getUserTransactions(user.userId);
-        
+
         if (response.success && response.data) {
           setTransactions(response.data);
-          
-          // Calculate this month's statistics
+
           const now = new Date();
           const thisMonth = now.getMonth();
           const thisYear = now.getFullYear();
-          
+
           let earned = 0;
           let spent = 0;
-          
+
           response.data.forEach(tx => {
             const txDate = new Date(tx.createdAt);
             if (txDate.getMonth() === thisMonth && txDate.getFullYear() === thisYear) {
@@ -74,7 +123,7 @@ export default function TokensPage() {
               }
             }
           });
-          
+
           setTokensEarnedThisMonth(earned);
           setTokensSpentThisMonth(spent);
         }
@@ -84,11 +133,11 @@ export default function TokensPage() {
         setIsLoadingTransactions(false);
       }
     };
-    
+
     fetchTransactions();
   }, [user?.userId]);
 
-  const handlePurchaseClick = (pkg: { id: number; name: string; tokens: number; bonus: number; price: number }) => {
+  const handlePurchaseClick = (pkg: any) => {
     if (!user) {
       showToast("Please log in to purchase tokens.", "warning");
       return;
@@ -99,42 +148,27 @@ export default function TokensPage() {
 
   const confirmPurchase = async () => {
     if (!selectedPackage || !user) return;
-
     setIsPurchasing(true);
-    
     try {
       const totalTokens = selectedPackage.tokens + selectedPackage.bonus;
-      
-      // Create the transaction in the database
       const response = await tokenTransactionsApi.createTransaction({
         amount: totalTokens,
         transactionType: "Purchase",
-        description: `Purchased ${selectedPackage.name} - ${totalTokens} tokens for EGP ${selectedPackage.price}`,
+        description: `Purchased ${selectedPackage.name} Pack`,
         referenceType: "TokenPackage",
         referenceId: selectedPackage.id,
       });
-      
+
       if (response.success && response.data) {
-        // Update local token balance
         adjustTokens(totalTokens);
-        
-        // Add the new transaction to the list
         setTransactions(prev => [response.data!, ...prev]);
-        
-        // Update monthly stats
         setTokensEarnedThisMonth(prev => prev + totalTokens);
-        
-        // Refresh user data to get updated balance from server
-        if (refreshUser) {
-          await refreshUser();
-        }
-        
+        if (refreshUser) await refreshUser();
         showToast(`Successfully purchased ${totalTokens} tokens!`, "success");
       } else {
-        showToast(response.error || "Failed to complete purchase", "error");
+        showToast(response.message || "Failed to complete purchase", "error");
       }
     } catch (error) {
-      console.error('Purchase failed:', error);
       showToast("An error occurred during purchase", "error");
     } finally {
       setPurchaseDialogOpen(false);
@@ -143,393 +177,412 @@ export default function TokensPage() {
     }
   };
 
-  const packages = [
-    {
-      id: 1,
-      name: "Starter Pack",
-      tokens: 50,
-      price: 99,
-      bonus: 0,
-      popular: false,
-    },
-    {
-      id: 2,
-      name: "Popular Pack",
-      tokens: 120,
-      price: 199,
-      bonus: 20,
-      popular: true,
-    },
-    {
-      id: 3,
-      name: "Pro Pack",
-      tokens: 250,
-      price: 349,
-      bonus: 50,
-      popular: false,
-    },
-  ];
-
-  // Calculate usage breakdown from actual transactions
-  const calculateUsageBreakdown = () => {
-    const breakdown: Record<string, { tokens: number; icon: any; color: string }> = {
-      "AI Program Generation": { tokens: 0, icon: Brain, color: "text-purple-500" },
-      "Equipment Bookings": { tokens: 0, icon: Dumbbell, color: "text-blue-500" },
-      "Coach Sessions": { tokens: 0, icon: Calendar, color: "text-green-500" },
-      "AI Chat Messages": { tokens: 0, icon: MessageSquare, color: "text-orange-500" },
+  const calculateBreakdown = () => {
+    const breakdown: Record<string, number> = {
+      "Classes": 0,
+      "Coaching": 0,
+      "Goods": 0,
+      "Other": 0
     };
-    
+
     transactions.forEach(tx => {
-      if (tx.amount < 0) { // Only count spending
+      if (tx.amount < 0) {
+        const amt = Math.abs(tx.amount);
         const desc = tx.description.toLowerCase();
-        if (desc.includes('ai') && (desc.includes('program') || desc.includes('workout'))) {
-          breakdown["AI Program Generation"].tokens += Math.abs(tx.amount);
-        } else if (desc.includes('equipment') || desc.includes('bench') || desc.includes('treadmill')) {
-          breakdown["Equipment Bookings"].tokens += Math.abs(tx.amount);
-        } else if (desc.includes('coach') || desc.includes('session')) {
-          breakdown["Coach Sessions"].tokens += Math.abs(tx.amount);
-        } else if (desc.includes('chat') || desc.includes('message')) {
-          breakdown["AI Chat Messages"].tokens += Math.abs(tx.amount);
-        }
+        if (desc.includes('class') || desc.includes('group')) breakdown["Classes"] += amt;
+        else if (desc.includes('coach') || desc.includes('training')) breakdown["Coaching"] += amt;
+        else if (desc.includes('protein') || desc.includes('product') || desc.includes('equipment')) breakdown["Goods"] += amt;
+        else breakdown["Other"] += amt;
       }
     });
-    
-    const totalSpent = Object.values(breakdown).reduce((sum, item) => sum + item.tokens, 0);
-    
-    return Object.entries(breakdown).map(([category, data]) => ({
-      category,
-      tokens: data.tokens,
-      percentage: totalSpent > 0 ? Math.round((data.tokens / totalSpent) * 100) : 0,
-      icon: data.icon,
-      color: data.color,
-    }));
+
+    const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
+    return {
+      breakdown,
+      total,
+      percentages: {
+        Classes: total ? Math.round((breakdown.Classes / total) * 100) : 0,
+        Coaching: total ? Math.round((breakdown.Coaching / total) * 100) : 0,
+        Goods: total ? Math.round((breakdown.Goods / total) * 100) : 0,
+        Other: total ? Math.round((breakdown.Other / total) * 100) : 0,
+      }
+    };
   };
 
-  const usageBreakdown = calculateUsageBreakdown();
-  const totalSpentFromBreakdown = usageBreakdown.reduce((sum, item) => sum + item.tokens, 0);
+  const { breakdown, total: totalSpent, percentages } = calculateBreakdown();
 
-  const getTransactionIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case "purchase":
-      case "bonus":
-        return <ArrowUpRight className="h-5 w-5 text-green-500" />;
-      case "spend":
-      case "spending":
-        return <ArrowDownRight className="h-5 w-5 text-red-500" />;
-      default:
-        return type.toLowerCase().includes("purchase") || type.toLowerCase().includes("bonus")
-          ? <ArrowUpRight className="h-5 w-5 text-green-500" />
-          : <ArrowDownRight className="h-5 w-5 text-red-500" />;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+  const getTransactionBadge = (type: string) => {
+    const t = type.toLowerCase();
+    if (t.includes('purchase') || t.includes('deposit')) return <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Deposit</span>;
+    if (t.includes('service') || t.includes('booking')) return <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Service</span>;
+    if (t.includes('goods') || t.includes('product')) return <span className="inline-flex items-center rounded-md bg-orange-50 px-2 py-1 text-xs font-medium text-orange-700 ring-1 ring-inset ring-orange-700/10">Goods</span>;
+    return <span className="inline-flex items-center rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-600/20">Other</span>;
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold">
-          <span className="text-foreground">Token </span>
-          <span className="text-primary">Management</span>
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your tokens and view transaction history
-        </p>
+    <div className="min-h-screen bg-[#f6f7f8] font-sans text-slate-900 pb-20">
+      {/* Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-30">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-orange-50"></div>
       </div>
 
-      {/* Token Balance Card */}
-      <Card className="p-8 border-2 border-primary bg-gradient-to-r from-primary/10 to-secondary/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Zap className="h-8 w-8 text-primary" />
-              <h2 className="text-2xl font-bold">Current Balance</h2>
-            </div>
-            <div className="text-6xl font-bold text-primary mb-2">{tokenBalance}</div>
-            <p className="text-muted-foreground">tokens available</p>
+      <div className="relative z-10 container mx-auto px-4 lg:px-8 py-8 space-y-8 max-w-7xl">
+
+        {/* Header */}
+        <div className="flex flex-wrap justify-between items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">My Wallet</h1>
+            <p className="text-slate-500 font-medium">Manage your tokens, top up, and track your fitness investment.</p>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground mb-2">This Month</div>
-            <div className="flex items-center gap-2 text-2xl font-bold text-green-500 mb-1">
-              <TrendingUp className="h-6 w-6" />
-              +{tokensEarnedThisMonth}
+          <Button className="bg-gradient-to-r from-orange-400 to-orange-500 hover:to-orange-600 text-white border-0 shadow-lg shadow-orange-200 rounded-xl px-5 py-6 font-bold gap-2">
+            <Gift className="h-5 w-5" />
+            Refer a Friend & Earn 50
+          </Button>
+        </div>
+
+        {/* Top Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* Balance Card - Span 2 */}
+          <div className="lg:col-span-2 bg-white/80 backdrop-blur-xl rounded-[24px] p-6 lg:p-8 shadow-sm border border-slate-200 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <Wallet className="w-32 h-32" />
             </div>
-            <div className="text-sm text-muted-foreground">tokens earned</div>
+            <div className="relative z-10 h-full flex flex-col justify-between gap-8">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-wider mb-2">Current Balance</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-6xl font-black text-slate-900 tracking-tight">{tokenBalance}</span>
+                    <span className="text-xl font-bold text-blue-500">Tokens</span>
+                  </div>
+                  <p className="text-slate-400 text-sm mt-2 font-medium">≈ ${(tokenBalance / 10).toFixed(2)} USD value</p>
+                </div>
+                <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4" />
+                  +{tokensEarnedThisMonth} this month
+                </div>
+              </div>
+
+              {/* Auto Refill UI */}
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-5 w-5 text-blue-500" />
+                    <p className="font-bold text-sm text-slate-900">Auto-Refill</p>
+                  </div>
+                  <Switch />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between text-xs font-medium text-slate-400">
+                    <span>Threshold: 100 Tokens</span>
+                    <span>Refill Amount: 500</span>
+                  </div>
+                  <div className="relative h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div className="absolute top-0 left-0 h-full w-[32%] bg-blue-500 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Spending Analysis */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-[24px] p-6 shadow-sm border border-slate-200 flex flex-col">
+            <h3 className="font-bold text-lg mb-6 text-slate-900">Spending Analysis</h3>
+            <div className="flex items-center gap-4 h-full">
+              {/* Donut Chart Simulation (Conic Gradient) */}
+              <div
+                className="relative w-32 h-32 rounded-full flex-shrink-0"
+                style={{
+                  background: `conic-gradient(
+                            #3b82f6 0% ${percentages.Classes}%, 
+                            #10B981 ${percentages.Classes}% ${percentages.Classes + percentages.Coaching}%, 
+                            #F97316 ${percentages.Classes + percentages.Coaching}% ${percentages.Classes + percentages.Coaching + percentages.Goods}%,
+                            #94a3b8 ${percentages.Classes + percentages.Coaching + percentages.Goods}% 100%
+                        )`
+                }}
+              >
+                <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center flex-col shadow-inner">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Total</span>
+                  <span className="font-black text-lg text-slate-900">{totalSpent}</span>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <span className="text-slate-600 font-medium">Classes</span>
+                  </div>
+                  <span className="font-bold">{percentages.Classes}%</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-slate-600 font-medium">Coaching</span>
+                  </div>
+                  <span className="font-bold">{percentages.Coaching}%</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                    <span className="text-slate-600 font-medium">Goods</span>
+                  </div>
+                  <span className="font-bold">{percentages.Goods}%</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </Card>
 
-      {/* Token Packages */}
-      <div>
-        <h2 className="text-2xl font-bold mb-6">
-          <span className="text-foreground">Purchase </span>
-          <span className="text-primary">Token Packages</span>
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {packages.map((pkg) => (
-            <Card
-              key={pkg.id}
-              className={`p-6 border ${
-                pkg.popular
-                  ? "border-2 border-primary bg-gradient-to-b from-primary/10 to-transparent"
-                  : "border-border bg-card/50"
-              } backdrop-blur-sm relative`}
-            >
-              {pkg.popular && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-primary text-white px-4 py-1 rounded-full text-xs font-bold">
-                    MOST POPULAR
-                  </span>
-                </div>
-              )}
-              <div className="text-center mb-6">
-                <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto mb-4">
-                  <Zap className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">{pkg.name}</h3>
-                <div className="flex items-baseline justify-center gap-2 mb-2">
-                  <span className="text-4xl font-bold text-primary">{pkg.tokens}</span>
-                  <span className="text-muted-foreground">tokens</span>
-                </div>
-                {pkg.bonus > 0 && (
-                  <div className="text-sm text-green-500 font-medium mb-2">
-                    +{pkg.bonus} Bonus Tokens!
+        {/* Packages Grid */}
+        <div>
+          <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <ShoppingBag className="h-6 w-6 text-blue-500" />
+            Purchase Packages
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            {packages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className={`
+                            relative rounded-[24px] p-6 flex flex-col gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl
+                            ${pkg.isElite
+                    ? "bg-slate-900 text-white shadow-2xl shadow-slate-900/20"
+                    : pkg.popular
+                      ? "bg-white border-2 border-orange-400 shadow-lg shadow-orange-100"
+                      : "bg-white border border-slate-200 shadow-sm"
+                  }
+                        `}
+              >
+                {pkg.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm">
+                    Most Popular
                   </div>
                 )}
-                <div className="text-3xl font-bold mb-1">EGP {pkg.price}</div>
-                <div className="text-sm text-muted-foreground">
-                  {(pkg.price / (pkg.tokens + pkg.bonus)).toFixed(2)} EGP per token
-                </div>
-              </div>
-              <Button className="w-full" variant={pkg.popular ? "default" : "outline"} onClick={() => handlePurchaseClick(pkg)}>
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Purchase Now
-              </Button>
-            </Card>
-          ))}
-        </div>
-      </div>
 
-      {/* Usage Breakdown */}
-      <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-        <h3 className="text-xl font-bold mb-6">
-          <span className="text-foreground">Token Usage </span>
-          <span className="text-primary">Breakdown</span>
-        </h3>
-        <div className="space-y-4">
-          {usageBreakdown.map((item, index) => (
-            <div key={index}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-card rounded-full border border-border">
-                    <item.icon className={`h-5 w-5 ${item.color}`} />
+                <div>
+                  <h4 className={`font-bold text-sm uppercase tracking-wide flex items-center gap-1 ${pkg.isElite ? "text-yellow-400" : pkg.popular ? "text-orange-500" : "text-slate-500"}`}>
+                    {pkg.isElite && <Star className="h-3 w-3 fill-current" />}
+                    {pkg.name}
+                  </h4>
+                  <div className="flex items-baseline gap-1 mt-3">
+                    <span className={`text-4xl font-black ${pkg.isElite ? "text-white" : "text-slate-900"}`}>{pkg.tokens}</span>
+                    <span className={`text-sm font-bold ${pkg.isElite ? "text-slate-400" : "text-slate-400"}`}>Tokens</span>
                   </div>
-                  <span className="font-medium">{item.category}</span>
+                  <div className={`text-xl font-bold mt-1 ${pkg.isElite ? "text-white" : "text-slate-900"}`}>
+                    ${pkg.price}
+                    {pkg.originalPrice && (
+                      <span className="text-sm font-medium text-green-500 line-through ml-2">${pkg.originalPrice}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">{item.percentage}%</span>
-                  <span className="font-bold">{item.tokens} tokens</span>
-                </div>
-              </div>
-              <div className="w-full bg-border rounded-full h-2">
-                <div
-                  className="bg-primary rounded-full h-2 transition-all"
-                  style={{ width: `${item.percentage}%` }}
-                ></div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold">Total Spent This Month</span>
-            <span className="text-2xl font-bold text-primary">{tokensSpentThisMonth} tokens</span>
-          </div>
-        </div>
-      </Card>
 
-      {/* Transaction History */}
-      <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-        <h3 className="text-xl font-bold mb-6">
-          <span className="text-foreground">Transaction </span>
-          <span className="text-primary">History</span>
-        </h3>
-        {isLoadingTransactions ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2 text-muted-foreground">Loading transactions...</span>
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Zap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No transactions yet</p>
-            <p className="text-sm mt-1">Purchase tokens to get started!</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {transactions.map((transaction) => (
-              <div
-                key={transaction.transactionId}
-                className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20 hover:bg-primary/10 transition-colors"
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="p-2 bg-card rounded-full border border-border">
-                    {getTransactionIcon(transaction.transactionType)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium mb-1">{transaction.description}</div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDate(transaction.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div
-                    className={`text-xl font-bold mb-1 ${
-                      transaction.amount > 0 ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {transaction.amount > 0 ? "+" : ""}
-                    {transaction.amount}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Balance: {transaction.balanceAfter}
-                  </div>
-                </div>
+                <ul className="flex-1 space-y-3">
+                  {pkg.features.map((feature: string, i: number) => (
+                    <li key={i} className={`text-sm font-medium flex items-center gap-2 ${pkg.isElite ? "text-slate-300" : "text-slate-600"}`}>
+                      <CheckCircle2 className={`h-4 w-4 ${pkg.isElite ? "text-green-400" : "text-green-500"}`} />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  onClick={() => handlePurchaseClick(pkg)}
+                  className={`
+                                w-full py-6 rounded-xl font-bold text-md shadow-md transition-all
+                                ${pkg.isElite
+                      ? "bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur"
+                      : pkg.popular
+                        ? "bg-orange-500 hover:bg-orange-600 text-white shadow-orange-200"
+                        : "bg-white border-2 border-slate-100 text-slate-700 hover:bg-slate-50 hover:border-slate-200"
+                    }
+                            `}
+                >
+                  {pkg.isElite ? "Join Elite" : pkg.popular ? "Purchase" : "Select"}
+                </Button>
               </div>
             ))}
           </div>
-        )}
-      </Card>
-
-      {/* Token Costs Info */}
-      <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-        <h3 className="text-xl font-bold mb-4">
-          <span className="text-foreground">Token </span>
-          <span className="text-primary">Costs</span>
-        </h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-            <span className="flex items-center gap-2">
-              <Brain className="h-4 w-4 text-primary" />
-              <span>AI Program Generation</span>
-            </span>
-            <span className="font-bold">50 tokens</span>
-          </div>
-          <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-            <span className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-primary" />
-              <span>AI Chat Message</span>
-            </span>
-            <span className="font-bold">1 token</span>
-          </div>
-          <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-            <span className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
-              <span>Coach Session</span>
-            </span>
-            <span className="font-bold">25-35 tokens</span>
-          </div>
-          <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-            <span className="flex items-center gap-2">
-              <Dumbbell className="h-4 w-4 text-primary" />
-              <span>Equipment Booking (1hr)</span>
-            </span>
-            <span className="font-bold">5-10 tokens</span>
-          </div>
         </div>
-      </Card>
 
-      {/* Purchase Confirmation Dialog */}
+        {/* Bottom Grid: Transactions & Charts */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+          {/* Transaction History Table */}
+          <div className="xl:col-span-2 bg-white rounded-[24px] border border-slate-200 overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-lg font-bold text-slate-900">Transaction History</h3>
+              <Button variant="ghost" className="text-blue-500 font-bold hover:text-blue-600">View All</Button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                  <tr>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Description</th>
+                    <th className="px-6 py-4">Type</th>
+                    <th className="px-6 py-4 text-right">Amount</th>
+                    <th className="px-6 py-4 text-right">Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {isLoadingTransactions ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center">
+                        <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
+                      </td>
+                    </tr>
+                  ) : transactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                        No transactions recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    transactions.slice(0, 5).map((tx) => (
+                      <tr key={tx.transactionId} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4 text-slate-500 font-medium">
+                          {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-900">{tx.description}</td>
+                        <td className="px-6 py-4">
+                          {getTransactionBadge(tx.transactionType)}
+                        </td>
+                        <td className={`px-6 py-4 text-right font-black ${tx.amount > 0 ? "text-green-500" : "text-red-500"}`}>
+                          {tx.amount > 0 ? "+" : ""}{tx.amount}
+                        </td>
+                        <td className="px-6 py-4 text-right text-slate-500 font-medium">{tx.balanceAfter}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Right Side: Charts/Info */}
+          <div className="flex flex-col gap-6">
+
+            {/* Monthly Spending Bars (Dynamic) */}
+            <div className="bg-white rounded-[24px] p-6 border border-slate-200 shadow-sm">
+              <h3 className="font-bold text-lg mb-6 text-slate-900">Monthly Spending</h3>
+              <div className="flex items-end justify-between h-40 gap-2 pb-2">
+                {(() => {
+                  const months = new Map<string, number>();
+                  const today = new Date();
+                  for (let i = 4; i >= 0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                    const monthName = d.toLocaleString('default', { month: 'short' });
+                    months.set(monthName, 0);
+                  }
+                  transactions?.forEach(tx => {
+                    if (tx.amount < 0) {
+                      const d = new Date(tx.createdAt);
+                      const monthName = d.toLocaleString('default', { month: 'short' });
+                      if (months.has(monthName)) {
+                        months.set(monthName, months.get(monthName)! + Math.abs(tx.amount));
+                      }
+                    }
+                  });
+                  const data = Array.from(months.entries()).map(([m, v]) => ({ m, v }));
+                  const maxVal = Math.max(...data.map(d => d.v), 100);
+
+                  return data.map((bar, i) => (
+                    <div key={i} className="w-full flex flex-col justify-end items-center gap-2 group cursor-pointer">
+                      <div
+                        className={`w-full rounded-t-lg transition-all relative group-hover:bg-blue-200 ${bar.m === today.toLocaleString('default', { month: 'short' }) ? "bg-blue-500/20 group-hover:bg-blue-500/30" : "bg-slate-100"}`}
+                        style={{ height: `${Math.max((bar.v / maxVal) * 100, 5)}%` }}
+                      >
+                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg pointer-events-none transition-opacity font-bold z-10">
+                          {bar.v}
+                        </div>
+                      </div>
+                      <span className={`text-xs font-bold ${bar.m === today.toLocaleString('default', { month: 'short' }) ? "text-blue-600" : "text-slate-400"}`}>{bar.m}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Exchange Guide */}
+            <div className="bg-white rounded-[24px] p-6 border border-slate-200 shadow-sm flex-1">
+              <h3 className="font-bold text-lg mb-4 text-slate-900 flex items-center gap-2">
+                <HelpCircle className="h-5 w-5 text-slate-400" />
+                Quick Exchange Guide
+              </h3>
+              <div className="space-y-0">
+                {[
+                  { name: "Towel Rental", price: "2 Tokens" },
+                  { name: "Protein Shake", price: "12 Tokens" },
+                  { name: "Guest Pass", price: "30 Tokens" },
+                  { name: "Personal Coach (1hr)", price: "50 Tokens" }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 last:pb-0">
+                    <span className="text-sm font-medium text-slate-600">{item.name}</span>
+                    <span className="text-sm font-black text-slate-900">{item.price}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      {/* Legacy Purchase Dialog (Hidden UI, Functional) */}
       <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5 text-primary" />
-              Confirm Purchase
-            </DialogTitle>
-            <DialogDescription>
-              Review your token package purchase
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-md bg-white rounded-[24px] shadow-2xl border-0 p-0 overflow-hidden">
 
           {selectedPackage && (
-            <div className="py-4 space-y-4">
-              <div className="text-center p-6 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg border border-primary/20">
-                <div className="p-3 bg-primary/10 rounded-full w-fit mx-auto mb-3">
-                  <Zap className="h-8 w-8 text-primary" />
+            <>
+              <div className="bg-slate-50 p-8 text-center border-b border-slate-100">
+                <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${selectedPackage.isElite ? "bg-slate-900 text-yellow-400" : "bg-blue-50 text-blue-600"}`}>
+                  {selectedPackage.isElite ? <Star className="h-8 w-8 fill-current" /> : <ShoppingBag className="h-8 w-8" />}
                 </div>
-                <h3 className="text-xl font-bold mb-2">{selectedPackage.name}</h3>
-                <div className="text-3xl font-bold text-primary">
-                  {selectedPackage.tokens} tokens
+                <h2 className="text-2xl font-black text-slate-900">{selectedPackage.name} Pack</h2>
+                <p className="text-slate-500 font-medium mt-1">Confirm your purchase</p>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Tokens</span>
+                  <span className="text-xl font-bold text-slate-900">{selectedPackage.tokens}</span>
                 </div>
                 {selectedPackage.bonus > 0 && (
-                  <div className="text-sm text-green-600 font-medium mt-1">
-                    +{selectedPackage.bonus} Bonus Tokens!
+                  <div className="flex justify-between items-center">
+                    <span className="text-green-600 font-medium">Bonus</span>
+                    <span className="text-xl font-bold text-green-600">+{selectedPackage.bonus}</span>
                   </div>
                 )}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between p-3 bg-muted rounded-lg">
-                  <span className="text-muted-foreground">Base Tokens</span>
-                  <span className="font-medium">{selectedPackage.tokens}</span>
+                <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                  <span className="text-lg font-bold text-slate-900">Total Price</span>
+                  <span className="text-3xl font-black text-blue-600">${selectedPackage.price}</span>
                 </div>
-                {selectedPackage.bonus > 0 && (
-                  <div className="flex justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                    <span className="text-green-700 dark:text-green-300">Bonus Tokens</span>
-                    <span className="font-medium text-green-700 dark:text-green-300">+{selectedPackage.bonus}</span>
-                  </div>
-                )}
-                <div className="flex justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <span className="font-semibold">Total</span>
-                  <span className="font-bold text-primary">{selectedPackage.tokens + selectedPackage.bonus} tokens</span>
-                </div>
-              </div>
 
-              <div className="text-center">
-                <div className="text-3xl font-bold">EGP {selectedPackage.price}</div>
-                <div className="text-sm text-muted-foreground">
-                  ({(selectedPackage.price / (selectedPackage.tokens + selectedPackage.bonus)).toFixed(2)} EGP per token)
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPurchaseDialogOpen(false)}
+                    className="rounded-xl h-12 font-bold border-slate-200"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={confirmPurchase}
+                    disabled={isPurchasing}
+                    className="rounded-xl h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isPurchasing ? <Loader2 className="animate-spin" /> : "Confirm"}
+                  </Button>
                 </div>
               </div>
-
-              <p className="text-xs text-muted-foreground text-center">
-                This is a demo — no actual payment will be processed
-              </p>
-            </div>
+            </>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPurchaseDialogOpen(false)} disabled={isPurchasing}>
-              Cancel
-            </Button>
-            <Button onClick={confirmPurchase} disabled={isPurchasing}>
-              {isPurchasing ? (
-                <>
-                  <span className="animate-spin mr-2">⏳</span>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Confirm Purchase
-                </>
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

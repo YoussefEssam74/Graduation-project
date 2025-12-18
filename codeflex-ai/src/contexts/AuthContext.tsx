@@ -12,7 +12,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isRedirecting: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
@@ -41,8 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load auth from localStorage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = getAuthToken(); // Use auth_token from API client
+    const storedUser = localStorage.getItem("user") || sessionStorage.getItem("user");
+    const storedToken = getAuthToken() || sessionStorage.getItem("auth_token"); // Use auth_token from API client
 
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
       // Single API call - backend detects role from database
       const response = await authApi.login({ email, password });
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       const mappedRole = roleMap[userData.role];
-      
+
       if (!mappedRole) {
         throw new Error(`Unknown role: ${userData.role}`);
       }
@@ -99,8 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Save to state and localStorage
       setUser(userObj);
       setToken(authToken);
-      localStorage.setItem("user", JSON.stringify(userObj));
-      localStorage.setItem("auth_token", authToken);
+
+      if (rememberMe) {
+        localStorage.setItem("user", JSON.stringify(userObj));
+        localStorage.setItem("auth_token", authToken);
+      } else {
+        sessionStorage.setItem("user", JSON.stringify(userObj));
+        sessionStorage.setItem("auth_token", authToken);
+      }
 
       // Set redirecting state
       setIsRedirecting(true);
@@ -131,10 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => {
     try {
       console.log('Registering with:', { email, name, phone, gender, role });
-      const response = await authApi.register({ 
-        email, 
-        password, 
-        name, 
+      const response = await authApi.register({
+        email,
+        password,
+        name,
         phone,
         gender,
         role
@@ -150,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const { user: userData, token: authToken } = response.data;
-      
+
       // Map backend role string to frontend UserRole enum
       const roleMap: Record<string, UserRole> = {
         'Member': UserRole.Member,
@@ -160,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       const mappedRole = roleMap[userData.role] || UserRole.Member;
-      
+
       const userObj: User = {
         userId: userData.userId,
         email: userData.email,
@@ -245,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mustChangePassword: userData.mustChangePassword,
         isFirstLogin: userData.isFirstLogin,
       };
-      
+
       setUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
@@ -311,11 +317,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     if (!user?.userId) return;
-    
+
     try {
       // Fetch the latest token balance from the server
       const balanceResponse = await tokenTransactionsApi.getUserTokenBalance(user.userId);
-      
+
       if (balanceResponse.success && balanceResponse.data !== undefined) {
         setUser((prev) => {
           if (!prev) return prev;
@@ -336,6 +342,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     localStorage.removeItem("auth_token");
+    sessionStorage.removeItem("user");
+    sessionStorage.removeItem("auth_token");
     router.push("/login");
   };
 

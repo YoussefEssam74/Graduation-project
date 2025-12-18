@@ -151,10 +151,10 @@ export default function SetupAccountPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="p-3 bg-primary/20 rounded-xl backdrop-blur-sm">
-                <ZapIcon className="w-8 h-8 text-primary" />
+              <div className="p-3 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg shadow-blue-500/20">
+                <ZapIcon className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-foreground">IntelliFit</h1>
+              <h1 className="text-3xl font-bold text-slate-900">Pulse<span className="text-primary">Gym</span></h1>
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-2">
               {step === 'password' ? 'Change Your Password' : 'Complete Your Profile'}
@@ -400,8 +400,8 @@ export default function SetupAccountPage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6 text-sm text-muted-foreground">
-          © 2025 IntelliFit. Smart Gym Management System.
+        <div className="text-center mt-6 text-sm text-slate-500">
+          © 2025 PulseGym. Smart Gym Management System.
         </div>
       </div>
     </div>

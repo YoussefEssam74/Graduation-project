@@ -4,7 +4,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost
 // Helper function to get auth token from localStorage
 export const getAuthToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token');
+  return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
 };
 
 // Helper function to set auth token
@@ -18,6 +18,7 @@ export const setAuthToken = (token: string) => {
 export const removeAuthToken = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
   }
 };
 
@@ -35,7 +36,7 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const token = getAuthToken();
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -59,7 +60,7 @@ export async function apiFetch<T>(
     let data: any;
     const contentType = response.headers.get('content-type');
     const contentLength = response.headers.get('content-length');
-    
+
     // Check if response has content to parse
     if (contentLength === '0' || !contentType?.includes('application/json')) {
       // No content or not JSON - treat as success for 2xx responses
@@ -75,7 +76,7 @@ export async function apiFetch<T>(
         errors: [`HTTP ${response.status}: ${response.statusText}`],
       };
     }
-    
+
     try {
       const text = await response.text();
       // Handle empty response body
@@ -122,7 +123,7 @@ export async function apiFetch<T>(
     if (typeof data === 'object' && data !== null && 'success' in data) {
       return data;
     }
-    
+
     return {
       success: true,
       data: data,

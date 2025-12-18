@@ -1,24 +1,22 @@
 import { apiFetch, type ApiResponse } from './client';
 
+// Matches backend: IntelliFit.Shared.DTOs.User.UserMilestoneDto
 export interface UserMilestoneDto {
   userMilestoneId: number;
   userId: number;
   milestoneId: number;
-  milestoneName: string;
-  milestoneDescription: string;
-  milestoneCategory: string;
-  targetValue: number;
-  currentValue: number;
-  progressPercentage: number;
+  currentProgress: number;
   isCompleted: boolean;
   completedAt?: string;
-  tokensAwarded: number;
-  badgeIconUrl?: string;
+  createdAt: string;
+  milestoneName?: string;
+  milestoneDescription?: string;
+  milestoneTarget?: number;
 }
 
 export interface UpdateUserMilestoneProgressDto {
   milestoneId: number;
-  currentValue: number;
+  currentProgress: number;
 }
 
 export interface CompleteMilestoneDto {

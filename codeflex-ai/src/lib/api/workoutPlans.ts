@@ -1,18 +1,21 @@
 import { apiFetch, type ApiResponse } from './client';
 
-export interface WorkoutTemplateDto {
-  templateId: number;
-  templateName: string;
+// Matches backend: Shared.DTOs.WorkoutPlan.WorkoutPlanDto
+export interface WorkoutPlanDto {
+  planId: number;
+  planName: string;
   description?: string;
-  difficultyLevel: number;
+  createdByCoachId?: number;
+  coachName?: string;
   durationWeeks: number;
-  workoutsPerWeek: number;
-  createdByCoachId: number;
-  createdByCoachName?: string;
-  isPublic: boolean;
+  difficultyLevel: number;
+  goals?: string;
+  isTemplate: boolean;
   isActive: boolean;
+  createdAt: string;
 }
 
+// Matches backend: Shared.DTOs.WorkoutPlan.MemberWorkoutPlanDto
 export interface MemberWorkoutPlanDto {
   memberPlanId: number;
   memberId: number;
@@ -20,31 +23,15 @@ export interface MemberWorkoutPlanDto {
   planId: number;
   planName: string;
   assignedByCoachId?: number;
-  assignedByCoachName?: string;
+  coachName?: string;
   startDate: string;
   endDate?: string;
-  isActive: boolean;
-  progressPercentage: number;
-  currentWeek: number;
-  workoutsCompleted: number;
-  totalWorkouts: number;
+  status: number;
+  statusText: string;
+  completedWorkouts?: number;
+  totalWorkouts?: number;
   notes?: string;
-}
-
-export interface WorkoutDayDto {
-  dayNumber: number;
-  dayName: string;
-  exercises: WorkoutExerciseDto[];
-}
-
-export interface WorkoutExerciseDto {
-  exerciseId: number;
-  exerciseName: string;
-  sets: number;
-  reps: string;
-  restSeconds: number;
-  notes?: string;
-  muscleGroup?: string;
+  createdAt: string;
 }
 
 export interface AssignWorkoutPlanDto {
@@ -65,15 +52,15 @@ export const workoutPlansApi = {
   /**
    * Get all workout templates
    */
-  async getAllTemplates(): Promise<ApiResponse<WorkoutTemplateDto[]>> {
-    return apiFetch<WorkoutTemplateDto[]>('/workout-plans/templates');
+  async getAllTemplates(): Promise<ApiResponse<WorkoutPlanDto[]>> {
+    return apiFetch<WorkoutPlanDto[]>('/workout-plans/templates');
   },
 
   /**
    * Get template by ID
    */
-  async getTemplateById(id: number): Promise<ApiResponse<WorkoutTemplateDto>> {
-    return apiFetch<WorkoutTemplateDto>(`/workout-plans/templates/${id}`);
+  async getTemplateById(id: number): Promise<ApiResponse<WorkoutPlanDto>> {
+    return apiFetch<WorkoutPlanDto>(`/workout-plans/templates/${id}`);
   },
 
   /**

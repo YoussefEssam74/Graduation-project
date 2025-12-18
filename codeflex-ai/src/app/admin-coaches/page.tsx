@@ -28,7 +28,7 @@ function AdminCoachesContent() {
     {
       id: 1,
       name: "Coach Ahmed",
-      email: "coach@intellifit.com",
+      email: "coach@pulsegym.com",
       phone: "+20 100 123 4567",
       specialization: "Strength & Conditioning",
       status: "Active",
@@ -42,7 +42,7 @@ function AdminCoachesContent() {
     {
       id: 2,
       name: "Coach Sara",
-      email: "sara.coach@intellifit.com",
+      email: "sara.coach@pulsegym.com",
       phone: "+20 100 234 5678",
       specialization: "Yoga & Flexibility",
       status: "Active",
@@ -56,7 +56,7 @@ function AdminCoachesContent() {
     {
       id: 3,
       name: "Coach Omar",
-      email: "omar.coach@intellifit.com",
+      email: "omar.coach@pulsegym.com",
       phone: "+20 100 345 6789",
       specialization: "HIIT & Cardio",
       status: "Active",
@@ -70,7 +70,7 @@ function AdminCoachesContent() {
     {
       id: 4,
       name: "Coach Fatma",
-      email: "fatma.coach@intellifit.com",
+      email: "fatma.coach@pulsegym.com",
       phone: "+20 100 456 7890",
       specialization: "Nutrition & Wellness",
       status: "Active",
@@ -84,7 +84,7 @@ function AdminCoachesContent() {
     {
       id: 5,
       name: "Coach Mahmoud",
-      email: "mahmoud.coach@intellifit.com",
+      email: "mahmoud.coach@pulsegym.com",
       phone: "+20 100 567 8901",
       specialization: "Bodybuilding",
       status: "On Leave",

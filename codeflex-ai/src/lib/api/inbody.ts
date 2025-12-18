@@ -1,30 +1,39 @@
 import { apiFetch, type ApiResponse } from './client';
 
+// Matches backend: Shared.DTOs.InBody.InBodyMeasurementDto
 export interface InBodyMeasurementDto {
   measurementId: number;
   userId: number;
-  measurementDate: string;
+  userName: string;
   weight: number;
-  bodyFatPercentage: number;
-  muscleMass: number;
-  bmi: number;
-  bodyWaterPercentage?: number;
+  height: number;
+  bodyFatPercentage?: number;
+  muscleMass?: number;
   boneMass?: number;
-  visceralFatLevel?: number;
-  bmr?: number;
+  bodyWater?: number;
+  visceralFat?: number;
+  bmi?: number;
+  basalMetabolicRate?: number;
+  conductedByReceptionId?: number;
+  conductedByName?: string;
   notes?: string;
+  measurementDate: string;
+  createdAt: string;
 }
 
+// Matches backend: Shared.DTOs.InBody.CreateInBodyMeasurementDto
 export interface CreateInBodyMeasurementDto {
   userId: number;
   weight: number;
-  bodyFatPercentage: number;
-  muscleMass: number;
-  bmi: number;
-  bodyWaterPercentage?: number;
+  height: number;
+  bodyFatPercentage?: number;
+  muscleMass?: number;
   boneMass?: number;
-  visceralFatLevel?: number;
-  bmr?: number;
+  bodyWater?: number;
+  visceralFat?: number;
+  bmi?: number;
+  basalMetabolicRate?: number;
+  conductedByReceptionId?: number;
   notes?: string;
 }
 

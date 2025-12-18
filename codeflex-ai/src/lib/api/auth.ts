@@ -46,13 +46,6 @@ export interface AuthResponse {
   expiresAt: string;
 }
 
-// Backend response wrapper
-interface BackendAuthResponse {
-  success: boolean;
-  message?: string;
-  data: AuthResponse;
-  errors?: string[];
-}
 
 export const authApi = {
   /**

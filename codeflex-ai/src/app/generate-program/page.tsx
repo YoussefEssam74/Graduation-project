@@ -5,319 +5,245 @@ import { Card } from "@/components/ui/card";
 import { vapi } from "@/lib/vapi";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Mic, ArrowRight, Square, Bot, Sparkles, Loader2, Ticket } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { UserRole } from "@/types/gym";
 
-const GenerateProgramPage = () => {
+interface VoiceMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+function GenerateProgramContent() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const router = useRouter();
+
+  // Vapi State
   const [callActive, setCallActive] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [callEnded, setCallEnded] = useState(false);
-
-  const user = { id: "demo-user", firstName: "Youssef" };
-  const router = useRouter();
+  const [messages, setMessages] = useState<VoiceMessage[]>([]);
 
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
-  // SOLUTION to get rid of "Meeting has ended" error
+  // --- Vapi Logic ---
   useEffect(() => {
-    const originalError = console.error;
-    // override console.error to ignore "Meeting has ended" errors
-    console.error = function (msg, ...args) {
-      if (
-        msg &&
-        (msg.includes("Meeting has ended") ||
-          (args[0] && args[0].toString().includes("Meeting has ended")))
-      ) {
-        console.log("Ignoring known error: Meeting has ended");
-        return; // don't pass to original handler
-      }
-
-      // pass all other errors to the original handler
-      return originalError.call(console, msg, ...args);
+    const handleCallStart = () => {
+      setCallActive(true);
+      setConnecting(false);
     };
 
-    // restore original handler on unmount
+    const handleCallEnd = () => {
+      setCallActive(false);
+      setConnecting(false);
+    };
+
+    const handleMessage = (message: any) => {
+      if (message.type === "transcript" && message.transcriptType === "final") {
+        const newMessage: VoiceMessage = {
+          content: message.transcript,
+          role: message.role === "assistant" ? "assistant" : "user"
+        };
+        setMessages((prev) => [...prev, newMessage]);
+      }
+    };
+
+    vapi.on("call-start", handleCallStart);
+    vapi.on("call-end", handleCallEnd);
+    vapi.on("message", handleMessage);
+
     return () => {
-      console.error = originalError;
+      vapi.stop();
+      vapi.removeAllListeners();
     };
   }, []);
 
-  // auto-scroll messages
+  const toggleCall = async () => {
+    if (callActive) {
+      vapi.stop();
+    } else {
+      if ((user?.tokenBalance ?? 0) < 50) {
+        showToast("You need at least 50 tokens to generate a program", "error");
+        return;
+      }
+
+      setConnecting(true);
+      try {
+        const workflowId = process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID;
+        if (!workflowId) {
+          showToast("Voice service not configured", "error");
+          setConnecting(false);
+          return;
+        }
+        await vapi.start(workflowId);
+      } catch (e) {
+        console.error("Vapi start failed", e);
+        showToast("Failed to start voice session", "error");
+        setConnecting(false);
+      }
+    }
+  };
+
+  // Auto-scroll
   useEffect(() => {
     if (messageContainerRef.current) {
       messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // navigate user to profile page after the call ends
-  useEffect(() => {
-    if (callEnded) {
-      const redirectTimer = setTimeout(() => {
-        router.push("/profile");
-      }, 1500);
-
-      return () => clearTimeout(redirectTimer);
-    }
-  }, [callEnded, router]);
-
-  // setup event listeners for vapi
-  useEffect(() => {
-    const handleCallStart = () => {
-      console.log("Call started");
-      setConnecting(false);
-      setCallActive(true);
-      setCallEnded(false);
-    };
-
-    const handleCallEnd = () => {
-      console.log("Call ended");
-      setCallActive(false);
-      setConnecting(false);
-      setIsSpeaking(false);
-      setCallEnded(true);
-    };
-
-    const handleSpeechStart = () => {
-      console.log("AI started Speaking");
-      setIsSpeaking(true);
-    };
-
-    const handleSpeechEnd = () => {
-      console.log("AI stopped Speaking");
-      setIsSpeaking(false);
-    };
-    const handleMessage = (message: any) => {
-      if (message.type === "transcript" && message.transcriptType === "final") {
-        const newMessage = { content: message.transcript, role: message.role };
-        setMessages((prev) => [...prev, newMessage]);
-      }
-    };
-
-    const handleError = (error: any) => {
-      console.log("Vapi Error", error);
-      setConnecting(false);
-      setCallActive(false);
-    };
-
-    vapi
-      .on("call-start", handleCallStart)
-      .on("call-end", handleCallEnd)
-      .on("speech-start", handleSpeechStart)
-      .on("speech-end", handleSpeechEnd)
-      .on("message", handleMessage)
-      .on("error", handleError);
-
-    // cleanup event listeners on unmount
-    return () => {
-      vapi
-        .off("call-start", handleCallStart)
-        .off("call-end", handleCallEnd)
-        .off("speech-start", handleSpeechStart)
-        .off("speech-end", handleSpeechEnd)
-        .off("message", handleMessage)
-        .off("error", handleError);
-    };
-  }, []);
-
-  const toggleCall = async () => {
-    if (callActive) vapi.stop();
-    else {
-      try {
-        setConnecting(true);
-        setMessages([]);
-        setCallEnded(false);
-
-        const fullName = user?.firstName
-          ? `${user.firstName} ${user.lastName || ""}`.trim()
-          : "There";
-
-        await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-          variableValues: {
-            full_name: fullName,
-            user_id: user?.id,
-          },
-        });
-      } catch (error) {
-        console.log("Failed to start call", error);
-        setConnecting(false);
-      }
-    }
-  };
-
   return (
-    <div className="flex flex-col min-h-screen text-foreground overflow-hidden  pb-6 pt-24">
-      <div className="container mx-auto px-4 h-full max-w-5xl">
-        {/* Title */}
+    <div className="min-h-[calc(100vh-6rem)] bg-slate-50 relative pb-24">
+      {/* Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      <div className="fixed inset-0 z-0 pointer-events-none bg-white/80 backdrop-blur-md" />
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 pt-8">
+        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold font-mono">
-            <span>Generate Your </span>
-            <span className="text-primary uppercase">Fitness Program</span>
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Have a voice conversation with our AI assistant to create your personalized plan
-          </p>
+          <h1 className="text-3xl font-black text-slate-900 mb-2">Generate Your Workout Plan</h1>
+          <p className="text-slate-500">Talk to our AI coach to create a personalized program</p>
         </div>
 
-        {/* VIDEO CALL AREA */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* AI ASSISTANT CARD */}
-          <Card className="bg-card/90 backdrop-blur-sm border border-border overflow-hidden relative">
-            <div className="aspect-video flex flex-col items-center justify-center p-6 relative">
-              {/* AI VOICE ANIMATION */}
-              <div
-                className={`absolute inset-0 ${
-                  isSpeaking ? "opacity-30" : "opacity-0"
-                } transition-opacity duration-300`}
-              >
-                {/* Voice wave animation when speaking */}
-                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex justify-center items-center h-20">
-                  {[...Array(5)].map((_, i) => (
-                    <div
-                      key={i}
-                      className={`mx-1 h-16 w-1 bg-primary rounded-full ${
-                        isSpeaking ? "animate-sound-wave" : ""
-                      }`}
-                      style={{
-                        animationDelay: `${i * 0.1}s`,
-                        height: isSpeaking ? `${Math.random() * 50 + 20}%` : "5%",
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* AI IMAGE */}
-              <div className="relative size-32 mb-4">
-                <div
-                  className={`absolute inset-0 bg-primary opacity-10 rounded-full blur-lg ${
-                    isSpeaking ? "animate-pulse" : ""
-                  }`}
-                />
-
-                <div className="relative w-full h-full rounded-full bg-card flex items-center justify-center border border-border overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-secondary/10"></div>
-                  <img
-                    src="/ai-avatar.png"
-                    alt="AI Assistant"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-
-              <h2 className="text-xl font-bold text-foreground">CodeFlex AI</h2>
-              <p className="text-sm text-muted-foreground mt-1">Fitness & Diet Coach</p>
-
-              {/* SPEAKING INDICATOR */}
-
-              <div
-                className={`mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-card border border-border ${
-                  isSpeaking ? "border-primary" : ""
-                }`}
-              >
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    isSpeaking ? "bg-primary animate-pulse" : "bg-muted"
-                  }`}
-                />
-
-                <span className="text-xs text-muted-foreground">
-                  {isSpeaking
-                    ? "Speaking..."
-                    : callActive
-                      ? "Listening..."
-                      : callEnded
-                        ? "Redirecting to profile..."
-                        : "Waiting..."}
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* USER CARD */}
-          <Card className={`bg-card/90 backdrop-blur-sm border overflow-hidden relative`}>
-            <div className="aspect-video flex flex-col items-center justify-center p-6 relative">
-              {/* User Image */}
-              <div className="relative size-32 mb-4">
-                <img
-                  src={user?.imageUrl}
-                  alt="User"
-                  // ADD THIS "size-full" class to make it rounded on all images
-                  className="size-full object-cover rounded-full"
-                />
-              </div>
-
-              <h2 className="text-xl font-bold text-foreground">You</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {user ? (user.firstName + " " + (user.lastName || "")).trim() : "Guest"}
-              </p>
-
-              {/* User Ready Text */}
-              <div className={`mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-card border`}>
-                <div className={`w-2 h-2 rounded-full bg-muted`} />
-                <span className="text-xs text-muted-foreground">Ready</span>
-              </div>
-            </div>
-          </Card>
+        {/* Token Balance */}
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100">
+            <Ticket className="h-4 w-4 text-amber-500" />
+            <span className="font-bold text-slate-900">{user?.tokenBalance ?? 0}</span>
+            <span className="text-slate-500 text-sm">tokens available</span>
+          </div>
         </div>
 
-        {/* MESSAGE COINTER  */}
-        {messages.length > 0 && (
-          <div
-            ref={messageContainerRef}
-            className="w-full bg-card/90 backdrop-blur-sm border border-border rounded-xl p-4 mb-8 h-64 overflow-y-auto transition-all duration-300 scroll-smooth"
-          >
-            <div className="space-y-3">
-              {messages.map((msg, index) => (
-                <div key={index} className="message-item animate-fadeIn">
-                  <div className="font-semibold text-xs text-muted-foreground mb-1">
-                    {msg.role === "assistant" ? "CodeFlex AI" : "You"}:
+        {/* Main Card */}
+        <Card className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-100">
+          <div className="p-6 md:p-8">
+            {/* Voice Interaction Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left: Voice Button */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-slate-900">Talk to AI Coach</h3>
+                <p className="text-slate-500 text-sm">
+                  Tell the AI about your goals, preferences, and any limitations. For example:
+                  &quot;I want to build muscle, training 4 days a week, focus on upper body.&quot;
+                </p>
+
+                <div
+                  onClick={toggleCall}
+                  className={`relative cursor-pointer transition-all duration-300 border-2 rounded-2xl h-64 flex flex-col items-center justify-center gap-4 ${callActive
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-slate-200 border-dashed bg-slate-50 hover:bg-slate-100"
+                    }`}
+                >
+                  {/* Pulse Animation */}
+                  {callActive && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-32 h-32 bg-blue-500/10 rounded-full animate-ping" />
+                    </div>
+                  )}
+
+                  <div className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all ${callActive
+                    ? "bg-red-500 shadow-lg"
+                    : "bg-blue-600 shadow-lg"
+                    }`}>
+                    {connecting ? (
+                      <Loader2 className="h-8 w-8 text-white animate-spin" />
+                    ) : callActive ? (
+                      <Square className="h-8 w-8 text-white fill-white" />
+                    ) : (
+                      <Mic className="h-8 w-8 text-white" />
+                    )}
                   </div>
-                  <p className="text-foreground">{msg.content}</p>
-                </div>
-              ))}
 
-              {callEnded && (
-                <div className="message-item animate-fadeIn">
-                  <div className="font-semibold text-xs text-primary mb-1">System:</div>
-                  <p className="text-foreground">
-                    Your fitness program has been created! Redirecting to your profile...
-                  </p>
+                  <div className="text-center z-10">
+                    <h4 className="font-bold text-slate-900 text-lg">
+                      {connecting ? "Connecting..." : callActive ? "Listening..." : "Tap to Speak"}
+                    </h4>
+                    <p className="text-slate-400 text-xs mt-1">
+                      {callActive ? "Tap to stop" : "Start a voice conversation"}
+                    </p>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Right: Conversation Display */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-slate-900">Conversation</h3>
+                <div
+                  ref={messageContainerRef}
+                  className="min-h-[250px] max-h-[350px] overflow-y-auto space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100"
+                >
+                  {messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-center">
+                      <div>
+                        <Bot className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-400 text-sm">
+                          Start speaking to see the conversation here
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    messages.map((msg, i) => (
+                      <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'assistant'
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-blue-100 text-blue-600'
+                          }`}>
+                          {msg.role === 'assistant'
+                            ? <Bot className="h-4 w-4" />
+                            : <span className="text-xs font-bold">ME</span>
+                          }
+                        </div>
+                        <div className={`p-3 rounded-xl text-sm max-w-[85%] ${msg.role === 'assistant'
+                          ? 'bg-white text-slate-700 rounded-tl-none shadow-sm'
+                          : 'bg-blue-600 text-white rounded-tr-none'
+                          }`}>
+                          {msg.content}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Cost Info */}
+            <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-slate-500 text-sm font-semibold">
+                <Sparkles className="h-4 w-4 text-orange-500" />
+                Generating a plan costs <span className="text-slate-900 font-bold">50 Tokens</span>
+              </div>
+
+              <Button
+                disabled={(user?.tokenBalance ?? 0) < 50}
+                className="bg-blue-600 hover:bg-blue-700 h-11 px-8 rounded-xl font-bold gap-2"
+                onClick={() => router.push('/programs')}
+              >
+                View My Plans <ArrowRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-        )}
+        </Card>
 
-        {/* CALL CONTROLS */}
-        <div className="w-full flex justify-center gap-4">
-          <Button
-            className={`w-40 text-xl rounded-3xl ${
-              callActive
-                ? "bg-destructive hover:bg-destructive/90"
-                : callEnded
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-primary hover:bg-primary/90"
-            } text-white relative`}
-            onClick={toggleCall}
-            disabled={connecting || callEnded}
-          >
-            {connecting && (
-              <span className="absolute inset-0 rounded-full animate-ping bg-primary/50 opacity-75"></span>
-            )}
-
-            <span>
-              {callActive
-                ? "End Call"
-                : connecting
-                  ? "Connecting..."
-                  : callEnded
-                    ? "View Profile"
-                    : "Start Call"}
-            </span>
-          </Button>
-        </div>
+        {/* Info Text */}
+        <p className="text-center text-slate-400 text-sm mt-6">
+          Voice conversations are processed securely. Your workout plan will be saved to your account.
+        </p>
       </div>
     </div>
   );
-};
-export default GenerateProgramPage;
+}
+
+export default function GenerateProgramPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.Member]}>
+      <GenerateProgramContent />
+    </ProtectedRoute>
+  );
+}

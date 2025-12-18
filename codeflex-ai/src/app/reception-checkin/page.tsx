@@ -6,12 +6,9 @@ import {
   Search,
   Clock,
   CheckCircle,
-  XCircle,
   Calendar,
   Activity,
-  TrendingUp,
   Users,
-  AlertCircle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

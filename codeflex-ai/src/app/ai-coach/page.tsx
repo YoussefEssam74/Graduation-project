@@ -2,408 +2,360 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
 import {
   Brain,
   Send,
-  Zap,
+  Ticket,
   History,
   Plus,
-  MessageSquare,
+  Loader2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { aiApi, AIChatLogDto, AIChatSessionDto } from "@/lib/api";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { UserRole } from "@/types/gym";
 
-interface ChatSession {
-  sessionId: string;
-  messageCount: number;
-  lastMessage: string;
-  lastMessageTime: string;
-  firstMessage: string;
+// Message type for display
+interface DisplayMessage {
+  id: string;
+  role: "user" | "ai";
+  content: string;
+  timestamp: string;
 }
 
-export default function AICoachPage() {
-  const { user, refreshUser, token } = useAuth();
-  // API base - can be configured via environment variable in development/production
-  const API_BASE = (
-    process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5025/api"
-  ).replace(/\/$/, "");
-  const [message, setMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState<
-    { role: "user" | "ai"; content: string; timestamp: string }[]
-  >([]);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+function AICoachContent() {
+  const { user, refreshUser } = useAuth();
+  const { showToast } = useToast();
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [sessions, setSessions] = useState<AIChatSessionDto[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const suggestedPrompts = [
-    "What should I eat after my workout?",
-    "How can I improve my bench press?",
-    "Create a meal plan for muscle gain",
-    "What exercises target lower back?",
-    "How much protein do I need daily?",
-    "Tips for better recovery",
-  ];
-
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
-    const currentBalance = user?.tokenBalance ?? 0;
-    if (currentBalance <= 0) {
-      const outOfTokens = {
-        role: "ai" as const,
-        content:
-          "You have run out of tokens — generate more or upgrade your plan to continue using the AI coach.",
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      setChatHistory((s) => [...s, outOfTokens]);
-      return;
-    }
-
-    // optimistically add user message
-    const newUserMessage = {
-      role: "user" as const,
-      content: message,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-    setChatHistory((s) => [...s, newUserMessage]);
-    setIsSending(true);
-
-    // send to backend Gemini endpoint
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/ai/gemini-chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ 
-            userId: user?.userId, 
-            message,
-            sessionId: currentSessionId 
-          }),
-        });
-
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`AI API error: ${res.status} ${txt}`);
-        }
-
-        const payload = await res.json();
-        const aiReply = payload?.data?.response ?? "Sorry, I couldn't get a response from the AI.";
-        const returnedSessionId = payload?.data?.sessionId;
-
-        // Update current session ID if this was a new chat
-        if (!currentSessionId && returnedSessionId) {
-          setCurrentSessionId(returnedSessionId);
-        }
-
-        // add ai message
-        const aiMessage = { role: "ai" as const, content: aiReply, timestamp: new Date().toLocaleTimeString() };
-        setChatHistory((s) => [...s, aiMessage]);
-        
-        // Refresh user data to get updated token balance from database
-        await refreshUser();
-        
-        // Reload sessions to update sidebar
-        loadSessions();
-      } catch (err) {
-        console.error("Error sending message to Gemini API:", err);
-        const errMsg = { role: "ai" as const, content: "Error: Unable to get response from AI. Try again later.", timestamp: new Date().toLocaleTimeString() };
-        setChatHistory((s) => [...s, errMsg]);
-      } finally {
-        setIsSending(false);
-        setMessage("");
-      }
-    })();
-  };
-
-  const handleNewChat = () => {
-    setCurrentSessionId(null);
-    setChatHistory([]);
-  };
-
-  const handlePromptClick = (prompt: string) => {
-    setMessage(prompt);
-  };
-
-  // Load chat sessions for the user on mount
-  const loadSessions = async () => {
-    if (!user?.userId) {
-      setIsLoadingSessions(false);
-      return;
-    }
-    try {
-      const res = await fetch(`${API_BASE}/ai/sessions/${user.userId}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
-      if (!res.ok) {
-        console.warn("Failed to load chat sessions", res.status);
-        setIsLoadingSessions(false);
-        return;
-      }
-
-      const data = await res.json();
-      if (data.success && Array.isArray(data.sessions)) {
-        setSessions(data.sessions);
-      }
-    } catch (err) {
-      console.error("Error loading chat sessions:", err);
-    } finally {
-      setIsLoadingSessions(false);
-    }
-  };
-
+  // Auto scroll on new messages
   useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Load chat sessions on mount
+  useEffect(() => {
+    const loadSessions = async () => {
+      if (!user?.userId) return;
+
+      try {
+        const response = await aiApi.getChatSessions(user.userId);
+        if (response.success && response.data?.sessions) {
+          setSessions(response.data.sessions);
+        }
+      } catch (error) {
+        console.error("Failed to load chat sessions:", error);
+      }
+    };
+
     loadSessions();
   }, [user?.userId]);
 
-  // Load a specific session's messages
-  const loadSession = async (sessionId: string) => {
+  // Load messages for a session
+  const loadSessionMessages = async (sessionId: string) => {
     if (!user?.userId) return;
-    
+
+    setIsLoading(true);
+    setCurrentSessionId(sessionId);
+
     try {
-      const res = await fetch(`${API_BASE}/ai/sessions/${user.userId}/${sessionId}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
-      if (!res.ok) {
-        console.warn("Failed to load session messages", res.status);
-        return;
-      }
-
-      const data = await res.json();
-      if (data.success && Array.isArray(data.messages)) {
-        const mapped = data.messages.map((m: any) => ({
-          role: m.role === 'user' ? 'user' as const : 'ai' as const,
-          content: m.message || '',
-          timestamp: new Date(m.timestamp).toLocaleTimeString()
+      const response = await aiApi.getSessionMessages(user.userId, sessionId);
+      if (response.success && response.data?.messages) {
+        const displayMessages: DisplayMessage[] = response.data.messages.map((msg: AIChatLogDto) => ({
+          id: msg.chatLogId.toString(),
+          role: "user" as const,
+          content: msg.userMessage,
+          timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }));
-        setChatHistory(mapped);
-        setCurrentSessionId(sessionId);
+
+        // Add AI responses
+        const withAiResponses: DisplayMessage[] = [];
+        response.data.messages.forEach((msg: AIChatLogDto) => {
+          withAiResponses.push({
+            id: `user-${msg.chatLogId}`,
+            role: "user",
+            content: msg.userMessage,
+            timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          });
+          withAiResponses.push({
+            id: `ai-${msg.chatLogId}`,
+            role: "ai",
+            content: msg.aiResponse,
+            timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          });
+        });
+
+        setMessages(withAiResponses);
       }
-    } catch (err) {
-      console.error("Error loading session messages:", err);
+    } catch (error) {
+      console.error("Failed to load session messages:", error);
+      showToast("Failed to load messages", "error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Keep chat scrolled to bottom when new messages arrive
-  const chatContainerRef = useRef<HTMLDivElement | null>(null);
-  // Ref to the last message element to reliably scroll into view
-  const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  // Start a new chat
+  const startNewChat = () => {
+    setCurrentSessionId(null);
+    setMessages([]);
+  };
 
-  useEffect(() => {
-    // First try to scroll the last message into view (preferred)
-    const last = lastMessageRef.current;
-    if (last) {
-      try {
-        last.scrollIntoView({ behavior: "smooth", block: "end" });
-        return;
-      } catch {
-        // fall back to container scroll
+  // Send message to AI
+  const handleSend = async () => {
+    if (!input.trim() || !user?.userId || isSending) return;
+
+    const userMessage: DisplayMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setIsSending(true);
+
+    try {
+      const response = await aiApi.sendMessage(
+        user.userId,
+        input,
+        currentSessionId || undefined
+      );
+
+      if (response.success && response.data) {
+        const aiMessage: DisplayMessage = {
+          id: (Date.now() + 1).toString(),
+          role: "ai",
+          content: response.data.response,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessages(prev => [...prev, aiMessage]);
+
+        // Set session ID if this was a new chat
+        if (!currentSessionId && response.data.sessionId) {
+          setCurrentSessionId(response.data.sessionId);
+        }
+
+        // Refresh user to update token balance
+        refreshUser();
+
+        // Reload sessions to show the new one
+        const sessionsResponse = await aiApi.getChatSessions(user.userId);
+        if (sessionsResponse.success && sessionsResponse.data?.sessions) {
+          setSessions(sessionsResponse.data.sessions);
+        }
+      } else {
+        showToast(response.message || "Failed to get AI response", "error");
       }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      showToast("Failed to send message. Please try again.", "error");
+    } finally {
+      setIsSending(false);
     }
-
-    const el = chatContainerRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
-  }, [chatHistory]);
-
-
+  };
 
   return (
-    <div className="h-[calc(100vh-6rem)] flex flex-col bg-gradient-to-b from-background to-background/95">
-      <div className="flex-1 container mx-auto px-4 py-4 max-w-7xl flex flex-col min-h-0">
-        {/* Main Chat Area - Full Height */}
-        <div className="flex-1 grid lg:grid-cols-4 gap-4 min-h-0">
-          {/* Left: History Sidebar */}
-          <div className="lg:col-span-1 order-2 lg:order-1 hidden lg:block min-h-0">
-            <Card className="h-full flex flex-col border-0 shadow-lg bg-card/80 backdrop-blur-sm">
-              <div className="p-3 border-b border-border/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <History className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Chat History</h3>
-                  </div>
-                  <Button 
-                    onClick={handleNewChat}
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    New
-                  </Button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
-                {isLoadingSessions && (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-                  </div>
-                )}
-                {!isLoadingSessions && sessions.length === 0 && (
-                  <div className="text-center py-8 px-4">
-                    <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">No conversations yet</p>
-                    <p className="text-xs text-muted-foreground/60 mt-1">Start chatting to see your history</p>
-                  </div>
-                )}
-                {sessions.map((session) => (
-                  <button
-                    key={session.sessionId}
-                    onClick={() => loadSession(session.sessionId)}
-                    className={`w-full text-left p-3 rounded-lg hover:bg-primary/10 transition-all duration-200 group border ${
-                      currentSessionId === session.sessionId 
-                        ? 'border-primary/30 bg-primary/5' 
-                        : 'border-transparent'
+    <div className="min-h-[calc(100vh-6rem)] bg-slate-50 relative overflow-hidden flex flex-col md:flex-row">
+      {/* Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "blur(8px)",
+          opacity: 0.1
+        }}
+      />
+
+      {/* Sidebar - Chat Sessions */}
+      <div className="hidden md:flex w-72 bg-white border-r border-slate-200 flex-col z-10">
+        <div className="p-4 border-b border-slate-100">
+          <Button
+            onClick={startNewChat}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2"
+          >
+            <Plus className="h-4 w-4" /> New Chat
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">
+            Chat History
+          </h3>
+
+          {sessions.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-8">No previous chats</p>
+          ) : (
+            <div className="space-y-2">
+              {sessions.map(session => (
+                <div
+                  key={session.sessionId}
+                  onClick={() => loadSessionMessages(session.sessionId)}
+                  className={`p-3 rounded-xl cursor-pointer transition-colors ${currentSessionId === session.sessionId
+                    ? 'bg-blue-50 border border-blue-200'
+                    : 'hover:bg-slate-50'
                     }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <MessageSquare className="h-3 w-3 text-primary" />
-                      <span className="text-[10px] text-muted-foreground/60">
-                        {new Date(session.lastMessageTime).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-foreground font-medium line-clamp-1 mb-1">
-                      {session.firstMessage}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/80 line-clamp-1">
-                      {session.messageCount} messages
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          {/* Right: Chat Area */}
-          <div className="lg:col-span-3 order-1 lg:order-2 min-h-0">
-            <Card className="h-full flex flex-col border-0 shadow-xl bg-card/90 backdrop-blur-sm overflow-hidden min-h-0">
-              {/* Chat Header */}
-              <div className="px-4 py-3 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent flex-shrink-0">
-                <div className="flex items-center justify-between">
+                >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl">
-                      <Brain className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-base">AI Fitness Coach</h3>
-                      <p className="text-xs text-muted-foreground">Powered by Gemini AI</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-                      <Zap className="h-3.5 w-3.5 text-primary" />
-                      <span className="font-semibold text-sm">{user?.tokenBalance ?? 0}</span>
-                      <span className="text-xs text-muted-foreground">tokens</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-500/10 rounded-full border border-green-500/20">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-xs font-medium text-green-600">Online</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chat Messages */}
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-transparent to-muted/5 min-h-0">
-                {chatHistory.length === 0 && !isLoadingSessions && (
-                  <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                    <div className="p-3 bg-primary/10 rounded-2xl mb-3">
-                      <Brain className="h-8 w-8 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-base mb-1">Start a Conversation</h3>
-                    <p className="text-muted-foreground text-sm mb-4 max-w-md">
-                      Ask me anything about fitness, nutrition, or health goals!
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 max-w-md w-full">
-                      {suggestedPrompts.slice(0, 4).map((prompt, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handlePromptClick(prompt)}
-                          className="text-left p-2.5 bg-primary/5 hover:bg-primary/10 rounded-xl border border-primary/10 hover:border-primary/30 text-xs transition-all duration-200"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {chatHistory.map((msg, index) => (
-                  <div
-                    key={index}
-                    ref={index === chatHistory.length - 1 ? lastMessageRef : null}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[75%] ${
-                        msg.role === "user"
-                          ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/20"
-                          : "bg-muted/80 border border-border/50"
-                      } rounded-2xl px-3 py-2`}
-                    >
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                      <p
-                        className={`text-[10px] mt-1 ${
-                          msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground/60"
-                        }`}
-                      >
-                        {msg.timestamp}
+                    <History className="h-4 w-4 text-slate-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-700 text-sm truncate">
+                        {session.title || "Chat Session"}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {new Date(session.lastMessageAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                ))}
-                {isSending && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted/80 border border-border/50 rounded-2xl px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-1">
-                          <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                        <span className="text-xs text-muted-foreground">Thinking...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Chat Input */}
-              <div className="flex-shrink-0 p-3 border-t border-border/50 bg-background/80">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Ask me anything about fitness, nutrition, or training..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                    className="flex-1 border-border/50 bg-muted/30 focus:bg-background transition-colors"
-                    disabled={isSending}
-                  />
-                  <Button 
-                    onClick={handleSendMessage} 
-                    disabled={!message.trim() || (user?.tokenBalance ?? 0) <= 0 || isSending}
-                    className="px-4 shadow-lg shadow-primary/20"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground/60 mt-1.5 text-center">
-                  1 token per message • Press Enter to send
-                </p>
-              </div>
-            </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col relative z-10">
+        {/* Chat Header */}
+        <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg">
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-900">AI Fitness Coach</h2>
+              <p className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                Online • 1 token per message
+              </p>
+            </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-full text-xs font-bold">
+              <Ticket className="h-3 w-3" />
+              {user?.tokenBalance ?? 0} tokens
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <Brain className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Start a Conversation</h3>
+              <p className="text-slate-500 max-w-md">
+                Ask me anything about workouts, nutrition, recovery, or your fitness goals.
+                I&apos;m here to help you on your fitness journey!
+              </p>
+            </div>
+          ) : (
+            messages.map(msg => (
+              <div
+                key={msg.id}
+                className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'ai'
+                  ? 'bg-gradient-to-br from-blue-500 to-blue-700'
+                  : 'bg-slate-200'
+                  }`}>
+                  {msg.role === 'ai'
+                    ? <Brain className="h-4 w-4 text-white" />
+                    : <span className="text-xs font-bold text-slate-600">
+                      {user?.name?.charAt(0) || 'U'}
+                    </span>
+                  }
+                </div>
+                <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${msg.role === 'ai'
+                  ? 'bg-white text-slate-700 rounded-tl-none shadow-sm'
+                  : 'bg-blue-600 text-white rounded-tr-none'
+                  }`}>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  <p className={`text-[10px] mt-2 ${msg.role === 'ai' ? 'text-slate-400' : 'text-blue-200'
+                    }`}>
+                    {msg.timestamp}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+
+          {isSending && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
+                <Brain className="h-4 w-4 text-white" />
+              </div>
+              <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="bg-white border-t border-slate-200 p-4">
+          <div className="flex gap-2 max-w-4xl mx-auto">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder="Ask about workouts, nutrition, or your fitness goals..."
+              className="flex-1 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+              disabled={isSending}
+            />
+            <Button
+              onClick={handleSend}
+              disabled={!input.trim() || isSending}
+              className="h-12 w-12 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200"
+            >
+              {isSending ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
+          <p className="text-[10px] text-slate-400 text-center mt-2">
+            AI responses are for informational purposes only. Always consult with a professional for medical advice.
+          </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AICoachPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.Member]}>
+      <AICoachContent />
+    </ProtectedRoute>
   );
 }

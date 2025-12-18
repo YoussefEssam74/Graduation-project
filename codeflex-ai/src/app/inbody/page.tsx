@@ -10,6 +10,12 @@ import {
   Zap,
   Clock,
   CheckCircle,
+  Download,
+  PlusCircle,
+  ArrowRight,
+  Droplets,
+  Bone,
+  Flame
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +30,15 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { inbodyApi, bookingsApi, type InBodyMeasurementDto, type BookingDto } from "@/lib/api";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
 
 // Generate dynamic available slots based on current date
 const generateAvailableSlots = () => {
@@ -31,18 +46,18 @@ const generateAvailableSlots = () => {
   const today = new Date();
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  
+
   for (let i = 1; i <= 5; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    
+
     // Skip Sundays
     if (date.getDay() === 0) continue;
-    
-    const timeSlots = date.getDay() === 6 
+
+    const timeSlots = date.getDay() === 6
       ? ["10:00 AM", "11:00 AM", "12:00 PM"] // Saturday - fewer slots
       : ["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM"];
-    
+
     slots.push({
       id: i,
       date: `${monthNames[date.getMonth()]} ${date.getDate()}`,
@@ -54,7 +69,6 @@ const generateAvailableSlots = () => {
   return slots;
 };
 
-// Map booking status from number to string
 const mapBookingStatus = (status: number): string => {
   switch (status) {
     case 0: return "Pending";
@@ -74,11 +88,14 @@ export default function InBodyPage() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [scheduledBooking, setScheduledBooking] = useState<BookingDto | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Real data from API
+
+  // Real data
   const [isLoading, setIsLoading] = useState(true);
   const [measurements, setMeasurements] = useState<InBodyMeasurementDto[]>([]);
-  const [latestMeasurement, setLatestMeasurement] = useState<InBodyMeasurementDto | null>(null);
+  const [latest, setLatest] = useState<InBodyMeasurementDto | null>(null);
+
+  // Chart state
+  const [chartMetric, setChartMetric] = useState<'weight' | 'muscle' | 'fat'>('weight');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,9 +105,8 @@ export default function InBodyPage() {
       }
 
       try {
-        const [measurementsRes, latestRes, bookingsRes] = await Promise.all([
+        const [measurementsRes, bookingsRes] = await Promise.all([
           inbodyApi.getUserMeasurements(user.userId),
-          inbodyApi.getLatestMeasurement(user.userId),
           bookingsApi.getUserBookings(user.userId),
         ]);
 
@@ -100,22 +116,13 @@ export default function InBodyPage() {
             (a, b) => new Date(b.measurementDate).getTime() - new Date(a.measurementDate).getTime()
           );
           setMeasurements(sorted);
-        }
-
-        if (latestRes.success && latestRes.data) {
-          setLatestMeasurement(latestRes.data);
-        } else if (measurementsRes.success && measurementsRes.data?.length > 0) {
-          // Fallback to first measurement if latest endpoint fails
-          const sorted = [...measurementsRes.data].sort(
-            (a, b) => new Date(b.measurementDate).getTime() - new Date(a.measurementDate).getTime()
-          );
-          setLatestMeasurement(sorted[0]);
+          if (sorted.length > 0) setLatest(sorted[0]);
         }
 
         // Check for existing InBody booking
         if (bookingsRes.success && bookingsRes.data) {
           const inbodyBooking = bookingsRes.data.find(
-            b => b.bookingType === "InBody" && (b.status === 0 || b.status === 1) // Pending or Confirmed
+            b => b.bookingType === "InBody" && (b.status === 0 || b.status === 1)
           );
           if (inbodyBooking) {
             setScheduledBooking(inbodyBooking);
@@ -137,35 +144,28 @@ export default function InBodyPage() {
     setIsScheduleModalOpen(true);
   };
 
-  // Parse time string like "10:00 AM" to hours and minutes
   const parseTimeString = (timeStr: string): { hours: number; minutes: number } => {
     const [time, period] = timeStr.split(' ');
     const [hoursStr, minutesStr] = time.split(':');
     let hours = parseInt(hoursStr, 10);
     const minutes = parseInt(minutesStr, 10);
-    
-    if (period === 'PM' && hours !== 12) {
-      hours += 12;
-    } else if (period === 'AM' && hours === 12) {
-      hours = 0;
-    }
-    
+
+    if (period === 'PM' && hours !== 12) hours += 12;
+    else if (period === 'AM' && hours === 12) hours = 0;
+
     return { hours, minutes };
   };
 
   const handleConfirmSchedule = async () => {
     if (!selectedDate || !selectedTime || !user?.userId) return;
-
     setIsSubmitting(true);
-    
+
     try {
-      // Create start and end time for the booking
       const { hours, minutes } = parseTimeString(selectedTime);
       const startTime = new Date(selectedDate.fullDate);
       startTime.setHours(hours, minutes, 0, 0);
-      
       const endTime = new Date(startTime);
-      endTime.setMinutes(endTime.getMinutes() + 30); // InBody scan takes 30 minutes
+      endTime.setMinutes(endTime.getMinutes() + 30);
 
       const response = await bookingsApi.createBooking({
         userId: user.userId,
@@ -178,12 +178,12 @@ export default function InBodyPage() {
       if (response.success && response.data) {
         setScheduledBooking(response.data);
         setIsScheduleModalOpen(false);
-        showToast(`InBody scan scheduled for ${selectedDate.date} at ${selectedTime}. The receptionist will confirm your appointment.`, "success");
+        showToast("Scan scheduled successfully!", "success");
       } else {
-        showToast(response.message || "Failed to schedule scan. Please try again.", "error");
+        showToast(response.message || "Failed to schedule", "error");
       }
     } catch {
-      showToast("Failed to schedule scan. Please try again.", "error");
+      showToast("Error scheduling scan", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -191,548 +191,446 @@ export default function InBodyPage() {
 
   const handleCancelBooking = async () => {
     if (!scheduledBooking) return;
-    
     setIsSubmitting(true);
     try {
       const response = await bookingsApi.cancelBooking(scheduledBooking.bookingId, "Cancelled by user");
       if (response.success) {
         setScheduledBooking(null);
-        showToast("InBody scan appointment cancelled", "success");
+        showToast("Appointment cancelled", "success");
       } else {
-        showToast(response.message || "Failed to cancel appointment", "error");
+        showToast(response.message || "Failed to cancel", "error");
       }
-    } catch {
-      showToast("Failed to cancel appointment", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+  const getComparison = (metric: 'weight' | 'muscle' | 'fat') => {
+    if (measurements.length < 2 || !latest) return { value: 0, text: "No prior data", percent: "0%" };
+    const prev = measurements[1];
+    let diff = 0;
+    let percent = 0;
+
+    if (metric === 'weight') {
+      diff = latest.weight - prev.weight;
+      percent = (diff / prev.weight) * 100;
+    } else if (metric === 'muscle') {
+      diff = latest.muscleMass - prev.muscleMass;
+      percent = (diff / prev.muscleMass) * 100;
+    } else if (metric === 'fat') {
+      diff = latest.bodyFatPercentage - prev.bodyFatPercentage; // absolute diff for percentage
+      percent = diff; // Show absolute change for % metrics
+    }
+
+    return {
+      value: diff,
+      percent: Math.abs(percent).toFixed(1) + "%",
+      isPositive: diff > 0,
+      label: metric === 'weight' ? "vs last scan" : metric === 'muscle' ? "Muscle Mass" : "Body Fat"
+    };
   };
 
-  // Get previous measurement for comparison
-  const getPreviousMeasurement = () => {
-    if (measurements.length < 2) return null;
-    return measurements[1];
-  };
+  const chartData = [...measurements].reverse().map(m => ({
+    date: new Date(m.measurementDate).toLocaleDateString('en-US', { month: 'short' }),
+    weight: m.weight,
+    muscle: m.muscleMass,
+    fat: m.bodyFatPercentage
+  }));
 
-  const getTrendIcon = (current: number, previous: number, higher_is_better: boolean) => {
-    if (current === previous) return null;
-    const isImproving = higher_is_better
-      ? current > previous
-      : current < previous;
-    return isImproving ? (
-      <TrendingUp className="h-4 w-4 text-green-500" />
-    ) : (
-      <TrendingDown className="h-4 w-4 text-red-500" />
-    );
-  };
-
-  const getChangeText = (current: number, previous: number, unit: string) => {
-    const diff = current - previous;
-    const sign = diff > 0 ? "+" : "";
-    return `${sign}${diff.toFixed(1)}${unit}`;
-  };
-
-  const previousMeasurement = getPreviousMeasurement();
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-slate-900 text-white text-xs rounded-lg p-2 shadow-xl border border-slate-700">
+          <p className="font-bold mb-1">{label}</p>
+          <p>{`${payload[0].name}: ${payload[0].value}`}</p>
         </div>
-      </div>
-    );
-  }
+      );
+    }
+    return null;
+  };
+
+  const hasData = measurements.length > 0;
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold">
-            <span className="text-foreground">InBody </span>
-            <span className="text-primary">Tracking</span>
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor your body composition over time
-          </p>
-        </div>
-        <Button size="lg" onClick={handleOpenScheduleModal}>
-          <Calendar className="h-5 w-5 mr-2" />
-          {scheduledBooking ? "Reschedule Scan" : "Schedule Scan"}
-        </Button>
-      </div>
+    <div className="min-h-screen bg-[#f8f9fa] p-4 lg:p-6 pb-20">
+      <div className="max-w-7xl mx-auto space-y-5">
 
-      {/* Scheduled Scan Banner */}
-      {scheduledBooking && (
-        <Card className="p-4 border-2 border-green-500 bg-green-50 dark:bg-green-950">
-          <div className="flex items-center justify-between">
+        {/* Header - Compact */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
             <div className="flex items-center gap-3">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-              <div>
-                <p className="font-semibold text-green-800 dark:text-green-200">InBody Scan Scheduled</p>
-                <p className="text-sm text-green-700 dark:text-green-300">
-                  {new Date(scheduledBooking.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric", weekday: "long" })} at {new Date(scheduledBooking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — {mapBookingStatus(scheduledBooking.status)}
-                </p>
-              </div>
+              <h1 className="text-2xl font-black text-slate-900">My Body Composition</h1>
+              {latest && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${latest.bmi < 25 && latest.bmi > 18.5 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                  {latest.bmi < 25 && latest.bmi > 18.5 ? "Healthy" : "Check BMI"}
+                </span>
+              )}
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleCancelBooking} disabled={isSubmitting}>
-                Cancel
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleOpenScheduleModal}>
-                Reschedule
-              </Button>
-            </div>
+            <p className="text-slate-500 text-xs mt-1 font-medium">
+              Latest Scan: {latest ? new Date(latest.measurementDate).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : "No scans yet"}
+            </p>
           </div>
-        </Card>
-      )}
+          <div className="flex gap-2">
+            <Button variant="outline" className="bg-white border-slate-200 text-slate-700 font-bold text-xs h-9 rounded-xl gap-2 shadow-sm">
+              <Download className="h-3.5 w-3.5" />
+              Export Report
+            </Button>
+            <Button onClick={handleOpenScheduleModal} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs h-9 rounded-xl gap-2 shadow-md shadow-blue-200">
+              <PlusCircle className="h-3.5 w-3.5" />
+              {scheduledBooking ? "Reschedule" : "Schedule Scan"}
+            </Button>
+          </div>
+        </div>
 
-      {/* No measurements message */}
-      {!latestMeasurement && (
-        <Card className="p-12 text-center border border-border bg-card/50">
-          <Scale className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="text-2xl font-bold mb-2">No Measurements Yet</h3>
-          <p className="text-muted-foreground mb-6">
-            Schedule your first InBody scan to start tracking your body composition.
-          </p>
-          <Button size="lg" onClick={handleOpenScheduleModal}>
-            <Calendar className="h-5 w-5 mr-2" />
-            Schedule Your First Scan
-          </Button>
-        </Card>
-      )}
-
-      {latestMeasurement && (
-        <>
-          {/* Latest Measurement Summary */}
-          <Card className="p-6 border-2 border-primary bg-gradient-to-r from-primary/10 to-secondary/10">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">
-                <span className="text-foreground">Latest </span>
-                <span className="text-primary">Measurement</span>
-              </h2>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{formatDate(latestMeasurement.measurementDate)}</span>
+        {scheduledBooking && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-green-600" />
+              <div>
+                <p className="text-xs font-bold text-green-800">Scan Scheduled: {new Date(scheduledBooking.startTime).toLocaleDateString()}</p>
+                <p className="text-[10px] text-green-600">{mapBookingStatus(scheduledBooking.status)}</p>
               </div>
             </div>
+            <Button variant="ghost" size="sm" onClick={handleCancelBooking} className="text-green-700 hover:text-green-800 hover:bg-green-100 text-[10px] h-6 font-bold">Cancel</Button>
+          </div>
+        )}
 
-            <div className="grid md:grid-cols-4 gap-6">
-              <div className="text-center">
-                <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto mb-3">
-                  <Scale className="h-8 w-8 text-primary" />
-                </div>
-                <div className="text-3xl font-bold mb-1">{latestMeasurement.weight} kg</div>
-                <div className="text-sm text-muted-foreground">Weight</div>
-                {previousMeasurement && (
-                  <div className="flex items-center justify-center gap-1 mt-1 text-sm text-green-500">
-                    {getTrendIcon(latestMeasurement.weight, previousMeasurement.weight, false)}
-                    <span>{getChangeText(latestMeasurement.weight, previousMeasurement.weight, "kg")}</span>
+        {/* Top Stats Cards - Compact */}
+        {latest ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Weight */}
+            <Card className="p-4 border-0 shadow-sm bg-white rounded-[18px] relative overflow-hidden">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-slate-400 font-bold text-[10px] uppercase mb-1">Total Weight</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-slate-900">{latest.weight}</span>
+                    <span className="text-xs font-bold text-slate-400">kg</span>
                   </div>
-                )}
+                </div>
+                <div className={`p-1.5 rounded-full ${getComparison('weight').value <= 0 ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"}`}>
+                  {getComparison('weight').value <= 0 ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
+                </div>
               </div>
+              {measurements.length > 1 && (
+                <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold mt-2 ${getComparison('weight').value <= 0 ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                  {getComparison('weight').percent}
+                  <span className="text-slate-400 font-medium ml-1">vs last</span>
+                </div>
+              )}
+            </Card>
 
-              <div className="text-center">
-                <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto mb-3">
-                  <Activity className="h-8 w-8 text-primary" />
-                </div>
-                <div className="text-3xl font-bold mb-1">{latestMeasurement.bodyFatPercentage}%</div>
-                <div className="text-sm text-muted-foreground">Body Fat</div>
-                {previousMeasurement && (
-                  <div className="flex items-center justify-center gap-1 mt-1 text-sm text-green-500">
-                    {getTrendIcon(latestMeasurement.bodyFatPercentage, previousMeasurement.bodyFatPercentage, false)}
-                    <span>{getChangeText(latestMeasurement.bodyFatPercentage, previousMeasurement.bodyFatPercentage, "%")}</span>
+            {/* Muscle */}
+            <Card className="p-4 border-0 shadow-sm bg-white rounded-[18px] relative overflow-hidden">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-slate-400 font-bold text-[10px] uppercase mb-1">Muscle Mass</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-slate-900">{latest.muscleMass}</span>
+                    <span className="text-xs font-bold text-slate-400">kg</span>
                   </div>
-                )}
+                </div>
+                <div className={`p-1.5 rounded-full ${getComparison('muscle').value >= 0 ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"}`}>
+                  <TrendingUp className="h-3.5 w-3.5" />
+                </div>
               </div>
+              {measurements.length > 1 && (
+                <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold mt-2 ${getComparison('muscle').value >= 0 ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                  {getComparison('muscle').percent}
+                  <span className="text-slate-400 font-medium ml-1">Improved</span>
+                </div>
+              )}
+            </Card>
 
-              <div className="text-center">
-                <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto mb-3">
-                  <Zap className="h-8 w-8 text-primary" />
-                </div>
-                <div className="text-3xl font-bold mb-1">{latestMeasurement.muscleMass} kg</div>
-                <div className="text-sm text-muted-foreground">Muscle Mass</div>
-                {previousMeasurement && (
-                  <div className="flex items-center justify-center gap-1 mt-1 text-sm text-green-500">
-                    {getTrendIcon(latestMeasurement.muscleMass, previousMeasurement.muscleMass, true)}
-                    <span>{getChangeText(latestMeasurement.muscleMass, previousMeasurement.muscleMass, "kg")}</span>
+            {/* Fat */}
+            <Card className="p-4 border-0 shadow-sm bg-white rounded-[18px] relative overflow-hidden">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-slate-400 font-bold text-[10px] uppercase mb-1">Body Fat</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-slate-900">{latest.bodyFatPercentage}</span>
+                    <span className="text-xs font-bold text-slate-400">%</span>
                   </div>
-                )}
-              </div>
-
-              <div className="text-center">
-                <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto mb-3">
-                  <Activity className="h-8 w-8 text-primary" />
                 </div>
-                <div className="text-3xl font-bold mb-1">{latestMeasurement.bmi}</div>
-                <div className="text-sm text-muted-foreground">BMI</div>
-                {previousMeasurement && (
-                  <div className="flex items-center justify-center gap-1 mt-1 text-sm text-green-500">
-                    {getTrendIcon(latestMeasurement.bmi, previousMeasurement.bmi, false)}
-                    <span>{getChangeText(latestMeasurement.bmi, previousMeasurement.bmi, "")}</span>
-                  </div>
-                )}
+                <div className={`p-1.5 rounded-full ${getComparison('fat').value <= 0 ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-600"}`}>
+                  {getComparison('fat').value <= 0 ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
+                </div>
               </div>
-            </div>
+              {measurements.length > 1 && (
+                <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold mt-2 ${getComparison('fat').value <= 0 ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                  {getComparison('fat').percent}
+                  <span className="text-slate-400 font-medium ml-1">Leaner</span>
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : (
+          <Card className="p-6 text-center bg-white border-0 shadow-sm rounded-[20px]">
+            <Scale className="h-10 w-10 mx-auto text-slate-200 mb-3" />
+            <h3 className="text-base font-bold text-slate-900">No Data Available</h3>
+            <p className="text-slate-500 text-xs mb-3">Complete your first scan to see your stats.</p>
           </Card>
+        )}
 
-          {/* Detailed Metrics */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-              <h3 className="text-xl font-bold mb-4">
-                <span className="text-foreground">Body </span>
-                <span className="text-primary">Composition</span>
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-                  <span className="text-muted-foreground">Body Water</span>
-                  <span className="font-bold">{latestMeasurement.bodyWaterPercentage || "N/A"}%</span>
+        {/* Charts & Insights */}
+        {hasData && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2 p-5 border-0 shadow-sm bg-white rounded-[22px]">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Composition History</h3>
+                  <p className="text-[10px] text-slate-500 font-medium">Last 6 Months Trend</p>
                 </div>
-                <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-                  <span className="text-muted-foreground">Bone Mass</span>
-                  <span className="font-bold">{latestMeasurement.boneMass || "N/A"} kg</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-                  <span className="text-muted-foreground">Visceral Fat Level</span>
-                  <span className="font-bold">{latestMeasurement.visceralFatLevel || "N/A"}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
-                  <span className="text-muted-foreground">Basal Metabolic Rate</span>
-                  <span className="font-bold">{latestMeasurement.bmr || "N/A"} kcal</span>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-              <h3 className="text-xl font-bold mb-4">
-                <span className="text-foreground">Progress </span>
-                <span className="text-primary">Insights</span>
-              </h3>
-              <div className="space-y-4">
-                {measurements.length >= 2 ? (
-                  <>
-                    {/* Calculate changes over time */}
-                    {(() => {
-                      const oldest = measurements[measurements.length - 1];
-                      const latest = measurements[0];
-                      const weightChange = latest.weight - oldest.weight;
-                      const fatChange = latest.bodyFatPercentage - oldest.bodyFatPercentage;
-                      const muscleChange = latest.muscleMass - oldest.muscleMass;
-                      
-                      return (
-                        <>
-                          <div className={`p-4 ${weightChange <= 0 ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-lg`}>
-                            <div className="flex items-start gap-3">
-                              {weightChange <= 0 ? (
-                                <TrendingDown className="h-5 w-5 text-green-600 mt-1" />
-                              ) : (
-                                <TrendingUp className="h-5 w-5 text-orange-600 mt-1" />
-                              )}
-                              <div>
-                                <div className={`font-semibold ${weightChange <= 0 ? 'text-green-800' : 'text-orange-800'} mb-1`}>
-                                  Weight Change
-                                </div>
-                                <div className={`text-sm ${weightChange <= 0 ? 'text-green-700' : 'text-orange-700'}`}>
-                                  {weightChange > 0 ? '+' : ''}{weightChange.toFixed(1)} kg since {formatDate(oldest.measurementDate)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className={`p-4 ${fatChange <= 0 ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-lg`}>
-                            <div className="flex items-start gap-3">
-                              {fatChange <= 0 ? (
-                                <TrendingDown className="h-5 w-5 text-green-600 mt-1" />
-                              ) : (
-                                <TrendingUp className="h-5 w-5 text-orange-600 mt-1" />
-                              )}
-                              <div>
-                                <div className={`font-semibold ${fatChange <= 0 ? 'text-green-800' : 'text-orange-800'} mb-1`}>
-                                  Body Fat Change
-                                </div>
-                                <div className={`text-sm ${fatChange <= 0 ? 'text-green-700' : 'text-orange-700'}`}>
-                                  {fatChange > 0 ? '+' : ''}{fatChange.toFixed(1)}% since {formatDate(oldest.measurementDate)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className={`p-4 ${muscleChange >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-orange-50 border-orange-200'} border rounded-lg`}>
-                            <div className="flex items-start gap-3">
-                              <Activity className={`h-5 w-5 ${muscleChange >= 0 ? 'text-blue-600' : 'text-orange-600'} mt-1`} />
-                              <div>
-                                <div className={`font-semibold ${muscleChange >= 0 ? 'text-blue-800' : 'text-orange-800'} mb-1`}>
-                                  Muscle Mass
-                                </div>
-                                <div className={`text-sm ${muscleChange >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-                                  {muscleChange > 0 ? '+' : ''}{muscleChange.toFixed(1)} kg since {formatDate(oldest.measurementDate)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Zap className="h-5 w-5 text-primary mt-1" />
-                      <div>
-                        <div className="font-semibold mb-1">Get More Insights</div>
-                        <div className="text-sm text-muted-foreground">
-                          Schedule more InBody scans to track your progress over time.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <Zap className="h-5 w-5 text-primary mt-1" />
-                    <div>
-                      <div className="font-semibold mb-1">AI Recommendation</div>
-                      <div className="text-sm text-muted-foreground">
-                        {latestMeasurement.bodyFatPercentage > 20
-                          ? "Focus on cardio and maintain a caloric deficit to reduce body fat."
-                          : latestMeasurement.bodyFatPercentage < 15
-                          ? "Great body fat level! Consider increasing protein intake to build more muscle."
-                          : "You're in a healthy range! Keep up the balanced workout routine."}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Measurement History */}
-          {measurements.length > 0 && (
-            <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
-              <h3 className="text-xl font-bold mb-4">
-                <span className="text-foreground">Measurement </span>
-                <span className="text-primary">History</span>
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left p-3 font-semibold">Date</th>
-                      <th className="text-center p-3 font-semibold">Weight (kg)</th>
-                      <th className="text-center p-3 font-semibold">Body Fat (%)</th>
-                      <th className="text-center p-3 font-semibold">Muscle Mass (kg)</th>
-                      <th className="text-center p-3 font-semibold">BMI</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {measurements.map((measurement, index) => (
-                      <tr
-                        key={measurement.measurementId}
-                        className="border-b border-border hover:bg-primary/5 transition-colors"
-                      >
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span>{formatDate(measurement.measurementDate)}</span>
-                          </div>
-                        </td>
-                        <td className="text-center p-3">
-                          <span className="font-medium">{measurement.weight}</span>
-                          {index < measurements.length - 1 && (
-                            <span className={`ml-2 text-xs ${
-                              measurement.weight < measurements[index + 1].weight
-                                ? "text-green-500"
-                                : measurement.weight > measurements[index + 1].weight
-                                ? "text-red-500"
-                                : "text-muted-foreground"
-                            }`}>
-                              {getChangeText(
-                                measurement.weight,
-                                measurements[index + 1].weight,
-                                ""
-                              )}
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-center p-3">
-                          <span className="font-medium">{measurement.bodyFatPercentage}%</span>
-                          {index < measurements.length - 1 && (
-                            <span className={`ml-2 text-xs ${
-                              measurement.bodyFatPercentage < measurements[index + 1].bodyFatPercentage
-                                ? "text-green-500"
-                                : measurement.bodyFatPercentage > measurements[index + 1].bodyFatPercentage
-                                ? "text-red-500"
-                                : "text-muted-foreground"
-                            }`}>
-                              {getChangeText(
-                                measurement.bodyFatPercentage,
-                                measurements[index + 1].bodyFatPercentage,
-                                ""
-                              )}
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-center p-3">
-                          <span className="font-medium">{measurement.muscleMass}</span>
-                          {index < measurements.length - 1 && (
-                            <span className={`ml-2 text-xs ${
-                              measurement.muscleMass > measurements[index + 1].muscleMass
-                                ? "text-green-500"
-                                : measurement.muscleMass < measurements[index + 1].muscleMass
-                                ? "text-red-500"
-                                : "text-muted-foreground"
-                            }`}>
-                              {getChangeText(
-                                measurement.muscleMass,
-                                measurements[index + 1].muscleMass,
-                                ""
-                              )}
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-center p-3">
-                          <span className="font-medium">{measurement.bmi}</span>
-                          {index < measurements.length - 1 && (
-                            <span className={`ml-2 text-xs ${
-                              measurement.bmi < measurements[index + 1].bmi
-                                ? "text-green-500"
-                                : measurement.bmi > measurements[index + 1].bmi
-                                ? "text-red-500"
-                                : "text-muted-foreground"
-                            }`}>
-                              {getChangeText(
-                                measurement.bmi,
-                                measurements[index + 1].bmi,
-                                ""
-                              )}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
-        </>
-      )}
-
-      {/* Schedule InBody Scan Modal */}
-      <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">
-              <span className="text-foreground">Schedule </span>
-              <span className="text-primary">InBody Scan</span>
-            </DialogTitle>
-            <DialogDescription>
-              Select a date and time for your InBody scan. The receptionist will confirm your appointment.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {/* Date Selection */}
-            <div>
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                Select Date
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                {availableSlots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    onClick={() => {
-                      setSelectedDate(slot);
-                      setSelectedTime(null);
-                    }}
-                    className={`p-3 rounded-lg border text-center transition-all ${
-                      selectedDate?.id === slot.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/50 hover:bg-primary/5"
-                    }`}
-                  >
-                    <div className="font-semibold">{slot.date}</div>
-                    <div className="text-xs text-muted-foreground">{slot.day}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Time Selection */}
-            {selectedDate && (
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" />
-                  Select Time
-                </h4>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                  {selectedDate.slots.map((time) => (
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                  {(['weight', 'muscle', 'fat'] as const).map((m) => (
                     <button
-                      key={time}
-                      onClick={() => setSelectedTime(time)}
-                      className={`p-2 rounded-lg border text-sm font-medium transition-all ${
-                        selectedTime === time
-                          ? "border-primary bg-primary text-white"
-                          : "border-border hover:border-primary/50 hover:bg-primary/5"
-                      }`}
+                      key={m}
+                      onClick={() => setChartMetric(m)}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${chartMetric === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
                     >
-                      {time}
+                      {m.charAt(0).toUpperCase() + m.slice(1)}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Selected Summary */}
-            {selectedDate && selectedTime && (
-              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-primary" />
+              <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={chartMetric === 'fat' ? '#F97316' : '#3b82f6'} stopOpacity={0.1} />
+                        <stop offset="95%" stopColor={chartMetric === 'fat' ? '#F97316' : '#3b82f6'} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} domain={['auto', 'auto']} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey={chartMetric}
+                      stroke={chartMetric === 'fat' ? '#F97316' : '#3b82f6'}
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorMetric)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="p-5 border-0 shadow-md bg-blue-600 text-white rounded-[22px] relative overflow-hidden flex flex-col justify-between">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="h-4 w-4 text-yellow-300 fill-yellow-300" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-blue-200">Pulse AI Insight</span>
+                </div>
+                <h3 className="text-xl font-black mb-2 leading-tight">Goal On Track!</h3>
+                <p className="text-blue-100 text-xs leading-relaxed mb-4">
+                  Your skeletal muscle mass has increased by <span className="font-bold text-white">{getComparison('muscle').percent}</span> this month. Great job!
+                </p>
+
+                <div className="bg-blue-500/50 rounded-xl p-3 border border-blue-400/50 mb-4">
+                  <h4 className="flex items-center gap-2 font-bold text-yellow-300 text-[10px] uppercase mb-1">
+                    <Activity className="h-3 w-3" /> Attention Needed
+                  </h4>
+                  <p className="text-[10px] text-blue-100">Hydration levels dropped slightly. Drink more water.</p>
+                </div>
+              </div>
+
+              <Button className="w-full bg-white text-blue-600 font-bold hover:bg-blue-50 border-0 h-9 text-xs">
+                View Recommendations
+              </Button>
+
+              {/* Decorative */}
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+            </Card>
+          </div>
+        )}
+
+        {/* Bottom Section: Metrics & Segmental Analysis - Ultra Compact */}
+        {latest && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
+            {/* Left: Key Metrics Grid (Takes up 5 columns for better proportion with smaller cards) */}
+            <div className="xl:col-span-5 grid grid-cols-2 gap-3">
+              {[
+                {
+                  title: "BMI",
+                  icon: Activity,
+                  color: "text-slate-400",
+                  val: latest.bmi,
+                  unit: latest.bmi < 25 ? "Normal" : "High",
+                  unitColor: latest.bmi < 25 ? "text-green-500" : "text-orange-500"
+                },
+                {
+                  title: "Body Water",
+                  icon: Droplets,
+                  color: "text-blue-400",
+                  val: latest.bodyWaterPercentage || "--",
+                  unit: "Pct %",
+                  unitColor: "text-slate-400"
+                },
+                {
+                  title: "Protein",
+                  icon: Bone,
+                  color: "text-slate-400",
+                  val: "--",
+                  unit: "kg",
+                  unitColor: "text-slate-400"
+                },
+                {
+                  title: "Minerals",
+                  icon: Bone,
+                  color: "text-orange-400",
+                  val: latest.boneMass || "--",
+                  unit: "kg",
+                  unitColor: "text-slate-400"
+                },
+                {
+                  title: "Visceral Fat",
+                  icon: Flame,
+                  color: "text-red-400",
+                  val: latest.visceralFatLevel || "--",
+                  unit: "Level",
+                  unitColor: "text-slate-400"
+                },
+                {
+                  title: "BMR",
+                  icon: Zap,
+                  color: "text-yellow-500",
+                  val: latest.bmr || "--",
+                  unit: "kcal",
+                  unitColor: "text-slate-400"
+                }
+              ].map((item, i) => (
+                <Card key={i} className="p-3 bg-white border-0 shadow-sm rounded-[18px] flex flex-col justify-between h-24 group hover:shadow-md transition-all">
+                  <div className="flex items-center gap-2">
+                    <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
+                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{item.title}</span>
+                  </div>
                   <div>
-                    <p className="font-semibold">Selected Appointment</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedDate.date} ({selectedDate.day}) at {selectedTime}
-                    </p>
+                    <p className="text-xl font-black text-slate-900 leading-none">{item.val}</p>
+                    <p className={`text-[9px] font-bold mt-1 ${item.unitColor}`}>{item.unit}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Right: Segmental Lean Analysis (Takes up 7 columns) */}
+            <Card className="xl:col-span-7 p-5 bg-white border-0 shadow-sm rounded-[24px] flex flex-col items-center justify-center">
+              <div className="w-full flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Segmental Lean Analysis</h3>
+                <Button variant="ghost" className="text-blue-600 hover:bg-blue-50 font-bold text-[10px] h-7 px-3 rounded-lg">View Details</Button>
+              </div>
+
+              <div className="w-full flex flex-row items-center justify-between gap-6 px-2">
+                {/* Body Visual - Compact */}
+                <div className="relative w-32 h-48 flex items-center justify-center shrink-0">
+                  {/* Head */}
+                  <div className="absolute top-2 w-8 h-8 bg-slate-200 rounded-full"></div>
+
+                  {/* Torso */}
+                  <div className="absolute top-12 w-14 h-20 bg-emerald-500 rounded-[12px] z-10"></div>
+
+                  {/* Arms */}
+                  <div className="absolute top-12 left-0 w-6 h-16 bg-emerald-500 rounded-[8px]"></div>
+                  <div className="absolute top-12 right-0 w-6 h-16 bg-emerald-500 rounded-[8px]"></div>
+
+                  {/* Legs */}
+                  <div className="absolute top-34 left-6 w-6 h-12 bg-emerald-500 rounded-b-[8px] rounded-t-[4px]"></div>
+                  <div className="absolute top-34 right-6 w-6 h-12 bg-emerald-500 rounded-b-[8px] rounded-t-[4px]"></div>
+
+                  {/* Floating Badges - Simplified */}
+                  <div className="absolute top-20 -left-8 bg-white py-0.5 px-1.5 rounded-md shadow-sm border border-slate-100 flex items-center gap-1 z-20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    <span className="text-[8px] font-bold text-slate-700">--</span>
+                  </div>
+                  <div className="absolute top-20 -right-8 bg-white py-0.5 px-1.5 rounded-md shadow-sm border border-slate-100 flex items-center gap-1 z-20">
+                    <span className="text-[8px] font-bold text-slate-700">--</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                  </div>
+                </div>
+
+                {/* Analysis Table - Compact */}
+                <div className="flex-1 w-full max-w-xs">
+                  <div className="grid grid-cols-12 text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-2 border-b border-slate-100 pb-1">
+                    <div className="col-span-4">Segment</div>
+                    <div className="col-span-4 text-right">Lean</div>
+                    <div className="col-span-4 text-right">Fat</div>
+                  </div>
+                  <div className="space-y-0.5">
+                    {[
+                      { name: "Right Arm", lean: "--", fat: "--" },
+                      { name: "Left Arm", lean: "--", fat: "--" },
+                      { name: "Trunk", lean: "--", fat: "--" },
+                      { name: "Right Leg", lean: "--", fat: "--" },
+                      { name: "Left Leg", lean: "--", fat: "--" },
+                    ].map((row, i) => (
+                      <div key={i} className="grid grid-cols-12 items-center p-2 rounded-lg hover:bg-slate-50 transition-all cursor-pointer group">
+                        <div className="col-span-4 font-bold text-slate-700 text-[10px]">{row.name}</div>
+                        <div className="col-span-4 text-right font-black text-emerald-600 text-[11px] group-hover:scale-105 transition-transform">{row.lean} <span className="text-[8px] font-medium text-slate-400 opacity-0 group-hover:opacity-100">kg</span></div>
+                        <div className="col-span-4 text-right font-medium text-slate-400 text-[10px]">{row.fat} <span className="text-[8px] font-medium text-slate-300 opacity-0 group-hover:opacity-100">kg</span></div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-            )}
+            </Card>
           </div>
+        )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsScheduleModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleConfirmSchedule} 
-              disabled={!selectedDate || !selectedTime || isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="animate-spin mr-2">⏳</span>
-                  Scheduling...
-                </>
-              ) : (
-                <>
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Confirm Schedule
-                </>
+        {/* Schedule Modal */}
+        <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
+          <DialogContent className="bg-white rounded-[24px] border-0 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">Schedule InBody Scan</DialogTitle>
+              <DialogDescription>Choose a time for your assessment.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="font-bold text-sm mb-2">Select Date</p>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {availableSlots.map(slot => (
+                    <div key={slot.id}
+                      onClick={() => { setSelectedDate(slot); setSelectedTime(null); }}
+                      className={`flex-shrink-0 w-20 h-20 rounded-2xl border-2 flex flex-col items-center justify-center cursor-pointer transition-all ${selectedDate?.id === slot.id ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-100 hover:border-slate-200"}`}
+                    >
+                      <span className="text-xs font-medium text-slate-400">{slot.day.slice(0, 3)}</span>
+                      <span className="text-lg font-bold">{slot.date.split(' ')[1]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedDate && (
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <p className="font-bold text-sm mb-2">Select Time</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedDate.slots.map(t => (
+                      <div key={t}
+                        onClick={() => setSelectedTime(t)}
+                        className={`py-3 px-2 rounded-xl text-center text-sm font-bold cursor-pointer transition-all ${selectedTime === t ? "bg-blue-600 text-white shadow-md shadow-blue-200" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}
+                      >
+                        {t}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsScheduleModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleConfirmSchedule} disabled={isSubmitting || !selectedDate || !selectedTime} className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl">
+                {isSubmitting ? "Scheduling..." : "Confirm Booking"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+      </div>
     </div>
   );
 }
