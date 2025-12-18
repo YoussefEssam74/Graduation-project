@@ -9,6 +9,7 @@ import {
   Calendar,
   Loader2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,14 +94,10 @@ function BookCoachContent() {
     coach.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const router = useRouter();
+
   const handleBookClick = (coach: CoachWithRating) => {
-    setSelectedCoach(coach);
-    // Set default date to tomorrow
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setBookingDate(tomorrow.toISOString().split('T')[0]);
-    setBookingTime("10:00");
-    setIsModalOpen(true);
+    router.push(`/book-coach/${coach.userId}`);
   };
 
   const confirmBooking = async () => {
@@ -212,8 +209,8 @@ function BookCoachContent() {
                   {/* Status Badge */}
                   <div className="absolute top-3 right-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${coach.isActive
-                        ? 'bg-green-500 text-white'
-                        : 'bg-slate-500 text-white'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-slate-500 text-white'
                       }`}>
                       {coach.isActive ? 'Active' : 'Inactive'}
                     </span>

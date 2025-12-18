@@ -635,171 +635,39 @@ export default function BookingsPage() {
           </Tabs>
         </Card>
 
-        {/* Browse Equipment */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">
-            <span className="text-foreground">Browse </span>
-            <span className="text-primary">Equipment</span>
-          </h2>
+        {/* Explore Services */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <Link href="/book-coach" className="group">
+            <Card className="h-full p-6 border border-slate-200 bg-white hover:border-primary/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative z-10">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                  <User className="h-6 w-6 text-primary group-hover:text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Book a Coach</h3>
+                <p className="text-slate-500 mb-4">Get personalized training from our expert coaches. 1-on-1 sessions designed for your goals.</p>
+                <span className="inline-flex items-center text-sm font-bold text-primary group-hover:translate-x-1 transition-transform">
+                  View Coaches <Ticket className="ml-2 h-4 w-4" />
+                </span>
+              </div>
+            </Card>
+          </Link>
 
-          {/* Search and Filter */}
-          <div className="flex gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search equipment..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={selectedCategory === "all" ? "default" : "outline"}
-                onClick={() => setSelectedCategory("all")}
-              >
-                All
-              </Button>
-              <Button
-                variant={selectedCategory === "strength" ? "default" : "outline"}
-                onClick={() => setSelectedCategory("strength")}
-              >
-                Strength
-              </Button>
-              <Button
-                variant={selectedCategory === "cardio" ? "default" : "outline"}
-                onClick={() => setSelectedCategory("cardio")}
-              >
-                Cardio
-              </Button>
-            </div>
-          </div>
-
-          {/* Equipment Grid */}
-          {isLoadingEquipment ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">Loading equipment...</span>
-            </div>
-          ) : filteredEquipment.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Dumbbell className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No equipment found</p>
-              <p className="text-sm">Try adjusting your search or filters</p>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-3 gap-6">
-              {filteredEquipment.map((equipment) => (
-                <Card
-                  key={equipment.id}
-                  className="p-6 border border-border bg-card/50 backdrop-blur-sm"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-3 bg-primary/10 rounded-full">
-                      <Dumbbell className="h-6 w-6 text-primary" />
-                    </div>
-                    {getStatusBadge(equipment.status)}
-                  </div>
-                  <h3 className="font-bold text-lg mb-2">{equipment.name}</h3>
-                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                    <div className="flex justify-between">
-                      <span>Location:</span>
-                      <span className="font-medium text-foreground">{equipment.location}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Cost:</span>
-                      <span className="flex items-center gap-1 font-medium text-primary">
-                        <Ticket className="h-3 w-3" />
-                        {equipment.tokensCost} tokens/hour
-                      </span>
-                    </div>
-                    {equipment.nextAvailable && (
-                      <div className="flex justify-between">
-                        <span>Next Available:</span>
-                        <span className="font-medium text-foreground">
-                          {equipment.nextAvailable}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    className="w-full"
-                    disabled={equipment.status !== "available"}
-                    onClick={() => handleBookEquipment(equipment.id)}
-                  >
-                    {equipment.status === "available" ? "Book Now" : "Unavailable"}
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Browse Coaches */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">
-            <span className="text-foreground">Browse </span>
-            <span className="text-primary">Coaches</span>
-          </h2>
-
-          {isLoadingCoaches ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">Loading coaches...</span>
-            </div>
-          ) : coaches.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <User className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No coaches available</p>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-3 gap-6">
-              {coaches.map((coach) => (
-                <Card
-                  key={coach.id}
-                  className="p-6 border border-border bg-card/50 backdrop-blur-sm"
-                >
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className="p-4 bg-primary/10 rounded-full">
-                      <User className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg">{coach.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {coach.specialization}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm mb-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Rating:</span>
-                      <span className="font-medium">⭐ {coach.rating}/5.0</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sessions:</span>
-                      <span className="font-medium">{coach.sessionsCompleted}+ completed</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cost:</span>
-                      <span className="flex items-center gap-1 font-medium text-primary">
-                        <Ticket className="h-3 w-3" />
-                        {coach.tokensCost} tokens/session
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Next Available:</span>
-                      <span className="font-medium text-green-600">{coach.availability}</span>
-                    </div>
-                  </div>
-
-                  <Button className="w-full" onClick={() => handleBookSession(coach.id)}>
-                    Book Session
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          )}
+          <Link href="/book-equipment" className="group">
+            <Card className="h-full p-6 border border-slate-200 bg-white hover:border-blue-500/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative z-10">
+                <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
+                  <Dumbbell className="h-6 w-6 text-blue-500 group-hover:text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Book Equipment</h3>
+                <p className="text-slate-500 mb-4">Reserve premium gym equipment in advance. Skip the wait and maximize your workout time.</p>
+                <span className="inline-flex items-center text-sm font-bold text-blue-500 group-hover:translate-x-1 transition-transform">
+                  View Equipment <Ticket className="ml-2 h-4 w-4" />
+                </span>
+              </div>
+            </Card>
+          </Link>
         </div>
 
         {/* Cancel Booking Confirmation Dialog */}

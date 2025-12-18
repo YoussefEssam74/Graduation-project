@@ -161,31 +161,34 @@ export default function Sidebar() {
 
             {/* User Footer */}
             <div className="p-4 mt-auto">
-                {/* Token Balance (for members) */}
-                {activeRole === UserRole.Member && (
-                    <div className="mb-6 p-4 rounded-2xl bg-slate-900 text-white relative overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow">
-                        <div className="relative z-10">
-                            <p className="text-xs text-slate-400 mb-1">Current Plan</p>
-                            <h4 className="font-bold text-sm mb-2">Premium Member</h4>
-                            <div className="w-full bg-slate-800 rounded-full h-1.5 mb-2">
-                                <div className="bg-green-500 h-1.5 rounded-full w-3/4"></div>
-                            </div>
-                            <p className="text-[10px] text-slate-400">22 days left</p>
-                        </div>
-                        {/* Decoration */}
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                    </div>
-                )}
-
-                {/* User Menu */}
-                <div className="space-y-1 pt-4 border-t border-slate-100">
-                    <Link
-                        href="/settings"
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors"
-                    >
-                        <SettingsIcon size={18} />
-                        <span>Settings</span>
-                    </Link>
+                <div className="space-y-1 pt-4 border-t border-slate-100 relative">
+                    {/* Settings Dropdown Trigger */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors">
+                                <SettingsIcon size={18} />
+                                <span>Settings</span>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56" side="right" sideOffset={10}>
+                            <Link href="/profile">
+                                <DropdownMenuItem>
+                                    <UserIcon className="mr-2 h-4 w-4" />
+                                    <span>Profile</span>
+                                </DropdownMenuItem>
+                            </Link>
+                            <Link href="/notifications">
+                                <DropdownMenuItem>
+                                    <BellIcon className="mr-2 h-4 w-4" />
+                                    <span>Notifications</span>
+                                </DropdownMenuItem>
+                            </Link>
+                            <DropdownMenuItem onClick={() => document.documentElement.classList.toggle('dark')}>
+                                <MoonIcon className="mr-2 h-4 w-4" />
+                                <span>Dark Mode</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     <button
                         onClick={logout}
@@ -199,3 +202,78 @@ export default function Sidebar() {
         </div>
     );
 }
+
+// Simple Dropdown components since ui/dropdown-menu is missing
+import * as React from "react"
+import { BellIcon, MoonIcon, ChevronRight } from "lucide-react"
+
+const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
+    const [open, setOpen] = React.useState(false);
+    const ref = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (ref.current && !ref.current.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    return (
+        <div className="relative" ref={ref}>
+            {React.Children.map(children, child => {
+                if (React.isValidElement(child)) {
+                    // @ts-ignore
+                    return React.cloneElement(child, { open, setOpen });
+                }
+                return child;
+            })}
+        </div>
+    );
+};
+
+const DropdownMenuTrigger = ({ asChild, children, open, setOpen }: any) => {
+    const Comp = asChild ? React.Fragment : "button";
+    const props = asChild ? { onClick: () => setOpen(!open) } : { onClick: () => setOpen(!open), className: "outline-none" };
+
+    return (
+        <div onClick={() => setOpen(!open)}>
+            {children}
+        </div>
+    );
+};
+
+const DropdownMenuContent = ({ children, open, className, side = "right", sideOffset = 5 }: any) => {
+    if (!open) return null;
+
+    // Simple positioning logic for sidebar (showing to the right)
+    const style: React.CSSProperties = {
+        position: 'absolute',
+        bottom: '100%',
+        left: '0',
+        marginBottom: '8px',
+        zIndex: 50,
+        minWidth: '200px',
+    };
+
+    return (
+        <div style={style} className={`bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 animation-fade-in ${className}`}>
+            {children}
+        </div>
+    );
+};
+
+const DropdownMenuItem = ({ children, onClick }: any) => {
+    return (
+        <div
+            onClick={onClick}
+            className="flex items-center w-full px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+        >
+            {children}
+        </div>
+    );
+};

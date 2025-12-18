@@ -72,9 +72,12 @@ function DashboardContent() {
           const sorted = [...response.data].sort((a, b) =>
             new Date(b.measurementDate).getTime() - new Date(a.measurementDate).getTime()
           );
-          const current = sorted[0].bodyFatPercentage;
-          const previous = sorted[1].bodyFatPercentage;
-          setBodyFatChange(current - previous);
+          const current = sorted[0]?.bodyFatPercentage;
+          const previous = sorted[1]?.bodyFatPercentage;
+
+          if (typeof current === 'number' && typeof previous === 'number') {
+            setBodyFatChange(current - previous);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch inbody stats:", error);
@@ -260,7 +263,7 @@ function DashboardContent() {
     },
     {
       icon: Ticket,
-      title: "New Program",
+      title: "Generate Program",
       description: "Generate AI workout plan",
       href: "/generate-program",
       color: "text-pink-500",
