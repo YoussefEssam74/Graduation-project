@@ -1,6 +1,10 @@
 "use client";
 
+import { useTheme } from "next-themes";
+
 export function BackgroundImage() {
+    const { theme } = useTheme();
+    
     return (
         <div className="fixed inset-0 z-[-1]">
             <div
@@ -12,7 +16,7 @@ export function BackgroundImage() {
                     backgroundAttachment: "fixed",
                 }}
             />
-            <div className="fixed inset-0 z-0 pointer-events-none bg-slate-50/80" />
+            <div className="fixed inset-0 z-0 pointer-events-none bg-slate-50/80 dark:bg-slate-900/90" />
         </div>
     );
 }

@@ -222,7 +222,7 @@ function DashboardContent() {
       bgImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80",
     },
     {
-      icon: UserCheck,
+      icon: User,
       title: "Book a Coach",
       description: "Book sessions with coaches",
       href: "/book-coach",
@@ -262,7 +262,7 @@ function DashboardContent() {
       bgImage: "https://images.unsplash.com/photo-1549476464-37392f717541?w=400&q=80",
     },
     {
-      icon: Ticket,
+      icon: TrendingUp,
       title: "Generate Program",
       description: "Generate AI workout plan",
       href: "/generate-program",
@@ -575,20 +575,20 @@ function DashboardContent() {
         </div>
 
         {/* CTA Banner */}
-        <Card className="p-8 border-2 border-primary/20 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 rounded-2xl overflow-hidden relative">
+        <Card className="p-8 border-2 border-primary/20 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 rounded-2xl overflow-hidden relative">
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full blur-3xl" />
           </div>
           <div className="relative flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                 Ready for Your AI-Powered Program?
               </h3>
-              <p className="text-slate-600 mb-4 max-w-lg">
+              <p className="text-slate-600 dark:text-slate-300 mb-4 max-w-lg">
                 Generate a personalized workout and nutrition plan through an intelligent AI voice conversation
               </p>
-              <div className="flex items-center gap-4 text-sm text-slate-500">
+              <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1.5">
                   <Ticket className="h-4 w-4 text-yellow-500" />
                   50 tokens
