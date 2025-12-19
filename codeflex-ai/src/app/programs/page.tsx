@@ -1,406 +1,503 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { workoutPlansApi, type MemberWorkoutPlanDto } from "@/lib/api";
-import { Card } from "@/components/ui/card";
+import {
+    workoutPlansApi,
+    nutritionPlansApi,
+    bookingsApi,
+    type MemberWorkoutPlanDto,
+    type NutritionPlanDto,
+    type BookingDto
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Card } from "@/components/ui/card";
 import {
     Dumbbell,
-    Calendar,
-    ChevronRight,
-    Plus,
-    Loader2,
-    CheckCircle,
-    Circle,
     Utensils,
-    Search,
-    Bell,
+    Calendar,
+    Clock,
+    ChevronRight,
     User,
+    Loader2,
+    Plus,
+    Target,
     Flame,
-    Sun,
-    Moon,
-    MoreHorizontal
+    TrendingUp,
+    XCircle,
+    CheckCircle2,
+    AlertCircle,
+    ArrowRight,
+    Sparkles
 } from "lucide-react";
-import Link from "next/link";
+import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/components/ui/toast";
+import Link from "next/link";
 
-// Types for the detailed view
-interface DailyWorkout {
-    id: string;
-    title: string;
-    duration: string;
-    status: "pending" | "completed";
-    exercises: Exercise[];
-}
-
-interface Exercise {
-    id: string;
-    name: string;
-    muscle: string;
-    sets: number;
-    reps: string;
-    completed: boolean;
-    image?: string;
-}
-
-interface DailyDiet {
-    calories: { current: number; target: number };
-    protein: { current: number; target: number };
-    carbs: { current: number; target: number };
-    fats: { current: number; target: number };
-    meals: Meal[];
-}
-
-interface Meal {
-    id: string;
-    type: "Breakfast" | "Lunch" | "Dinner" | "Snack";
-    name: string;
-    calories: number;
-    icon: any;
-}
-
-function ProgramDashboard() {
+export default function ProgramsPage() {
+    const router = useRouter();
     const { user } = useAuth();
-    const [activePlan, setActivePlan] = useState<MemberWorkoutPlanDto | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const { showToast } = useToast();
 
-    // Mock data for the specific "Today" view
-    const [todayWorkout, setTodayWorkout] = useState<DailyWorkout>({
-        id: "wo-1",
-        title: "Upper Body Power",
-        duration: "45-60 min",
-        status: "pending",
-        exercises: [
-            { id: "ex-1", name: "Barbell Bench Press", muscle: "Chest, Triceps • Barbell", sets: 3, reps: "8-10 Reps", completed: true, image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=100&h=100&fit=crop" },
-            { id: "ex-2", name: "Weighted Pull-Ups", muscle: "Back, Biceps • Bodyweight", sets: 3, reps: "6-8 Reps", completed: true, image: "https://images.unsplash.com/photo-1598971639058-211a73287750?w=100&h=100&fit=crop" },
-            { id: "ex-3", name: "Seated DB Shoulder Press", muscle: "Shoulders • Dumbbell", sets: 3, reps: "10-12 Reps", completed: false, image: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=100&h=100&fit=crop" },
-            { id: "ex-4", name: "Incline DB Curl", muscle: "Biceps • Dumbbell", sets: 3, reps: "12-15 Reps", completed: false, image: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=100&h=100&fit=crop" }
-        ]
-    });
+    // Data states
+    const [workoutPlans, setWorkoutPlans] = useState<MemberWorkoutPlanDto[]>([]);
+    const [nutritionPlans, setNutritionPlans] = useState<NutritionPlanDto[]>([]);
+    const [bookings, setBookings] = useState<BookingDto[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [cancellingId, setCancellingId] = useState<number | null>(null);
 
-    const [todayDiet, setTodayDiet] = useState<DailyDiet>({
-        calories: { current: 1850, target: 2400 },
-        protein: { current: 160, target: 180 },
-        carbs: { current: 210, target: 300 },
-        fats: { current: 45, target: 70 },
-        meals: [
-            { id: "m-1", type: "Breakfast", name: "Oatmeal w/ Berries & Nut Butter", calories: 450, icon: Sun },
-            { id: "m-2", type: "Lunch", name: "Grilled Chicken Salad", calories: 620, icon: Sun },
-            { id: "m-3", type: "Dinner", name: "Salmon & Asparagus", calories: 580, icon: Moon }
-        ]
-    });
-
-    // Generate calendar days (current week)
-    const getWeekDays = () => {
-        const today = new Date();
-        const days = [];
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(today);
-            d.setDate(today.getDate() - today.getDay() + i + 1); // Start Monday
-            days.push(d);
-        }
-        return days;
-    };
-    const weekDays = getWeekDays();
-
+    // Fetch all data
     useEffect(() => {
-        async function fetchPlans() {
-            if (!user?.userId) return;
+        if (!user?.userId) return;
+
+        const fetchData = async () => {
+            setLoading(true);
             try {
-                const response = await workoutPlansApi.getMemberPlans(user.userId);
-                if (response.success && response.data) {
-                    // Find active plan
-                    const active = response.data.find(p => p.status === 1) || response.data[0];
-                    setActivePlan(active);
+                const [workoutRes, nutritionRes, bookingsRes] = await Promise.all([
+                    workoutPlansApi.getMemberPlans(user.userId),
+                    nutritionPlansApi.getMemberPlans(user.userId),
+                    bookingsApi.getUserBookings(user.userId)
+                ]);
+
+                if (workoutRes.success && workoutRes.data) {
+                    setWorkoutPlans(workoutRes.data);
+                }
+                if (nutritionRes.success && nutritionRes.data) {
+                    setNutritionPlans(nutritionRes.data);
+                }
+                if (bookingsRes.success && bookingsRes.data) {
+                    setBookings(bookingsRes.data);
                 }
             } catch (error) {
-                console.error("Failed to fetch plans", error);
+                console.error("Failed to fetch data", error);
             } finally {
-                setIsLoading(false);
+                setLoading(false);
             }
-        }
-        fetchPlans();
+        };
+
+        fetchData();
     }, [user]);
 
-    const toggleExercise = (id: string) => {
-        setTodayWorkout(prev => ({
-            ...prev,
-            exercises: prev.exercises.map(ex =>
-                ex.id === id ? { ...ex, completed: !ex.completed } : ex
-            )
-        }));
+    // Get active plans
+    const activeWorkoutPlan = useMemo(() =>
+        workoutPlans.find(p => p.status === 1) || workoutPlans[0],
+        [workoutPlans]);
+
+    const activeNutritionPlan = useMemo(() =>
+        nutritionPlans.find(p => p.isActive) || nutritionPlans[0],
+        [nutritionPlans]);
+
+    // Get upcoming bookings (next 7 days)
+    const upcomingBookings = useMemo(() => {
+        const now = new Date();
+        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return bookings
+            .filter(b => {
+                const bookingDate = new Date(b.startTime);
+                return bookingDate >= now && bookingDate <= weekFromNow && b.status !== 2; // Not cancelled
+            })
+            .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+            .slice(0, 5);
+    }, [bookings]);
+
+    // Today's bookings
+    const todaysBookings = useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+        return bookings.filter(b => {
+            const bookingDate = new Date(b.startTime).toISOString().split('T')[0];
+            return bookingDate === today && b.status !== 2;
+        });
+    }, [bookings]);
+
+    // Cancel booking handler
+    const handleCancelBooking = async (bookingId: number) => {
+        if (!confirm("Are you sure you want to cancel this booking?")) return;
+
+        setCancellingId(bookingId);
+        try {
+            const response = await bookingsApi.cancelBooking(bookingId, "User cancelled");
+            if (response.success) {
+                setBookings(prev => prev.filter(b => b.bookingId !== bookingId));
+                showToast("Booking cancelled successfully", "success");
+            } else {
+                showToast(response.message || "Failed to cancel", "error");
+            }
+        } catch (error) {
+            showToast("An error occurred", "error");
+        } finally {
+            setCancellingId(null);
+        }
     };
 
-    if (isLoading) {
+    // Calculate workout progress
+    const workoutProgress = activeWorkoutPlan
+        ? Math.round(((activeWorkoutPlan.completedWorkouts || 0) / (activeWorkoutPlan.totalWorkouts || 1)) * 100)
+        : 0;
+
+    if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-[50vh]">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
+            <ProtectedRoute allowedRoles={[UserRole.Member, UserRole.Coach]}>
+                <div className="min-h-screen flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                </div>
+            </ProtectedRoute>
         );
     }
 
     return (
-        <div className="min-h-[calc(100vh-6rem)] p-4 lg:p-8 relative">
-            <div className="max-w-7xl mx-auto space-y-8 relative z-10">
+        <ProtectedRoute allowedRoles={[UserRole.Member, UserRole.Coach]}>
+            <div className="min-h-screen p-4 md:p-6 lg:p-8">
+                <div className="max-w-7xl mx-auto space-y-6">
 
-                {/* Top Navigation / Breadcrumbs (matching reference) */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <span className="font-bold text-slate-400">Programs</span>
-                        <span>/</span>
-                        <span className="font-bold text-slate-900">{activePlan?.planName || "Hypertrophy Phase 1"}</span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <div className="relative hidden md:block w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search exercises..."
-                                className="w-full pl-9 pr-4 py-2 bg-white rounded-full text-sm border-none shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
-                            />
+                    {/* Welcome Header */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-medium text-slate-500 mb-1">Welcome back,</p>
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900">
+                                {user?.name?.split(' ')[0] || 'Athlete'} 👋
+                            </h1>
+                            <p className="text-slate-500 mt-1">
+                                {todaysBookings.length > 0
+                                    ? `You have ${todaysBookings.length} session${todaysBookings.length > 1 ? 's' : ''} today`
+                                    : "No sessions scheduled for today"
+                                }
+                            </p>
                         </div>
-                        <Button variant="ghost" size="icon" className="text-slate-400">
-                            <Bell className="h-5 w-5" />
-                        </Button>
-                        <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`} />
-                            <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                    </div>
-                </div>
-
-                {/* Main Header Card */}
-                <div className="space-y-6">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-600 text-[10px] font-bold uppercase tracking-wider rounded">Week 3 of 8</span>
-                            <span className="px-2 py-1 bg-orange-100 text-orange-600 text-[10px] font-bold uppercase tracking-wider rounded">Progressive Overload</span>
-                        </div>
-                        <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2">{activePlan?.planName || "Hypertrophy Phase 1"}</h1>
-                        <p className="text-slate-500 font-medium">Focus: Increasing volume on compound movements.</p>
-                    </div>
-
-                    <div className="flex flex-col md:flex-row items-end justify-between gap-4">
-                        {/* Calendar Strip */}
-                        <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-2 w-full md:w-auto">
-                            {weekDays.map((date, idx) => {
-                                const isSelected = date.getDate() === selectedDate.getDate();
-                                return (
-                                    <div
-                                        key={idx}
-                                        onClick={() => setSelectedDate(date)}
-                                        className={`
-                                            flex flex-col items-center justify-center w-14 h-20 rounded-full cursor-pointer transition-all flex-shrink-0
-                                            ${isSelected
-                                                ? 'bg-[#111827] text-white shadow-lg scale-110'
-                                                : 'bg-white text-slate-400 hover:bg-white/80'}
-                                        `}
-                                    >
-                                        <span className="text-[10px] font-bold uppercase">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                                        <span className="text-xl font-bold">{date.getDate()}</span>
-                                        {isSelected && <span className="w-1 h-1 rounded-full bg-green-500 mt-1"></span>}
-                                    </div>
-                                )
-                            })}
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full md:w-64">
-                            <div className="flex justify-between text-xs font-bold mb-2">
-                                <span className="text-slate-900">Program Completion</span>
-                                <span className="text-slate-900">35%</span>
-                            </div>
-                            <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-green-500 w-[35%] rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Two Column Layout */}
-                <div className="grid lg:grid-cols-2 gap-8">
-
-                    {/* LEFT COLUMN: WORKOUT Plan */}
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
-                                    <Dumbbell className="h-5 w-5" />
-                                </div>
-                                <h2 className="text-xl font-bold text-slate-900">Workout Plan</h2>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="ghost" className="text-slate-500 font-bold text-sm h-8 hover:bg-slate-100">History</Button>
-                                <Button variant="ghost" className="text-blue-600 font-bold text-sm h-8 bg-blue-50 hover:bg-blue-100 rounded-lg">Edit</Button>
-                            </div>
-                        </div>
-
-                        <Card className="p-6 border-none shadow-sm bg-white/80 backdrop-blur-sm rounded-[32px]">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-900">{todayWorkout.title}</h3>
-                                    <p className="text-slate-500 text-sm mt-1">Estimated Duration: {todayWorkout.duration}</p>
-                                </div>
-                                <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-full">
-                                    Pending
-                                </span>
-                            </div>
-
-                            {/* Coach Insight */}
-                            <div className="bg-slate-50 p-4 rounded-2xl flex gap-4 mb-8">
-                                <div className="h-10 w-10 flex-shrink-0 bg-[#111827] rounded-full flex items-center justify-center">
-                                    <Brain className="h-5 w-5 text-white" />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-900 text-sm mb-1">Coach Insight</h4>
-                                    <p className="text-slate-500 text-xs leading-relaxed">
-                                        Focus on explosive concentric movements today. Keep rest periods strictly under 90 seconds to maintain intensity.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Exercises List */}
-                            <div className="space-y-3">
-                                {todayWorkout.exercises.map((exercise) => (
-                                    <div key={exercise.id} className="flex items-center gap-4 p-3 bg-white border border-slate-100 rounded-2xl hover:shadow-md transition-all group">
-                                        <div className="h-14 w-14 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden">
-                                            <img src={exercise.image} className="w-full h-full object-cover mix-blend-multiply opacity-80" alt={exercise.name} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-slate-900 text-sm truncate">{exercise.name}</h4>
-                                            <p className="text-xs text-slate-500 truncate">{exercise.muscle}</p>
-                                        </div>
-                                        <div className="text-right mr-2 hidden sm:block">
-                                            <div className="font-bold text-slate-900 text-sm">{exercise.sets} Sets</div>
-                                            <div className="text-xs text-slate-500">{exercise.reps}</div>
-                                        </div>
-                                        <button
-                                            onClick={() => toggleExercise(exercise.id)}
-                                            className={`
-                                                h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all
-                                                ${exercise.completed
-                                                    ? 'bg-slate-100 border-slate-200 text-slate-900'
-                                                    : 'border-slate-200 text-transparent hover:border-blue-500'}
-                                            `}
-                                        >
-                                            <CheckCircle className={`h-5 w-5 ${exercise.completed ? 'opacity-100' : 'opacity-0'}`} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-
-                        </Card>
-                    </div>
-
-                    {/* RIGHT COLUMN: DIET Plan */}
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-100 rounded-xl text-green-600">
-                                    <Utensils className="h-5 w-5" />
-                                </div>
-                                <h2 className="text-xl font-bold text-slate-900">Diet Plan</h2>
-                            </div>
-                            <Button variant="ghost" className="text-green-600 font-bold text-sm h-8 gap-2 hover:bg-green-50">
-                                <CheckCircle className="h-4 w-4" /> Grocery List
-                            </Button>
-                        </div>
-
-                        <Card className="p-6 border-none shadow-sm bg-white/80 backdrop-blur-sm rounded-[32px] h-fit">
-
-                            {/* Calories Ring Section */}
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">CALORIES</div>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-4xl font-black text-slate-900">{todayDiet.calories.current.toLocaleString()}</span>
-                                        <span className="text-lg text-slate-400 font-medium">/ {todayDiet.calories.target.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                                <div className="relative h-16 w-16">
-                                    <svg viewBox="0 0 36 36" className="w-full h-full rotate-[-90deg]">
-                                        <path className="text-slate-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
-                                        <path className="text-green-500" strokeDasharray="75, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                                    </svg>
-                                </div>
-                            </div>
-
-                            {/* Macros */}
-                            <div className="space-y-4 mb-8">
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold mb-1.5">
-                                        <span className="text-slate-700">Protein ({todayDiet.protein.target - todayDiet.protein.current}g left)</span>
-                                        <span className="text-blue-500">{Math.round((todayDiet.protein.current / todayDiet.protein.target) * 100)}%</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-blue-500 w-[90%] rounded-full"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold mb-1.5">
-                                        <span className="text-slate-700">Carbs ({todayDiet.carbs.target - todayDiet.carbs.current}g left)</span>
-                                        <span className="text-orange-500">{Math.round((todayDiet.carbs.current / todayDiet.carbs.target) * 100)}%</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-orange-500 w-[60%] rounded-full"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs font-bold mb-1.5">
-                                        <span className="text-slate-700">Fats ({todayDiet.fats.target - todayDiet.fats.current}g left)</span>
-                                        <span className="text-yellow-500">{Math.round((todayDiet.fats.current / todayDiet.fats.target) * 100)}%</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-yellow-400 w-[30%] rounded-full"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Meals List */}
-                            <div className="space-y-3">
-                                {todayDiet.meals.map((meal) => (
-                                    <div key={meal.id} className="flex items-center gap-4 p-3 bg-white border border-slate-100 rounded-2xl hover:shadow-md transition-all">
-                                        <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${meal.type === 'Dinner' ? 'bg-indigo-50 text-indigo-500' : 'bg-orange-50 text-orange-500'
-                                            }`}>
-                                            <meal.icon className="h-6 w-6" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">{meal.type}</div>
-                                            <h4 className="font-bold text-slate-900 text-sm truncate">{meal.name}</h4>
-                                        </div>
-                                        <div className="font-bold text-slate-600 text-sm whitespace-nowrap">{meal.calories} kcal</div>
-                                    </div>
-                                ))}
-
-                                <Button variant="outline" className="w-full h-12 border-dashed border-2 border-slate-200 text-slate-400 font-bold hover:bg-slate-50 hover:border-slate-300 rounded-xl mt-2">
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add Snack
+                        <div className="flex gap-3">
+                            <Link href="/book-equipment">
+                                <Button variant="outline" className="gap-2 rounded-xl border-slate-200 hover:bg-slate-50">
+                                    <Dumbbell className="h-4 w-4" />
+                                    Book Equipment
                                 </Button>
+                            </Link>
+                            <Link href="/book-coach">
+                                <Button className="gap-2 rounded-xl bg-blue-600 hover:bg-blue-700">
+                                    <User className="h-4 w-4" />
+                                    Book Coach
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Quick Stats Row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <Calendar className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-black">{upcomingBookings.length}</p>
+                                    <p className="text-xs text-blue-100">Upcoming Sessions</p>
+                                </div>
+                            </div>
+                        </Card>
+                        <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <Target className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-black">{workoutProgress}%</p>
+                                    <p className="text-xs text-green-100">Plan Progress</p>
+                                </div>
+                            </div>
+                        </Card>
+                        <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <Flame className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-black">{activeNutritionPlan?.dailyCalories || 0}</p>
+                                    <p className="text-xs text-orange-100">Daily Calories</p>
+                                </div>
+                            </div>
+                        </Card>
+                        <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <TrendingUp className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-black">{activeWorkoutPlan?.completedWorkouts || 0}</p>
+                                    <p className="text-xs text-purple-100">Workouts Done</p>
+                                </div>
                             </div>
                         </Card>
                     </div>
 
+                    {/* Main Content Grid */}
+                    <div className="grid lg:grid-cols-3 gap-6">
+
+                        {/* LEFT COLUMN - Plans */}
+                        <div className="lg:col-span-2 space-y-6">
+
+                            {/* Active Workout Plan */}
+                            <Card className="p-0 border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+                                <div className="p-6 pb-4 border-b border-slate-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-12 w-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                                                <Dumbbell className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg font-bold text-slate-900">Workout Plan</h2>
+                                                <p className="text-sm text-slate-500">Your active training program</p>
+                                            </div>
+                                        </div>
+                                        {activeWorkoutPlan && (
+                                            <Link href={`/programs/${activeWorkoutPlan.memberPlanId}`}>
+                                                <Button variant="ghost" className="text-blue-600 font-bold text-sm gap-1 hover:bg-blue-50">
+                                                    View Details <ChevronRight className="h-4 w-4" />
+                                                </Button>
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {activeWorkoutPlan ? (
+                                    <div className="p-6">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                            <div>
+                                                <h3 className="text-2xl font-black text-slate-900 mb-1">{activeWorkoutPlan.planName}</h3>
+                                                <div className="flex flex-wrap items-center gap-2 text-sm">
+                                                    <span className="px-2 py-1 bg-blue-100 text-blue-700 font-bold rounded-lg text-xs">
+                                                        {activeWorkoutPlan.statusText}
+                                                    </span>
+                                                    {activeWorkoutPlan.coachName && (
+                                                        <span className="text-slate-500">
+                                                            by Coach {activeWorkoutPlan.coachName}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-center">
+                                                    <p className="text-2xl font-black text-slate-900">{activeWorkoutPlan.completedWorkouts || 0}</p>
+                                                    <p className="text-xs text-slate-500">Completed</p>
+                                                </div>
+                                                <div className="w-px h-10 bg-slate-200"></div>
+                                                <div className="text-center">
+                                                    <p className="text-2xl font-black text-slate-900">{activeWorkoutPlan.totalWorkouts || 0}</p>
+                                                    <p className="text-xs text-slate-500">Total</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Progress Bar */}
+                                        <div>
+                                            <div className="flex justify-between text-sm font-bold mb-2">
+                                                <span className="text-slate-600">Progress</span>
+                                                <span className="text-blue-600">{workoutProgress}%</span>
+                                            </div>
+                                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                                                    style={{ width: `${workoutProgress}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-8 text-center">
+                                        <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Dumbbell className="h-8 w-8 text-slate-400" />
+                                        </div>
+                                        <h3 className="font-bold text-slate-900 mb-1">No Active Workout Plan</h3>
+                                        <p className="text-sm text-slate-500 mb-4">Get started by booking a coach to create your personalized plan</p>
+                                        <Link href="/book-coach">
+                                            <Button className="bg-blue-600 hover:bg-blue-700 rounded-xl">
+                                                <Plus className="h-4 w-4 mr-2" /> Get a Plan
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                )}
+                            </Card>
+
+                            {/* Active Nutrition Plan */}
+                            <Card className="p-0 border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+                                <div className="p-6 pb-4 border-b border-slate-100">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-12 w-12 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center">
+                                                <Utensils className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg font-bold text-slate-900">Nutrition Plan</h2>
+                                                <p className="text-sm text-slate-500">Your daily macro targets</p>
+                                            </div>
+                                        </div>
+                                        {activeNutritionPlan && (
+                                            <Button variant="ghost" className="text-green-600 font-bold text-sm gap-1 hover:bg-green-50">
+                                                View Details <ChevronRight className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {activeNutritionPlan ? (
+                                    <div className="p-6">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                            <div className="bg-orange-50 rounded-2xl p-4 text-center">
+                                                <p className="text-3xl font-black text-orange-600">{activeNutritionPlan.dailyCalories}</p>
+                                                <p className="text-xs font-bold text-orange-600/70 uppercase tracking-wider">Calories</p>
+                                            </div>
+                                            <div className="bg-blue-50 rounded-2xl p-4 text-center">
+                                                <p className="text-3xl font-black text-blue-600">{activeNutritionPlan.proteinGrams}g</p>
+                                                <p className="text-xs font-bold text-blue-600/70 uppercase tracking-wider">Protein</p>
+                                            </div>
+                                            <div className="bg-yellow-50 rounded-2xl p-4 text-center">
+                                                <p className="text-3xl font-black text-yellow-600">{activeNutritionPlan.carbsGrams}g</p>
+                                                <p className="text-xs font-bold text-yellow-600/70 uppercase tracking-wider">Carbs</p>
+                                            </div>
+                                            <div className="bg-purple-50 rounded-2xl p-4 text-center">
+                                                <p className="text-3xl font-black text-purple-600">{activeNutritionPlan.fatGrams}g</p>
+                                                <p className="text-xs font-bold text-purple-600/70 uppercase tracking-wider">Fats</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Plan description if available */}
+                                        {activeNutritionPlan.description && (
+                                            <div className="bg-slate-50 rounded-xl p-4">
+                                                <p className="text-sm text-slate-600">{activeNutritionPlan.description}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="p-8 text-center">
+                                        <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Utensils className="h-8 w-8 text-slate-400" />
+                                        </div>
+                                        <h3 className="font-bold text-slate-900 mb-1">No Nutrition Plan Yet</h3>
+                                        <p className="text-sm text-slate-500 mb-4">Work with a coach to get a customized diet plan</p>
+                                        <Link href="/generate-program">
+                                            <Button variant="outline" className="rounded-xl">
+                                                <Sparkles className="h-4 w-4 mr-2" /> Generate with AI
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                )}
+                            </Card>
+                        </div>
+
+                        {/* RIGHT COLUMN - Upcoming Bookings */}
+                        <div className="space-y-6">
+                            <Card className="p-0 border-none shadow-sm bg-white rounded-3xl overflow-hidden">
+                                <div className="p-6 pb-4 border-b border-slate-100">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-lg font-bold text-slate-900">Upcoming Sessions</h2>
+                                        <Link href="/bookings">
+                                            <Button variant="ghost" size="sm" className="text-blue-600 font-bold text-sm gap-1 hover:bg-blue-50 h-8">
+                                                See All <ArrowRight className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <div className="p-4">
+                                    {upcomingBookings.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {upcomingBookings.map((booking) => {
+                                                const bookingDate = new Date(booking.startTime);
+                                                const isToday = bookingDate.toDateString() === new Date().toDateString();
+                                                const isTomorrow = bookingDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+
+                                                return (
+                                                    <div
+                                                        key={booking.bookingId}
+                                                        className={cn(
+                                                            "p-4 rounded-2xl border-l-4 transition-all",
+                                                            booking.coachId
+                                                                ? "bg-blue-50/50 border-blue-500"
+                                                                : "bg-green-50/50 border-green-500"
+                                                        )}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className={cn(
+                                                                        "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded",
+                                                                        isToday ? "bg-green-500 text-white" :
+                                                                            isTomorrow ? "bg-orange-100 text-orange-700" :
+                                                                                "bg-slate-100 text-slate-600"
+                                                                    )}>
+                                                                        {isToday ? "Today" : isTomorrow ? "Tomorrow" : bookingDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                                    </span>
+                                                                </div>
+                                                                <h4 className="font-bold text-slate-900 truncate">
+                                                                    {booking.coachName || booking.equipmentName}
+                                                                </h4>
+                                                                <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                                                                    <Clock className="h-3.5 w-3.5" />
+                                                                    {bookingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleCancelBooking(booking.bookingId)}
+                                                                disabled={cancellingId === booking.bookingId}
+                                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                                title="Cancel booking"
+                                                            >
+                                                                {cancellingId === booking.bookingId ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <XCircle className="h-4 w-4" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="py-8 text-center">
+                                            <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <Calendar className="h-6 w-6 text-slate-400" />
+                                            </div>
+                                            <h3 className="font-bold text-slate-900 mb-1">No Upcoming Sessions</h3>
+                                            <p className="text-sm text-slate-500 mb-4">Book equipment or a coach to get started</p>
+                                            <div className="flex flex-col gap-2">
+                                                <Link href="/book-coach" className="w-full">
+                                                    <Button className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl">
+                                                        <User className="h-4 w-4 mr-2" /> Book a Coach
+                                                    </Button>
+                                                </Link>
+                                                <Link href="/book-equipment" className="w-full">
+                                                    <Button variant="outline" className="w-full rounded-xl">
+                                                        <Dumbbell className="h-4 w-4 mr-2" /> Book Equipment
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+
+                            {/* Quick Links */}
+                            <Card className="p-4 border-none shadow-sm bg-slate-900 text-white rounded-3xl">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center">
+                                        <Sparkles className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold">Need a new plan?</h3>
+                                        <p className="text-sm text-slate-400">Generate with AI Coach</p>
+                                    </div>
+                                </div>
+                                <Link href="/ai-coach">
+                                    <Button className="w-full bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold">
+                                        Talk to AI Coach <ArrowRight className="h-4 w-4 ml-2" />
+                                    </Button>
+                                </Link>
+                            </Card>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-}
-
-// Temporary icon component wrapper
-function Brain(props: any) {
-    return <div {...props}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" /><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" /><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" /><path d="M17.599 6.5a3 3 0 0 0 .399-1.375" /><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" /><path d="M3.477 10.896a4 4 0 0 1 .585-.396" /><path d="M19.938 10.5a4 4 0 0 1 .585.396" /><path d="M6 18a4 4 0 0 1-1.97-3.465" /><path d="M19.97 14.535A4 4 0 0 1 18 18" /></svg></div>
-}
-
-export default function ProgramsPage() {
-    return (
-        <ProtectedRoute allowedRoles={[UserRole.Member, UserRole.Coach]}>
-            <ProgramDashboard />
         </ProtectedRoute>
     );
 }

@@ -213,12 +213,12 @@ export default function InBodyPage() {
 
     if (metric === 'weight') {
       diff = latest.weight - prev.weight;
-      percent = (diff / prev.weight) * 100;
+      percent = prev.weight ? (diff / prev.weight) * 100 : 0;
     } else if (metric === 'muscle') {
-      diff = latest.muscleMass - prev.muscleMass;
-      percent = (diff / prev.muscleMass) * 100;
+      diff = (latest.muscleMass ?? 0) - (prev.muscleMass ?? 0);
+      percent = prev.muscleMass ? (diff / prev.muscleMass) * 100 : 0;
     } else if (metric === 'fat') {
-      diff = latest.bodyFatPercentage - prev.bodyFatPercentage; // absolute diff for percentage
+      diff = (latest.bodyFatPercentage ?? 0) - (prev.bodyFatPercentage ?? 0); // absolute diff for percentage
       percent = diff; // Show absolute change for % metrics
     }
 
@@ -261,8 +261,8 @@ export default function InBodyPage() {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-black text-slate-900">My Body Composition</h1>
               {latest && (
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${latest.bmi < 25 && latest.bmi > 18.5 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                  {latest.bmi < 25 && latest.bmi > 18.5 ? "Healthy" : "Check BMI"}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${(latest.bmi ?? 0) < 25 && (latest.bmi ?? 0) > 18.5 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                  {(latest.bmi ?? 0) < 25 && (latest.bmi ?? 0) > 18.5 ? "Healthy" : "Check BMI"}
                 </span>
               )}
             </div>
@@ -459,15 +459,15 @@ export default function InBodyPage() {
                   title: "BMI",
                   icon: Activity,
                   color: "text-slate-400",
-                  val: latest.bmi,
-                  unit: latest.bmi < 25 ? "Normal" : "High",
-                  unitColor: latest.bmi < 25 ? "text-green-500" : "text-orange-500"
+                  val: latest.bmi ?? "--",
+                  unit: (latest.bmi ?? 0) < 25 ? "Normal" : "High",
+                  unitColor: (latest.bmi ?? 0) < 25 ? "text-green-500" : "text-orange-500"
                 },
                 {
                   title: "Body Water",
                   icon: Droplets,
                   color: "text-blue-400",
-                  val: latest.bodyWaterPercentage || "--",
+                  val: latest.bodyWater ?? "--",
                   unit: "Pct %",
                   unitColor: "text-slate-400"
                 },
@@ -491,7 +491,7 @@ export default function InBodyPage() {
                   title: "Visceral Fat",
                   icon: Flame,
                   color: "text-red-400",
-                  val: latest.visceralFatLevel || "--",
+                  val: latest.visceralFat ?? "--",
                   unit: "Level",
                   unitColor: "text-slate-400"
                 },
@@ -499,7 +499,7 @@ export default function InBodyPage() {
                   title: "BMR",
                   icon: Zap,
                   color: "text-yellow-500",
-                  val: latest.bmr || "--",
+                  val: latest.basalMetabolicRate ?? "--",
                   unit: "kcal",
                   unitColor: "text-slate-400"
                 }

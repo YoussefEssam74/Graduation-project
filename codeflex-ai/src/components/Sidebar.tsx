@@ -46,7 +46,6 @@ export default function Sidebar() {
         { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
         { href: "/programs", icon: DumbbellIcon, label: "My Program" },
         { href: "/bookings", icon: CalendarIcon, label: "Calendar" },
-        { href: "/programs", icon: UtensilsIcon, label: "Nutrition" },
         { href: "/community", icon: UsersIcon, label: "Community" },
         { href: "/ai-coach", icon: BrainIcon, label: "AI Coach" }, // Added New badge in UI
         { href: "/tokens", icon: CoinsIcon, label: "Tokens" },
@@ -231,7 +230,7 @@ const DropdownMenu = ({ children }: { children: React.ReactNode }) => {
         <div className="relative" ref={ref}>
             {React.Children.map(children, child => {
                 if (React.isValidElement(child)) {
-                    // @ts-ignore
+                    // @ts-expect-error - cloning elements with spread props
                     return React.cloneElement(child, { open, setOpen });
                 }
                 return child;

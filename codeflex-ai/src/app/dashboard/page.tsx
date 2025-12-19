@@ -518,42 +518,47 @@ function DashboardContent() {
             </div>
 
             <Card className="p-6 border-0 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white rounded-[24px] h-fit">
-              <div className="relative border-l-2 border-slate-100 ml-3 space-y-8 py-2">
-                {/* Timeline Item 1 */}
-                <div className="relative pl-8">
-                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-green-500 ring-4 ring-green-50"></div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">TODAY, 10:00 AM</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-600">CONFIRMED</span>
-                    </div>
-                    <h4 className="font-bold text-slate-900">HIIT Session</h4>
-                    <p className="text-xs text-slate-500">with {assignedCoach?.name || "Fitness Coach"}</p>
-                  </div>
-                </div>
+              <div className="relative border-l-2 border-slate-100 ml-3 space-y-6 py-2">
+                {recentBookings.filter(b => b.status !== 2 && new Date(b.startTime) >= new Date()).slice(0, 3).length > 0 ? (
+                  recentBookings
+                    .filter(b => b.status !== 2 && new Date(b.startTime) >= new Date())
+                    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                    .slice(0, 3)
+                    .map((booking, index) => {
+                      const startDate = new Date(booking.startTime);
+                      const isToday = startDate.toDateString() === new Date().toDateString();
+                      const isTomorrow = startDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+                      const dateLabel = isToday ? "TODAY" : isTomorrow ? "TOMORROW" : startDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                      const timeLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                      const statusBadge = getStatusBadge(booking.status, booking.checkInTime ?? undefined, booking.checkOutTime ?? undefined);
 
-                {/* Timeline Item 2 */}
-                <div className="relative pl-8">
-                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-slate-300"></div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">TOMORROW, 6:00 PM</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">PENDING</span>
-                    </div>
-                    <h4 className="font-bold text-slate-900">Yoga Flow</h4>
-                    <p className="text-xs text-slate-500">Studio B</p>
+                      return (
+                        <div key={booking.bookingId} className="relative pl-8">
+                          <div className={`absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white ring-4 ${index === 0 && isToday ? "bg-green-500 ring-green-50" : "bg-slate-300 ring-slate-50"
+                            }`}></div>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-400">{dateLabel}, {timeLabel}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge.bg} ${statusBadge.color}`}>
+                                {statusBadge.text.toUpperCase()}
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-slate-900">
+                              {booking.coachName || booking.equipmentName || "Session"}
+                            </h4>
+                            <p className="text-xs text-slate-500">
+                              {booking.coachId ? `Coach Session` : booking.equipmentId ? "Equipment Booking" : "Gym Session"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-slate-400">No upcoming sessions</p>
+                    <p className="text-xs text-slate-300 mt-1">Book a coach or equipment to get started</p>
                   </div>
-                </div>
-
-                {/* Timeline Item 3 */}
-                <div className="relative pl-8">
-                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-slate-300"></div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold text-slate-400">SAT, 9:00 AM</span>
-                    <h4 className="font-bold text-slate-900">Open Gym</h4>
-                    <p className="text-xs text-slate-500">Main Floor</p>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="mt-8 pt-6 border-t border-slate-50">

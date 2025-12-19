@@ -1,53 +1,40 @@
 import { apiFetch, type ApiResponse } from './client';
 
+// Updated to match backend DTO structure
 export interface NutritionPlanDto {
   planId: number;
   memberId: number;
   memberName: string;
+  planName: string;
+  description?: string;
   createdByCoachId?: number;
-  createdByCoachName?: string;
-  dailyCalories: number;
-  proteinGrams: number;
-  carbsGrams: number;
-  fatGrams: number;
-  mealsPerDay: number;
-  isActive: boolean;
+  coachName?: string;
+  createdByAiAgentId?: number;
   startDate: string;
   endDate?: string;
-  notes?: string;
-  meals: MealDto[];
-}
-
-export interface MealDto {
-  mealId: number;
-  mealName: string;
-  mealTime: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  foods: FoodItemDto[];
-}
-
-export interface FoodItemDto {
-  foodId: number;
-  foodName: string;
-  portion: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  dailyCalories?: number;
+  proteinGrams?: number;
+  carbsGrams?: number;
+  fatGrams?: number;
+  status: number;
+  statusText: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface GenerateNutritionPlanDto {
   memberId: number;
+  planName: string;
+  description?: string;
   createdByCoachId?: number;
-  dailyCalories: number;
-  proteinGrams: number;
-  carbsGrams: number;
-  fatGrams: number;
-  mealsPerDay: number;
-  notes?: string;
+  fitnessGoal?: string;
+  dietaryRestrictions?: string;
+  dailyCalories?: number;
+  proteinGrams?: number;
+  carbsGrams?: number;
+  fatGrams?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const nutritionPlansApi = {
