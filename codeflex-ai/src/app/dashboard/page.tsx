@@ -305,17 +305,6 @@ function DashboardContent() {
 
   return (
     <div className="min-h-[calc(100vh-6rem)] relative p-3">
-      {/* Full Page Gym Background */}
-      <div
-        className="fixed inset-0 z-0 pointer-events-none"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
-        }}
-      />
-      <div className="fixed inset-0 z-0 pointer-events-none bg-slate-50/80" />
 
       <div className="relative z-10 mx-auto max-w-7xl space-y-2">
         {/* Hero Section with Background Image */}

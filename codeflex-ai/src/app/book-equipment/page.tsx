@@ -218,17 +218,7 @@ function BookEquipmentContent() {
     }
 
     return (
-        <div className="min-h-screen bg-[#f5f8f7] text-slate-900 relative">
-            {/* Background Pattern */}
-            <div
-                className="fixed inset-0 z-0 pointer-events-none opacity-10"
-                style={{
-                    backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940')",
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                }}
-            />
-
+        <div className="min-h-screen text-slate-900 relative">
             {/* Header */}
             <header className="relative z-20 sticky top-0 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

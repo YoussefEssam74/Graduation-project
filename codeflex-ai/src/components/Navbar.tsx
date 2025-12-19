@@ -175,30 +175,6 @@ export default function Navbar() {
                 </Button>
               )}
 
-              <div className="flex items-center gap-3 ml-2 pl-3 border-l border-slate-200">
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full ${getRoleBadgeColor()} flex items-center justify-center shadow-md`}>
-                    {normalizeRole(user?.role || '') === UserRole.Admin && <ShieldIcon className="w-4 h-4 text-white" />}
-                    {normalizeRole(user?.role || '') === UserRole.Coach && <UserCogIcon className="w-4 h-4 text-white" />}
-                    {normalizeRole(user?.role || '') === UserRole.Receptionist && <Users2Icon className="w-4 h-4 text-white" />}
-                    {normalizeRole(user?.role || '') === UserRole.Member && <UserIcon className="w-4 h-4 text-white" />}
-                  </div>
-                  <div className="text-sm">
-                    <div className="font-semibold text-slate-900">{user?.name?.split(' ')[0]}</div>
-                    <div className="text-xs text-slate-500 capitalize">{normalizeRole(user?.role || '')}</div>
-                  </div>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={logout}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <LogOutIcon size={16} className="mr-1" />
-                  Logout
-                </Button>
-              </div>
             </>
           )}
         </nav>

@@ -15,7 +15,9 @@ import {
     UserCogIcon,
     SettingsIcon,
     Menu,
-    TrophyIcon
+    TrophyIcon,
+    UtensilsIcon,
+    UsersIcon
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,12 +44,14 @@ export default function Sidebar() {
     // Role-based navigation items
     const getMemberNav = () => [
         { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
-        { href: "/bookings", icon: CalendarIcon, label: "Schedule" }, // Bookings -> Schedule
+        { href: "/programs", icon: DumbbellIcon, label: "My Program" },
+        { href: "/bookings", icon: CalendarIcon, label: "Calendar" },
+        { href: "/programs", icon: UtensilsIcon, label: "Nutrition" },
+        { href: "/community", icon: UsersIcon, label: "Community" },
         { href: "/ai-coach", icon: BrainIcon, label: "AI Coach" }, // Added New badge in UI
         { href: "/tokens", icon: CoinsIcon, label: "Tokens" },
         { href: "/inbody", icon: ActivityIcon, label: "Analytics" }, // InBody -> Analytics
         { href: "/achievements", icon: TrophyIcon, label: "Achievements" },
-        { href: "/programs", icon: DumbbellIcon, label: "My Plans" },
     ];
 
     const getCoachNav = () => [
@@ -128,7 +132,7 @@ export default function Sidebar() {
 
                     return (
                         <Link
-                            key={item.href}
+                            key={item.label}
                             href={item.href}
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group relative",

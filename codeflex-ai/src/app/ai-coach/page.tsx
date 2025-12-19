@@ -169,17 +169,7 @@ function AICoachContent() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-6rem)] bg-slate-50 relative overflow-hidden flex flex-col md:flex-row">
-      {/* Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "blur(8px)",
-          opacity: 0.1
-        }}
-      />
+    <div className="min-h-[calc(100vh-6rem)] relative overflow-hidden flex flex-col md:flex-row">
 
       {/* Sidebar - Chat Sessions */}
       <div className="hidden md:flex w-72 bg-white border-r border-slate-200 flex-col z-10">

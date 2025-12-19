@@ -109,8 +109,49 @@ namespace Service.Services
                 Status = BookingStatus.Pending, // Start as pending for receptionist confirmation
                 Notes = createDto.Notes,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
             };
+
+            // Calculate Token Cost
+            int tokensCost = 0;
+            if (createDto.EquipmentId.HasValue)
+            {
+                var equipment = await _unitOfWork.Repository<Equipment>().GetByIdAsync(createDto.EquipmentId.Value);
+                if (equipment != null)
+                {
+                    tokensCost = equipment.BookingCostTokens;
+                }
+            }
+            else if (createDto.CoachId.HasValue)
+            {
+               // CoachId in DTO was updated to be CoachProfile.Id
+               var coachProfile = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(createDto.CoachId.Value);
+               if (coachProfile != null) 
+               {
+                   // Fallback to 30 if HourlyRate is null
+                   tokensCost = (int)(coachProfile.HourlyRate ?? 30);
+               }
+            }
+            
+            booking.TokensCost = tokensCost;
+
+            // Deduct Tokens
+            if (tokensCost > 0)
+            {
+                var user = await _unitOfWork.Repository<User>().GetByIdAsync(createDto.UserId);
+                if (user == null)
+                {
+                    throw new InvalidOperationException("User not found");
+                }
+
+                if (user.TokenBalance < tokensCost)
+                {
+                    throw new InvalidOperationException($"Insufficient tokens. Required: {tokensCost}, Available: {user.TokenBalance}");
+                }
+
+                user.TokenBalance -= tokensCost;
+                _unitOfWork.Repository<User>().Update(user);
+            }
 
             await _unitOfWork.Repository<Booking>().AddAsync(booking);
             await _unitOfWork.SaveChangesAsync();
@@ -262,6 +303,17 @@ namespace Service.Services
                 throw new KeyNotFoundException($"Booking with ID {bookingId} not found");
             }
 
+            // Refund Tokens if applicable
+            if (booking.TokensCost > 0 && booking.Status != BookingStatus.Cancelled)
+            {
+                var user = await _unitOfWork.Repository<User>().GetByIdAsync(booking.UserId);
+                if (user != null)
+                {
+                    user.TokenBalance += booking.TokensCost;
+                    _unitOfWork.Repository<User>().Update(user);
+                }
+            }
+
             booking.Status = BookingStatus.Cancelled;
             booking.CancellationReason = cancellationReason;
             booking.UpdatedAt = DateTime.UtcNow;
@@ -386,9 +438,13 @@ namespace Service.Services
 
             if (booking.CoachId.HasValue)
             {
-                // Coach extends User in TPT hierarchy, so CoachId is the UserId
-                var coachUser = await _unitOfWork.Repository<User>().GetByIdAsync(booking.CoachId.Value);
-                dto.CoachName = coachUser?.Name;
+                // Booking.CoachId is CoachProfile.Id
+                var coachProfile = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(booking.CoachId.Value);
+                if (coachProfile != null)
+                {
+                     var coachUser = await _unitOfWork.Repository<User>().GetByIdAsync(coachProfile.UserId);
+                     dto.CoachName = coachUser?.Name;
+                }
             }
 
             return dto;
