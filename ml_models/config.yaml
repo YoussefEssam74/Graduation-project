@@ -163,3 +163,38 @@ experiment:
     project: 'graduation-project'
     model_type: 'nutrition'
     framework: 'tensorflow'
+
+# ===== ML Infrastructure (Embeddings, Vector Store, LLM) =====
+embeddings:
+  model: all-mpnet-base-v2  # sentence-transformers model (free, open-source)
+  dimension: 768
+  batch_size: 32
+
+vector_store:
+  type: faiss  # or chroma
+  path: data/faiss_index
+  index_type: IndexFlatL2  # or IndexIVFFlat for large datasets
+
+llm:
+  model: meta-llama/Llama-2-7b-chat-hf  # or microsoft/phi-2, mistralai/Mistral-7B-Instruct-v0.1
+  device: cpu  # or cuda
+  max_tokens: 512
+  temperature: 0.7
+
+whisper:
+  model: small  # tiny, base, small, medium, large
+  language: en
+
+tts:
+  engine: coqui  # free, open-source TTS
+  model: tts_models/en/ljspeech/tacotron2-DDC
+
+compute:
+  device: cpu  # or cuda
+  num_workers: 2
+
+# ===== Analytics Data Paths =====
+analytics:
+  maintenance_data_path: data/equipment_maintenance.csv
+  revenue_data_path: data/monthly_revenue.csv
+  usage_logs_path: data/equipment_usage_logs.csv

@@ -1,6 +1,5 @@
 version: '3.8'
 
-
 services:
   # PostgreSQL with pgvector extension
   postgres:
@@ -19,7 +18,7 @@ services:
     networks:
       - intellifit-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,8 +29,8 @@ services:
     image: tensorflow/serving:latest
     container_name: intellifit-tensorflow-serving
     ports:
-      - "8501:8501"  # REST API
-      - "8500:8500"  # gRPC
+      - "8501:8501" # REST API
+      - "8500:8500" # gRPC
     volumes:
       - ./ml_models/serving:/models
     environment:
@@ -40,13 +39,70 @@ services:
     networks:
       - intellifit-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/v1/models/nutrition_model"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8501/v1/models/nutrition_model" ]
       interval: 30s
       timeout: 10s
       retries: 3
     restart: unless-stopped
     depends_on:
       - postgres
+
+  # AI Coach Model (Llama 3)
+  coach-model:
+    build:
+      context: .
+      dockerfile: ml_models/coach_server/Dockerfile
+    container_name: intellifit-coach-model
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./models:/app/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    networks:
+      - intellifit-network
+    restart: unless-stopped
+
+  # Whisper Speech-to-Text
+  whisper-server:
+    build:
+      context: .
+      dockerfile: ml_models/whisper_server/Dockerfile
+    container_name: intellifit-whisper
+    ports:
+      - "5003:5003"
+    networks:
+      - intellifit-network
+    restart: unless-stopped
+
+  # Piper Text-to-Speech
+  tts-server:
+    build:
+      context: .
+      dockerfile: ml_models/tts_server/Dockerfile
+    container_name: intellifit-tts
+    ports:
+      - "5004:5004"
+    networks:
+      - intellifit-network
+    restart: unless-stopped
+
+  # Analytics Service (Revenue, Maintenance)
+  analytics-server:
+    build:
+      context: .
+      dockerfile: ml_models/analytics_server/Dockerfile
+    container_name: intellifit-analytics
+    ports:
+      - "5005:5005"
+    networks:
+      - intellifit-network
+    restart: unless-stopped
 
   # Embedder service (sentence-transformers) - generates and upserts embeddings to Postgres
   # Builds a small image from `ml_models/Dockerfile`. Use CPU by default; replace with a GPU-enabled image
@@ -73,7 +129,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5100/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:5100/health" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -133,7 +189,7 @@ services:
     networks:
       - intellifit-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 3

@@ -10,6 +10,8 @@ using DomainLayer.Contracts;
 using ServiceAbstraction.Services;
 using Service.Services;
 using Presentation.Controllers;
+using ServiceAbstraction;
+using Service;
 
 namespace Graduation_Project
 {
@@ -46,7 +48,7 @@ namespace Graduation_Project
             builder.Services.AddScoped<IChatService, ChatService>();
 
             // Add Service Manager (creates service instances internally with lazy loading - E-Commerce pattern)
-            builder.Services.AddScoped<ServiceAbstraction.IServiceManager, Service.ServiceManager>();
+            builder.Services.AddScoped<IServiceManager, ServiceManager>();
 
             // Add JWT Authentication with proper validation
             var jwtKey = builder.Configuration["Jwt:Key"]
