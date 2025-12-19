@@ -17,7 +17,8 @@ import {
     Menu,
     TrophyIcon,
     UtensilsIcon,
-    UsersIcon
+    UsersIcon,
+    SunIcon
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +26,7 @@ import { UserRole } from "@/types/gym";
 import { Button } from "./ui/button";
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
 // Map backend role strings to frontend UserRole enum
 const normalizeRole = (role: string): UserRole => {
@@ -40,6 +42,7 @@ const normalizeRole = (role: string): UserRole => {
 export default function Sidebar() {
     const { user, logout } = useAuth();
     const pathname = usePathname();
+    const { theme, setTheme } = useTheme();
 
     // Role-based navigation items
     const getMemberNav = () => [
@@ -110,14 +113,14 @@ export default function Sidebar() {
     };
 
     return (
-        <div className="hidden lg:flex flex-col w-[240px] h-screen fixed left-0 top-0 bg-white border-r border-slate-200 z-50">
+        <div className="hidden lg:flex flex-col w-[240px] h-screen fixed left-0 top-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 z-50">
             {/* Logo Area */}
             <div className="p-6 pb-2">
                 <Link href={getDashboardUrl()} className="flex items-center gap-3 mb-8">
                     <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
                         <Ticket className="w-6 h-6 text-white" />
                     </div>
-                    <span className="text-xl font-extrabold text-slate-900 tracking-tight">
+                    <span className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                         Pulse<span className="text-blue-600">Gym</span>
                     </span>
                 </Link>
@@ -136,13 +139,13 @@ export default function Sidebar() {
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group relative",
                                 isActive
-                                    ? "text-blue-600 bg-blue-50"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                    ? "text-blue-600 bg-blue-50 dark:bg-blue-900/30"
+                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
                             )}
                         >
                             <Icon size={20} className={cn(
                                 "transition-colors",
-                                isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
+                                isActive ? "text-blue-600" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300"
                             )} />
                             <span>{item.label}</span>
 
@@ -164,11 +167,11 @@ export default function Sidebar() {
 
             {/* User Footer */}
             <div className="p-4 mt-auto">
-                <div className="space-y-1 pt-4 border-t border-slate-100 relative">
+                <div className="space-y-1 pt-4 border-t border-slate-100 dark:border-slate-700 relative">
                     {/* Settings Dropdown Trigger */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors">
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">
                                 <SettingsIcon size={18} />
                                 <span>Settings</span>
                             </button>
@@ -186,16 +189,16 @@ export default function Sidebar() {
                                     <span>Notifications</span>
                                 </DropdownMenuItem>
                             </Link>
-                            <DropdownMenuItem onClick={() => document.documentElement.classList.toggle('dark')}>
-                                <MoonIcon className="mr-2 h-4 w-4" />
-                                <span>Dark Mode</span>
+                            <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                                {theme === 'dark' ? <SunIcon className="mr-2 h-4 w-4" /> : <MoonIcon className="mr-2 h-4 w-4" />}
+                                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
                     <button
                         onClick={logout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
                     >
                         <LogOutIcon size={18} />
                         <span>Log out</span>
@@ -264,7 +267,7 @@ const DropdownMenuContent = ({ children, open, className, side = "right", sideOf
     };
 
     return (
-        <div style={style} className={`bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 animation-fade-in ${className}`}>
+        <div style={style} className={`bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 p-1.5 animation-fade-in ${className}`}>
             {children}
         </div>
     );
@@ -274,7 +277,7 @@ const DropdownMenuItem = ({ children, onClick }: any) => {
     return (
         <div
             onClick={onClick}
-            className="flex items-center w-full px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+            className="flex items-center w-full px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg cursor-pointer transition-colors"
         >
             {children}
         </div>

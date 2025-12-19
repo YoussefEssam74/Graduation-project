@@ -220,10 +220,10 @@ export default function TokensPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f7f8] font-sans text-slate-900 pb-20">
+    <div className="min-h-screen bg-[#f6f7f8] dark:bg-slate-900 font-sans text-slate-900 dark:text-white pb-20">
       {/* Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-30">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-orange-50"></div>
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-30 dark:opacity-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-orange-50 dark:from-slate-800 dark:to-slate-900"></div>
       </div>
 
       <div className="relative z-10 container mx-auto px-4 lg:px-8 py-8 space-y-8 max-w-7xl">
@@ -231,8 +231,8 @@ export default function TokensPage() {
         {/* Header */}
         <div className="flex flex-wrap justify-between items-end gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">My Wallet</h1>
-            <p className="text-slate-500 font-medium">Manage your tokens, top up, and track your fitness investment.</p>
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">My Wallet</h1>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Manage your tokens, top up, and track your fitness investment.</p>
           </div>
           <Button className="bg-gradient-to-r from-orange-400 to-orange-500 hover:to-orange-600 text-white border-0 shadow-lg shadow-orange-200 rounded-xl px-5 py-6 font-bold gap-2">
             <Gift className="h-5 w-5" />
@@ -244,7 +244,7 @@ export default function TokensPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Balance Card - Span 2 */}
-          <div className="lg:col-span-2 bg-white/80 backdrop-blur-xl rounded-[24px] p-6 lg:p-8 shadow-sm border border-slate-200 relative overflow-hidden group">
+          <div className="lg:col-span-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-[24px] p-6 lg:p-8 shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-8 opacity-5">
               <Wallet className="w-32 h-32" />
             </div>
@@ -265,11 +265,11 @@ export default function TokensPage() {
               </div>
 
               {/* Auto Refill UI */}
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-600">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <RefreshCw className="h-5 w-5 text-blue-500" />
-                    <p className="font-bold text-sm text-slate-900">Auto-Refill</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">Auto-Refill</p>
                   </div>
                   <Switch />
                 </div>
@@ -278,7 +278,7 @@ export default function TokensPage() {
                     <span>Threshold: 100 Tokens</span>
                     <span>Refill Amount: 500</span>
                   </div>
-                  <div className="relative h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="relative h-2 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
                     <div className="absolute top-0 left-0 h-full w-[32%] bg-blue-500 rounded-full"></div>
                   </div>
                 </div>
@@ -287,8 +287,8 @@ export default function TokensPage() {
           </div>
 
           {/* Spending Analysis */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-[24px] p-6 shadow-sm border border-slate-200 flex flex-col">
-            <h3 className="font-bold text-lg mb-6 text-slate-900">Spending Analysis</h3>
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-[24px] p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+            <h3 className="font-bold text-lg mb-6 text-slate-900 dark:text-white">Spending Analysis</h3>
             <div className="flex items-center gap-4 h-full">
               {/* Donut Chart Simulation (Conic Gradient) */}
               <div
@@ -302,9 +302,9 @@ export default function TokensPage() {
                         )`
                 }}
               >
-                <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center flex-col shadow-inner">
+                <div className="absolute inset-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center flex-col shadow-inner">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">Total</span>
-                  <span className="font-black text-lg text-slate-900">{totalSpent}</span>
+                  <span className="font-black text-lg text-slate-900 dark:text-white">{totalSpent}</span>
                 </div>
               </div>
 
@@ -411,15 +411,15 @@ export default function TokensPage() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
           {/* Transaction History Table */}
-          <div className="xl:col-span-2 bg-white rounded-[24px] border border-slate-200 overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="text-lg font-bold text-slate-900">Transaction History</h3>
+          <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-[24px] border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-700/50">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Transaction History</h3>
               <Button variant="ghost" className="text-blue-500 font-bold hover:text-blue-600">View All</Button>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-xs">
                   <tr>
                     <th className="px-6 py-4">Date</th>
                     <th className="px-6 py-4">Description</th>
@@ -428,7 +428,7 @@ export default function TokensPage() {
                     <th className="px-6 py-4 text-right">Balance</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {isLoadingTransactions ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center">
@@ -443,18 +443,18 @@ export default function TokensPage() {
                     </tr>
                   ) : (
                     transactions.slice(0, 5).map((tx) => (
-                      <tr key={tx.transactionId} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 text-slate-500 font-medium">
+                      <tr key={tx.transactionId} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">
                           {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </td>
-                        <td className="px-6 py-4 font-bold text-slate-900">{tx.description}</td>
+                        <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">{tx.description}</td>
                         <td className="px-6 py-4">
                           {getTransactionBadge(tx.transactionType)}
                         </td>
                         <td className={`px-6 py-4 text-right font-black ${tx.amount > 0 ? "text-green-500" : "text-red-500"}`}>
                           {tx.amount > 0 ? "+" : ""}{tx.amount}
                         </td>
-                        <td className="px-6 py-4 text-right text-slate-500 font-medium">{tx.balanceAfter}</td>
+                        <td className="px-6 py-4 text-right text-slate-500 dark:text-slate-400 font-medium">{tx.balanceAfter}</td>
                       </tr>
                     ))
                   )}
@@ -467,8 +467,8 @@ export default function TokensPage() {
           <div className="flex flex-col gap-6">
 
             {/* Monthly Spending Bars (Dynamic) */}
-            <div className="bg-white rounded-[24px] p-6 border border-slate-200 shadow-sm">
-              <h3 className="font-bold text-lg mb-6 text-slate-900">Monthly Spending</h3>
+            <div className="bg-white dark:bg-slate-800 rounded-[24px] p-6 border border-slate-200 dark:border-slate-700 shadow-sm">
+              <h3 className="font-bold text-lg mb-6 text-slate-900 dark:text-white">Monthly Spending</h3>
               <div className="flex items-end justify-between h-40 gap-2 pb-2">
                 {(() => {
                   const months = new Map<string, number>();
@@ -508,8 +508,8 @@ export default function TokensPage() {
             </div>
 
             {/* Exchange Guide */}
-            <div className="bg-white rounded-[24px] p-6 border border-slate-200 shadow-sm flex-1">
-              <h3 className="font-bold text-lg mb-4 text-slate-900 flex items-center gap-2">
+            <div className="bg-white dark:bg-slate-800 rounded-[24px] p-6 border border-slate-200 dark:border-slate-700 shadow-sm flex-1">
+              <h3 className="font-bold text-lg mb-4 text-slate-900 dark:text-white flex items-center gap-2">
                 <HelpCircle className="h-5 w-5 text-slate-400" />
                 Quick Exchange Guide
               </h3>
@@ -520,9 +520,9 @@ export default function TokensPage() {
                   { name: "Guest Pass", price: "30 Tokens" },
                   { name: "Personal Coach (1hr)", price: "50 Tokens" }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 last:pb-0">
-                    <span className="text-sm font-medium text-slate-600">{item.name}</span>
-                    <span className="text-sm font-black text-slate-900">{item.price}</span>
+                  <div key={idx} className="flex justify-between items-center py-3 border-b border-slate-50 dark:border-slate-700 last:border-0 last:pb-0">
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{item.name}</span>
+                    <span className="text-sm font-black text-slate-900 dark:text-white">{item.price}</span>
                   </div>
                 ))}
               </div>
