@@ -102,6 +102,53 @@ namespace Service.Services
             return coaches.Select(c => MapToUserDto(c));
         }
 
+        public async Task<IEnumerable<CoachDto>> GetCoachesWithProfilesAsync()
+        {
+            // Get all users with Coach role
+            var coaches = await _unitOfWork.Repository<User>()
+                .FindAsync(u => u.Role == UserRole.Coach && u.IsActive);
+
+            var coachDtos = new List<CoachDto>();
+            foreach (var coach in coaches)
+            {
+                // Get the coach profile
+                var coachProfile = await _unitOfWork.Repository<CoachProfile>()
+                    .FirstOrDefaultAsync(cp => cp.UserId == coach.UserId);
+
+                coachDtos.Add(new CoachDto
+                {
+                    UserId = coach.UserId,
+                    Email = coach.Email,
+                    Name = coach.Name,
+                    Phone = coach.Phone,
+                    DateOfBirth = coach.DateOfBirth,
+                    Gender = coach.Gender.HasValue ? (int)coach.Gender.Value : null,
+                    Role = coach.Role.ToString(),
+                    ProfileImageUrl = coach.ProfileImageUrl,
+                    Address = coach.Address,
+                    TokenBalance = coach.TokenBalance,
+                    IsActive = coach.IsActive,
+                    EmailVerified = coach.EmailVerified,
+                    LastLoginAt = coach.LastLoginAt,
+                    CreatedAt = coach.CreatedAt,
+                    // Coach profile fields
+                    CoachProfileId = coachProfile?.Id ?? 0,
+                    Specialization = coachProfile?.Specialization,
+                    Certifications = coachProfile?.Certifications,
+                    ExperienceYears = coachProfile?.ExperienceYears,
+                    Bio = coachProfile?.Bio,
+                    HourlyRate = coachProfile?.HourlyRate,
+                    Rating = coachProfile?.Rating ?? 0,
+                    TotalReviews = coachProfile?.TotalReviews ?? 0,
+                    TotalClients = coachProfile?.TotalClients ?? 0,
+                    AvailabilitySchedule = coachProfile?.AvailabilitySchedule,
+                    IsAvailable = coachProfile?.IsAvailable ?? false
+                });
+            }
+
+            return coachDtos;
+        }
+
         private UserDto MapToUserDto(User user)
         {
             return new UserDto

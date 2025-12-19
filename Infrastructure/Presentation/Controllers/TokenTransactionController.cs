@@ -14,9 +14,28 @@ namespace Presentation.Controllers
         [HttpPost]
         public async Task<ActionResult<TokenTransactionDto>> CreateTransaction([FromBody] CreateTokenTransactionDto dto)
         {
-            var userId = GetUserIdFromToken();
-            var transaction = await _serviceManager.TokenTransactionService.CreateTransactionAsync(userId, dto);
-            return Ok(transaction);
+            try
+            {
+                var userId = GetUserIdFromToken();
+                var transaction = await _serviceManager.TokenTransactionService.CreateTransactionAsync(userId, dto);
+                return Ok(transaction);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while creating the transaction", details = ex.Message });
+            }
         }
 
         #endregion

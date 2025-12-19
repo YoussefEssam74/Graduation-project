@@ -4,25 +4,78 @@ using IntelliFit.Domain.Enums;
 using ServiceAbstraction.Services;
 using Shared.DTOs.Booking;
 using IntelliFit.Shared.Constants;
+using IntelliFit.Shared.DTOs.Payment;
 using Microsoft.EntityFrameworkCore;
 using AutoMapper;
+using IntelliFit.ServiceAbstraction.Services;
 
 namespace Service.Services
 {
+    /// <summary>
+    /// Booking Service - Implements Clean Architecture booking business logic
+    /// 
+    /// 🎯 CORE BOOKING RULES:
+    /// 
+    /// RULE 1 - Users Can Book Coach AND Equipment Simultaneously:
+    ///   ✅ User can book coach session at any time
+    ///   ✅ User can book equipment at any time (even during coach session)
+    ///   ✅ No restriction on booking both types together
+    /// 
+    /// RULE 2 - Equipment Availability Check:
+    ///   ✅ Equipment must be available for the requested time slot
+    ///   ❌ Cannot book equipment if already booked by another user
+    ///   ✅ Each equipment can only be booked by one user at a time
+    /// 
+    /// RULE 3 - User-Specified Time Slots:
+    ///   ✅ User selects start date and start time
+    ///   ✅ User selects end date and end time
+    ///   ✅ System validates: start time < end time
+    ///   ❌ Cannot book in the past
+    /// 
+    /// RULE 4 - Equipment Availability & Visibility:
+    ///   ✅ Booked equipment shows as unavailable to other users
+    ///   ✅ APIs return: Free slots, Booked slots, Start/End times
+    ///   ✅ GetEquipmentBookedSlotsAsync() returns all booked time slots
+    /// 
+    /// RULE 5 - Daily Equipment Slot Reset:
+    ///   ✅ Background service runs every 24 hours
+    ///   ✅ Expired slots are cleared automatically
+    ///   ✅ No-show bookings are cancelled with token refund
+    ///   ✅ Completed bookings are marked as such
+    /// 
+    /// RULE 6 - Validation Rules (Service Layer Only):
+    ///   ✅ All business logic in Service layer (not Controllers)
+    ///   ✅ Check: Equipment exists and is available
+    ///   ✅ Check: Time slot is valid (future, start < end)
+    ///   ✅ Check: User has sufficient tokens
+    ///   ❌ Reject booking if any rule fails
+    /// 
+    /// RULE 7 - Architecture Constraints:
+    ///   ✅ Clean Architecture mandatory
+    ///   ✅ No business logic in Controllers
+    ///   ✅ Services contain all booking logic
+    ///   ✅ Repositories handle data access only
+    ///   ✅ DTOs only (no entities exposed)
+    ///   ✅ Async everywhere
+    /// </summary>
     public class BookingService : IBookingService
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ITokenTransactionService _tokenTransactionService;
 
-        public BookingService(IUnitOfWork unitOfWork, IMapper mapper)
+        public BookingService(IUnitOfWork unitOfWork, IMapper mapper, ITokenTransactionService tokenTransactionService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _tokenTransactionService = tokenTransactionService;
         }
 
         public async Task<BookingDto> CreateBookingAsync(CreateBookingDto createDto)
         {
-            // Validate time slot
+            // ========== VALIDATION PHASE ==========
+            
+            // 1. Basic time validation
             if (createDto.StartTime >= createDto.EndTime)
             {
                 throw new InvalidOperationException("Start time must be before end time");
@@ -33,31 +86,25 @@ namespace Service.Services
                 throw new InvalidOperationException("Cannot book a time slot in the past");
             }
 
-            // Check if user already has a booking during this time slot
-            if (!await IsUserAvailableAsync(createDto.UserId, createDto.StartTime, createDto.EndTime))
-            {
-                throw new InvalidOperationException("You already have a booking during this time slot");
-            }
-
-            // InBody bookings don't require equipment or coach
+            // 2. InBody bookings (special case - no equipment/coach needed)
             if (createDto.BookingType == BookingTypes.InBody)
             {
-                // InBody booking - no equipment or coach needed
                 if (createDto.EquipmentId.HasValue || createDto.CoachId.HasValue)
                 {
                     throw new InvalidOperationException("InBody booking should not have equipment or coach");
                 }
+                // Skip further validation for InBody
             }
             else
             {
-                // Validate XOR: Either Equipment OR Coach, not both, not neither
+                // 3. Validate XOR: Either Equipment OR Coach, not both, not neither
                 if ((createDto.EquipmentId.HasValue && createDto.CoachId.HasValue) ||
                     (!createDto.EquipmentId.HasValue && !createDto.CoachId.HasValue))
                 {
                     throw new InvalidOperationException("Booking must be either for Equipment or Coach, not both or neither");
                 }
 
-                // Validate BookingType matches the FK
+                // 4. Validate BookingType matches the FK
                 if (createDto.BookingType == BookingTypes.Equipment && !createDto.EquipmentId.HasValue)
                 {
                     throw new InvalidOperationException("Equipment booking requires EquipmentId");
@@ -68,15 +115,17 @@ namespace Service.Services
                     throw new InvalidOperationException("Session booking requires CoachId");
                 }
 
-                // Check availability
+                // ========== EQUIPMENT AVAILABILITY CHECK ==========
                 if (createDto.EquipmentId.HasValue)
                 {
+                    // Check if equipment is available for the time slot
                     if (!await IsEquipmentAvailableAsync(createDto.EquipmentId.Value, createDto.StartTime, createDto.EndTime))
                     {
-                        throw new InvalidOperationException("Equipment is not available for the selected time slot");
+                        throw new InvalidOperationException("Equipment is not available for the selected time slot. It may be booked by another user.");
                     }
                 }
 
+                // ========== COACH BOOKING VALIDATION ==========
                 if (createDto.CoachId.HasValue)
                 {
                     // Convert User ID to CoachProfile ID
@@ -90,7 +139,7 @@ namespace Service.Services
 
                     if (!await IsCoachAvailableAsync(coachProfile.Id, createDto.StartTime, createDto.EndTime))
                     {
-                        throw new InvalidOperationException("Coach is not available for the selected time slot");
+                        throw new InvalidOperationException("Coach is not available for the selected time slot. They may be booked with another client.");
                     }
 
                     // Store the actual CoachProfile ID
@@ -135,7 +184,7 @@ namespace Service.Services
             
             booking.TokensCost = tokensCost;
 
-            // Deduct Tokens
+            // Deduct Tokens and create transaction record
             if (tokensCost > 0)
             {
                 var user = await _unitOfWork.Repository<User>().GetByIdAsync(createDto.UserId);
@@ -149,8 +198,33 @@ namespace Service.Services
                     throw new InvalidOperationException($"Insufficient tokens. Required: {tokensCost}, Available: {user.TokenBalance}");
                 }
 
-                user.TokenBalance -= tokensCost;
-                _unitOfWork.Repository<User>().Update(user);
+                // Create transaction record for the deduction
+                string description = "";
+                if (createDto.EquipmentId.HasValue)
+                {
+                    var equipment = await _unitOfWork.Repository<Equipment>().GetByIdAsync(createDto.EquipmentId.Value);
+                    description = $"Booked {equipment?.Name ?? "Equipment"} - {(createDto.EndTime - createDto.StartTime).TotalHours:0.#}h";
+                }
+                else if (createDto.CoachId.HasValue)
+                {
+                    var coachProfile = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(createDto.CoachId.Value);
+                    if (coachProfile != null)
+                    {
+                        var coach = await _unitOfWork.Repository<User>().GetByIdAsync(coachProfile.UserId);
+                        description = $"Personal Training Session with {coach?.Name ?? "Coach"} - {(createDto.EndTime - createDto.StartTime).TotalHours:0.#}h";
+                    }
+                    else
+                    {
+                        description = $"Personal Training Session - {(createDto.EndTime - createDto.StartTime).TotalHours:0.#}h";
+                    }
+                }
+
+                await _tokenTransactionService.CreateTransactionAsync(createDto.UserId, new CreateTokenTransactionDto
+                {
+                    Amount = -tokensCost,
+                    TransactionType = "Deduction",
+                    Description = description
+                });
             }
 
             await _unitOfWork.Repository<Booking>().AddAsync(booking);
@@ -402,17 +476,43 @@ namespace Service.Services
         }
 
         /// <summary>
-        /// Check if the user already has a booking during the specified time slot
+        /// Get equipment availability with booked time slots for a specific date range
+        /// RULE 4 & 5: Equipment Availability & Visibility
         /// </summary>
-        public async Task<bool> IsUserAvailableAsync(int userId, DateTime startTime, DateTime endTime)
+        public async Task<IEnumerable<BookingDto>> GetEquipmentBookedSlotsAsync(int equipmentId, DateTime startDate, DateTime endDate)
         {
-            var overlappingBookings = await _unitOfWork.Repository<Booking>()
+            var bookings = await _unitOfWork.Repository<Booking>()
+                .FindAsync(b => b.EquipmentId == equipmentId &&
+                              b.Status != BookingStatus.Cancelled &&
+                              b.Status != BookingStatus.Completed &&
+                              b.StartTime >= startDate &&
+                              b.EndTime <= endDate);
+
+            var bookingDtos = new List<BookingDto>();
+            foreach (var booking in bookings.OrderBy(b => b.StartTime))
+            {
+                var dto = await GetBookingDtoAsync(booking.BookingId);
+                if (dto != null)
+                {
+                    bookingDtos.Add(dto);
+                }
+            }
+
+            return bookingDtos;
+        }
+
+        /// <summary>
+        /// Check if user has any active coach bookings
+        /// RULE 1: Used to block manual equipment booking when user has coach session
+        /// </summary>
+        public async Task<bool> UserHasActiveCoachBookingAsync(int userId, DateTime startTime, DateTime endTime)
+        {
+            return await _unitOfWork.Repository<Booking>()
                 .AnyAsync(b => b.UserId == userId &&
+                              b.CoachId.HasValue &&
                               b.Status != BookingStatus.Cancelled &&
                               b.Status != BookingStatus.Completed &&
                               ((b.StartTime < endTime && b.EndTime > startTime)));
-
-            return !overlappingBookings;
         }
 
         private async Task<BookingDto> GetBookingDtoAsync(int bookingId)

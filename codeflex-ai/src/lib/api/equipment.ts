@@ -4,13 +4,18 @@ import { apiCache, CACHE_TTL } from './cache';
 export interface EquipmentDto {
   equipmentId: number;
   name: string;
-  category: string;
+  categoryId?: number;
+  categoryName?: string;
+  category?: string; // Alias for categoryName for backwards compatibility
   description?: string;
   status: number;
+  statusText?: string;
   location?: string;
   maintenanceSchedule?: string;
   lastMaintenanceDate?: string;
-  tokensCost: number;
+  nextMaintenanceDate?: string;
+  tokensCostPerHour?: number;
+  tokensCost?: number; // Alias for tokensCostPerHour
 }
 
 const CACHE_KEYS = {

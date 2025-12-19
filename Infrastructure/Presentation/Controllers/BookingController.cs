@@ -146,5 +146,59 @@ namespace Presentation.Controllers
         }
 
         #endregion
+
+        #region Get Equipment Availability (Booked Slots)
+
+        /// <summary>
+        /// RULE 4 & 5: Get booked time slots for equipment to show availability
+        /// Returns all booked slots for the equipment in the specified date range
+        /// </summary>
+        [HttpGet("equipment/{equipmentId}/booked-slots")]
+        public async Task<ActionResult<IEnumerable<BookingDto>>> GetEquipmentBookedSlots(
+            int equipmentId,
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate)
+        {
+            var start = startDate ?? DateTime.UtcNow.Date;
+            var end = endDate ?? DateTime.UtcNow.Date.AddDays(7); // Default to 1 week
+            var bookedSlots = await _serviceManager.BookingService.GetEquipmentBookedSlotsAsync(equipmentId, start, end);
+            return Ok(bookedSlots);
+        }
+
+        #endregion
+
+        #region Check Equipment Availability
+
+        /// <summary>
+        /// Check if equipment is available for a specific time slot
+        /// </summary>
+        [HttpGet("equipment/{equipmentId}/available")]
+        public async Task<ActionResult<bool>> IsEquipmentAvailable(
+            int equipmentId,
+            [FromQuery] DateTime startTime,
+            [FromQuery] DateTime endTime)
+        {
+            var isAvailable = await _serviceManager.BookingService.IsEquipmentAvailableAsync(equipmentId, startTime, endTime);
+            return Ok(new { isAvailable, equipmentId, startTime, endTime });
+        }
+
+        #endregion
+
+        #region Check User Coach Booking Status
+
+        /// <summary>
+        /// RULE 1: Check if user has active coach booking (to block manual equipment booking)
+        /// </summary>
+        [HttpGet("user/{userId}/has-coach-booking")]
+        public async Task<ActionResult<bool>> UserHasActiveCoachBooking(
+            int userId,
+            [FromQuery] DateTime startTime,
+            [FromQuery] DateTime endTime)
+        {
+            var hasCoachBooking = await _serviceManager.BookingService.UserHasActiveCoachBookingAsync(userId, startTime, endTime);
+            return Ok(new { hasCoachBooking, message = hasCoachBooking ? "User has active coach booking. Manual equipment booking is blocked." : "User can book equipment manually." });
+        }
+
+        #endregion
     }
 }

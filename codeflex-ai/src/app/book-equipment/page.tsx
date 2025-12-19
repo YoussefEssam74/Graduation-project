@@ -87,6 +87,9 @@ function BookEquipmentContent() {
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentWithDetails | null>(null);
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
     const [selectedDuration, setSelectedDuration] = useState(60);
+    const [bookingDate, setBookingDate] = useState("");
+    const [startTime, setStartTime] = useState("");
+    const [endTime, setEndTime] = useState("");
     const [isBooking, setIsBooking] = useState(false);
 
     // Duration options
@@ -107,9 +110,9 @@ function BookEquipmentContent() {
                 if (response.success && response.data) {
                     const mappedEquipment = response.data.map((eq: EquipmentDto) => ({
                         ...eq,
-                        category: eq.category?.toLowerCase() || "strength",
+                        category: (eq.categoryName || eq.category || "strength").toLowerCase(),
                         location: eq.location || "Main Floor",
-                        tokensCost: eq.tokensCost || 5,
+                        tokensCost: eq.tokensCostPerHour || eq.tokensCost || 5,
                         imageUrl: getEquipmentImage(eq.name),
                     }));
                     setEquipment(mappedEquipment);
@@ -140,23 +143,32 @@ function BookEquipmentContent() {
     const handleBookEquipment = async () => {
         if (!selectedEquipment || !user?.userId) return;
 
+        // Validate date and time inputs
+        if (!bookingDate || !startTime || !endTime) {
+            showToast("Please select booking date, start time, and end time", "error");
+            return;
+        }
+
         const cost = selectedEquipment.tokensCost;
         if ((user.tokenBalance ?? 0) < cost) {
             showToast("Insufficient tokens", "error");
             return;
         }
 
-        // Create booking times
-        const now = new Date();
-        const startTime = new Date(now);
-        const minutes = startTime.getMinutes();
-        const roundedMinutes = Math.ceil(minutes / 15) * 15;
-        startTime.setMinutes(roundedMinutes % 60);
-        if (roundedMinutes >= 60) startTime.setHours(startTime.getHours() + 1);
-        startTime.setSeconds(0);
-        startTime.setMilliseconds(0);
+        // Create booking times from user input
+        const bookingStartTime = new Date(`${bookingDate}T${startTime}:00`);
+        const bookingEndTime = new Date(`${bookingDate}T${endTime}:00`);
 
-        const endTime = new Date(startTime.getTime() + selectedDuration * 60 * 1000);
+        // Validate times
+        if (bookingStartTime >= bookingEndTime) {
+            showToast("End time must be after start time", "error");
+            return;
+        }
+
+        if (bookingStartTime < new Date()) {
+            showToast("Cannot book in the past", "error");
+            return;
+        }
 
         try {
             setIsBooking(true);
@@ -164,9 +176,9 @@ function BookEquipmentContent() {
                 userId: user.userId,
                 equipmentId: selectedEquipment.equipmentId,
                 bookingType: "Equipment",
-                startTime: startTime.toISOString(),
-                endTime: endTime.toISOString(),
-                notes: `Booked ${selectedEquipment.name} for ${selectedDuration} minutes`,
+                startTime: bookingStartTime.toISOString(),
+                endTime: bookingEndTime.toISOString(),
+                notes: `Booked ${selectedEquipment.name} from ${startTime} to ${endTime}`,
             });
 
             if (response.success) {
@@ -365,6 +377,18 @@ function BookEquipmentContent() {
                                                 onClick={() => {
                                                     setSelectedEquipment(eq);
                                                     setBookingModalOpen(true);
+                                                    // Set default date to today
+                                                    const today = new Date().toISOString().split('T')[0];
+                                                    setBookingDate(today);
+                                                    // Set default start time to next hour
+                                                    const now = new Date();
+                                                    const nextHour = new Date(now.setHours(now.getHours() + 1, 0, 0, 0));
+                                                    const startTimeStr = nextHour.toTimeString().slice(0, 5);
+                                                    setStartTime(startTimeStr);
+                                                    // Set default end time to 1 hour after start
+                                                    const endHour = new Date(nextHour.setHours(nextHour.getHours() + 1));
+                                                    const endTimeStr = endHour.toTimeString().slice(0, 5);
+                                                    setEndTime(endTimeStr);
                                                 }}
                                                 disabled={status !== "available"}
                                                 className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${status === "available"
@@ -401,24 +425,45 @@ function BookEquipmentContent() {
                                 style={{ backgroundImage: `url('${selectedEquipment.imageUrl}')` }}
                             />
 
-                            {/* Duration Selection */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Session Duration
-                                </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {durationOptions.map(opt => (
-                                        <button
-                                            key={opt.value}
-                                            onClick={() => setSelectedDuration(opt.value)}
-                                            className={`p-3 rounded-lg border text-sm font-medium transition-all ${selectedDuration === opt.value
-                                                ? "border-primary bg-primary/10 text-primary"
-                                                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                                                }`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
+                            {/* Date and Time Selection */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Booking Date
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        value={bookingDate}
+                                        onChange={(e) => setBookingDate(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="w-full"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Start Time
+                                        </label>
+                                        <Input
+                                            type="time"
+                                            value={startTime}
+                                            onChange={(e) => setStartTime(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            End Time
+                                        </label>
+                                        <Input
+                                            type="time"
+                                            value={endTime}
+                                            onChange={(e) => setEndTime(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -429,8 +474,12 @@ function BookEquipmentContent() {
                                     <span className="font-medium">{selectedEquipment.name}</span>
                                 </div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-slate-500">Duration</span>
-                                    <span className="font-medium">{selectedDuration} minutes</span>
+                                    <span className="text-slate-500">Date</span>
+                                    <span className="font-medium">{bookingDate || "Not selected"}</span>
+                                </div>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-slate-500">Time</span>
+                                    <span className="font-medium">{startTime && endTime ? `${startTime} - ${endTime}` : "Not selected"}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                                     <span className="text-slate-500">Total Cost</span>

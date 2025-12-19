@@ -24,7 +24,12 @@ namespace Service
     {
         private readonly Lazy<IAuthService> _LazyAuthService = new Lazy<IAuthService>(() => new AuthService(_unitOfWork, _tokenService));
         private readonly Lazy<IUserService> _LazyUserService = new Lazy<IUserService>(() => new UserService(_unitOfWork));
-        private readonly Lazy<IBookingService> _LazyBookingService = new Lazy<IBookingService>(() => new BookingService(_unitOfWork, _mapper));
+        private readonly Lazy<ITokenTransactionService> _LazyTokenTransactionService = new Lazy<ITokenTransactionService>(() => new TokenTransactionService(_unitOfWork, _mapper));
+        
+        // BookingService needs TokenTransactionService - initialize with factory method
+        private Lazy<IBookingService>? _lazyBookingServiceField;
+        private Lazy<IBookingService> _LazyBookingService => _lazyBookingServiceField ??= new Lazy<IBookingService>(() => new BookingService(_unitOfWork, _mapper, _LazyTokenTransactionService.Value));
+        
         private readonly Lazy<ISubscriptionService> _LazySubscriptionService = new Lazy<ISubscriptionService>(() => new SubscriptionService(_unitOfWork));
         private readonly Lazy<IPaymentService> _LazyPaymentService = new Lazy<IPaymentService>(() => new PaymentService(_unitOfWork, _mapper));
         private readonly Lazy<IExerciseService> _LazyExerciseService = new Lazy<IExerciseService>(() => new ExerciseService(_unitOfWork));
@@ -39,7 +44,6 @@ namespace Service
         private readonly Lazy<IAIService> _LazyAIService = new Lazy<IAIService>(() => new AIService(_configuration, _aiLogger));
         private readonly Lazy<IWorkoutLogService> _LazyWorkoutLogService = new Lazy<IWorkoutLogService>(() => new WorkoutLogService(_unitOfWork, _mapper));
         private readonly Lazy<ICoachReviewService> _LazyCoachReviewService = new Lazy<ICoachReviewService>(() => new CoachReviewService(_unitOfWork, _mapper));
-        private readonly Lazy<ITokenTransactionService> _LazyTokenTransactionService = new Lazy<ITokenTransactionService>(() => new TokenTransactionService(_unitOfWork, _mapper));
         private readonly Lazy<IActivityFeedService> _LazyActivityFeedService = new Lazy<IActivityFeedService>(() => new ActivityFeedService(_unitOfWork, _mapper));
         private readonly Lazy<IUserMilestoneService> _LazyUserMilestoneService = new Lazy<IUserMilestoneService>(() => new UserMilestoneService(_unitOfWork, _mapper));
         private readonly Lazy<IWorkoutTemplateService> _LazyWorkoutTemplateService = new Lazy<IWorkoutTemplateService>(() => new WorkoutTemplateService(_unitOfWork, _mapper));

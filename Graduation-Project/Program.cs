@@ -48,6 +48,9 @@ namespace Graduation_Project
             // Add Service Manager (creates service instances internally with lazy loading - E-Commerce pattern)
             builder.Services.AddScoped<ServiceAbstraction.IServiceManager, Service.ServiceManager>();
 
+            // RULE 5: Add Background Service for Daily Booking Cleanup
+            builder.Services.AddHostedService<Service.BackgroundServices.BookingCleanupService>();
+
             // Add JWT Authentication with proper validation
             var jwtKey = builder.Configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("JWT Key not configured. Set Jwt:Key in appsettings or environment variables.");

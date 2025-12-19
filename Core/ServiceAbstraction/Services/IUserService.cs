@@ -11,6 +11,7 @@ namespace ServiceAbstraction.Services
         Task<int> GetTokenBalanceAsync(int userId);
         Task UpdateTokenBalanceAsync(int userId, int amount);
         Task<IEnumerable<UserDto>> GetCoachesListAsync();
+        Task<IEnumerable<CoachDto>> GetCoachesWithProfilesAsync();
 
         /// <summary>
         /// Get user fitness metrics for AI context

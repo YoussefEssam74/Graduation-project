@@ -151,6 +151,13 @@ export default function TokensPage() {
     setIsPurchasing(true);
     try {
       const totalTokens = selectedPackage.tokens + selectedPackage.bonus;
+      
+      console.log('Attempting token purchase:', {
+        totalTokens,
+        packageName: selectedPackage.name,
+        userId: user.userId
+      });
+
       const response = await tokenTransactionsApi.createTransaction({
         amount: totalTokens,
         transactionType: "Purchase",
@@ -159,20 +166,24 @@ export default function TokensPage() {
         referenceId: selectedPackage.id,
       });
 
+      console.log('Purchase response:', response);
+
       if (response.success && response.data) {
         adjustTokens(totalTokens);
         setTransactions(prev => [response.data!, ...prev]);
         setTokensEarnedThisMonth(prev => prev + totalTokens);
         if (refreshUser) await refreshUser();
         showToast(`Successfully purchased ${totalTokens} tokens!`, "success");
+        setPurchaseDialogOpen(false);
+        setSelectedPackage(null);
       } else {
+        console.error('Purchase failed:', response.message, response.errors);
         showToast(response.message || "Failed to complete purchase", "error");
       }
     } catch (error) {
-      showToast("An error occurred during purchase", "error");
+      console.error('Purchase error:', error);
+      showToast(`An error occurred during purchase: ${error instanceof Error ? error.message : 'Unknown error'}`, "error");
     } finally {
-      setPurchaseDialogOpen(false);
-      setSelectedPackage(null);
       setIsPurchasing(false);
     }
   };
@@ -536,6 +547,10 @@ export default function TokensPage() {
       {/* Legacy Purchase Dialog (Hidden UI, Functional) */}
       <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
         <DialogContent className="max-w-md bg-white rounded-[24px] shadow-2xl border-0 p-0 overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{selectedPackage?.name} Pack Purchase</DialogTitle>
+            <DialogDescription>Confirm your token package purchase</DialogDescription>
+          </DialogHeader>
 
           {selectedPackage && (
             <>
@@ -574,9 +589,16 @@ export default function TokensPage() {
                   <Button
                     onClick={confirmPurchase}
                     disabled={isPurchasing}
-                    className="rounded-xl h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                    className="rounded-xl h-12 font-bold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                   >
-                    {isPurchasing ? <Loader2 className="animate-spin" /> : "Confirm"}
+                    {isPurchasing ? (
+                      <>
+                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Confirm"
+                    )}
                   </Button>
                 </div>
               </div>
