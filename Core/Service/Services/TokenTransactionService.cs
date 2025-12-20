@@ -48,6 +48,8 @@ namespace Service.Services
                     Amount = dto.Amount,
                     TransactionType = transactionType,
                     Description = dto.Description,
+                    ReferenceType = dto.ReferenceType,
+                    ReferenceId = dto.ReferenceId,
                     BalanceBefore = balanceBefore,
                     BalanceAfter = balanceAfter,
                     CreatedAt = DateTime.UtcNow

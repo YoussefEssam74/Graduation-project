@@ -28,6 +28,8 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<EquipmentCategory> EquipmentCategories { get; set; }
         public DbSet<Equipment> Equipment { get; set; }
         public DbSet<Booking> Bookings { get; set; }
+        public DbSet<EquipmentTimeSlot> EquipmentTimeSlots { get; set; }
+        public DbSet<CoachSessionEquipment> CoachSessionEquipments { get; set; }
 
         // Health
         public DbSet<InBodyMeasurement> InBodyMeasurements { get; set; }
@@ -87,6 +89,8 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<EquipmentCategory>().ToTable("equipment_categories");
             modelBuilder.Entity<Equipment>().ToTable("equipment");
             modelBuilder.Entity<Booking>().ToTable("bookings");
+            modelBuilder.Entity<EquipmentTimeSlot>().ToTable("equipment_time_slots");
+            modelBuilder.Entity<CoachSessionEquipment>().ToTable("coach_session_equipments");
             modelBuilder.Entity<InBodyMeasurement>().ToTable("inbody_measurements");
             modelBuilder.Entity<Exercise>().ToTable("exercises");
             modelBuilder.Entity<WorkoutPlan>().ToTable("workout_plans");
@@ -262,6 +266,12 @@ namespace IntelliFit.Infrastructure.Persistence
                     .WithMany(c => c.Bookings)
                     .HasForeignKey(e => e.CoachId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                // Parent-child booking relationship (for coach session -> auto-booked equipment)
+                entity.HasOne(e => e.ParentCoachBooking)
+                    .WithMany(b => b.ChildEquipmentBookings)
+                    .HasForeignKey(e => e.ParentCoachBookingId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // InBodyMeasurement Configuration
@@ -296,6 +306,12 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.HasOne(e => e.CreatedByCoach)
                     .WithMany(c => c.ExercisesCreated)
                     .HasForeignKey(e => e.CreatedByCoachId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Exercise to Equipment relationship
+                entity.HasOne(e => e.Equipment)
+                    .WithMany()
+                    .HasForeignKey(e => e.EquipmentId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
@@ -586,6 +602,56 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.HasOne(e => e.User)
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // EquipmentTimeSlot Configuration
+            modelBuilder.Entity<EquipmentTimeSlot>(entity =>
+            {
+                entity.HasKey(e => e.SlotId);
+                entity.HasIndex(e => new { e.EquipmentId, e.SlotDate, e.StartTime }).IsUnique();
+                entity.HasIndex(e => new { e.SlotDate, e.IsBooked });
+
+                entity.HasOne(e => e.Equipment)
+                    .WithMany()
+                    .HasForeignKey(e => e.EquipmentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.BookedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.BookedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Booking)
+                    .WithMany(b => b.EquipmentTimeSlots)
+                    .HasForeignKey(e => e.BookingId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // CoachSessionEquipment Configuration
+            modelBuilder.Entity<CoachSessionEquipment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.CoachBookingId);
+
+                entity.HasOne(e => e.CoachBooking)
+                    .WithMany()
+                    .HasForeignKey(e => e.CoachBookingId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.EquipmentBooking)
+                    .WithMany()
+                    .HasForeignKey(e => e.EquipmentBookingId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Equipment)
+                    .WithMany()
+                    .HasForeignKey(e => e.EquipmentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.WorkoutPlanExercise)
+                    .WithMany()
+                    .HasForeignKey(e => e.WorkoutPlanExerciseId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 

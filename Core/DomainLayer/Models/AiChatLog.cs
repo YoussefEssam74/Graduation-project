@@ -6,7 +6,7 @@ namespace IntelliFit.Domain.Models
     {
         public int ChatId { get; set; }
         public int UserId { get; set; }
-        public Guid SessionId { get; set; } = Guid.NewGuid();
+        public int SessionId { get; set; }
         public string MessageType { get; set; } = null!;
         public string MessageContent { get; set; } = null!;
         public int TokensUsed { get; set; } = 0;
@@ -14,7 +14,6 @@ namespace IntelliFit.Domain.Models
         public int? ResponseTimeMs { get; set; }
         public string? ContextData { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
 
         // Navigation properties
         public virtual User User { get; set; } = null!;

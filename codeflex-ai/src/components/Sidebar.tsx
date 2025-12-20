@@ -149,12 +149,7 @@ export default function Sidebar() {
                             )} />
                             <span>{item.label}</span>
 
-                            {/* New Badge for AI Coach */}
-                            {item.label === "AI Coach" && (
-                                <span className="ml-auto px-1.5 py-0.5 text-[10px] font-bold bg-orange-100 text-orange-600 rounded">
-                                    NEW
-                                </span>
-                            )}
+                          
 
                             {/* Active Indicator */}
                             {isActive && (

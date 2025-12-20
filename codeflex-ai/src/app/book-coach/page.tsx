@@ -70,6 +70,12 @@ function BookCoachContent() {
   const [bookingTime, setBookingTime] = useState("");
   const [isBooking, setIsBooking] = useState(false);
 
+  // Auto-booked equipment success modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [autoBookedEquipment, setAutoBookedEquipment] = useState<Array<{ equipmentName: string; bookingId: number }>>([]);
+  const [lastBookedCoach, setLastBookedCoach] = useState<string>("");
+  const [lastBookingTime, setLastBookingTime] = useState<string>("");
+
   // Available categories from coaches specializations
   const categories = ["All Coaches", "Yoga", "HIIT", "Strength", "Cardio", "CrossFit", "Pilates"];
 
@@ -110,8 +116,8 @@ function BookCoachContent() {
     const matchesSearch = coach.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       coach.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (coach.specialization?.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === "All Coaches" || 
-      coach.tags.includes(selectedCategory) || 
+    const matchesCategory = selectedCategory === "All Coaches" ||
+      coach.tags.includes(selectedCategory) ||
       coach.specialization === selectedCategory;
     const matchesAvailability = !onlyAvailable || coach.status === 'available';
 
@@ -145,16 +151,39 @@ function BookCoachContent() {
       const res = await bookingsApi.createBooking({
         userId: user.userId,
         coachId: selectedCoach.userId,
-        bookingType: "PersonalTraining",
+        bookingType: "Session",
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         notes: `Session with ${selectedCoach.name}`
       });
 
-      if (res.success) {
-        showToast(`Booked session with ${selectedCoach.name}!`, "success");
+      if (res.success && res.data) {
         setIsModalOpen(false);
         refreshUser();
+
+        // Store booking info for success modal
+        setLastBookedCoach(selectedCoach.name);
+        setLastBookingTime(`${bookingDate} at ${bookingTime}`);
+
+        // Fetch auto-booked equipment for this coach session
+        try {
+          const equipmentRes = await bookingsApi.getCoachSessionEquipment(res.data.bookingId);
+          if (equipmentRes.success && equipmentRes.data && equipmentRes.data.length > 0) {
+            setAutoBookedEquipment(
+              equipmentRes.data.map(eq => ({
+                equipmentName: eq.equipmentName || "Equipment",
+                bookingId: eq.bookingId
+              }))
+            );
+            setShowSuccessModal(true);
+          } else {
+            // No auto-booked equipment, just show success toast
+            showToast(`Booked session with ${selectedCoach.name}!`, "success");
+          }
+        } catch (eqError) {
+          console.error("Error fetching auto-booked equipment:", eqError);
+          showToast(`Booked session with ${selectedCoach.name}!`, "success");
+        }
       } else {
         showToast(res.message || "Failed to book session", "error");
       }
@@ -379,6 +408,61 @@ function BookCoachContent() {
             <Button onClick={confirmBooking} disabled={isBooking} className="bg-green-500 hover:bg-green-600">
               {isBooking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Confirm Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto-Booked Equipment Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Check className="h-5 w-5" />
+              Session Booked Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              Your session with {lastBookedCoach} on {lastBookingTime} has been confirmed.
+            </DialogDescription>
+          </DialogHeader>
+
+          {autoBookedEquipment.length > 0 && (
+            <div className="space-y-4 py-4">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <h4 className="font-bold text-green-800 flex items-center gap-2 mb-3">
+                  <span className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                    🏋️
+                  </span>
+                  Equipment Auto-Reserved
+                </h4>
+                <p className="text-sm text-green-700 mb-3">
+                  Based on your workout plan, the following equipment has been automatically booked for your session:
+                </p>
+                <ul className="space-y-2">
+                  {autoBookedEquipment.map((eq, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-green-800">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="font-medium">{eq.equipmentName}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                💡 This equipment is reserved exclusively for your coach session. No additional tokens were charged.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowSuccessModal(false);
+                setAutoBookedEquipment([]);
+              }}
+              className="bg-green-500 hover:bg-green-600 w-full"
+            >
+              Got it!
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,14 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
-import {
-  Brain,
-  Send,
-  Ticket,
-  History,
-  Plus,
-  Loader2,
-} from "lucide-react";
+import { Brain, Send, Ticket, History, Plus, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,15 +27,20 @@ function AICoachContent() {
   const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [sessions, setSessions] = useState<AIChatSessionDto[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto scroll on new messages
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  // Auto scroll to bottom on new messages or when AI is typing
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isSending]);
 
   // Load chat sessions on mount
   useEffect(() => {
@@ -50,9 +48,21 @@ function AICoachContent() {
       if (!user?.userId) return;
 
       try {
+        console.log("Loading chat sessions for user:", user.userId);
         const response = await aiApi.getChatSessions(user.userId);
-        if (response.success && response.data?.sessions) {
-          setSessions(response.data.sessions);
+        // Backend returns { success: true, sessions: [...] }
+        // @ts-ignore - response has sessions at root level
+        if (response.success && response.sessions) {
+          // @ts-ignore
+          console.log(
+            "Chat sessions loaded:",
+            response.sessions.length,
+            "sessions"
+          );
+          // @ts-ignore
+          setSessions(response.sessions);
+        } else {
+          console.error("Failed to load chat sessions:", response.message);
         }
       } catch (error) {
         console.error("Failed to load chat sessions:", error);
@@ -63,7 +73,7 @@ function AICoachContent() {
   }, [user?.userId]);
 
   // Load messages for a session
-  const loadSessionMessages = async (sessionId: string) => {
+  const loadSessionMessages = async (sessionId: number) => {
     if (!user?.userId) return;
 
     setIsLoading(true);
@@ -71,32 +81,37 @@ function AICoachContent() {
 
     try {
       const response = await aiApi.getSessionMessages(user.userId, sessionId);
-      if (response.success && response.data?.messages) {
-        const displayMessages: DisplayMessage[] = response.data.messages.map((msg: AIChatLogDto) => ({
-          id: msg.chatLogId.toString(),
-          role: "user" as const,
-          content: msg.userMessage,
-          timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }));
-
-        // Add AI responses
+      // Backend returns { success: true, messages: [...] }
+      // @ts-ignore - response has messages at root level
+      if (response.success && response.messages) {
+        // Convert the messages to the display format
         const withAiResponses: DisplayMessage[] = [];
-        response.data.messages.forEach((msg: AIChatLogDto) => {
+        // @ts-ignore
+        response.messages.forEach((msg: AIChatLogDto) => {
           withAiResponses.push({
             id: `user-${msg.chatLogId}`,
             role: "user",
             content: msg.userMessage,
-            timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
           });
           withAiResponses.push({
             id: `ai-${msg.chatLogId}`,
             role: "ai",
             content: msg.aiResponse,
-            timestamp: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
           });
         });
 
         setMessages(withAiResponses);
+      } else {
+        console.error("Failed to load session messages:", response.message);
+        showToast("Failed to load messages", "error");
       }
     } catch (error) {
       console.error("Failed to load session messages:", error);
@@ -120,10 +135,13 @@ function AICoachContent() {
       id: Date.now().toString(),
       role: "user",
       content: input,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsSending(true);
 
@@ -139,40 +157,61 @@ function AICoachContent() {
           id: (Date.now() + 1).toString(),
           role: "ai",
           content: response.data.response,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
         };
 
-        setMessages(prev => [...prev, aiMessage]);
+        setMessages((prev) => [...prev, aiMessage]);
 
-        // Set session ID if this was a new chat
-        if (!currentSessionId && response.data.sessionId) {
+        // Check for warnings (like save failure)
+        if (response.data.warning) {
+          console.warn("Backend warning:", response.data.warning);
+          showToast(response.data.warning, "warning", 8000);
+        }
+
+        // Set session ID if this was a new chat or update it
+        if (response.data.sessionId) {
           setCurrentSessionId(response.data.sessionId);
+          console.log("Session ID:", response.data.sessionId);
         }
 
         // Refresh user to update token balance
-        refreshUser();
+        await refreshUser();
 
         // Reload sessions to show the new one
-        const sessionsResponse = await aiApi.getChatSessions(user.userId);
-        if (sessionsResponse.success && sessionsResponse.data?.sessions) {
-          setSessions(sessionsResponse.data.sessions);
+        try {
+          const sessionsResponse = await aiApi.getChatSessions(user.userId);
+          if (sessionsResponse.success && sessionsResponse.data?.sessions) {
+            setSessions(sessionsResponse.data.sessions);
+            console.log(
+              "Sessions reloaded:",
+              sessionsResponse.data.sessions.length
+            );
+          }
+        } catch (sessionError) {
+          console.error("Failed to reload sessions:", sessionError);
         }
       } else {
         showToast(response.message || "Failed to get AI response", "error");
+        // Remove the user message if the request failed
+        setMessages((prev) => prev.slice(0, -1));
       }
     } catch (error) {
       console.error("Failed to send message:", error);
       showToast("Failed to send message. Please try again.", "error");
+      // Remove the user message if the request failed
+      setMessages((prev) => prev.slice(0, -1));
     } finally {
       setIsSending(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100vh-6rem)] relative overflow-hidden flex flex-col md:flex-row">
-
+    <div className="h-[calc(100vh-6rem)] relative overflow-hidden flex flex-col md:flex-row">
       {/* Sidebar - Chat Sessions */}
-      <div className="hidden md:flex w-72 bg-white border-r border-slate-200 flex-col z-10">
+      <div className="hidden md:flex w-72 bg-white border-r border-slate-200 flex-col z-10 h-full">
         <div className="p-4 border-b border-slate-100">
           <Button
             onClick={startNewChat}
@@ -188,16 +227,18 @@ function AICoachContent() {
           </h3>
 
           {sessions.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">No previous chats</p>
+            <p className="text-sm text-slate-400 text-center py-8">
+              No previous chats
+            </p>
           ) : (
             <div className="space-y-2">
-              {sessions.map(session => (
+              {sessions.map((session) => (
                 <div
                   key={session.sessionId}
                   onClick={() => loadSessionMessages(session.sessionId)}
                   className={`p-3 rounded-xl cursor-pointer transition-colors ${currentSessionId === session.sessionId
-                    ? 'bg-blue-50 border border-blue-200'
-                    : 'hover:bg-slate-50'
+                    ? "bg-blue-50 border border-blue-200"
+                    : "hover:bg-slate-50"
                     }`}
                 >
                   <div className="flex items-center gap-3">
@@ -219,9 +260,9 @@ function AICoachContent() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative z-10">
+      <div className="flex-1 flex flex-col relative z-10 min-h-0 overflow-hidden">
         {/* Chat Header */}
-        <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
+        <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg">
               <Brain className="h-5 w-5 text-white" />
@@ -246,7 +287,7 @@ function AICoachContent() {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
+          className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 min-h-0"
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
@@ -257,36 +298,46 @@ function AICoachContent() {
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <Brain className="h-8 w-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Start a Conversation</h3>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                Start a Conversation
+              </h3>
               <p className="text-slate-500 max-w-md">
-                Ask me anything about workouts, nutrition, recovery, or your fitness goals.
-                I&apos;m here to help you on your fitness journey!
+                Ask me anything about workouts, nutrition, recovery, or your
+                fitness goals. I&apos;m here to help you on your fitness
+                journey!
               </p>
             </div>
           ) : (
-            messages.map(msg => (
+            messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'ai'
-                  ? 'bg-gradient-to-br from-blue-500 to-blue-700'
-                  : 'bg-slate-200'
-                  }`}>
-                  {msg.role === 'ai'
-                    ? <Brain className="h-4 w-4 text-white" />
-                    : <span className="text-xs font-bold text-slate-600">
-                      {user?.name?.charAt(0) || 'U'}
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === "ai"
+                    ? "bg-gradient-to-br from-blue-500 to-blue-700"
+                    : "bg-slate-200"
+                    }`}
+                >
+                  {msg.role === "ai" ? (
+                    <Brain className="h-4 w-4 text-white" />
+                  ) : (
+                    <span className="text-xs font-bold text-slate-600">
+                      {user?.name?.charAt(0) || "U"}
                     </span>
-                  }
+                  )}
                 </div>
-                <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${msg.role === 'ai'
-                  ? 'bg-white text-slate-700 rounded-tl-none shadow-sm'
-                  : 'bg-blue-600 text-white rounded-tr-none'
-                  }`}>
+                <div
+                  className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${msg.role === "ai"
+                    ? "bg-white text-slate-700 rounded-tl-none shadow-sm"
+                    : "bg-blue-600 text-white rounded-tr-none"
+                    }`}
+                >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
-                  <p className={`text-[10px] mt-2 ${msg.role === 'ai' ? 'text-slate-400' : 'text-blue-200'
-                    }`}>
+                  <p
+                    className={`text-[10px] mt-2 ${msg.role === "ai" ? "text-slate-400" : "text-blue-200"
+                      }`}
+                  >
                     {msg.timestamp}
                   </p>
                 </div>
@@ -301,22 +352,36 @@ function AICoachContent() {
               </div>
               <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm">
                 <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  <span
+                    className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  ></span>
+                  <span
+                    className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  ></span>
+                  <span
+                    className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  ></span>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Scroll anchor - this is used to auto-scroll to the bottom */}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Area */}
-        <div className="bg-white border-t border-slate-200 p-4">
+        <div className="bg-white border-t border-slate-200 p-4 flex-shrink-0">
           <div className="flex gap-2 max-w-4xl mx-auto">
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !e.shiftKey && handleSend()
+              }
               placeholder="Ask about workouts, nutrition, or your fitness goals..."
               className="flex-1 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500"
               disabled={isSending}
@@ -334,7 +399,8 @@ function AICoachContent() {
             </Button>
           </div>
           <p className="text-[10px] text-slate-400 text-center mt-2">
-            AI responses are for informational purposes only. Always consult with a professional for medical advice.
+            AI responses are for informational purposes only. Always consult
+            with a professional for medical advice.
           </p>
         </div>
       </div>

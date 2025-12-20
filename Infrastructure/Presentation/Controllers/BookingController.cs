@@ -200,5 +200,19 @@ namespace Presentation.Controllers
         }
 
         #endregion
+
+        #region Get Coach Session Equipment
+
+        /// <summary>
+        /// Get all auto-booked equipment for a coach session
+        /// </summary>
+        [HttpGet("{coachBookingId}/equipment")]
+        public async Task<ActionResult<IEnumerable<BookingDto>>> GetCoachSessionEquipment(int coachBookingId)
+        {
+            var equipment = await _serviceManager.BookingService.GetCoachSessionEquipmentAsync(coachBookingId);
+            return Ok(equipment);
+        }
+
+        #endregion
     }
 }

@@ -1,14 +1,27 @@
 {
   "info": {
-    "_postman_id": "intellifit-complete-tested-2025",
+    "_postman_id": "PulseGym-Ai",
     "name": "IntelliFit API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Complete and tested Postman collection for IntelliFit API. All endpoints verified working as of Dec 6, 2025. Includes AI Chat Sessions and Token Transaction endpoints. Test User: member@intellifit.com (ID: 13). Set {{BaseUrl}} = http://localhost:5025 and {{token}} will be auto-populated after login."
+    "description": "Complete and tested Postman collection for IntelliFit API. All endpoints verified working as of Dec 20, 2025. Includes AI Chat Sessions and Token Transaction endpoints. Test Member: member@intellifit.com (ID: 1, Pass: 224466). Test Coach: sarah.johnson@intellifit.com (ID: 7, Pass: 224466). Set {{BaseUrl}} = http://localhost:5025 and {{token}} will be auto-populated after login."
   },
   "variable": [
-    { "key": "BaseUrl", "value": "http://localhost:5025" },
-    { "key": "token", "value": "" },
-    { "key": "userId", "value": "13" }
+    {
+      "key": "BaseUrl",
+      "value": "http://localhost:5025"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": "1"
+    },
+    {
+      "key": "coachId",
+      "value": "7"
+    }
   ],
   "item": [
     {
@@ -32,15 +45,26 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"Email\": \"member@intellifit.com\",\n  \"Password\": \"123123\"\n}"
+              "raw": "{\n  \"Email\": \"member@intellifit.com\",\n  \"Password\": \"224466\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/auth/login",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "auth", "login"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
             }
           }
         },
@@ -48,15 +72,26 @@
           "name": "Register",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"Email\": \"newuser{{$randomInt}}@example.com\",\n  \"Password\": \"Test@1234\",\n  \"Name\": \"{{$randomFullName}}\",\n  \"Phone\": \"{{$randomPhoneNumber}}\",\n  \"Role\": \"Member\",\n  \"DateOfBirth\": \"1990-01-01T00:00:00Z\",\n  \"Gender\": 1\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/auth/register",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "auth", "register"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
             }
           }
         },
@@ -67,9 +102,20 @@
             "header": [],
             "url": {
               "raw": "{{BaseUrl}}/api/auth/emailexists?email=test@example.com",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "auth", "emailexists"],
-              "query": [{ "key": "email", "value": "test@example.com" }]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "emailexists"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "test@example.com"
+                }
+              ]
             }
           }
         }
@@ -82,11 +128,22 @@
           "name": "Get User By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/users/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -94,11 +151,23 @@
           "name": "Get User Token Balance",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/users/{{userId}}/tokens",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "users", "{{userId}}", "tokens"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}",
+                "tokens"
+              ]
             }
           }
         },
@@ -107,8 +176,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -116,8 +191,14 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/users/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "users", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
             }
           }
         }
@@ -131,8 +212,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -140,8 +227,13 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/token-transactions",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "token-transactions"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "token-transactions"
+              ]
             }
           }
         },
@@ -149,11 +241,22 @@
           "name": "Get Transaction By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/token-transactions/9",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "token-transactions", "9"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "token-transactions",
+                "9"
+              ]
             }
           }
         },
@@ -161,11 +264,23 @@
           "name": "Get User Transactions",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/token-transactions/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "token-transactions", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "token-transactions",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -173,11 +288,24 @@
           "name": "Get User Balance",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/token-transactions/user/{{userId}}/balance",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "token-transactions", "user", "{{userId}}", "balance"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "token-transactions",
+                "user",
+                "{{userId}}",
+                "balance"
+              ]
             }
           }
         }
@@ -190,11 +318,22 @@
           "name": "Get All Plans",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/subscription/plans",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "subscription", "plans"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription",
+                "plans"
+              ]
             }
           }
         },
@@ -202,11 +341,23 @@
           "name": "Get Active Plans",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/subscription/plans/active",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "subscription", "plans", "active"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription",
+                "plans",
+                "active"
+              ]
             }
           }
         },
@@ -214,11 +365,23 @@
           "name": "Get Plan By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/subscription/plans/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "subscription", "plans", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription",
+                "plans",
+                "1"
+              ]
             }
           }
         },
@@ -226,11 +389,24 @@
           "name": "Get User Active Subscription",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/subscription/user/{{userId}}/active",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "subscription", "user", "{{userId}}", "active"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription",
+                "user",
+                "{{userId}}",
+                "active"
+              ]
             }
           }
         },
@@ -239,8 +415,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -248,8 +430,13 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/subscription",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "subscription"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "subscription"
+              ]
             }
           }
         }
@@ -263,8 +450,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -272,8 +465,13 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/payment",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "payment"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment"
+              ]
             }
           }
         },
@@ -281,11 +479,22 @@
           "name": "Get Payment By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/payment/6",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "payment", "6"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "6"
+              ]
             }
           }
         },
@@ -293,11 +502,23 @@
           "name": "Get User Payments",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/payment/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "payment", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payment",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         }
@@ -311,8 +532,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -320,8 +547,13 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/bookings",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "bookings"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings"
+              ]
             }
           }
         },
@@ -329,11 +561,22 @@
           "name": "Get Booking By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/bookings/4",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "bookings", "4"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "4"
+              ]
             }
           }
         },
@@ -341,11 +584,23 @@
           "name": "Get User Bookings",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/bookings/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "bookings", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -353,11 +608,23 @@
           "name": "Cancel Booking",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/bookings/4/cancel",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "bookings", "4", "cancel"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "4",
+                "cancel"
+              ]
             }
           }
         }
@@ -370,11 +637,21 @@
           "name": "Get All Equipment",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/equipment",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "equipment"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment"
+              ]
             }
           }
         },
@@ -382,11 +659,22 @@
           "name": "Get Available Equipment",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/equipment/available",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "equipment", "available"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment",
+                "available"
+              ]
             }
           }
         },
@@ -394,11 +682,22 @@
           "name": "Get Equipment By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/equipment/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "equipment", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment",
+                "1"
+              ]
             }
           }
         }
@@ -411,11 +710,21 @@
           "name": "Get All Exercises",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/exercise",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "exercise"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exercise"
+              ]
             }
           }
         },
@@ -423,11 +732,22 @@
           "name": "Get Active Exercises",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/exercise/active",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "exercise", "active"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exercise",
+                "active"
+              ]
             }
           }
         },
@@ -435,11 +755,22 @@
           "name": "Get Exercise By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/exercise/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "exercise", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exercise",
+                "1"
+              ]
             }
           }
         },
@@ -447,11 +778,23 @@
           "name": "Get By Muscle Group",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/exercise/muscle-group/Chest",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "exercise", "muscle-group", "Chest"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exercise",
+                "muscle-group",
+                "Chest"
+              ]
             }
           }
         },
@@ -459,11 +802,23 @@
           "name": "Get By Difficulty (Numeric)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/exercise/difficulty/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "exercise", "difficulty", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "exercise",
+                "difficulty",
+                "1"
+              ]
             },
             "description": "Use numeric difficulty: 1=Easy, 2=Medium, 3=Hard"
           }
@@ -477,11 +832,21 @@
           "name": "Get All Meals",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/meals",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "meals"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "meals"
+              ]
             }
           }
         },
@@ -489,11 +854,22 @@
           "name": "Get Active Meals",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/meals/active",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "meals", "active"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "active"
+              ]
             }
           }
         },
@@ -501,11 +877,22 @@
           "name": "Get Meal By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/meals/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "meals", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "meals",
+                "1"
+              ]
             }
           }
         }
@@ -518,11 +905,23 @@
           "name": "Get User Notifications",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/notifications/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "notifications", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -530,11 +929,24 @@
           "name": "Get Unread Count",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/notifications/user/{{userId}}/unread-count",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "notifications", "user", "{{userId}}", "unread-count"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "user",
+                "{{userId}}",
+                "unread-count"
+              ]
             }
           }
         },
@@ -542,11 +954,23 @@
           "name": "Mark As Read",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/notifications/1/read",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "notifications", "1", "read"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "1",
+                "read"
+              ]
             }
           }
         }
@@ -559,11 +983,23 @@
           "name": "Get User Workout Logs",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/workout-logs/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-logs", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-logs",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -571,11 +1007,22 @@
           "name": "Get Workout Log By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/workout-logs/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-logs", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-logs",
+                "1"
+              ]
             }
           }
         },
@@ -584,8 +1031,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -593,8 +1046,13 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/workout-logs",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-logs"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-logs"
+              ]
             }
           }
         }
@@ -607,11 +1065,22 @@
           "name": "Get Templates",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/workout-plans/templates",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-plans", "templates"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-plans",
+                "templates"
+              ]
             }
           }
         },
@@ -619,11 +1088,23 @@
           "name": "Get Member Plans",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/workout-plans/member/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-plans", "member", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-plans",
+                "member",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -631,11 +1112,23 @@
           "name": "Get Template By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/workout-plans/templates/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-plans", "templates", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-plans",
+                "templates",
+                "1"
+              ]
             }
           }
         }
@@ -648,11 +1141,23 @@
           "name": "Get By Member",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/nutrition-plans/member/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "nutrition-plans", "member", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "nutrition-plans",
+                "member",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -660,11 +1165,22 @@
           "name": "Get By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/nutrition-plans/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "nutrition-plans", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "nutrition-plans",
+                "1"
+              ]
             }
           }
         }
@@ -677,11 +1193,23 @@
           "name": "Get User Measurements",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/inbody/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "inbody", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inbody",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -689,11 +1217,24 @@
           "name": "Get Latest Measurement",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/inbody/user/1/latest",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "inbody", "user", "1", "latest"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inbody",
+                "user",
+                "1",
+                "latest"
+              ]
             },
             "description": "Note: Returns 404 if user has no measurements"
           }
@@ -703,8 +1244,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -712,8 +1259,13 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/inbody",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "inbody"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inbody"
+              ]
             }
           }
         }
@@ -726,11 +1278,23 @@
           "name": "Get User Milestones",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/user-milestones/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "user-milestones", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user-milestones",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -739,8 +1303,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -748,8 +1318,16 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/user-milestones/user/{{userId}}/progress",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "user-milestones", "user", "{{userId}}", "progress"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "user-milestones",
+                "user",
+                "{{userId}}",
+                "progress"
+              ]
             }
           }
         }
@@ -762,11 +1340,22 @@
           "name": "Get Recent Activities",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/activity-feed/recent",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "activity-feed", "recent"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "activity-feed",
+                "recent"
+              ]
             }
           }
         },
@@ -774,11 +1363,23 @@
           "name": "Get User Activities",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/activity-feed/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "activity-feed", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "activity-feed",
+                "user",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -787,8 +1388,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -796,8 +1403,13 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/activity-feed",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "activity-feed"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "activity-feed"
+              ]
             }
           }
         }
@@ -810,11 +1422,23 @@
           "name": "Get Member Stats",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/stats/member/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "stats", "member", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stats",
+                "member",
+                "{{userId}}"
+              ]
             }
           }
         },
@@ -822,11 +1446,23 @@
           "name": "Get Coach Stats",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
-              "raw": "{{BaseUrl}}/api/stats/coach/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "stats", "coach", "1"]
+              "raw": "{{BaseUrl}}/api/stats/coach/{{coachId}}",
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stats",
+                "coach",
+                "{{coachId}}"
+              ]
             }
           }
         }
@@ -839,11 +1475,23 @@
           "name": "Get Coach Reviews",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
-              "raw": "{{BaseUrl}}/api/coach-reviews/coach/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "coach-reviews", "coach", "1"]
+              "raw": "{{BaseUrl}}/api/coach-reviews/coach/{{coachId}}",
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "coach-reviews",
+                "coach",
+                "{{coachId}}"
+              ]
             }
           }
         },
@@ -851,11 +1499,24 @@
           "name": "Get Coach Rating",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
-              "raw": "{{BaseUrl}}/api/coach-reviews/coach/1/rating",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "coach-reviews", "coach", "1", "rating"]
+              "raw": "{{BaseUrl}}/api/coach-reviews/coach/{{coachId}}/rating",
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "coach-reviews",
+                "coach",
+                "{{coachId}}",
+                "rating"
+              ]
             }
           }
         },
@@ -864,17 +1525,28 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"CoachId\": 1,\n  \"MemberId\": {{userId}},\n  \"Rating\": 5,\n  \"ReviewText\": \"Excellent coach! Very professional.\"\n}"
+              "raw": "{\n  \"CoachId\": {{coachId}},\n  \"MemberId\": {{userId}},\n  \"Rating\": 5,\n  \"ReviewText\": \"Excellent coach! Very professional.\"\n}"
             },
             "url": {
               "raw": "{{BaseUrl}}/api/coach-reviews",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "coach-reviews"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "coach-reviews"
+              ]
             }
           }
         }
@@ -887,11 +1559,22 @@
           "name": "Get Public Templates",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/workout-templates/public",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-templates", "public"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-templates",
+                "public"
+              ]
             }
           }
         },
@@ -899,11 +1582,22 @@
           "name": "Get Template By ID",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/workout-templates/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-templates", "1"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-templates",
+                "1"
+              ]
             }
           }
         },
@@ -911,11 +1605,23 @@
           "name": "Get Coach Templates",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
-              "raw": "{{BaseUrl}}/api/workout-templates/coach/1",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "workout-templates", "coach", "1"]
+              "raw": "{{BaseUrl}}/api/workout-templates/coach/{{coachId}}",
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workout-templates",
+                "coach",
+                "{{coachId}}"
+              ]
             }
           }
         }
@@ -928,11 +1634,22 @@
           "name": "AI Test Endpoint",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/ai/test",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "test"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "test"
+              ]
             },
             "description": "Test endpoint to verify AI service is running"
           }
@@ -942,8 +1659,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -951,8 +1674,14 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/ai/gemini-chat",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "gemini-chat"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "gemini-chat"
+              ]
             },
             "description": "Start a new AI chat session. Costs 1 token. Returns sessionId for continuing the conversation."
           }
@@ -962,8 +1691,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -971,8 +1706,14 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/ai/gemini-chat",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "gemini-chat"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "gemini-chat"
+              ]
             },
             "description": "Continue an existing chat session. Include SessionId from previous response. Costs 1 token per message."
           }
@@ -981,11 +1722,23 @@
           "name": "Get User Chat Sessions",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/ai/sessions/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "sessions", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "sessions",
+                "{{userId}}"
+              ]
             },
             "description": "Get all chat sessions for a user with message count and preview"
           }
@@ -994,11 +1747,24 @@
           "name": "Get Session Messages",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/ai/sessions/{{userId}}/your-session-id-here",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "sessions", "{{userId}}", "your-session-id-here"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "sessions",
+                "{{userId}}",
+                "your-session-id-here"
+              ]
             },
             "description": "Get all messages in a specific chat session"
           }
@@ -1008,8 +1774,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1017,8 +1789,14 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/ai/generate-workout-plan",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "generate-workout-plan"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "generate-workout-plan"
+              ]
             },
             "description": "Generate a personalized workout plan using AI. Costs 50 tokens."
           }
@@ -1028,8 +1806,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1037,8 +1821,14 @@
             },
             "url": {
               "raw": "{{BaseUrl}}/api/ai/generate-nutrition-plan",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "generate-nutrition-plan"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "generate-nutrition-plan"
+              ]
             },
             "description": "Generate a personalized nutrition plan using AI. Costs 50 tokens."
           }
@@ -1047,11 +1837,23 @@
           "name": "Get Chat History (Legacy)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/ai/history/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "ai", "history", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "history",
+                "{{userId}}"
+              ]
             },
             "description": "Get chat history (old format without sessions). Use Get User Chat Sessions instead."
           }
@@ -1065,11 +1867,23 @@
           "name": "Get User Audit Logs",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/audit-logs/user/{{userId}}",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "audit-logs", "user", "{{userId}}"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit-logs",
+                "user",
+                "{{userId}}"
+              ]
             },
             "description": "Note: Requires Admin role, returns Forbidden for regular users"
           }
@@ -1078,11 +1892,23 @@
           "name": "Get By Table Name",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{BaseUrl}}/api/audit-logs/table/Users",
-              "host": ["{{BaseUrl}}"],
-              "path": ["api", "audit-logs", "table", "Users"]
+              "host": [
+                "{{BaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "audit-logs",
+                "table",
+                "Users"
+              ]
             }
           }
         }

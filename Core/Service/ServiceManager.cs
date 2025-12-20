@@ -10,66 +10,124 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using IntelliFit.Presentation.Hubs;
 using AutoMapper;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Service
 {
-    public class ServiceManager(
-        IUnitOfWork _unitOfWork,
-        ITokenService _tokenService,
-        IConfiguration _configuration,
-        ILogger<AIService> _aiLogger,
-        IHubContext<NotificationHub> _hubContext,
-        IMapper _mapper
-    ) : IServiceManager
+    public class ServiceManager : IServiceManager
     {
-        private readonly Lazy<IAuthService> _LazyAuthService = new Lazy<IAuthService>(() => new AuthService(_unitOfWork, _tokenService));
-        private readonly Lazy<IUserService> _LazyUserService = new Lazy<IUserService>(() => new UserService(_unitOfWork));
-        private readonly Lazy<ITokenTransactionService> _LazyTokenTransactionService = new Lazy<ITokenTransactionService>(() => new TokenTransactionService(_unitOfWork, _mapper));
-        
-        // BookingService needs TokenTransactionService - initialize with factory method
-        private Lazy<IBookingService>? _lazyBookingServiceField;
-        private Lazy<IBookingService> _LazyBookingService => _lazyBookingServiceField ??= new Lazy<IBookingService>(() => new BookingService(_unitOfWork, _mapper, _LazyTokenTransactionService.Value));
-        
-        private readonly Lazy<ISubscriptionService> _LazySubscriptionService = new Lazy<ISubscriptionService>(() => new SubscriptionService(_unitOfWork));
-        private readonly Lazy<IPaymentService> _LazyPaymentService = new Lazy<IPaymentService>(() => new PaymentService(_unitOfWork, _mapper));
-        private readonly Lazy<IExerciseService> _LazyExerciseService = new Lazy<IExerciseService>(() => new ExerciseService(_unitOfWork));
-        private readonly Lazy<IEquipmentService> _LazyEquipmentService = new Lazy<IEquipmentService>(() => new EquipmentService(_unitOfWork));
-        private readonly Lazy<IWorkoutPlanService> _LazyWorkoutPlanService = new Lazy<IWorkoutPlanService>(() => new WorkoutPlanService(_unitOfWork));
-        private readonly Lazy<INutritionPlanService> _LazyNutritionPlanService = new Lazy<INutritionPlanService>(() => new NutritionPlanService(_unitOfWork));
-        private readonly Lazy<IInBodyService> _LazyInBodyService = new Lazy<IInBodyService>(() => new InBodyService(_unitOfWork));
-        private readonly Lazy<IStatsService> _LazyStatsService = new Lazy<IStatsService>(() => new StatsService(_unitOfWork));
-        private readonly Lazy<IMealService> _LazyMealService = new Lazy<IMealService>(() => new MealService(_unitOfWork));
-        private readonly Lazy<IAIChatService> _LazyAIChatService = new Lazy<IAIChatService>(() => new AIChatService(_unitOfWork));
-        private readonly Lazy<INotificationService> _LazyNotificationService = new Lazy<INotificationService>(() => new NotificationService(_hubContext, _unitOfWork, _mapper));
-        private readonly Lazy<IAIService> _LazyAIService = new Lazy<IAIService>(() => new AIService(_configuration, _aiLogger));
-        private readonly Lazy<IWorkoutLogService> _LazyWorkoutLogService = new Lazy<IWorkoutLogService>(() => new WorkoutLogService(_unitOfWork, _mapper));
-        private readonly Lazy<ICoachReviewService> _LazyCoachReviewService = new Lazy<ICoachReviewService>(() => new CoachReviewService(_unitOfWork, _mapper));
-        private readonly Lazy<IActivityFeedService> _LazyActivityFeedService = new Lazy<IActivityFeedService>(() => new ActivityFeedService(_unitOfWork, _mapper));
-        private readonly Lazy<IUserMilestoneService> _LazyUserMilestoneService = new Lazy<IUserMilestoneService>(() => new UserMilestoneService(_unitOfWork, _mapper));
-        private readonly Lazy<IWorkoutTemplateService> _LazyWorkoutTemplateService = new Lazy<IWorkoutTemplateService>(() => new WorkoutTemplateService(_unitOfWork, _mapper));
-        private readonly Lazy<IAuditLogService> _LazyAuditLogService = new Lazy<IAuditLogService>(() => new AuditLogService(_unitOfWork, _mapper));
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly ITokenService _tokenService;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<AIService> _aiLogger;
+        private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly IMapper _mapper;
+        private readonly IMemoryCache _memoryCache;
+        private readonly ILoggerFactory _loggerFactory;
 
-        public IAuthService AuthService => _LazyAuthService.Value;
-        public IUserService UserService => _LazyUserService.Value;
-        public IBookingService BookingService => _LazyBookingService.Value;
-        public ISubscriptionService SubscriptionService => _LazySubscriptionService.Value;
-        public IPaymentService PaymentService => _LazyPaymentService.Value;
-        public IExerciseService ExerciseService => _LazyExerciseService.Value;
-        public IEquipmentService EquipmentService => _LazyEquipmentService.Value;
-        public IWorkoutPlanService WorkoutPlanService => _LazyWorkoutPlanService.Value;
-        public INutritionPlanService NutritionPlanService => _LazyNutritionPlanService.Value;
-        public IInBodyService InBodyService => _LazyInBodyService.Value;
-        public IStatsService StatsService => _LazyStatsService.Value;
-        public IMealService MealService => _LazyMealService.Value;
-        public IAIChatService AIChatService => _LazyAIChatService.Value;
-        public INotificationService NotificationService => _LazyNotificationService.Value;
-        public IAIService AIService => _LazyAIService.Value;
-        public IWorkoutLogService WorkoutLogService => _LazyWorkoutLogService.Value;
-        public ICoachReviewService CoachReviewService => _LazyCoachReviewService.Value;
-        public ITokenTransactionService TokenTransactionService => _LazyTokenTransactionService.Value;
-        public IActivityFeedService ActivityFeedService => _LazyActivityFeedService.Value;
-        public IUserMilestoneService UserMilestoneService => _LazyUserMilestoneService.Value;
-        public IWorkoutTemplateService WorkoutTemplateService => _LazyWorkoutTemplateService.Value;
-        public IAuditLogService AuditLogService => _LazyAuditLogService.Value;
+        // Lazy-loaded services
+        private readonly Lazy<IAuthService> _lazyAuthService;
+        private readonly Lazy<IUserService> _lazyUserService;
+        private readonly Lazy<ITokenTransactionService> _lazyTokenTransactionService;
+        private readonly Lazy<IEquipmentTimeSlotService> _lazyEquipmentTimeSlotService;
+        private Lazy<IBookingService>? _lazyBookingService;
+        private readonly Lazy<ISubscriptionService> _lazySubscriptionService;
+        private readonly Lazy<IPaymentService> _lazyPaymentService;
+        private readonly Lazy<IExerciseService> _lazyExerciseService;
+        private readonly Lazy<IEquipmentService> _lazyEquipmentService;
+        private readonly Lazy<IWorkoutPlanService> _lazyWorkoutPlanService;
+        private readonly Lazy<INutritionPlanService> _lazyNutritionPlanService;
+        private readonly Lazy<IInBodyService> _lazyInBodyService;
+        private readonly Lazy<IStatsService> _lazyStatsService;
+        private readonly Lazy<IMealService> _lazyMealService;
+        private readonly Lazy<IAIChatService> _lazyAIChatService;
+        private readonly Lazy<INotificationService> _lazyNotificationService;
+        private readonly Lazy<IAIService> _lazyAIService;
+        private readonly Lazy<IWorkoutLogService> _lazyWorkoutLogService;
+        private readonly Lazy<ICoachReviewService> _lazyCoachReviewService;
+        private readonly Lazy<IActivityFeedService> _lazyActivityFeedService;
+        private readonly Lazy<IUserMilestoneService> _lazyUserMilestoneService;
+        private readonly Lazy<IWorkoutTemplateService> _lazyWorkoutTemplateService;
+        private readonly Lazy<IAuditLogService> _lazyAuditLogService;
+
+        public ServiceManager(
+            IUnitOfWork unitOfWork,
+            ITokenService tokenService,
+            IConfiguration configuration,
+            ILogger<AIService> aiLogger,
+            IHubContext<NotificationHub> hubContext,
+            IMapper mapper,
+            IMemoryCache memoryCache,
+            ILoggerFactory loggerFactory)
+        {
+            _unitOfWork = unitOfWork;
+            _tokenService = tokenService;
+            _configuration = configuration;
+            _aiLogger = aiLogger;
+            _hubContext = hubContext;
+            _mapper = mapper;
+            _memoryCache = memoryCache;
+            _loggerFactory = loggerFactory;
+
+            // Initialize lazy services
+            _lazyAuthService = new Lazy<IAuthService>(() => new AuthService(_unitOfWork, _tokenService));
+            _lazyUserService = new Lazy<IUserService>(() => new UserService(_unitOfWork));
+            _lazyTokenTransactionService = new Lazy<ITokenTransactionService>(() => new TokenTransactionService(_unitOfWork, _mapper));
+            _lazyEquipmentTimeSlotService = new Lazy<IEquipmentTimeSlotService>(() => 
+                new EquipmentTimeSlotService(_unitOfWork, _memoryCache, _loggerFactory.CreateLogger<EquipmentTimeSlotService>()));
+            _lazySubscriptionService = new Lazy<ISubscriptionService>(() => new SubscriptionService(_unitOfWork));
+            _lazyPaymentService = new Lazy<IPaymentService>(() => new PaymentService(_unitOfWork, _mapper));
+            _lazyExerciseService = new Lazy<IExerciseService>(() => new ExerciseService(_unitOfWork));
+            _lazyEquipmentService = new Lazy<IEquipmentService>(() => new EquipmentService(_unitOfWork));
+            _lazyWorkoutPlanService = new Lazy<IWorkoutPlanService>(() => new WorkoutPlanService(_unitOfWork));
+            _lazyNutritionPlanService = new Lazy<INutritionPlanService>(() => new NutritionPlanService(_unitOfWork));
+            _lazyInBodyService = new Lazy<IInBodyService>(() => new InBodyService(_unitOfWork));
+            _lazyStatsService = new Lazy<IStatsService>(() => new StatsService(_unitOfWork));
+            _lazyMealService = new Lazy<IMealService>(() => new MealService(_unitOfWork));
+            _lazyAIChatService = new Lazy<IAIChatService>(() => new AIChatService(_unitOfWork));
+            _lazyNotificationService = new Lazy<INotificationService>(() => new NotificationService(_hubContext, _unitOfWork, _mapper));
+            _lazyAIService = new Lazy<IAIService>(() => new AIService(_configuration, _aiLogger));
+            _lazyWorkoutLogService = new Lazy<IWorkoutLogService>(() => new WorkoutLogService(_unitOfWork, _mapper));
+            _lazyCoachReviewService = new Lazy<ICoachReviewService>(() => new CoachReviewService(_unitOfWork, _mapper));
+            _lazyActivityFeedService = new Lazy<IActivityFeedService>(() => new ActivityFeedService(_unitOfWork, _mapper));
+            _lazyUserMilestoneService = new Lazy<IUserMilestoneService>(() => new UserMilestoneService(_unitOfWork, _mapper));
+            _lazyWorkoutTemplateService = new Lazy<IWorkoutTemplateService>(() => new WorkoutTemplateService(_unitOfWork, _mapper));
+            _lazyAuditLogService = new Lazy<IAuditLogService>(() => new AuditLogService(_unitOfWork, _mapper));
+        }
+
+        // BookingService needs TokenTransactionService and EquipmentTimeSlotService - initialize with factory getter
+        private Lazy<IBookingService> LazyBookingService => 
+            _lazyBookingService ??= new Lazy<IBookingService>(() => 
+                new BookingService(
+                    _unitOfWork, 
+                    _mapper, 
+                    _lazyTokenTransactionService.Value, 
+                    _lazyEquipmentTimeSlotService.Value,
+                    _loggerFactory.CreateLogger<BookingService>()));
+
+        // Public service properties
+        public IAuthService AuthService => _lazyAuthService.Value;
+        public IUserService UserService => _lazyUserService.Value;
+        public IBookingService BookingService => LazyBookingService.Value;
+        public ISubscriptionService SubscriptionService => _lazySubscriptionService.Value;
+        public IPaymentService PaymentService => _lazyPaymentService.Value;
+        public IExerciseService ExerciseService => _lazyExerciseService.Value;
+        public IEquipmentService EquipmentService => _lazyEquipmentService.Value;
+        public IWorkoutPlanService WorkoutPlanService => _lazyWorkoutPlanService.Value;
+        public INutritionPlanService NutritionPlanService => _lazyNutritionPlanService.Value;
+        public IInBodyService InBodyService => _lazyInBodyService.Value;
+        public IStatsService StatsService => _lazyStatsService.Value;
+        public IMealService MealService => _lazyMealService.Value;
+        public IAIChatService AIChatService => _lazyAIChatService.Value;
+        public INotificationService NotificationService => _lazyNotificationService.Value;
+        public IAIService AIService => _lazyAIService.Value;
+        public IWorkoutLogService WorkoutLogService => _lazyWorkoutLogService.Value;
+        public ICoachReviewService CoachReviewService => _lazyCoachReviewService.Value;
+        public ITokenTransactionService TokenTransactionService => _lazyTokenTransactionService.Value;
+        public IActivityFeedService ActivityFeedService => _lazyActivityFeedService.Value;
+        public IUserMilestoneService UserMilestoneService => _lazyUserMilestoneService.Value;
+        public IWorkoutTemplateService WorkoutTemplateService => _lazyWorkoutTemplateService.Value;
+        public IAuditLogService AuditLogService => _lazyAuditLogService.Value;
     }
 }
+

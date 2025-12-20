@@ -33,13 +33,14 @@ import { useToast } from "@/components/ui/toast";
 import { ChatDialog } from "@/components/Chat/ChatDialog";
 
 function DashboardContent() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { showToast } = useToast();
   const [stats, setStats] = useState<MemberStatsDto | null>(null);
   const [bodyFatChange, setBodyFatChange] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [assignedCoach, setAssignedCoach] = useState<{
-    id: number;
+    id: number; // CoachProfile ID
+    userId: number; // User ID for chat
     name: string;
     specialization: string;
     rating: number;
@@ -52,6 +53,11 @@ function DashboardContent() {
       if (!user?.userId) return;
 
       try {
+        // Refresh user data to get latest token balance from the server
+        if (refreshUser) {
+          await refreshUser();
+        }
+
         const response = await statsApi.getMemberStats(user.userId);
         if (response.success && response.data) {
           setStats(response.data);
@@ -86,7 +92,7 @@ function DashboardContent() {
 
     fetchStats();
     fetchInBodyStats();
-  }, [user?.userId]);
+  }, [user?.userId, refreshUser]);
 
   // Recent bookings state
   const [recentBookings, setRecentBookings] = useState<BookingDto[]>([]);
@@ -137,6 +143,7 @@ function DashboardContent() {
 
             setAssignedCoach({
               id: latestCoach.coachId!,
+              userId: latestCoach.coachUserId || latestCoach.coachId!, // Use coachUserId for chat
               name: latestCoach.coachName!,
               specialization: "Personal Training",
               rating: 5.0, // Default fallback
@@ -508,6 +515,46 @@ function DashboardContent() {
                 )}
               </div>
             </div>
+
+            {/* My Coach Card */}
+            {assignedCoach && (
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-purple-500" />
+                  My Coach
+                </h3>
+                <Card className="p-6 border-0 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] bg-gradient-to-br from-purple-50 via-white to-blue-50 rounded-[20px]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        {assignedCoach.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-lg">{assignedCoach.name}</h4>
+                        <p className="text-sm text-slate-500">{assignedCoach.specialization}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                          <span className="text-sm font-semibold text-slate-700">{assignedCoach.rating.toFixed(1)}</span>
+                          {assignedCoach.upcomingSession && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-xs text-slate-500">Next: {assignedCoach.upcomingSession}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => setIsChatOpen(true)}
+                      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-6 py-3 shadow-lg shadow-purple-500/20 transition-transform hover:scale-105"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Chat with Coach
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Schedule (Span 1) */}
@@ -612,7 +659,7 @@ function DashboardContent() {
         {
           isChatOpen && assignedCoach && (
             <ChatDialog
-              recipientId={assignedCoach.id}
+              recipientId={assignedCoach.userId}
               recipientName={assignedCoach.name}
               recipientRole="coach"
               onClose={() => setIsChatOpen(false)}

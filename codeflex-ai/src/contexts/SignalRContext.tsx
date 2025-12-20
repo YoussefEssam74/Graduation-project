@@ -38,10 +38,10 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const showToastRef = useRef(showToast);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  
+
   // Track processed message IDs to prevent duplicates on the client
   const processedMessageIds = useRef<Set<number>>(new Set());
-  
+
   // Keep the ref updated
   useEffect(() => {
     showToastRef.current = showToast;
@@ -69,11 +69,11 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     // Create new abort controller for this connection attempt
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
-    
+
     if (!user || !token) {
       // Cleanup when user logs out
       const cleanup = async () => {
@@ -88,7 +88,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (chat) {
             const gh = (chat as any)._globalReceiveHandler;
             if (gh) {
-              try { chat.off('ReceiveMessage', gh); } catch {}
+              try { chat.off('ReceiveMessage', gh); } catch { }
               (chat as any)._globalReceiveHandler = undefined;
             }
             try { await chat.stop(); } catch (e) { console.warn('Error stopping chat connection', e); }
@@ -102,7 +102,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
             notificationRef.current = null;
             setNotificationConnection(null);
           }
-          
+
           // Clear processed messages on logout
           processedMessageIds.current.clear();
         } catch (err) {
@@ -171,62 +171,79 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
 
-    chat.start()
-      .then(() => {
-        if (abortController.signal.aborted) return;
-        console.log('Connected to chat hub');
-        updateChatState();
+    // Helper function to check if error is expected during cleanup
+    const isExpectedError = (err: any) => {
+      const expectedMessages = [
+        'stopped during negotiation',
+        'Failed to start the HttpConnection before stop',
+        'The connection was stopped',
+        'connection was stopped'
+      ];
+      return expectedMessages.some(msg => err?.message?.toLowerCase().includes(msg.toLowerCase()));
+    };
 
-        try {
-          const globalHandler = (payload: any) => {
-            try {
-              // Check for duplicate messages using messageId
-              const messageId = payload?.messageId || payload?.MessageId;
-              if (messageId && processedMessageIds.current.has(messageId)) {
-                console.log('Skipping duplicate message:', messageId);
-                return;
+    // Start chat connection with race condition protection
+    if (!abortController.signal.aborted) {
+      chat.start()
+        .then(() => {
+          if (abortController.signal.aborted) return;
+          console.log('Connected to chat hub');
+          updateChatState();
+
+          try {
+            const globalHandler = (payload: any) => {
+              try {
+                // Check for duplicate messages using messageId
+                const messageId = payload?.messageId || payload?.MessageId;
+                if (messageId && processedMessageIds.current.has(messageId)) {
+                  console.log('Skipping duplicate message:', messageId);
+                  return;
+                }
+                if (messageId) {
+                  processedMessageIds.current.add(messageId);
+                  // Clean up old message IDs after 5 minutes
+                  setTimeout(() => processedMessageIds.current.delete(messageId), 5 * 60 * 1000);
+                }
+
+                const sender = payload?.senderName || payload?.sender || 'Someone';
+                const text = payload?.message || payload?.text || '';
+                if (text) showToastRef.current(`${sender}: ${text}`, 'info', 5000);
+              } catch (inner) {
+                console.error('Error processing global chat payload', inner);
               }
-              if (messageId) {
-                processedMessageIds.current.add(messageId);
-                // Clean up old message IDs after 5 minutes
-                setTimeout(() => processedMessageIds.current.delete(messageId), 5 * 60 * 1000);
-              }
-              
-              const sender = payload?.senderName || payload?.sender || 'Someone';
-              const text = payload?.message || payload?.text || '';
-              if (text) showToastRef.current(`${sender}: ${text}`, 'info', 5000);
-            } catch (inner) {
-              console.error('Error processing global chat payload', inner);
-            }
-          };
+            };
 
-          chat.on('ReceiveMessage', globalHandler);
-          (chat as any)._globalReceiveHandler = globalHandler;
-        } catch (err) {
-          console.error('Failed to register global ReceiveMessage handler', err);
-        }
-      })
-      .catch(err => {
-        // Only log if not aborted and it's not a "stopped during negotiation" error
-        if (!abortController.signal.aborted && !err?.message?.includes('stopped during negotiation')) {
-          console.error('Failed to connect to chat hub:', err);
-        }
-        updateChatState();
-      });
+            chat.on('ReceiveMessage', globalHandler);
+            (chat as any)._globalReceiveHandler = globalHandler;
+          } catch (err) {
+            console.error('Failed to register global ReceiveMessage handler', err);
+          }
+        })
+        .catch(err => {
+          // Only log if not aborted and it's not an expected error
+          if (!abortController.signal.aborted && !isExpectedError(err)) {
+            console.error('Failed to connect to chat hub:', err);
+          }
+          updateChatState();
+        });
+    }
 
-    notification.start()
-      .then(() => {
-        if (abortController.signal.aborted) return;
-        console.log('Connected to notification hub');
-        updateNotificationState();
-      })
-      .catch(err => {
-        // Only log if not aborted and it's not a "stopped during negotiation" error
-        if (!abortController.signal.aborted && !err?.message?.includes('stopped during negotiation')) {
-          console.error('Failed to connect to notification hub:', err);
-        }
-        updateNotificationState();
-      });
+    // Start notification connection with race condition protection
+    if (!abortController.signal.aborted) {
+      notification.start()
+        .then(() => {
+          if (abortController.signal.aborted) return;
+          console.log('Connected to notification hub');
+          updateNotificationState();
+        })
+        .catch(err => {
+          // Only log if not aborted and it's not an expected error
+          if (!abortController.signal.aborted && !isExpectedError(err)) {
+            console.error('Failed to connect to notification hub:', err);
+          }
+          updateNotificationState();
+        });
+    }
 
     return () => {
       abortController.abort();
@@ -241,15 +258,15 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (chat) {
             const gh = (chat as any)._globalReceiveHandler;
             if (gh) {
-              try { chat.off('ReceiveMessage', gh); } catch {}
+              try { chat.off('ReceiveMessage', gh); } catch { }
               (chat as any)._globalReceiveHandler = undefined;
             }
-            try { await chat.stop(); } catch {}
+            try { await chat.stop(); } catch { }
           }
           if (notification) {
-            try { await notification.stop(); } catch {}
+            try { await notification.stop(); } catch { }
           }
-        } catch {}
+        } catch { }
       };
       void cleanupOnUnmount();
     };
@@ -258,11 +275,11 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const sendMessageToCoach = useCallback(async (coachId: number, message: string) => {
     const conn = chatRef.current;
     console.log('sendMessageToCoach - conn:', conn ? 'exists' : 'null', 'state:', conn?.state);
-    
+
     if (!conn) {
       throw new Error('Chat connection is not established (no connection)');
     }
-    
+
     // Wait for connection if it's connecting
     if (conn.state === HubConnectionState.Connecting) {
       console.log('Connection is still connecting, waiting...');
@@ -272,7 +289,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
-    
+
     // Try to reconnect if disconnected
     if (conn.state === HubConnectionState.Disconnected) {
       console.log('Connection disconnected, attempting to reconnect...');
@@ -281,22 +298,22 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw new Error('Chat connection lost. Please refresh the page.');
       }
     }
-    
+
     if (conn.state !== HubConnectionState.Connected) {
       throw new Error(`Chat connection is not ready (state: ${conn.state})`);
     }
-    
+
     await conn.invoke('SendMessageToCoach', coachId, message);
   }, [attemptReconnect]);
 
   const sendMessageToMember = useCallback(async (memberId: number, message: string) => {
     const conn = chatRef.current;
     console.log('sendMessageToMember - conn:', conn ? 'exists' : 'null', 'state:', conn?.state);
-    
+
     if (!conn) {
       throw new Error('Chat connection is not established (no connection)');
     }
-    
+
     // Wait for connection if it's connecting
     if (conn.state === HubConnectionState.Connecting) {
       console.log('Connection is still connecting, waiting...');
@@ -305,7 +322,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
-    
+
     // Try to reconnect if disconnected
     if (conn.state === HubConnectionState.Disconnected) {
       console.log('Connection disconnected, attempting to reconnect...');
@@ -314,7 +331,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw new Error('Chat connection lost. Please refresh the page.');
       }
     }
-    
+
     if (conn.state !== HubConnectionState.Connected) {
       throw new Error(`Chat connection is not ready (state: ${conn.state})`);
     }

@@ -9,6 +9,7 @@ namespace Shared.DTOs.Booking
         public string? EquipmentName { get; set; }
         public int? CoachId { get; set; }
         public string? CoachName { get; set; }
+        public int? CoachUserId { get; set; } // User ID for chat functionality
         public string BookingType { get; set; } = null!;
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
@@ -19,5 +20,11 @@ namespace Shared.DTOs.Booking
         public DateTime CreatedAt { get; set; }
         public DateTime? CheckInTime { get; set; }
         public DateTime? CheckOutTime { get; set; }
+        
+        // Coach Session Equipment Tracking
+        public bool IsAutoBookedForCoachSession { get; set; }
+        public int? ParentCoachBookingId { get; set; }
+        public bool IsAiGenerated { get; set; }
     }
 }
+

@@ -101,6 +101,12 @@ export default function TokensPage() {
 
       try {
         setIsLoadingTransactions(true);
+
+        // First, refresh user data to get the latest token balance from the server
+        if (refreshUser) {
+          await refreshUser();
+        }
+
         const response = await tokenTransactionsApi.getUserTransactions(user.userId);
 
         if (response.success && response.data) {
@@ -135,7 +141,7 @@ export default function TokensPage() {
     };
 
     fetchTransactions();
-  }, [user?.userId]);
+  }, [user?.userId, refreshUser]);
 
   const handlePurchaseClick = (pkg: any) => {
     if (!user) {
@@ -151,7 +157,7 @@ export default function TokensPage() {
     setIsPurchasing(true);
     try {
       const totalTokens = selectedPackage.tokens + selectedPackage.bonus;
-      
+
       console.log('Attempting token purchase:', {
         totalTokens,
         packageName: selectedPackage.name,

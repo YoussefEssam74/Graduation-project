@@ -92,6 +92,11 @@ function BookEquipmentContent() {
     const [endTime, setEndTime] = useState("");
     const [isBooking, setIsBooking] = useState(false);
 
+    // Coach session blocking state
+    const [isCheckingCoachSession, setIsCheckingCoachSession] = useState(false);
+    const [hasCoachSession, setHasCoachSession] = useState(false);
+    const [coachSessionMessage, setCoachSessionMessage] = useState("");
+
     // Duration options
     const durationOptions = [
         { value: 30, label: "30 minutes" },
@@ -140,12 +145,51 @@ function BookEquipmentContent() {
     // Get unique categories
     const categories = [...new Set(equipment.map(eq => eq.category))];
 
+    // Check if user has a coach session for selected time slot
+    const checkCoachSessionForTimeSlot = async (date: string, start: string, end: string) => {
+        if (!user?.userId || !date || !start || !end) return;
+
+        try {
+            setIsCheckingCoachSession(true);
+            const startDateTime = new Date(`${date}T${start}:00`).toISOString();
+            const endDateTime = new Date(`${date}T${end}:00`).toISOString();
+
+            const response = await bookingsApi.checkUserHasCoachBooking(
+                user.userId,
+                startDateTime,
+                endDateTime
+            );
+
+            if (response.success && response.data) {
+                setHasCoachSession(response.data.hasCoachBooking);
+                setCoachSessionMessage(response.data.message);
+            }
+        } catch (error) {
+            console.error("Error checking coach session:", error);
+        } finally {
+            setIsCheckingCoachSession(false);
+        }
+    };
+
+    // Effect to check coach session when time slot changes
+    useEffect(() => {
+        if (bookingModalOpen && bookingDate && startTime && endTime) {
+            checkCoachSessionForTimeSlot(bookingDate, startTime, endTime);
+        }
+    }, [bookingDate, startTime, endTime, bookingModalOpen]);
+
     const handleBookEquipment = async () => {
         if (!selectedEquipment || !user?.userId) return;
 
         // Validate date and time inputs
         if (!bookingDate || !startTime || !endTime) {
             showToast("Please select booking date, start time, and end time", "error");
+            return;
+        }
+
+        // Check if user has active coach session
+        if (hasCoachSession) {
+            showToast("You cannot book equipment during your coach session. Equipment is automatically booked based on your workout plan.", "error");
             return;
         }
 
@@ -195,6 +239,11 @@ function BookEquipmentContent() {
                 showToast(`Booked ${selectedEquipment.name} — ${cost} tokens`, "success");
                 setBookingModalOpen(false);
             } else {
+                // Check if error is about coach session
+                if (response.message?.toLowerCase().includes("coach session")) {
+                    setHasCoachSession(true);
+                    setCoachSessionMessage(response.message);
+                }
                 showToast(response.message || "Failed to book", "error");
             }
         } catch (error) {
@@ -467,6 +516,33 @@ function BookEquipmentContent() {
                                 </div>
                             </div>
 
+                            {/* Coach Session Warning */}
+                            {isCheckingCoachSession && (
+                                <div className="flex items-center gap-2 p-3 bg-slate-100 rounded-lg">
+                                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                                    <span className="text-sm text-slate-500">Checking availability...</span>
+                                </div>
+                            )}
+
+                            {hasCoachSession && !isCheckingCoachSession && (
+                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-amber-100 rounded-lg">
+                                            <X className="h-5 w-5 text-amber-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-amber-800">Coach Session Active</h4>
+                                            <p className="text-sm text-amber-700 mt-1">
+                                                {coachSessionMessage || "You have a coach session during this time. Equipment will be automatically booked based on your workout plan."}
+                                            </p>
+                                            <p className="text-xs text-amber-600 mt-2">
+                                                💡 Tip: Book equipment for a different time slot, or check your booked coach sessions.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Summary */}
                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                                 <div className="flex justify-between items-center mb-2">
@@ -500,14 +576,19 @@ function BookEquipmentContent() {
                                     Cancel
                                 </Button>
                                 <Button
-                                    className="flex-1 bg-primary hover:bg-primary/90"
+                                    className={`flex-1 ${hasCoachSession ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}
                                     onClick={handleBookEquipment}
-                                    disabled={isBooking}
+                                    disabled={isBooking || hasCoachSession || isCheckingCoachSession}
                                 >
                                     {isBooking ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             Booking...
+                                        </>
+                                    ) : hasCoachSession ? (
+                                        <>
+                                            <X className="mr-2 h-4 w-4" />
+                                            Blocked by Coach Session
                                         </>
                                     ) : (
                                         <>

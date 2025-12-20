@@ -39,11 +39,14 @@ class FilteredLogger implements signalR.ILogger {
       'stopped during negotiation',
       'The connection was stopped',
       'WebSocket closed',
-      'Server timeout elapsed'
+      'Server timeout elapsed',
+      'Failed to start the HttpConnection before stop',
+      'HttpConnection started',
+      'Error starting HttpConnection'
     ];
 
     if (logLevel === signalR.LogLevel.Error) {
-      const shouldSuppress = suppressedMessages.some(msg => 
+      const shouldSuppress = suppressedMessages.some(msg =>
         message.toLowerCase().includes(msg.toLowerCase())
       );
       if (shouldSuppress) {

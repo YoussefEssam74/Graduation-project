@@ -10,7 +10,7 @@ namespace ServiceAbstraction.Services
         /// <summary>
         /// Save a chat interaction (both user message and AI response) to the database
         /// </summary>
-        Task SaveChatInteractionAsync(int userId, string userMessage, string aiResponse, int tokensUsed, int responseTimeMs, Guid sessionId);
+        Task SaveChatInteractionAsync(int userId, string userMessage, string aiResponse, int tokensUsed, int responseTimeMs, int sessionId);
 
         /// <summary>
         /// Get all chat sessions for a user with preview
@@ -20,6 +20,6 @@ namespace ServiceAbstraction.Services
         /// <summary>
         /// Get all messages for a specific session
         /// </summary>
-        Task<IEnumerable<object>> GetSessionMessagesAsync(int userId, Guid sessionId);
+        Task<IEnumerable<object>> GetSessionMessagesAsync(int userId, int sessionId);
     }
 }
