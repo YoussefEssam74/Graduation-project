@@ -4,7 +4,7 @@ import { apiFetch, type ApiResponse } from './client';
 export interface AIChatRequestDto {
     userId: number;
     message: string;
-    sessionId?: string;
+    sessionId?: number;
 }
 
 export interface AIChatResponseDto {
@@ -14,7 +14,8 @@ export interface AIChatResponseDto {
         tokensSpent: number;
         responseTimeMs: number;
         newBalance: number;
-        sessionId: string;
+        sessionId: number;
+        warning?: string;
     };
     message?: string;
 }
@@ -26,12 +27,12 @@ export interface AIChatLogDto {
     aiResponse: string;
     tokensUsed: number;
     responseTimeMs: number;
-    sessionId: string;
+    sessionId: number;
     createdAt: string;
 }
 
 export interface AIChatSessionDto {
-    sessionId: string;
+    sessionId: number;
     userId: number;
     title: string;
     messageCount: number;
@@ -44,13 +45,13 @@ export const aiApi = {
      * Send a message to the AI Coach (Gemini)
      * Cost: 1 token per message
      */
-    async sendMessage(userId: number, message: string, sessionId?: string): Promise<AIChatResponseDto> {
+    async sendMessage(userId: number, message: string, sessionId?: number): Promise<AIChatResponseDto> {
         const response = await apiFetch<AIChatResponseDto['data']>('/ai/gemini-chat', {
             method: 'POST',
             body: JSON.stringify({
                 userId,
                 message,
-                sessionId,
+                sessionId, // Pass as number
             }),
         });
 
@@ -77,7 +78,7 @@ export const aiApi = {
     /**
      * Get messages for a specific session
      */
-    async getSessionMessages(userId: number, sessionId: string): Promise<ApiResponse<{ messages: AIChatLogDto[] }>> {
+    async getSessionMessages(userId: number, sessionId: number): Promise<ApiResponse<{ messages: AIChatLogDto[] }>> {
         return apiFetch<{ messages: AIChatLogDto[] }>(`/ai/sessions/${userId}/${sessionId}`);
     },
 };

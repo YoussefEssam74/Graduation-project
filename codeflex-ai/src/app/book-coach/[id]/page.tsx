@@ -110,7 +110,7 @@ export default function CoachDetailsPage({ params }: { params: Promise<{ id: str
                 if (reviewsRes.success && reviewsRes.data) {
                     // Map the API response to our local Review interface if needed
                     // Assuming the API returns matching structure or we map it
-                    // @ts-ignore
+                    // @ts-expect-error - API response type may not exactly match Review interface
                     setReviews(reviewsRes.data);
                 }
 

@@ -98,8 +98,8 @@ namespace Presistence.Migrations
                     b.Property<int?>("ResponseTimeMs")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("SessionId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("TokensUsed")
                         .HasColumnType("integer");
@@ -297,8 +297,17 @@ namespace Presistence.Migrations
                     b.Property<int?>("EquipmentId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsAiGenerated")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsAutoBookedForCoachSession")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Notes")
                         .HasColumnType("text");
+
+                    b.Property<int?>("ParentCoachBookingId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone");
@@ -316,6 +325,8 @@ namespace Presistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("BookingId");
+
+                    b.HasIndex("ParentCoachBookingId");
 
                     b.HasIndex("Status");
 
@@ -486,6 +497,48 @@ namespace Presistence.Migrations
                     b.ToTable("coach_reviews", (string)null);
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.CoachSessionEquipment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CoachBookingId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EquipmentBookingId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EquipmentId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsApprovedByCoach")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("WorkoutPlanExerciseId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoachBookingId");
+
+                    b.HasIndex("EquipmentBookingId");
+
+                    b.HasIndex("EquipmentId");
+
+                    b.HasIndex("WorkoutPlanExerciseId");
+
+                    b.ToTable("coach_session_equipments", (string)null);
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.Equipment", b =>
                 {
                     b.Property<int>("EquipmentId")
@@ -573,6 +626,58 @@ namespace Presistence.Migrations
                     b.ToTable("equipment_categories", (string)null);
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.EquipmentTimeSlot", b =>
+                {
+                    b.Property<int>("SlotId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("SlotId"));
+
+                    b.Property<DateTime?>("BookedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("BookedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("interval");
+
+                    b.Property<int>("EquipmentId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsBooked")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCoachSession")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("SlotDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("interval");
+
+                    b.HasKey("SlotId");
+
+                    b.HasIndex("BookedByUserId");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("SlotDate", "IsBooked");
+
+                    b.HasIndex("EquipmentId", "SlotDate", "StartTime")
+                        .IsUnique();
+
+                    b.ToTable("equipment_time_slots", (string)null);
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.Exercise", b =>
                 {
                     b.Property<int>("ExerciseId")
@@ -599,6 +704,9 @@ namespace Presistence.Migrations
 
                     b.Property<string>("DifficultyLevel")
                         .HasColumnType("text");
+
+                    b.Property<int?>("EquipmentId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("EquipmentRequired")
                         .HasColumnType("text");
@@ -628,6 +736,8 @@ namespace Presistence.Migrations
                     b.HasIndex("CreatedByCoachId");
 
                     b.HasIndex("DifficultyLevel");
+
+                    b.HasIndex("EquipmentId");
 
                     b.HasIndex("MuscleGroup");
 
@@ -1817,6 +1927,11 @@ namespace Presistence.Migrations
                         .HasForeignKey("EquipmentId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("IntelliFit.Domain.Models.Booking", "ParentCoachBooking")
+                        .WithMany("ChildEquipmentBookings")
+                        .HasForeignKey("ParentCoachBookingId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
                         .WithMany("Bookings")
                         .HasForeignKey("UserId")
@@ -1826,6 +1941,8 @@ namespace Presistence.Migrations
                     b.Navigation("Coach");
 
                     b.Navigation("Equipment");
+
+                    b.Navigation("ParentCoachBooking");
 
                     b.Navigation("User");
                 });
@@ -1885,6 +2002,40 @@ namespace Presistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.CoachSessionEquipment", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.Booking", "CoachBooking")
+                        .WithMany()
+                        .HasForeignKey("CoachBookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.Booking", "EquipmentBooking")
+                        .WithMany()
+                        .HasForeignKey("EquipmentBookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.Equipment", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.WorkoutPlanExercise", "WorkoutPlanExercise")
+                        .WithMany()
+                        .HasForeignKey("WorkoutPlanExerciseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CoachBooking");
+
+                    b.Navigation("Equipment");
+
+                    b.Navigation("EquipmentBooking");
+
+                    b.Navigation("WorkoutPlanExercise");
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.Equipment", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.EquipmentCategory", "Category")
@@ -1896,6 +2047,31 @@ namespace Presistence.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.EquipmentTimeSlot", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.User", "BookedByUser")
+                        .WithMany()
+                        .HasForeignKey("BookedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("IntelliFit.Domain.Models.Booking", "Booking")
+                        .WithMany("EquipmentTimeSlots")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("IntelliFit.Domain.Models.Equipment", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BookedByUser");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Equipment");
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.Exercise", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.CoachProfile", "CreatedByCoach")
@@ -1903,7 +2079,14 @@ namespace Presistence.Migrations
                         .HasForeignKey("CreatedByCoachId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("IntelliFit.Domain.Models.Equipment", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedByCoach");
+
+                    b.Navigation("Equipment");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.InBodyMeasurement", b =>
@@ -2179,6 +2362,13 @@ namespace Presistence.Migrations
                     b.Navigation("Exercise");
 
                     b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.Booking", b =>
+                {
+                    b.Navigation("ChildEquipmentBookings");
+
+                    b.Navigation("EquipmentTimeSlots");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.CoachProfile", b =>

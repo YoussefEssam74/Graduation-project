@@ -51,6 +51,13 @@ namespace Presentation.Controllers
             return Ok(coaches);
         }
 
+        [HttpGet("coaches/details")]
+        public async Task<ActionResult<IEnumerable<CoachDto>>> GetCoachesWithProfiles()
+        {
+            var coaches = await _serviceManager.UserService.GetCoachesWithProfilesAsync();
+            return Ok(coaches);
+        }
+
         #endregion
 
         #region Deactivate User

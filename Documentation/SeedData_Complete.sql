@@ -1,3 +1,4 @@
+-- Active: 1764278759643@@127.0.0.1@5432@intellifit_db
 -- IntelliFit Database Complete Seed Data - PostgreSQL
 -- ==========================================
 -- Password for admin@intellifit.com: 224466 (BCrypt hashed)
@@ -10,8 +11,10 @@
 TRUNCATE TABLE user_milestones, activity_feeds, notifications, coach_reviews, 
 user_subscriptions, payments, token_transactions, inbody_measurements, 
 meal_ingredients, meals, nutrition_plans, workout_templates, workout_template_exercises,
-workout_logs, workout_plan_exercises, workout_plans, bookings, equipment, equipment_categories,
-ai_program_generations, ai_chat_logs, ai_workflow_jobs, audit_logs, exercises, ingredients,
+workout_logs, workout_plan_exercises, workout_plans, 
+coach_session_equipments, equipment_time_slots, bookings, 
+equipment, equipment_categories,
+ai_program_generations, ai_chat_logs, ai_workflow_jobs, chat_messages, audit_logs, exercises, ingredients,
 progress_milestones, subscription_plans, token_packages,
 member_profiles, coach_profiles, users RESTART IDENTITY CASCADE;
 
@@ -19,12 +22,11 @@ TRUNCATE TABLE "users" RESTART IDENTITY CASCADE;
 -- ==========================================
 -- USERS (Main Table - Single table with Role column)
 -- Note: UserId is auto-generated. Role determines user type (Member, Coach, Admin)
--- All attributes: UserId (auto), Email, PasswordHash, Name, Phone, DateOfBirth, Gender, Role, ProfileImageUrl, 
--- Address, EmergencyContactName, EmergencyContactPhone, TokenBalance, IsActive, EmailVerified, MustChangePassword, IsFirstLogin, LastLoginAt, CreatedAt, UpdatedAt
+-- Focus users: member@intellifit.com (1), sarah.johnson@intellifit.com (7), reception@intellifit.com (10), admin@intellifit.com (11)
 -- ==========================================
 INSERT INTO users ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "Role", "ProfileImageUrl", "Address", "EmergencyContactName", "EmergencyContactPhone", "TokenBalance", "IsActive", "EmailVerified", "MustChangePassword", "IsFirstLogin", "LastLoginAt", "CreatedAt", "UpdatedAt") VALUES
 -- Members (UserId: 1-6)
-('member@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'John Doe', '+1234567890', '1995-05-15', 0, 'Member', NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, false, false, NULL, NOW(), NOW()),
+('member@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'John Doe', '+1234567890', '1995-05-15', 0, 'Member', NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 100, true, true, false, false, NULL, NOW(), NOW()),
 ('michael.smith@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Member', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NULL, NOW(), NOW()),
 ('david.wilson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'David Wilson', '+1234567894', '1998-03-10', 0, 'Member', NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, false, false, NULL, NOW(), NOW()),
 ('jessica.brown@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Jessica Brown', '+1234567895', '1996-11-05', 1, 'Member', NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, false, false, NULL, NOW(), NOW()),
@@ -66,12 +68,10 @@ INSERT INTO token_packages ("PackageName", "TokenAmount", "Price", "BonusTokens"
 
 -- ==========================================
 -- MEMBER PROFILES (Role-specific data for Members)
--- All attributes: Id (PK auto), UserId (FK), FitnessGoal, MedicalConditions, Allergies, FitnessLevel, 
--- PreferredWorkoutTime, SubscriptionPlanId, MembershipStartDate, MembershipEndDate,
--- CurrentWeight, TargetWeight, Height, TotalWorkoutsCompleted, TotalCaloriesBurned, Achievements, CreatedAt, UpdatedAt
+-- Focus on member@intellifit.com (UserId: 1)
 -- ==========================================
 INSERT INTO member_profiles ("UserId", "FitnessGoal", "MedicalConditions", "Allergies", "FitnessLevel", "PreferredWorkoutTime", "SubscriptionPlanId", "MembershipStartDate", "MembershipEndDate", "CurrentWeight", "TargetWeight", "Height", "TotalWorkoutsCompleted", "TotalCaloriesBurned", "Achievements", "CreatedAt", "UpdatedAt") VALUES
-(1, 'Weight Loss', 'None', 'None', 'Intermediate', 'Morning', 2, '2024-11-01', '2024-12-01', 85.5, 75.0, 175.0, 15, 4500, '["First Workout"]', NOW(), NOW()),
+(1, 'Weight Loss', 'None', 'None', 'Intermediate', 'Morning', 3, '2024-11-01', '2025-12-01', 85.5, 75.0, 175.0, 15, 4500, '["First Workout", "Week Warrior"]', NOW(), NOW()),
 (2, 'Muscle Gain', 'Asthma', 'Peanuts', 'Advanced', 'Evening', 3, '2024-10-15', '2024-11-15', 78.5, 85.0, 180.0, 42, 12600, '["Week Warrior", "Month Champion"]', NOW(), NOW()),
 (3, 'General Fitness', 'None', 'None', 'Beginner', 'Afternoon', 1, '2024-11-10', '2024-12-10', 70.0, 70.0, 170.0, 8, 2400, '["First Workout"]', NOW(), NOW()),
 (4, 'Weight Loss', 'None', 'Lactose', 'Intermediate', 'Morning', 2, '2024-10-20', '2024-11-20', 92.0, 80.0, 165.0, 28, 8400, '["Week Warrior"]', NOW(), NOW()),
@@ -80,8 +80,7 @@ INSERT INTO member_profiles ("UserId", "FitnessGoal", "MedicalConditions", "Alle
 
 -- ==========================================
 -- COACH PROFILES (Role-specific data for Coaches)
--- All attributes: Id (PK auto), UserId (FK), Specialization, Certifications, ExperienceYears, Bio,
--- HourlyRate, Rating, TotalReviews, TotalClients, AvailabilitySchedule, IsAvailable, CreatedAt, UpdatedAt
+-- Focus on sarah.johnson@intellifit.com (UserId: 7, CoachProfileId: 1)
 -- ==========================================
 INSERT INTO coach_profiles ("UserId", "Specialization", "Certifications", "ExperienceYears", "Bio", "HourlyRate", "Rating", "TotalReviews", "TotalClients", "AvailabilitySchedule", "IsAvailable", "CreatedAt", "UpdatedAt") VALUES
 (7, 'Strength Training & Weight Loss', ARRAY['NASM-CPT', 'CSCS'], 5, 'Certified personal trainer specializing in strength training', 75.00, 4.8, 45, 28, 'Mon-Fri: 6AM-8PM, Sat: 8AM-2PM', true, NOW(), NOW()),
@@ -99,24 +98,35 @@ INSERT INTO equipment_categories ("CategoryName", "Description", "Icon") VALUES
 ('Olympic', 'Olympic weightlifting platforms and equipment', '🏅');
 
 -- ==========================================
--- EQUIPMENT
+-- EQUIPMENT (EquipmentId: 1-10)
 -- ==========================================
 INSERT INTO equipment ("CategoryId", "Name", "Model", "Manufacturer", "SerialNumber", "Location", "Status", "ConditionRating", "LastMaintenanceDate", "NextMaintenanceDate", "BookingCostTokens", "MaxBookingDurationMinutes", "ImageUrl", "IsActive", "CreatedAt", "UpdatedAt") VALUES
 (1, 'Treadmill Pro X1', 'TX-2024', 'ProFit', 'TM-001', 'Cardio Zone A', 0, 5, '2024-10-01', '2025-01-01', 5, 60, NULL, true, NOW(), NOW()),
 (1, 'Concept2 Rower', 'Model D', 'Concept2', 'ROW-001', 'Cardio Zone A', 0, 5, '2024-09-15', '2024-12-15', 4, 60, NULL, true, NOW(), NOW()),
 (2, 'Squat Rack Elite', 'SR-500', 'IronMaster', 'SR-001', 'Strength Zone B', 0, 5, '2024-10-10', '2025-01-10', 8, 90, NULL, true, NOW(), NOW()),
 (2, 'Bench Press Station', 'BP-300', 'IronMaster', 'BP-001', 'Strength Zone B', 0, 5, '2024-10-10', '2025-01-10', 7, 90, NULL, true, NOW(), NOW()),
-(3, 'Assault Bike', 'AB-2024', 'Rogue', 'AB-001', 'Functional Zone C', 0, 5, '2024-09-20', '2024-12-20', 6, 45, NULL, true, NOW(), NOW());
+(3, 'Assault Bike', 'AB-2024', 'Rogue', 'AB-001', 'Functional Zone C', 0, 5, '2024-09-20', '2024-12-20', 6, 45, NULL, true, NOW(), NOW()),
+(2, 'Cable Machine', 'CM-Pro', 'Life Fitness', 'CM-001', 'Strength Zone B', 0, 5, '2024-10-15', '2025-01-15', 5, 60, NULL, true, NOW(), NOW()),
+(3, 'Pull-Up Station', 'PU-100', 'Rogue', 'PU-001', 'Functional Zone C', 0, 5, '2024-10-01', '2025-01-01', 3, 45, NULL, true, NOW(), NOW()),
+(5, 'Olympic Platform', 'OP-Elite', 'Eleiko', 'OP-001', 'Olympic Zone D', 0, 5, '2024-10-20', '2025-01-20', 10, 120, NULL, true, NOW(), NOW()),
+(5, 'Barbell Set (Olympic)', 'OB-20kg', 'Eleiko', 'OB-001', 'Olympic Zone D', 0, 5, '2024-10-20', '2025-01-20', 8, 90, NULL, true, NOW(), NOW()),
+(4, 'Foam Roller Station', 'FR-200', 'TriggerPoint', 'FR-001', 'Recovery Zone E', 0, 5, '2024-09-01', '2024-12-01', 2, 30, NULL, true, NOW(), NOW());
 
 -- ==========================================
--- EXERCISES
+-- EXERCISES (With EquipmentId linking exercises to equipment)
+-- ExerciseId: 1-10, EquipmentId references equipment table above
 -- ==========================================
-INSERT INTO exercises ("Name", "Description", "Category", "MuscleGroup", "DifficultyLevel", "EquipmentRequired", "Instructions", "VideoUrl", "CaloriesPerMinute", "IsActive", "CreatedByCoachId", "CreatedAt", "UpdatedAt") VALUES
-('Barbell Squat', 'Fundamental lower body compound exercise', 'Strength', 'Legs', 'Intermediate', 'Barbell, Squat Rack', '["Stand with feet shoulder-width apart", "Bar on upper back", "Lower until thighs parallel", "Drive through heels to stand"]', 'https://videos.intellifit.com/squat', 8, true, 1, NOW(), NOW()),
-('Bench Press', 'Upper body pressing exercise for chest', 'Strength', 'Chest', 'Intermediate', 'Barbell, Bench', '["Lie on bench, feet flat", "Grip bar slightly wider than shoulders", "Lower to chest", "Press up explosively"]', 'https://videos.intellifit.com/benchpress', 7, true, 2, NOW(), NOW()),
-('Deadlift', 'Full body compound pulling exercise', 'Strength', 'Back', 'Advanced', 'Barbell', '["Stand with bar over mid-foot", "Grip bar, chest up", "Drive through floor", "Stand tall, squeeze glutes"]', 'https://videos.intellifit.com/deadlift', 10, true, 2, NOW(), NOW()),
-('Pull-ups', 'Bodyweight back and bicep exercise', 'Bodyweight', 'Back', 'Intermediate', 'Pull-up Bar', '["Hang from bar, full extension", "Pull chest to bar", "Control descent", "Repeat"]', 'https://videos.intellifit.com/pullups', 9, true, 3, NOW(), NOW()),
-('Plank', 'Core stability exercise', 'Core', 'Core', 'Beginner', 'None', '["Forearms on ground, body straight", "Engage core", "Hold position", "Breathe steadily"]', 'https://videos.intellifit.com/plank', 5, true, 3, NOW(), NOW());
+INSERT INTO exercises ("Name", "Description", "Category", "MuscleGroup", "DifficultyLevel", "EquipmentRequired", "EquipmentId", "Instructions", "VideoUrl", "CaloriesPerMinute", "IsActive", "CreatedByCoachId", "CreatedAt", "UpdatedAt") VALUES
+('Barbell Squat', 'Fundamental lower body compound exercise', 'Strength', 'Legs', 'Intermediate', 'Barbell, Squat Rack', 3, '["Stand with feet shoulder-width apart", "Bar on upper back", "Lower until thighs parallel", "Drive through heels to stand"]', 'https://videos.intellifit.com/squat', 8, true, 1, NOW(), NOW()),
+('Bench Press', 'Upper body pressing exercise for chest', 'Strength', 'Chest', 'Intermediate', 'Barbell, Bench', 4, '["Lie on bench, feet flat", "Grip bar slightly wider than shoulders", "Lower to chest", "Press up explosively"]', 'https://videos.intellifit.com/benchpress', 7, true, 2, NOW(), NOW()),
+('Deadlift', 'Full body compound pulling exercise', 'Strength', 'Back', 'Advanced', 'Barbell', 8, '["Stand with bar over mid-foot", "Grip bar, chest up", "Drive through floor", "Stand tall, squeeze glutes"]', 'https://videos.intellifit.com/deadlift', 10, true, 2, NOW(), NOW()),
+('Pull-ups', 'Bodyweight back and bicep exercise', 'Bodyweight', 'Back', 'Intermediate', 'Pull-up Bar', 7, '["Hang from bar, full extension", "Pull chest to bar", "Control descent", "Repeat"]', 'https://videos.intellifit.com/pullups', 9, true, 3, NOW(), NOW()),
+('Plank', 'Core stability exercise', 'Core', 'Core', 'Beginner', 'None', NULL, '["Forearms on ground, body straight", "Engage core", "Hold position", "Breathe steadily"]', 'https://videos.intellifit.com/plank', 5, true, 3, NOW(), NOW()),
+('Treadmill Run', 'Cardiovascular running exercise', 'Cardio', 'Full Body', 'Beginner', 'Treadmill', 1, '["Start at walking pace", "Gradually increase speed", "Maintain proper form", "Cool down slowly"]', 'https://videos.intellifit.com/treadmill', 12, true, 1, NOW(), NOW()),
+('Rowing', 'Full body cardiovascular exercise', 'Cardio', 'Full Body', 'Intermediate', 'Rowing Machine', 2, '["Secure feet in straps", "Push with legs first", "Pull handle to chest", "Return with control"]', 'https://videos.intellifit.com/rowing', 11, true, 2, NOW(), NOW()),
+('Cable Fly', 'Isolation chest exercise', 'Strength', 'Chest', 'Intermediate', 'Cable Machine', 6, '["Stand between cables", "Arms extended to sides", "Bring hands together", "Control return"]', 'https://videos.intellifit.com/cablefly', 6, true, 1, NOW(), NOW()),
+('Assault Bike Sprint', 'High intensity cardio intervals', 'Cardio', 'Full Body', 'Advanced', 'Assault Bike', 5, '["Adjust seat height", "Sprint for 20 seconds", "Rest for 10 seconds", "Repeat for sets"]', 'https://videos.intellifit.com/assaultbike', 15, true, 3, NOW(), NOW()),
+('Foam Rolling', 'Muscle recovery and mobility', 'Recovery', 'Full Body', 'Beginner', 'Foam Roller', 10, '["Place target muscle on roller", "Roll slowly back and forth", "Pause on tight spots", "Breathe deeply"]', 'https://videos.intellifit.com/foamrolling', 2, true, 2, NOW(), NOW());
 
 -- ==========================================
 -- INGREDIENTS
@@ -139,18 +149,10 @@ INSERT INTO progress_milestones ("MilestoneName", "Description", "Category", "Ta
 ('Goal Getter', 'Achieve your fitness goal', 'Achievement', 1, '🎉', 1000, true, NOW());
 
 -- ==========================================
--- BOOKINGS
--- ==========================================
-INSERT INTO bookings ("UserId", "EquipmentId", "CoachId", "BookingType", "StartTime", "EndTime", "Status", "TokensCost", "Notes", "CreatedAt", "UpdatedAt") VALUES
-(1, 1, NULL, 'Equipment', '2024-12-02 08:00:00+00', '2024-12-02 09:00:00+00', 1, 5, 'Morning cardio session', NOW(), NOW()),
-(2, 3, 1, 'Coach', '2024-12-02 10:00:00+00', '2024-12-02 11:00:00+00', 1, 15, 'Squat training with coach', NOW(), NOW()),
-(3, 5, NULL, 'Equipment', '2024-12-02 14:00:00+00', '2024-12-02 15:00:00+00', 1, 6, 'HIIT workout', NOW(), NOW());
-
--- ==========================================
--- WORKOUT PLANS
+-- WORKOUT PLANS (For member@intellifit.com UserId: 1, Coach Sarah UserId: 7 = CoachProfileId: 1)
 -- ==========================================
 INSERT INTO workout_plans ("UserId", "PlanName", "Description", "PlanType", "DifficultyLevel", "DurationWeeks", "Schedule", "GeneratedByCoachId", "Status", "ApprovalNotes", "ApprovedBy", "ApprovedAt", "TokensSpent", "IsActive", "StartDate", "EndDate", "CreatedAt", "UpdatedAt") VALUES
-(1, 'Weight Loss Transformation', '8-week fat loss program', 'Custom', 'Intermediate', 8, '5 days per week', 1, 'Active', 'Approved - great plan', 1, '2024-10-30', 0, true, '2024-11-01', '2024-12-26', NOW(), NOW()),
+(1, 'Weight Loss Transformation', '8-week fat loss program focusing on compound movements', 'Custom', 'Intermediate', 8, '5 days per week', 1, 'Approved', 'Approved - great plan for weight loss', 1, '2024-10-30', 0, true, '2024-11-01', '2024-12-26', NOW(), NOW()),
 (2, 'Muscle Building Program', '12-week hypertrophy training', 'Custom', 'Advanced', 12, '6 days per week', 2, 'Active', 'Excellent plan', 2, '2024-10-13', 20, true, '2024-10-15', '2025-01-07', NOW(), NOW()),
 (3, 'AI Generated Strength Plan', 'AI-generated 10-week strength training program', 'Custom', 'Intermediate', 10, '4 days per week', NULL, 'PendingApproval', NULL, NULL, NULL, 30, true, '2024-12-01', '2025-02-09', NOW(), NOW());
 
@@ -200,12 +202,22 @@ INSERT INTO workout_template_exercises ("TemplateId", "ExerciseId", "WeekNumber"
 (3, 1, 1, 1, 1, 5, 8, 150, 'Main compound movement', NOW());
 
 -- ==========================================
--- WORKOUT PLAN EXERCISES
+-- WORKOUT PLAN EXERCISES (Used for auto-booking equipment in coach sessions)
+-- Exercises linked to equipment for member@intellifit.com (UserId: 1, WorkoutPlanId: 1)
 -- ==========================================
 INSERT INTO workout_plan_exercises ("WorkoutPlanId", "ExerciseId", "DayNumber", "OrderInDay", "Sets", "Reps", "RestSeconds", "Notes", "CreatedAt") VALUES
-(1, 1, 1, 1, 4, 10, 90, 'Warm up properly', NOW()),
-(1, 2, 1, 2, 3, 12, 60, 'Focus on form', NOW()),
-(1, 5, 1, 3, 3, 60, 45, 'Core finisher', NOW()),
+-- Plan 1 Day 1: Squat (EquipmentId: 3), Bench (EquipmentId: 4), Plank (no equipment)
+(1, 1, 1, 1, 4, 10, 90, 'Warm up properly - Barbell Squat', NOW()),
+(1, 2, 1, 2, 3, 12, 60, 'Focus on form - Bench Press', NOW()),
+(1, 5, 1, 3, 3, 60, 45, 'Core finisher - Plank', NOW()),
+-- Plan 1 Day 2: Treadmill (EquipmentId: 1), Rowing (EquipmentId: 2)
+(1, 6, 2, 1, 1, 30, 0, 'Cardio - 30 min treadmill run', NOW()),
+(1, 7, 2, 2, 1, 20, 0, 'Cardio - 20 min rowing', NOW()),
+-- Plan 1 Day 3: Deadlift (EquipmentId: 8), Pull-ups (EquipmentId: 7), Cable Fly (EquipmentId: 6)
+(1, 3, 3, 1, 4, 8, 120, 'Heavy deadlifts', NOW()),
+(1, 4, 3, 2, 3, 10, 60, 'Pull-ups for back', NOW()),
+(1, 8, 3, 3, 3, 12, 45, 'Cable flies for chest', NOW()),
+-- Plan 2
 (2, 3, 1, 1, 5, 5, 180, 'Heavy day', NOW()),
 (2, 1, 2, 1, 4, 8, 120, 'Volume day', NOW());
 
@@ -230,10 +242,86 @@ INSERT INTO inbody_measurements ("UserId", "MeasurementDate", "Weight", "BodyFat
 (3, '2024-11-01', 80.8, 13.2, 68.5, 3, 62.0, 3.4, 1980, 'Gaining well', NOW());
 
 -- ==========================================
+-- BOOKINGS (With new columns: IsAutoBookedForCoachSession, ParentCoachBookingId, IsAiGenerated)
+-- Focus: member@intellifit.com (UserId: 1), sarah.johnson@intellifit.com (CoachProfileId: 1)
+-- ==========================================
+INSERT INTO bookings ("UserId", "EquipmentId", "CoachId", "BookingType", "StartTime", "EndTime", "Status", "TokensCost", "Notes", "IsAutoBookedForCoachSession", "ParentCoachBookingId", "IsAiGenerated", "CreatedAt", "UpdatedAt") VALUES
+-- Booking 1: Manual equipment booking by member (no coach session)
+(1, 1, NULL, 'Equipment', '2025-12-21 08:00:00+00', '2025-12-21 09:00:00+00', 1, 5, 'Morning cardio session - Treadmill', false, NULL, false, NOW(), NOW()),
+-- Booking 2: Coach session with Sarah (CoachProfileId: 1)
+(1, NULL, 1, 'Session', '2025-12-22 10:00:00+00', '2025-12-22 11:00:00+00', 1, 75, 'Personal Training with Coach Sarah - Day 1 exercises', false, NULL, false, NOW(), NOW()),
+-- Bookings 3-5: Auto-booked equipment for coach session 2 (Day 1: Squat Rack, Bench Press Station)
+(1, 3, NULL, 'Equipment', '2025-12-22 10:00:00+00', '2025-12-22 11:00:00+00', 1, 0, 'Auto-booked for coach session #2 - Squat Rack', true, 2, false, NOW(), NOW()),
+(1, 4, NULL, 'Equipment', '2025-12-22 10:00:00+00', '2025-12-22 11:00:00+00', 1, 0, 'Auto-booked for coach session #2 - Bench Press', true, 2, false, NOW(), NOW()),
+-- Booking 5: Another coach session for testing
+(1, NULL, 1, 'Session', '2025-12-23 14:00:00+00', '2025-12-23 15:00:00+00', 1, 75, 'Personal Training with Coach Sarah - Day 2 exercises', false, NULL, false, NOW(), NOW()),
+-- Bookings 6-7: Auto-booked equipment for coach session 5 (Day 2: Treadmill, Rower)
+(1, 1, NULL, 'Equipment', '2025-12-23 14:00:00+00', '2025-12-23 15:00:00+00', 1, 0, 'Auto-booked for coach session #5 - Treadmill', true, 5, false, NOW(), NOW()),
+(1, 2, NULL, 'Equipment', '2025-12-23 14:00:00+00', '2025-12-23 15:00:00+00', 1, 0, 'Auto-booked for coach session #5 - Rower', true, 5, false, NOW(), NOW()),
+-- Booking 8: Manual equipment booking by another member
+(3, 5, NULL, 'Equipment', '2025-12-22 14:00:00+00', '2025-12-22 15:00:00+00', 1, 6, 'HIIT workout - Assault Bike', false, NULL, false, NOW(), NOW());
+
+-- ==========================================
+-- EQUIPMENT TIME SLOTS (For testing availability - focusing on today and tomorrow)
+-- Slots for EquipmentId: 1 (Treadmill), 3 (Squat Rack), 4 (Bench Press)
+-- ==========================================
+INSERT INTO equipment_time_slots ("EquipmentId", "SlotDate", "StartTime", "EndTime", "IsBooked", "BookedByUserId", "BookingId", "IsCoachSession", "CreatedAt", "BookedAt") VALUES
+-- Treadmill slots for 2025-12-21
+(1, '2025-12-21', '06:00:00'::interval, '07:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '07:00:00'::interval, '08:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '08:00:00'::interval, '09:00:00'::interval, true, 1, 1, false, NOW(), NOW()),
+(1, '2025-12-21', '09:00:00'::interval, '10:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '10:00:00'::interval, '11:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '11:00:00'::interval, '12:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '12:00:00'::interval, '13:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '13:00:00'::interval, '14:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '14:00:00'::interval, '15:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '15:00:00'::interval, '16:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '16:00:00'::interval, '17:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '17:00:00'::interval, '18:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '18:00:00'::interval, '19:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '19:00:00'::interval, '20:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '20:00:00'::interval, '21:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(1, '2025-12-21', '21:00:00'::interval, '22:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+-- Squat Rack slots for 2025-12-22
+(3, '2025-12-22', '06:00:00'::interval, '07:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '07:00:00'::interval, '08:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '08:00:00'::interval, '09:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '09:00:00'::interval, '10:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '10:00:00'::interval, '11:00:00'::interval, true, 1, 3, true, NOW(), NOW()),
+(3, '2025-12-22', '11:00:00'::interval, '12:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '12:00:00'::interval, '13:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '13:00:00'::interval, '14:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '14:00:00'::interval, '15:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(3, '2025-12-22', '15:00:00'::interval, '16:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+-- Bench Press slots for 2025-12-22
+(4, '2025-12-22', '06:00:00'::interval, '07:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '07:00:00'::interval, '08:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '08:00:00'::interval, '09:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '09:00:00'::interval, '10:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '10:00:00'::interval, '11:00:00'::interval, true, 1, 4, true, NOW(), NOW()),
+(4, '2025-12-22', '11:00:00'::interval, '12:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '12:00:00'::interval, '13:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '13:00:00'::interval, '14:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '14:00:00'::interval, '15:00:00'::interval, false, NULL, NULL, false, NOW(), NULL),
+(4, '2025-12-22', '15:00:00'::interval, '16:00:00'::interval, false, NULL, NULL, false, NOW(), NULL);
+
+-- ==========================================
+-- COACH SESSION EQUIPMENTS (Links coach sessions to auto-booked equipment)
+-- ==========================================
+INSERT INTO coach_session_equipments ("CoachBookingId", "EquipmentBookingId", "EquipmentId", "WorkoutPlanExerciseId", "IsApprovedByCoach", "Notes", "CreatedAt") VALUES
+-- Coach session 2 equipment links (Day 1: Squat and Bench)
+(2, 3, 3, 1, true, 'Squat Rack for Barbell Squats - auto-booked', NOW()),
+(2, 4, 4, 2, true, 'Bench Press Station - auto-booked', NOW()),
+-- Coach session 5 equipment links (Day 2: Treadmill and Rower)
+(5, 6, 1, 4, true, 'Treadmill for cardio - auto-booked', NOW()),
+(5, 7, 2, 5, true, 'Concept2 Rower - auto-booked', NOW());
+
+-- ==========================================
 -- USER SUBSCRIPTIONS
 -- ==========================================
 INSERT INTO user_subscriptions ("UserId", "PlanId", "StartDate", "EndDate", "Status", "AutoRenew", "PaymentId", "RenewalReminderSent", "CreatedAt", "UpdatedAt") VALUES
-(1, 2, '2024-11-01', '2025-12-01', 0, true, NULL, false, NOW(), NOW()),
+(1, 3, '2024-11-01', '2025-12-01', 0, true, NULL, false, NOW(), NOW()),
 (3, 3, '2024-10-15', '2025-11-15', 0, true, NULL, false, NOW(), NOW()),
 (5, 1, '2024-11-10', '2025-12-10', 0, false, NULL, false, NOW(), NOW()),
 (6, 2, '2024-10-20', '2025-11-20', 0, true, NULL, false, NOW(), NOW());
@@ -250,7 +338,7 @@ WHERE us."UserId" = p."UserId"
 -- PAYMENTS
 -- ==========================================
 INSERT INTO payments ("UserId", "Amount", "Currency", "PaymentMethod", "PaymentType", "Status", "TransactionReference", "PackageId", "CreatedAt", "UpdatedAt") VALUES
-(1, 79.99, 'USD', 'CreditCard', 'Subscription', 1, 'TXN-001-2024', NULL, '2024-11-01', NOW()),
+(1, 129.99, 'USD', 'CreditCard', 'Subscription', 1, 'TXN-001-2024', NULL, '2024-11-01', NOW()),
 (3, 129.99, 'USD', 'CreditCard', 'Subscription', 1, 'TXN-002-2024', NULL, '2024-10-15', NOW()),
 (5, 49.99, 'USD', 'CreditCard', 'Subscription', 1, 'TXN-003-2024', NULL, '2024-11-10', NOW()),
 (6, 17.99, 'USD', 'PayPal', 'TokenPurchase', 1, 'TXN-004-2024', 2, '2024-11-05', NOW()),
@@ -260,19 +348,21 @@ INSERT INTO payments ("UserId", "Amount", "Currency", "PaymentMethod", "PaymentT
 -- TOKEN TRANSACTIONS
 -- ==========================================
 INSERT INTO token_transactions ("UserId", "Amount", "TransactionType", "Description", "ReferenceId", "ReferenceType", "BalanceBefore", "BalanceAfter", "CreatedAt") VALUES
-(1, 50, 0, 'Initial subscription tokens', 1, 'Subscription', 0, 50, NOW()),
-(1, -20, 1, 'AI workout plan generation', 1, 'AIProgramGeneration', 50, 30, NOW()),
+(1, 100, 0, 'Premium subscription tokens', 1, 'Subscription', 0, 100, NOW()),
+(1, -5, 1, 'Equipment booking - Treadmill', 1, 'Booking', 100, 95, NOW()),
+(1, -75, 1, 'Coach session with Sarah Johnson', 2, 'Booking', 95, 20, NOW()),
+(1, -75, 1, 'Coach session with Sarah Johnson', 5, 'Booking', 20, -55, NOW()),
 (3, 100, 0, 'Premium subscription tokens', 2, 'Subscription', 0, 100, NOW()),
-(3, -25, 1, 'AI nutrition plan generation', 2, 'AIProgramGeneration', 100, 75, NOW()),
+(3, -30, 1, 'AI workout plan generation', 3, 'AIProgramGeneration', 100, 70, NOW()),
 (6, 110, 0, 'Basic Pack with bonus', 2, 'TokenPackage', 0, 110, NOW());
 
 -- ==========================================
 -- NOTIFICATIONS
 -- ==========================================
 INSERT INTO notifications ("UserId", "NotificationType", "Priority", "Title", "Message", "IsRead", "ReferenceType", "ReferenceId", "CreatedAt", "UpdatedAt") VALUES
-(1, 0, 'normal', 'Time for your workout!', 'You have a workout scheduled for today', false, 'WorkoutPlan', 1, NOW(), NOW()),
+(1, 0, 'normal', 'Coach Session Confirmed!', 'Your training session with Sarah Johnson on Dec 22 is confirmed. Equipment has been auto-booked based on your workout plan.', false, 'Booking', 2, NOW(), NOW()),
 (1, 3, 'high', 'New Milestone Unlocked!', 'Congratulations! You completed Week Warrior', false, 'Milestone', 2, NOW(), NOW()),
-(3, 4, 'high', 'Subscription Expiring Soon', 'Your premium subscription expires in 3 days', false, 'Subscription', 2, NOW(), NOW()),
+(1, 0, 'normal', 'Equipment Auto-Booked', 'Squat Rack and Bench Press have been reserved for your coach session', false, 'Booking', 2, NOW(), NOW()),
 (5, 0, 'normal', 'Workout Reminder', 'Keep up the great work!', false, 'WorkoutPlan', NULL, NOW(), NOW());
 
 -- ==========================================
@@ -291,14 +381,22 @@ INSERT INTO user_milestones ("UserId", "MilestoneId", "CurrentProgress", "IsComp
 INSERT INTO activity_feeds ("UserId", "ActivityType", "Title", "Description", "ReferenceType", "ReferenceId", "CreatedAt") VALUES
 (1, 'Workout', 'Completed Weight Loss Workout', 'John Doe completed a 45-minute workout', 'WorkoutLog', 1, '2024-11-15 09:45:00+00'),
 (1, 'Achievement', 'Unlocked Week Warrior!', 'John Doe completed 7 consecutive workout days', 'Milestone', 2, '2024-11-08 12:00:00+00'),
+(1, 'Booking', 'Coach Session Booked', 'John Doe booked a training session with Sarah Johnson', 'Booking', 2, NOW()),
 (3, 'Workout', 'Hit New Deadlift PR!', 'Michael Smith deadlifted 140kg for 5 reps', 'WorkoutLog', 4, '2024-10-22 19:00:00+00'),
 (3, 'Achievement', 'Unlocked Month Champion!', 'Michael Smith completed 30 days of training', 'Milestone', 3, '2024-11-14 12:00:00+00');
+
+-- ==========================================
+-- COACH REVIEWS (For sarah.johnson@intellifit.com CoachProfileId: 1)
+-- ==========================================
+INSERT INTO coach_reviews ("CoachId", "UserId", "BookingId", "Rating", "ReviewText", "IsAnonymous", "CreatedAt", "UpdatedAt") VALUES
+(1, 1, 2, 5, 'Sarah is an amazing coach! Very knowledgeable and supportive. The auto-booked equipment was perfect for our session.', false, NOW(), NOW()),
+(2, 2, NULL, 5, 'Emily really knows her stuff about powerlifting. Highly recommend!', false, NOW(), NOW());
 
 -- ==========================================
 -- AI PROGRAM GENERATIONS
 -- ==========================================
 INSERT INTO ai_program_generations ("UserId", "ProgramType", "WorkoutPlanId", "NutritionPlanId", "TokensUsed", "InputPrompt", "GeneratedPlan", "CreatedAt") VALUES
-(1, 'Workout', 1, NULL, 20, 'Create an 8-week weight loss program for intermediate level', 'Generated workout plan with progressive overload', '2024-10-28'),
+(1, 'Workout', 1, NULL, 20, 'Create an 8-week weight loss program for intermediate level focusing on compound movements', 'Generated workout plan with progressive overload', '2024-10-28'),
 (3, 'Nutrition', NULL, 2, 25, 'Create a 2800 calorie muscle gain nutrition plan', 'Generated high protein meal plan', '2024-10-12'),
 (5, 'Workout', 3, NULL, 30, 'Create a 10-week strength training program focusing on compound movements', 'AI-generated strength program with progressive overload and deload weeks', '2024-11-28');
 
@@ -306,13 +404,40 @@ INSERT INTO ai_program_generations ("UserId", "ProgramType", "WorkoutPlanId", "N
 -- AI CHAT LOGS
 -- ==========================================
 INSERT INTO ai_chat_logs ("UserId", "SessionId", "MessageType", "MessageContent", "TokensUsed", "CreatedAt") VALUES
-(1, 'a7e3c8d1-4f2b-4a1c-8e9f-1234567890ab'::uuid, 'Question', 'How can I improve my squat form?', 5, NOW()),
-(1, 'a7e3c8d1-4f2b-4a1c-8e9f-1234567890ab'::uuid, 'Response', 'To improve squat form, focus on: 1) Keep chest up 2) Drive knees out 3) Break at hips first...', 10, NOW()),
-(3, 'b8f4d9e2-5a3c-5b2d-9f0e-2345678901bc'::uuid, 'Question', 'What should I eat post-workout?', 4, NOW()),
-(3, 'b8f4d9e2-5a3c-5b2d-9f0e-2345678901bc'::uuid, 'Response', 'Post-workout nutrition should include: 1) Protein (30-40g) 2) Fast-digesting carbs...', 8, NOW());
+(1, 123456789, 'user', 'How can I improve my squat form?', 5, NOW()),
+(1, 123456789, 'assistant', 'To improve squat form, focus on: 1) Keep chest up 2) Drive knees out 3) Break at hips first...', 10, NOW()),
+(3, 987654321, 'user', 'What should I eat post-workout?', 4, NOW()),
+(3, 987654321, 'assistant', 'Post-workout nutrition should include: 1) Protein (30-40g) 2) Fast-digesting carbs...', 8, NOW());
 
 -- ==========================================
--- VERIFICATION
+-- AUDIT LOGS
+-- ==========================================
+INSERT INTO audit_logs ("UserId", "Action", "TableName", "RecordId", "NewValues", "IpAddress", "UserAgent", "CreatedAt") VALUES
+(1, 'Login', 'User', 1, '{"status": "success"}', '192.168.1.100', 'Mozilla/5.0', NOW()),
+(1, 'Create', 'Booking', 2, '{"coach_id": 1, "booking_type": "Session", "auto_equipment": true}', '192.168.1.100', 'Mozilla/5.0', NOW()),
+(7, 'Create', 'WorkoutPlan', 1, '{"member_id": 1, "plan_name": "Weight Loss Transformation"}', '192.168.1.105', 'Mozilla/5.0', '2025-10-28 10:00:00+00'),
+(10, 'Create', 'Payment', 1, '{"user_id": 1, "amount": 129.99, "status": "completed"}', '192.168.1.110', 'Mozilla/5.0', '2025-10-31 14:30:00+00');
+
+-- ==========================================
+-- AI WORKFLOW JOBS
+-- ==========================================
+INSERT INTO ai_workflow_jobs ("UserId", "JobType", "Status", "RequestPayload", "ResponsePayload", "N8nWorkflowId", "ErrorMessage", "CreatedAt", "CompletedAt") VALUES
+(1, 'WorkoutPlanGeneration', 'Completed', '{"goal": "weight_loss", "experience": "intermediate", "days_per_week": 5}', '{"plan_id": 1, "duration_weeks": 8}', 'wf-workout-001', NULL, NOW(), NOW()),
+(3, 'NutritionPlanGeneration', 'Completed', '{"goal": "muscle_gain", "daily_calories": 2800}', '{"plan_id": 2, "meals_count": 5}', 'wf-nutrition-001', NULL, NOW(), NOW()),
+(1, 'ExerciseRecommendation', 'Pending', '{"muscle_group": "chest", "equipment_available": ["bench", "barbell"]}', NULL, 'wf-exercise-001', NULL, NOW(), NULL);
+
+-- ==========================================
+-- CHAT MESSAGES (Member-Coach Communication)
+-- member@intellifit.com (UserId: 1) <-> sarah.johnson@intellifit.com (UserId: 7)
+-- ==========================================
+INSERT INTO chat_messages ("SenderId", "ReceiverId", "Message", "IsRead", "ReadAt", "ConversationId", "IsPermanent", "CreatedAt", "ExpiresAt") VALUES
+(1, 7, 'Hi Coach Sarah! I have a question about my workout plan.', true, NOW(), '1-7', false, NOW(), NOW() + INTERVAL '1 month'),
+(7, 1, 'Hi John! Of course, what would you like to know?', true, NOW(), '1-7', false, NOW(), NOW() + INTERVAL '1 month'),
+(1, 7, 'For the squat exercise, should I go below parallel?', true, NOW(), '1-7', false, NOW(), NOW() + INTERVAL '1 month'),
+(7, 1, 'Yes, aim for just below parallel for best results. I will help you with form during our next session.', false, NULL, '1-7', false, NOW(), NOW() + INTERVAL '1 month');
+
+-- ==========================================
+-- VERIFICATION (All 34 tables)
 -- ==========================================
 SELECT 'users' as table_name, COUNT(*) FROM users
 UNION ALL SELECT 'member_profiles', COUNT(*) FROM member_profiles
@@ -325,6 +450,27 @@ UNION ALL SELECT 'exercises', COUNT(*) FROM exercises
 UNION ALL SELECT 'ingredients', COUNT(*) FROM ingredients
 UNION ALL SELECT 'progress_milestones', COUNT(*) FROM progress_milestones
 UNION ALL SELECT 'bookings', COUNT(*) FROM bookings
+UNION ALL SELECT 'equipment_time_slots', COUNT(*) FROM equipment_time_slots
+UNION ALL SELECT 'coach_session_equipments', COUNT(*) FROM coach_session_equipments
 UNION ALL SELECT 'workout_plans', COUNT(*) FROM workout_plans
+UNION ALL SELECT 'workout_plan_exercises', COUNT(*) FROM workout_plan_exercises
+UNION ALL SELECT 'workout_templates', COUNT(*) FROM workout_templates
+UNION ALL SELECT 'workout_template_exercises', COUNT(*) FROM workout_template_exercises
+UNION ALL SELECT 'workout_logs', COUNT(*) FROM workout_logs
 UNION ALL SELECT 'nutrition_plans', COUNT(*) FROM nutrition_plans
+UNION ALL SELECT 'meals', COUNT(*) FROM meals
+UNION ALL SELECT 'meal_ingredients', COUNT(*) FROM meal_ingredients
+UNION ALL SELECT 'inbody_measurements', COUNT(*) FROM inbody_measurements
+UNION ALL SELECT 'user_subscriptions', COUNT(*) FROM user_subscriptions
+UNION ALL SELECT 'payments', COUNT(*) FROM payments
+UNION ALL SELECT 'token_transactions', COUNT(*) FROM token_transactions
+UNION ALL SELECT 'notifications', COUNT(*) FROM notifications
+UNION ALL SELECT 'user_milestones', COUNT(*) FROM user_milestones
+UNION ALL SELECT 'activity_feeds', COUNT(*) FROM activity_feeds
+UNION ALL SELECT 'coach_reviews', COUNT(*) FROM coach_reviews
+UNION ALL SELECT 'ai_chat_logs', COUNT(*) FROM ai_chat_logs
+UNION ALL SELECT 'ai_workflow_jobs', COUNT(*) FROM ai_workflow_jobs
+UNION ALL SELECT 'ai_program_generations', COUNT(*) FROM ai_program_generations
+UNION ALL SELECT 'chat_messages', COUNT(*) FROM chat_messages
+UNION ALL SELECT 'audit_logs', COUNT(*) FROM audit_logs
 ORDER BY table_name;

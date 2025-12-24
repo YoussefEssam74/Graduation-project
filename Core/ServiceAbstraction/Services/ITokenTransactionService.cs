@@ -7,6 +7,6 @@ namespace IntelliFit.ServiceAbstraction.Services
         Task<TokenTransactionDto> CreateTransactionAsync(int userId, CreateTokenTransactionDto dto);
         Task<IEnumerable<TokenTransactionDto>> GetUserTransactionsAsync(int userId);
         Task<int> GetUserTokenBalanceAsync(int userId);
-        Task<TokenTransactionDto> GetTransactionByIdAsync(int transactionId);
+        Task<TokenTransactionDto?> GetTransactionByIdAsync(int transactionId);
     }
 }

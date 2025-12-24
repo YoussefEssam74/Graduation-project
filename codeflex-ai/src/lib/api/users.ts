@@ -11,6 +11,21 @@ export interface UpdateProfileDto {
   profileImageUrl?: string;
 }
 
+// Coach profile DTO with detailed information
+export interface CoachDto extends UserDto {
+  coachProfileId: number;
+  specialization?: string;
+  certifications?: string[];
+  experienceYears?: number;
+  bio?: string;
+  hourlyRate?: number;
+  rating: number;
+  totalReviews: number;
+  totalClients: number;
+  availabilitySchedule?: string;
+  isAvailable: boolean;
+}
+
 // DTOs for new endpoints
 export interface UserMetricsDto {
   userId: number;
@@ -137,6 +152,25 @@ export const usersApi = {
     const response = await apiFetch<UserDto[]>('/users/coaches');
     if (response.success && response.data) {
       apiCache.set(CACHE_KEYS.COACHES, response.data, CACHE_TTL.LONG);
+    }
+    return response;
+  },
+
+  /**
+   * Get all coaches with detailed profile information
+   */
+  async getCoachesWithProfiles(forceRefresh = false): Promise<ApiResponse<CoachDto[]>> {
+    const cacheKey = 'users:coaches:details';
+    if (!forceRefresh) {
+      const cached = apiCache.get<CoachDto[]>(cacheKey);
+      if (cached) {
+        return { success: true, data: cached };
+      }
+    }
+    
+    const response = await apiFetch<CoachDto[]>('/users/coaches/details');
+    if (response.success && response.data) {
+      apiCache.set(cacheKey, response.data, CACHE_TTL.LONG);
     }
     return response;
   },

@@ -33,13 +33,14 @@ import { useToast } from "@/components/ui/toast";
 import { ChatDialog } from "@/components/Chat/ChatDialog";
 
 function DashboardContent() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { showToast } = useToast();
   const [stats, setStats] = useState<MemberStatsDto | null>(null);
   const [bodyFatChange, setBodyFatChange] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [assignedCoach, setAssignedCoach] = useState<{
-    id: number;
+    id: number; // CoachProfile ID
+    userId: number; // User ID for chat
     name: string;
     specialization: string;
     rating: number;
@@ -52,6 +53,11 @@ function DashboardContent() {
       if (!user?.userId) return;
 
       try {
+        // Refresh user data to get latest token balance from the server
+        if (refreshUser) {
+          await refreshUser();
+        }
+
         const response = await statsApi.getMemberStats(user.userId);
         if (response.success && response.data) {
           setStats(response.data);
@@ -86,7 +92,7 @@ function DashboardContent() {
 
     fetchStats();
     fetchInBodyStats();
-  }, [user?.userId]);
+  }, [user?.userId, refreshUser]);
 
   // Recent bookings state
   const [recentBookings, setRecentBookings] = useState<BookingDto[]>([]);
@@ -137,6 +143,7 @@ function DashboardContent() {
 
             setAssignedCoach({
               id: latestCoach.coachId!,
+              userId: latestCoach.coachUserId || latestCoach.coachId!, // Use coachUserId for chat
               name: latestCoach.coachName!,
               specialization: "Personal Training",
               rating: 5.0, // Default fallback
@@ -222,7 +229,7 @@ function DashboardContent() {
       bgImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80",
     },
     {
-      icon: UserCheck,
+      icon: User,
       title: "Book a Coach",
       description: "Book sessions with coaches",
       href: "/book-coach",
@@ -262,7 +269,7 @@ function DashboardContent() {
       bgImage: "https://images.unsplash.com/photo-1549476464-37392f717541?w=400&q=80",
     },
     {
-      icon: Ticket,
+      icon: TrendingUp,
       title: "Generate Program",
       description: "Generate AI workout plan",
       href: "/generate-program",
@@ -508,6 +515,46 @@ function DashboardContent() {
                 )}
               </div>
             </div>
+
+            {/* My Coach Card */}
+            {assignedCoach && (
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <UserCheck className="h-5 w-5 text-purple-500" />
+                  My Coach
+                </h3>
+                <Card className="p-6 border-0 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] bg-gradient-to-br from-purple-50 via-white to-blue-50 rounded-[20px]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        {assignedCoach.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-lg">{assignedCoach.name}</h4>
+                        <p className="text-sm text-slate-500">{assignedCoach.specialization}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                          <span className="text-sm font-semibold text-slate-700">{assignedCoach.rating.toFixed(1)}</span>
+                          {assignedCoach.upcomingSession && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-xs text-slate-500">Next: {assignedCoach.upcomingSession}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => setIsChatOpen(true)}
+                      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl px-6 py-3 shadow-lg shadow-purple-500/20 transition-transform hover:scale-105"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Chat with Coach
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Schedule (Span 1) */}
@@ -518,42 +565,47 @@ function DashboardContent() {
             </div>
 
             <Card className="p-6 border-0 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white rounded-[24px] h-fit">
-              <div className="relative border-l-2 border-slate-100 ml-3 space-y-8 py-2">
-                {/* Timeline Item 1 */}
-                <div className="relative pl-8">
-                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-green-500 ring-4 ring-green-50"></div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">TODAY, 10:00 AM</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-600">CONFIRMED</span>
-                    </div>
-                    <h4 className="font-bold text-slate-900">HIIT Session</h4>
-                    <p className="text-xs text-slate-500">with {assignedCoach?.name || "Fitness Coach"}</p>
-                  </div>
-                </div>
+              <div className="relative border-l-2 border-slate-100 ml-3 space-y-6 py-2">
+                {recentBookings.filter(b => b.status !== 2 && new Date(b.startTime) >= new Date()).slice(0, 3).length > 0 ? (
+                  recentBookings
+                    .filter(b => b.status !== 2 && new Date(b.startTime) >= new Date())
+                    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                    .slice(0, 3)
+                    .map((booking, index) => {
+                      const startDate = new Date(booking.startTime);
+                      const isToday = startDate.toDateString() === new Date().toDateString();
+                      const isTomorrow = startDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+                      const dateLabel = isToday ? "TODAY" : isTomorrow ? "TOMORROW" : startDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                      const timeLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                      const statusBadge = getStatusBadge(booking.status, booking.checkInTime ?? undefined, booking.checkOutTime ?? undefined);
 
-                {/* Timeline Item 2 */}
-                <div className="relative pl-8">
-                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-slate-300"></div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">TOMORROW, 6:00 PM</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">PENDING</span>
-                    </div>
-                    <h4 className="font-bold text-slate-900">Yoga Flow</h4>
-                    <p className="text-xs text-slate-500">Studio B</p>
+                      return (
+                        <div key={booking.bookingId} className="relative pl-8">
+                          <div className={`absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white ring-4 ${index === 0 && isToday ? "bg-green-500 ring-green-50" : "bg-slate-300 ring-slate-50"
+                            }`}></div>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-400">{dateLabel}, {timeLabel}</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusBadge.bg} ${statusBadge.color}`}>
+                                {statusBadge.text.toUpperCase()}
+                              </span>
+                            </div>
+                            <h4 className="font-bold text-slate-900">
+                              {booking.coachName || booking.equipmentName || "Session"}
+                            </h4>
+                            <p className="text-xs text-slate-500">
+                              {booking.coachId ? `Coach Session` : booking.equipmentId ? "Equipment Booking" : "Gym Session"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-slate-400">No upcoming sessions</p>
+                    <p className="text-xs text-slate-300 mt-1">Book a coach or equipment to get started</p>
                   </div>
-                </div>
-
-                {/* Timeline Item 3 */}
-                <div className="relative pl-8">
-                  <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white bg-slate-300"></div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold text-slate-400">SAT, 9:00 AM</span>
-                    <h4 className="font-bold text-slate-900">Open Gym</h4>
-                    <p className="text-xs text-slate-500">Main Floor</p>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="mt-8 pt-6 border-t border-slate-50">
@@ -570,20 +622,20 @@ function DashboardContent() {
         </div>
 
         {/* CTA Banner */}
-        <Card className="p-8 border-2 border-primary/20 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 rounded-2xl overflow-hidden relative">
+        <Card className="p-8 border-2 border-primary/20 bg-gradient-to-r from-blue-50 via-purple-50 to-green-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 rounded-2xl overflow-hidden relative">
           <div className="absolute inset-0 opacity-30">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full blur-3xl" />
           </div>
           <div className="relative flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
                 Ready for Your AI-Powered Program?
               </h3>
-              <p className="text-slate-600 mb-4 max-w-lg">
+              <p className="text-slate-600 dark:text-slate-300 mb-4 max-w-lg">
                 Generate a personalized workout and nutrition plan through an intelligent AI voice conversation
               </p>
-              <div className="flex items-center gap-4 text-sm text-slate-500">
+              <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1.5">
                   <Ticket className="h-4 w-4 text-yellow-500" />
                   50 tokens
@@ -607,7 +659,7 @@ function DashboardContent() {
         {
           isChatOpen && assignedCoach && (
             <ChatDialog
-              recipientId={assignedCoach.id}
+              recipientId={assignedCoach.userId}
               recipientName={assignedCoach.name}
               recipientRole="coach"
               onClose={() => setIsChatOpen(false)}

@@ -109,7 +109,7 @@ function ProgressContent() {
     const previous = sorted[1];
     return {
       current: latest.bodyFatPercentage,
-      change: latest.bodyFatPercentage - previous.bodyFatPercentage,
+      change: (latest.bodyFatPercentage ?? 0) - (previous.bodyFatPercentage ?? 0),
     };
   };
 
@@ -260,8 +260,8 @@ function ProgressContent() {
             <div className="text-sm text-muted-foreground mt-2">
               {stats?.latestBmi && (
                 stats.latestBmi < 18.5 ? "Underweight" :
-                stats.latestBmi < 25 ? "Normal" :
-                stats.latestBmi < 30 ? "Overweight" : "Obese"
+                  stats.latestBmi < 25 ? "Normal" :
+                    stats.latestBmi < 30 ? "Overweight" : "Obese"
               )}
             </div>
           </div>
@@ -308,9 +308,9 @@ function ProgressContent() {
                       {new Date(m.measurementDate).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4 text-sm text-right font-medium">{m.weight} kg</td>
-                    <td className="py-3 px-4 text-sm text-right">{m.bodyFatPercentage}%</td>
-                    <td className="py-3 px-4 text-sm text-right">{m.muscleMass} kg</td>
-                    <td className="py-3 px-4 text-sm text-right">{m.bmi.toFixed(1)}</td>
+                    <td className="py-3 px-4 text-sm text-right">{m.bodyFatPercentage ?? "--"}%</td>
+                    <td className="py-3 px-4 text-sm text-right">{m.muscleMass ?? "--"} kg</td>
+                    <td className="py-3 px-4 text-sm text-right">{m.bmi?.toFixed(1) ?? "--"}</td>
                   </tr>
                 ))}
               </tbody>

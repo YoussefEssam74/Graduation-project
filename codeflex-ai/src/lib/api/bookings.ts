@@ -18,6 +18,7 @@ export interface BookingDto {
   equipmentName?: string;
   coachId?: number;
   coachName?: string;
+  coachUserId?: number; // User ID for chat functionality
   bookingType: string;
   startTime: string;
   endTime: string;
@@ -28,6 +29,27 @@ export interface BookingDto {
   createdAt: string;
   checkInTime?: string;
   checkOutTime?: string;
+  // New fields for coach session auto-booking
+  isAutoBookedForCoachSession?: boolean;
+  parentCoachBookingId?: number;
+  isAiGenerated?: boolean;
+}
+
+export interface EquipmentAvailabilityCheck {
+  equipmentId: number;
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+  message: string;
+}
+
+export interface CoachSessionCheck {
+  userId: number;
+  startTime: string;
+  endTime: string;
+  hasActiveCoachSession: boolean;
+  canBook: boolean;
+  message: string;
 }
 
 export const bookingsApi = {
@@ -88,6 +110,46 @@ export const bookingsApi = {
   },
 
   /**
+   * Get auto-booked equipment for a coach session
+   */
+  async getCoachSessionEquipment(coachBookingId: number): Promise<ApiResponse<BookingDto[]>> {
+    return apiFetch<BookingDto[]>(`/bookings/${coachBookingId}/equipment`);
+  },
+
+  /**
+   * Check if user can book equipment (not blocked by active coach session)
+   */
+  async checkUserCanBookEquipment(userId: number, startTime: string, endTime: string): Promise<ApiResponse<CoachSessionCheck>> {
+    const params = new URLSearchParams({
+      startTime,
+      endTime,
+    });
+    return apiFetch<CoachSessionCheck>(`/equipment-availability/user/${userId}/can-book?${params.toString()}`);
+  },
+
+  /**
+   * Check if user has active coach booking
+   */
+  async checkUserHasCoachBooking(userId: number, startTime: string, endTime: string): Promise<ApiResponse<{ hasCoachBooking: boolean; message: string }>> {
+    const params = new URLSearchParams({
+      startTime,
+      endTime,
+    });
+    return apiFetch<{ hasCoachBooking: boolean; message: string }>(`/bookings/user/${userId}/has-coach-booking?${params.toString()}`);
+  },
+
+  /**
+   * Check equipment availability for a time slot
+   */
+  async checkEquipmentAvailability(equipmentId: number, startTime: string, endTime: string): Promise<ApiResponse<EquipmentAvailabilityCheck>> {
+    const params = new URLSearchParams({
+      startTime,
+      endTime,
+    });
+    return apiFetch<EquipmentAvailabilityCheck>(`/equipment-availability/${equipmentId}/check?${params.toString()}`);
+  },
+
+  /**
    * Confirm a booking
    */
   async confirmBooking(id: number): Promise<ApiResponse<BookingDto>> {
@@ -124,3 +186,4 @@ export const bookingsApi = {
     });
   },
 };
+

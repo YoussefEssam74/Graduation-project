@@ -87,7 +87,15 @@ function BookEquipmentContent() {
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentWithDetails | null>(null);
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
     const [selectedDuration, setSelectedDuration] = useState(60);
+    const [bookingDate, setBookingDate] = useState("");
+    const [startTime, setStartTime] = useState("");
+    const [endTime, setEndTime] = useState("");
     const [isBooking, setIsBooking] = useState(false);
+
+    // Coach session blocking state
+    const [isCheckingCoachSession, setIsCheckingCoachSession] = useState(false);
+    const [hasCoachSession, setHasCoachSession] = useState(false);
+    const [coachSessionMessage, setCoachSessionMessage] = useState("");
 
     // Duration options
     const durationOptions = [
@@ -107,9 +115,9 @@ function BookEquipmentContent() {
                 if (response.success && response.data) {
                     const mappedEquipment = response.data.map((eq: EquipmentDto) => ({
                         ...eq,
-                        category: eq.category?.toLowerCase() || "strength",
+                        category: (eq.categoryName || eq.category || "strength").toLowerCase(),
                         location: eq.location || "Main Floor",
-                        tokensCost: eq.tokensCost || 5,
+                        tokensCost: eq.tokensCostPerHour || eq.tokensCost || 5,
                         imageUrl: getEquipmentImage(eq.name),
                     }));
                     setEquipment(mappedEquipment);
@@ -137,8 +145,53 @@ function BookEquipmentContent() {
     // Get unique categories
     const categories = [...new Set(equipment.map(eq => eq.category))];
 
+    // Check if user has a coach session for selected time slot
+    const checkCoachSessionForTimeSlot = async (date: string, start: string, end: string) => {
+        if (!user?.userId || !date || !start || !end) return;
+
+        try {
+            setIsCheckingCoachSession(true);
+            const startDateTime = new Date(`${date}T${start}:00`).toISOString();
+            const endDateTime = new Date(`${date}T${end}:00`).toISOString();
+
+            const response = await bookingsApi.checkUserHasCoachBooking(
+                user.userId,
+                startDateTime,
+                endDateTime
+            );
+
+            if (response.success && response.data) {
+                setHasCoachSession(response.data.hasCoachBooking);
+                setCoachSessionMessage(response.data.message);
+            }
+        } catch (error) {
+            console.error("Error checking coach session:", error);
+        } finally {
+            setIsCheckingCoachSession(false);
+        }
+    };
+
+    // Effect to check coach session when time slot changes
+    useEffect(() => {
+        if (bookingModalOpen && bookingDate && startTime && endTime) {
+            checkCoachSessionForTimeSlot(bookingDate, startTime, endTime);
+        }
+    }, [bookingDate, startTime, endTime, bookingModalOpen]);
+
     const handleBookEquipment = async () => {
         if (!selectedEquipment || !user?.userId) return;
+
+        // Validate date and time inputs
+        if (!bookingDate || !startTime || !endTime) {
+            showToast("Please select booking date, start time, and end time", "error");
+            return;
+        }
+
+        // Check if user has active coach session
+        if (hasCoachSession) {
+            showToast("You cannot book equipment during your coach session. Equipment is automatically booked based on your workout plan.", "error");
+            return;
+        }
 
         const cost = selectedEquipment.tokensCost;
         if ((user.tokenBalance ?? 0) < cost) {
@@ -146,17 +199,20 @@ function BookEquipmentContent() {
             return;
         }
 
-        // Create booking times
-        const now = new Date();
-        const startTime = new Date(now);
-        const minutes = startTime.getMinutes();
-        const roundedMinutes = Math.ceil(minutes / 15) * 15;
-        startTime.setMinutes(roundedMinutes % 60);
-        if (roundedMinutes >= 60) startTime.setHours(startTime.getHours() + 1);
-        startTime.setSeconds(0);
-        startTime.setMilliseconds(0);
+        // Create booking times from user input
+        const bookingStartTime = new Date(`${bookingDate}T${startTime}:00`);
+        const bookingEndTime = new Date(`${bookingDate}T${endTime}:00`);
 
-        const endTime = new Date(startTime.getTime() + selectedDuration * 60 * 1000);
+        // Validate times
+        if (bookingStartTime >= bookingEndTime) {
+            showToast("End time must be after start time", "error");
+            return;
+        }
+
+        if (bookingStartTime < new Date()) {
+            showToast("Cannot book in the past", "error");
+            return;
+        }
 
         try {
             setIsBooking(true);
@@ -164,9 +220,9 @@ function BookEquipmentContent() {
                 userId: user.userId,
                 equipmentId: selectedEquipment.equipmentId,
                 bookingType: "Equipment",
-                startTime: startTime.toISOString(),
-                endTime: endTime.toISOString(),
-                notes: `Booked ${selectedEquipment.name} for ${selectedDuration} minutes`,
+                startTime: bookingStartTime.toISOString(),
+                endTime: bookingEndTime.toISOString(),
+                notes: `Booked ${selectedEquipment.name} from ${startTime} to ${endTime}`,
             });
 
             if (response.success) {
@@ -183,6 +239,11 @@ function BookEquipmentContent() {
                 showToast(`Booked ${selectedEquipment.name} — ${cost} tokens`, "success");
                 setBookingModalOpen(false);
             } else {
+                // Check if error is about coach session
+                if (response.message?.toLowerCase().includes("coach session")) {
+                    setHasCoachSession(true);
+                    setCoachSessionMessage(response.message);
+                }
                 showToast(response.message || "Failed to book", "error");
             }
         } catch (error) {
@@ -211,20 +272,20 @@ function BookEquipmentContent() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#f5f8f7] flex items-center justify-center">
+            <div className="min-h-screen bg-[#f5f8f7] dark:bg-slate-900 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen text-slate-900 relative">
+        <div className="min-h-screen text-slate-900 dark:text-white relative">
             {/* Header */}
-            <header className="relative z-20 sticky top-0 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+            <header className="relative z-20 sticky top-0 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-3">
-                            <Link href="/dashboard" className="text-slate-500 hover:text-slate-900 transition-colors">
+                            <Link href="/dashboard" className="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
                                 <ChevronLeft className="h-5 w-5" />
                             </Link>
                             <div className="flex items-center gap-2">
@@ -235,10 +296,10 @@ function BookEquipmentContent() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg border border-primary/20">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 dark:bg-primary/20 rounded-lg border border-primary/20">
                                 <Ticket className="h-4 w-4 text-primary" />
-                                <span className="font-bold text-slate-900">{user?.tokenBalance ?? 0}</span>
-                                <span className="text-sm text-slate-500">tokens</span>
+                                <span className="font-bold text-slate-900 dark:text-white">{user?.tokenBalance ?? 0}</span>
+                                <span className="text-sm text-slate-500 dark:text-slate-400">tokens</span>
                             </div>
                         </div>
                     </div>
@@ -248,28 +309,28 @@ function BookEquipmentContent() {
             <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Hero Section */}
                 <div className="mb-8">
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
                         Reserve Your Equipment
                     </h2>
-                    <p className="text-slate-500 text-lg">
+                    <p className="text-slate-500 dark:text-slate-400 text-lg">
                         Book gym equipment in advance to ensure it&apos;s ready when you are.
                     </p>
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center mb-8 sticky top-20 z-10">
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center mb-8 sticky top-20 z-10">
                     <div className="relative w-full md:w-96">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5" />
                         <Input
                             placeholder="Search equipment..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 bg-slate-50 border-slate-200"
+                            className="pl-10 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600"
                         />
                     </div>
                     <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                         <Select value={filterCategory} onValueChange={setFilterCategory}>
-                            <SelectTrigger className="w-[140px] bg-white">
+                            <SelectTrigger className="w-[140px] bg-white dark:bg-slate-700 dark:border-slate-600">
                                 <Filter className="h-4 w-4 mr-2" />
                                 <SelectValue placeholder="Category" />
                             </SelectTrigger>
@@ -281,7 +342,7 @@ function BookEquipmentContent() {
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="w-[140px] bg-white">
+                            <SelectTrigger className="w-[140px] bg-white dark:bg-slate-700 dark:border-slate-600">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -295,10 +356,10 @@ function BookEquipmentContent() {
 
                 {/* Equipment Grid */}
                 {filteredEquipment.length === 0 ? (
-                    <Card className="p-12 text-center bg-white border-slate-200">
-                        <Dumbbell className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                        <p className="text-slate-500 text-lg">No equipment found</p>
-                        <p className="text-sm text-slate-400 mt-1">Try adjusting your filters</p>
+                    <Card className="p-12 text-center bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                        <Dumbbell className="h-12 w-12 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                        <p className="text-slate-500 dark:text-slate-400 text-lg">No equipment found</p>
+                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Try adjusting your filters</p>
                     </Card>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -307,7 +368,7 @@ function BookEquipmentContent() {
                             return (
                                 <Card
                                     key={eq.equipmentId}
-                                    className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col"
+                                    className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col"
                                 >
                                     {/* Equipment Image */}
                                     <div className="relative h-48 bg-slate-100 overflow-hidden">
@@ -334,10 +395,10 @@ function BookEquipmentContent() {
                                     <div className="p-5 flex-1 flex flex-col">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <h3 className="text-lg font-bold text-slate-900 group-hover:text-primary transition-colors">
+                                                <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">
                                                     {eq.name}
                                                 </h3>
-                                                <div className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                                                <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 mt-1">
                                                     <MapPin className="h-3.5 w-3.5" />
                                                     {eq.location}
                                                 </div>
@@ -345,19 +406,19 @@ function BookEquipmentContent() {
                                             <div className="text-right">
                                                 <p className="text-lg font-bold text-primary">
                                                     {eq.tokensCost} T
-                                                    <span className="text-xs text-slate-500 font-normal">/hr</span>
+                                                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">/hr</span>
                                                 </p>
                                             </div>
                                         </div>
 
                                         {eq.description && (
-                                            <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 mb-4">
                                                 {eq.description}
                                             </p>
                                         )}
 
-                                        <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                                            <div className="flex items-center gap-1 text-sm text-slate-500">
+                                        <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                                            <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                                                 <Clock className="h-4 w-4" />
                                                 <span>30-90 min slots</span>
                                             </div>
@@ -365,6 +426,18 @@ function BookEquipmentContent() {
                                                 onClick={() => {
                                                     setSelectedEquipment(eq);
                                                     setBookingModalOpen(true);
+                                                    // Set default date to today
+                                                    const today = new Date().toISOString().split('T')[0];
+                                                    setBookingDate(today);
+                                                    // Set default start time to next hour
+                                                    const now = new Date();
+                                                    const nextHour = new Date(now.setHours(now.getHours() + 1, 0, 0, 0));
+                                                    const startTimeStr = nextHour.toTimeString().slice(0, 5);
+                                                    setStartTime(startTimeStr);
+                                                    // Set default end time to 1 hour after start
+                                                    const endHour = new Date(nextHour.setHours(nextHour.getHours() + 1));
+                                                    const endTimeStr = endHour.toTimeString().slice(0, 5);
+                                                    setEndTime(endTimeStr);
                                                 }}
                                                 disabled={status !== "available"}
                                                 className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${status === "available"
@@ -401,26 +474,74 @@ function BookEquipmentContent() {
                                 style={{ backgroundImage: `url('${selectedEquipment.imageUrl}')` }}
                             />
 
-                            {/* Duration Selection */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Session Duration
-                                </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {durationOptions.map(opt => (
-                                        <button
-                                            key={opt.value}
-                                            onClick={() => setSelectedDuration(opt.value)}
-                                            className={`p-3 rounded-lg border text-sm font-medium transition-all ${selectedDuration === opt.value
-                                                ? "border-primary bg-primary/10 text-primary"
-                                                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                                                }`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
+                            {/* Date and Time Selection */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Booking Date
+                                    </label>
+                                    <Input
+                                        type="date"
+                                        value={bookingDate}
+                                        onChange={(e) => setBookingDate(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="w-full"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Start Time
+                                        </label>
+                                        <Input
+                                            type="time"
+                                            value={startTime}
+                                            onChange={(e) => setStartTime(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            End Time
+                                        </label>
+                                        <Input
+                                            type="time"
+                                            value={endTime}
+                                            onChange={(e) => setEndTime(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </div>
                                 </div>
                             </div>
+
+                            {/* Coach Session Warning */}
+                            {isCheckingCoachSession && (
+                                <div className="flex items-center gap-2 p-3 bg-slate-100 rounded-lg">
+                                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                                    <span className="text-sm text-slate-500">Checking availability...</span>
+                                </div>
+                            )}
+
+                            {hasCoachSession && !isCheckingCoachSession && (
+                                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-amber-100 rounded-lg">
+                                            <X className="h-5 w-5 text-amber-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-amber-800">Coach Session Active</h4>
+                                            <p className="text-sm text-amber-700 mt-1">
+                                                {coachSessionMessage || "You have a coach session during this time. Equipment will be automatically booked based on your workout plan."}
+                                            </p>
+                                            <p className="text-xs text-amber-600 mt-2">
+                                                💡 Tip: Book equipment for a different time slot, or check your booked coach sessions.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Summary */}
                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
@@ -429,8 +550,12 @@ function BookEquipmentContent() {
                                     <span className="font-medium">{selectedEquipment.name}</span>
                                 </div>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-slate-500">Duration</span>
-                                    <span className="font-medium">{selectedDuration} minutes</span>
+                                    <span className="text-slate-500">Date</span>
+                                    <span className="font-medium">{bookingDate || "Not selected"}</span>
+                                </div>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-slate-500">Time</span>
+                                    <span className="font-medium">{startTime && endTime ? `${startTime} - ${endTime}` : "Not selected"}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                                     <span className="text-slate-500">Total Cost</span>
@@ -451,14 +576,19 @@ function BookEquipmentContent() {
                                     Cancel
                                 </Button>
                                 <Button
-                                    className="flex-1 bg-primary hover:bg-primary/90"
+                                    className={`flex-1 ${hasCoachSession ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}
                                     onClick={handleBookEquipment}
-                                    disabled={isBooking}
+                                    disabled={isBooking || hasCoachSession || isCheckingCoachSession}
                                 >
                                     {isBooking ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             Booking...
+                                        </>
+                                    ) : hasCoachSession ? (
+                                        <>
+                                            <X className="mr-2 h-4 w-4" />
+                                            Blocked by Coach Session
                                         </>
                                     ) : (
                                         <>

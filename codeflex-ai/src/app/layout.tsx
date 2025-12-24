@@ -8,6 +8,7 @@ import "./globals.css";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SignalRProvider } from "@/contexts/SignalRContext";
 import { ToastProvider } from "@/components/ui/toast";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { usePathname } from 'next/navigation';
 import { NotificationListener } from "@/components/Notifications/NotificationListener";
 import Navbar from "@/components/Navbar";
@@ -67,8 +68,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         {/* Main Content Area */}
         <div className="flex-1 lg:pl-[240px] flex flex-col min-h-screen">
           {/* Mobile Header (Hidden on Desktop) */}
-          <header className="lg:hidden h-14 bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 sticky top-0 z-40">
-            <span className="font-bold text-lg">Pulse<span className="text-blue-600">Gym</span></span>
+          <header className="lg:hidden h-14 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 sticky top-0 z-40">
+            <span className="font-bold text-lg text-slate-900 dark:text-white">Pulse<span className="text-blue-600">Gym</span></span>
             {/* Mobile Menu Button would go here */}
           </header>
 
@@ -83,7 +84,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               </div>
               <input
                 type="text"
-                className="block w-full pl-9 pr-3 py-2 border-0 bg-white rounded-full text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+                className="block w-full pl-9 pr-3 py-2 border-0 bg-white dark:bg-slate-800 dark:text-white rounded-full text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
                 placeholder="Search..."
               />
             </div>
@@ -128,13 +129,20 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
-        <AuthProvider>
-          <ToastProvider>
-            <SignalRProvider>
-              <LayoutContent>{children}</LayoutContent>
-            </SignalRProvider>
-          </ToastProvider>
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <ToastProvider>
+              <SignalRProvider>
+                <LayoutContent>{children}</LayoutContent>
+              </SignalRProvider>
+            </ToastProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

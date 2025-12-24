@@ -23,7 +23,7 @@ namespace Service.Services
             }
 
             // Create a session ID if not provided
-            var sessionId = Guid.NewGuid();
+            var sessionId = Math.Abs((request.UserId.ToString() + DateTime.UtcNow.Ticks).GetHashCode());
 
             // Log the user's query
             var userChatLog = new AiChatLog
@@ -70,7 +70,7 @@ namespace Service.Services
         /// <summary>
         /// Save a chat interaction (both user message and AI response)
         /// </summary>
-        public async Task SaveChatInteractionAsync(int userId, string userMessage, string aiResponse, int tokensUsed, int responseTimeMs, Guid sessionId)
+        public async Task SaveChatInteractionAsync(int userId, string userMessage, string aiResponse, int tokensUsed, int responseTimeMs, int sessionId)
         {
             var now = DateTime.UtcNow;
 
@@ -83,6 +83,7 @@ namespace Service.Services
                 MessageContent = userMessage,
                 TokensUsed = 0,
                 ResponseTimeMs = 0,
+                AiModel = "groq-llama",
                 CreatedAt = now
             };
 
@@ -95,7 +96,8 @@ namespace Service.Services
                 MessageContent = aiResponse,
                 TokensUsed = tokensUsed,
                 ResponseTimeMs = responseTimeMs,
-                CreatedAt = now.AddMilliseconds(responseTimeMs)
+                AiModel = "groq-llama",
+                CreatedAt = now.AddMilliseconds(1) // Slight offset to ensure proper ordering
             };
 
             await _unitOfWork.Repository<AiChatLog>().AddAsync(userLog);
@@ -105,12 +107,13 @@ namespace Service.Services
 
         public async Task<IEnumerable<object>> GetChatHistoryAsync(int userId, int limit = 50)
         {
-            var logs = await _unitOfWork.Repository<AiChatLog>().GetAllAsync();
+            // Use FindAsync to filter at database level instead of loading all records
+            var logs = await _unitOfWork.Repository<AiChatLog>()
+                .FindAsync(l => l.UserId == userId);
 
             // Get user's chat logs ordered by creation time (newest first)
             // But keep message pairs together by ordering within each session
             return logs
-                .Where(l => l.UserId == userId)
                 .OrderByDescending(l => l.CreatedAt)
                 .Take(limit * 2) // Take double since each conversation has user + assistant messages
                 .OrderBy(l => l.CreatedAt) // Re-order chronologically for proper display
@@ -130,42 +133,95 @@ namespace Service.Services
         /// </summary>
         public async Task<IEnumerable<object>> GetChatSessionsAsync(int userId)
         {
-            var logs = await _unitOfWork.Repository<AiChatLog>().GetAllAsync();
+            // Use FindAsync to filter at database level
+            var logs = await _unitOfWork.Repository<AiChatLog>()
+                .FindAsync(l => l.UserId == userId);
 
-            return logs
-                .Where(l => l.UserId == userId)
-                .GroupBy(l => l.SessionId)
-                .Select(g => new
+            var userLogs = logs.ToList();
+
+            if (!userLogs.Any())
+            {
+                return new List<object>();
+            }
+
+            var groups = userLogs.GroupBy(l => l.SessionId).ToList();
+
+            // Build session data with sorting info
+            var sessionData = groups.Select(g =>
+            {
+                var orderedMessages = g.OrderBy(m => m.CreatedAt).ToList();
+                var firstUserMessage = orderedMessages.FirstOrDefault(m => m.MessageType == "user");
+                var title = firstUserMessage?.MessageContent ?? "Chat Session";
+
+                if (title.Length > 50)
                 {
-                    SessionId = g.Key,
-                    MessageCount = g.Count(),
-                    LastMessage = g.OrderByDescending(m => m.CreatedAt).First().MessageContent,
-                    LastMessageTime = g.Max(m => m.CreatedAt),
-                    FirstMessage = g.OrderBy(m => m.CreatedAt).First().MessageContent
-                })
-                .OrderByDescending(s => s.LastMessageTime)
-                .ToList();
+                    title = title.Substring(0, 50) + "...";
+                }
+
+                var lastMsgAt = g.Max(m => m.CreatedAt);
+                var createdAtTime = g.Min(m => m.CreatedAt);
+                var messageCount = g.Count(m => m.MessageType == "user"); // Count only user messages
+
+                return new
+                {
+                    sessionId = g.Key,
+                    userId = userId,
+                    title = title,
+                    messageCount = messageCount,
+                    lastMessageAt = lastMsgAt,
+                    createdAt = createdAtTime
+                };
+            })
+            .OrderByDescending(s => s.lastMessageAt)
+            .ToList();
+
+            return sessionData.Cast<object>().ToList();
         }
 
         /// <summary>
         /// Get all messages for a specific session
+        /// Returns pairs of user messages and AI responses in format expected by frontend
         /// </summary>
-        public async Task<IEnumerable<object>> GetSessionMessagesAsync(int userId, Guid sessionId)
+        public async Task<IEnumerable<object>> GetSessionMessagesAsync(int userId, int sessionId)
         {
-            var logs = await _unitOfWork.Repository<AiChatLog>().GetAllAsync();
+            // Use FindAsync to filter at database level
+            var logs = await _unitOfWork.Repository<AiChatLog>()
+                .FindAsync(l => l.UserId == userId && l.SessionId == sessionId);
 
-            return logs
-                .Where(l => l.UserId == userId && l.SessionId == sessionId)
-                .OrderBy(l => l.CreatedAt)
-                .Select(l => new
+            var sessionLogs = logs.OrderBy(l => l.CreatedAt).ToList();
+
+            if (!sessionLogs.Any())
+            {
+                return new List<object>();
+            }
+
+            // Group user messages with their AI responses
+            var messages = new List<object>();
+            for (int i = 0; i < sessionLogs.Count; i++)
+            {
+                var userLog = sessionLogs[i];
+                if (userLog.MessageType == "user" && i + 1 < sessionLogs.Count)
                 {
-                    Role = l.MessageType,
-                    Message = l.MessageContent,
-                    TokensUsed = l.TokensUsed,
-                    Timestamp = l.CreatedAt,
-                    SessionId = l.SessionId
-                })
-                .ToList();
+                    var aiLog = sessionLogs[i + 1];
+                    if (aiLog.MessageType == "assistant")
+                    {
+                        messages.Add(new
+                        {
+                            chatLogId = userLog.ChatId,
+                            userId = userLog.UserId,
+                            userMessage = userLog.MessageContent,
+                            aiResponse = aiLog.MessageContent,
+                            tokensUsed = aiLog.TokensUsed,
+                            responseTimeMs = aiLog.ResponseTimeMs ?? 0,
+                            sessionId = userLog.SessionId,
+                            createdAt = userLog.CreatedAt
+                        });
+                        i++; // Skip the AI response since we've already processed it
+                    }
+                }
+            }
+
+            return messages;
         }
     }
 }

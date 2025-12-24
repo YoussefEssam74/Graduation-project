@@ -102,34 +102,38 @@ ORDER BY tokens_spent DESC;
 -- SECTION 3: BOOKING & ATTENDANCE ANALYTICS (Receptionist/Admin)
 -- ==========================================
 
--- 9. Get equipment availability and upcoming bookings
+-- 9. Get equipment availability using the new optimized Time Slots system
+-- Parameters: @TargetTime
 SELECT e."EquipmentId", e."Name" as equipment_name, ec."CategoryName", e."Location", e."Status",
        CASE 
            WHEN EXISTS (
-               SELECT 1 FROM bookings b2 
-               WHERE b2."EquipmentId" = e."EquipmentId" 
-               AND b2."Status" IN (1, 2) 
-               AND CURRENT_TIMESTAMP BETWEEN b2."StartTime" AND b2."EndTime"
+               SELECT 1 FROM equipment_time_slots ets
+               WHERE ets."EquipmentId" = e."EquipmentId"
+               AND ets."IsBooked" = true
+               AND CURRENT_TIMESTAMP BETWEEN ets."SlotDate" + ets."StartTime" AND ets."SlotDate" + ets."EndTime"
            ) THEN 'Busy Now'
            WHEN e."Status" = 2 THEN 'Under Maintenance'
            ELSE 'Available Now'
        END as current_status,
-       b."BookingId", u."Name" as booked_by, b."StartTime", b."EndTime"
+       ets."BookingId", u."Name" as booked_by, 
+       (ets."SlotDate" + ets."StartTime") as start_time,
+       (ets."SlotDate" + ets."EndTime") as end_time
 FROM equipment e
 JOIN equipment_categories ec ON e."CategoryId" = ec."CategoryId"
-LEFT JOIN bookings b ON e."EquipmentId" = b."EquipmentId" 
-    AND b."StartTime" >= CURRENT_TIMESTAMP
-    AND b."Status" IN (0, 1)
-LEFT JOIN users u ON b."UserId" = u."UserId"
+LEFT JOIN equipment_time_slots ets ON e."EquipmentId" = ets."EquipmentId"
+    AND CURRENT_TIMESTAMP BETWEEN ets."SlotDate" + ets."StartTime" AND ets."SlotDate" + ets."EndTime"
+    AND ets."IsBooked" = true
+LEFT JOIN users u ON ets."BookedByUserId" = u."UserId"
 WHERE e."IsActive" = true
-ORDER BY e."Name", b."StartTime";
+ORDER BY e."Name";
 
--- 10. Get member bookings from [StartDate] to [EndDate]
+-- 10. Get member bookings with AI and Auto-Booking details
 -- Parameters: @StartDate, @EndDate
 SELECT u."UserId", u."Name" as member_name, u."Email",
        b."BookingId", b."BookingType", b."StartTime", b."EndTime", b."Status",
        COALESCE(e."Name", coach_u."Name") as resource_name,
-       b."TokensCost"
+       b."TokensCost",
+       b."IsAiGenerated", b."IsAutoBookedForCoachSession", b."ParentCoachBookingId"
 FROM bookings b
 JOIN users u ON b."UserId" = u."UserId"
 LEFT JOIN equipment e ON b."EquipmentId" = e."EquipmentId"
@@ -409,7 +413,7 @@ LIMIT 20;
 -- Parameters: @SearchTerm
 -- Use case: Quick member lookup at reception desk or admin panel
 SELECT u."UserId", u."Name", u."Email", u."Phone", u."TokenBalance",
-       mp."FitnessGoal", mp."FitnessLevel", mp."Height",
+       mp."FitnessGoal", mp."FitnessLevel", mp."Age", mp."Weight", mp."Height",
        us."EndDate" as subscription_end, sp."PlanName",
        u."LastLoginAt", u."CreatedAt"
 FROM users u
@@ -430,7 +434,7 @@ ORDER BY u."Name";
 -- Use case: Group members for targeted programs or class recommendations
 SELECT u."UserId", u."Name", u."Email", u."Phone",
        mp."FitnessGoal", mp."FitnessLevel", mp."TotalWorkoutsCompleted",
-       mp."Height", mp."Weight", mp."Age",
+       mp."Height",
        COUNT(DISTINCT DATE(wl."WorkoutDate")) as workout_days_last_month,
        AVG(wl."FeelingRating") as avg_satisfaction
 FROM users u
@@ -441,7 +445,7 @@ WHERE u."IsActive" = true
   AND mp."FitnessGoal" = 'Weight Loss' -- Replace with parameter: 'Weight Loss', 'Muscle Gain', 'Endurance', etc.
   AND mp."FitnessLevel" = 'Beginner' -- Replace with parameter: 'Beginner', 'Intermediate', 'Advanced'
 GROUP BY u."UserId", u."Name", u."Email", u."Phone", mp."FitnessGoal", mp."FitnessLevel", 
-         mp."TotalWorkoutsCompleted", mp."Height", mp."Weight", mp."Age"
+         mp."TotalWorkoutsCompleted", mp."Height"
 ORDER BY mp."TotalWorkoutsCompleted" DESC;
 
 -- 27. Filter coaches by specialization, rating, and availability
@@ -1056,32 +1060,281 @@ WHERE b."StartTime" BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '2 days' --
 ORDER BY b."StartTime", u."Name";
 
 -- ==========================================
--- END OF EXTENDED ANALYTICS QUERIES
+-- SECTION 15: CHAT & COMMUNICATION ANALYTICS (Admin/Support)
 -- ==========================================
--- Total: 49 comprehensive queries for database testing and operations
--- All queries renumbered sequentially (1-49) - Query #7 was previously deleted
--- 
--- Query Categories:
--- SECTION 1: User Analytics (Queries 1-5)
--- SECTION 2: Subscription & Revenue Analytics (Queries 6-8)
--- SECTION 3: Booking & Attendance Analytics (Queries 9-13)
--- SECTION 4: Equipment & Maintenance (Queries 14-16)
--- SECTION 5: AI Usage & Token Analytics (Queries 17-18)
--- SECTION 6: Notifications & Member Engagement (Queries 19-20)
--- SECTION 7: Comprehensive Dashboard Queries (Queries 21-24)
--- SECTION 8: Member Search & Filtering (Queries 25-30)
--- SECTION 9: Workout & Nutrition Plan Filtering (Queries 31-32)
--- SECTION 10: Payment & Transaction Analytics (Queries 33-34)
--- SECTION 11: Review & Feedback Analytics (Queries 35-39)
--- SECTION 12: Comparative & Trend Analysis (Queries 40-44)
--- SECTION 13: Availability & Scheduling (Queries 45-48)
--- SECTION 14: Operational Dashboards (Query 49)
---
--- Key Features:
--- - All queries support parameterization for flexible filtering
--- - Optimized for PostgreSQL with proper date/time handling
--- - Includes data integrity checks and operational dashboards
--- - Comprehensive comments explaining use cases and parameters
--- - Detailed field selection with proper aliases
--- - Performance-optimized with appropriate indexes assumed
+
+-- ==========================================
+-- SECTION 15: ADAVANCED OPERATIONAL & AI ANALYTICS (Admin/Receptionist)
+-- ==========================================
+
+-- 50. [Receptionist] Today's Granular Equipment Schedule
+-- Use case: Detailed view of equipment availability by time slot for booking assistance
+-- New Table: equipment_time_slots
+SELECT ets."EquipmentId", e."Name", e."Location",
+       ets."SlotDate", ets."StartTime", ets."EndTime",
+       ets."IsBooked", ets."IsCoachSession",
+       u."Name" as booked_by_user
+FROM equipment_time_slots ets
+JOIN equipment e ON ets."EquipmentId" = e."EquipmentId"
+LEFT JOIN users u ON ets."BookedByUserId" = u."UserId"
+WHERE ets."SlotDate" = CURRENT_DATE -- Today only
+ORDER BY e."Name", ets."StartTime";
+
+-- 51. [Receptionist] Coach Sessions with Auto-Booked Equipment
+-- Use case: Coordinate equipment setup for coach sessions
+-- New Columns: IsAutoBookedForCoachSession
+SELECT b."BookingId" as coach_booking_id, 
+       u."Name" as member_name,
+       cp."Specialization",
+       b."StartTime",
+       count(cse."Id") as equipment_count,
+       STRING_AGG(e."Name", ', ') as reserved_equipment
+FROM bookings b
+JOIN users u ON b."UserId" = u."UserId"
+JOIN coach_profiles cp ON b."CoachId" = cp."Id"
+JOIN coach_session_equipments cse ON b."BookingId" = cse."CoachBookingId"
+JOIN equipment e ON cse."EquipmentId" = e."EquipmentId"
+WHERE b."IsAutoBookedForCoachSession" = false -- The coach session itself
+  AND b."StartTime" BETWEEN CURRENT_DATE AND CURRENT_DATE + 1
+GROUP BY b."BookingId", u."Name", cp."Specialization", b."StartTime"
+ORDER BY b."StartTime";
+
+-- 52. [Admin] Revenue Analysis: AI-Generated vs Manual Bookings
+-- Use case: Measure ROI of AI Coach features
+-- New Column: IsAiGenerated
+SELECT 
+    CASE WHEN b."IsAiGenerated" = true THEN 'AI Generated' ELSE 'Manual' END as booking_source,
+    COUNT(b."BookingId") as total_bookings,
+    SUM(b."TokensCost") as total_tokens_spent,
+    ROUND(AVG(b."TokensCost"), 2) as avg_cost,
+    COUNT(DISTINCT b."UserId") as unique_users
+FROM bookings b
+WHERE b."Status" = 3 -- Completed
+  AND b."CreatedAt" BETWEEN '2024-01-01' AND '2024-12-31'
+GROUP BY b."IsAiGenerated";
+
+-- 53. [Admin] AI Chat Session Analytics
+-- Use case: Monitor engagement and token usage per session
+-- New Feature: SessionId (int)
+SELECT acl."SessionId",
+       COUNT(acl."ChatId") as messages_count,
+       SUM(acl."TokensUsed") as total_session_tokens,
+       MIN(acl."CreatedAt") as session_start,
+       MAX(acl."CreatedAt") as session_end,
+       u."Name" as user_name
+FROM ai_chat_logs acl
+JOIN users u ON acl."UserId" = u."UserId"
+WHERE acl."CreatedAt" >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY acl."SessionId", u."Name"
+HAVING COUNT(acl."ChatId") > 1
+ORDER BY total_session_tokens DESC;
+
+-- 54. [Receptionist] Equipment Slot Conflict Check
+-- Use case: System health check for overlapping booked slots (should be empty)
+SELECT ets1."SlotId", ets1."EquipmentId", ets1."StartTime", ets1."SlotDate"
+FROM equipment_time_slots ets1
+JOIN equipment_time_slots ets2 ON ets1."EquipmentId" = ets2."EquipmentId"
+WHERE ets1."SlotId" <> ets2."SlotId"
+  AND ets1."SlotDate" = ets2."SlotDate"
+  AND ets1."IsBooked" = true AND ets2."IsBooked" = true
+  AND (ets1."StartTime", ets1."EndTime") OVERLAPS (ets2."StartTime", ets2."EndTime");
+
+-- 55. [Admin] Most Requested Equipment in Coach Sessions
+-- Use case: Inventory planning based on coach needs
+-- New Table: coach_session_equipments
+SELECT e."Name", ec."CategoryName",
+       COUNT(cse."Id") as usage_count_in_sessions,
+       COUNT(DISTINCT cse."CoachBookingId") as distinct_sessions
+FROM coach_session_equipments cse
+JOIN equipment e ON cse."EquipmentId" = e."EquipmentId"
+JOIN equipment_categories ec ON e."CategoryId" = ec."CategoryId"
+GROUP BY e."Name", ec."CategoryName"
+ORDER BY usage_count_in_sessions DESC;
+
+-- 56. [Receptionist] Current Active Check-ins (Who is in the gym?)
+-- Use case: Safety and capacity monitoring
+SELECT b."BookingId", u."Name", u."ProfileImageUrl",
+       b."CheckInTime", e."Name" as equipment,
+       b."EndTime" as scheduled_end
+FROM bookings b
+JOIN users u ON b."UserId" = u."UserId"
+LEFT JOIN equipment e ON b."EquipmentId" = e."EquipmentId"
+WHERE b."CheckInTime" IS NOT NULL 
+  AND b."CheckOutTime" IS NULL
+  AND b."StartTime" BETWEEN CURRENT_DATE AND CURRENT_DATE + 1;
+
+-- 57. [Admin] High-Value AI Users
+-- Use case: Identify power users of the AI features
+SELECT u."UserId", u."Name",
+       SUM(ag."TokensUsed") as program_generation_tokens,
+       (SELECT SUM("TokensUsed") FROM ai_chat_logs WHERE "UserId" = u."UserId") as chat_tokens,
+       COUNT(DISTINCT ag."GenerationId") as programs_created
+FROM users u
+JOIN ai_program_generations ag ON u."UserId" = ag."UserId"
+GROUP BY u."UserId", u."Name"
+ORDER BY (SUM(ag."TokensUsed") + COALESCE((SELECT SUM("TokensUsed") FROM ai_chat_logs WHERE "UserId" = u."UserId"), 0)) DESC;
+
+-- 58. [Admin] Subscription Retention by Plan
+-- Use case: Which plans have the best renewal rates?
+SELECT sp."PlanName", 
+       COUNT(us."SubscriptionId") as total_subs,
+       SUM(CASE WHEN us."AutoRenew" = true THEN 1 ELSE 0 END) as auto_renewing,
+       ROUND((SUM(CASE WHEN us."AutoRenew" = true THEN 1 ELSE 0 END)::numeric / COUNT(us."SubscriptionId") * 100), 1) as renewal_rate
+FROM user_subscriptions us
+JOIN subscription_plans sp ON us."PlanId" = sp."PlanId"
+WHERE us."Status" = 0 -- Active
+GROUP BY sp."PlanName";
+
+-- 59. [Receptionist] Upcoming Maintenance with Booking Impact
+-- Use case: Warning for equipment that needs maintenance soon but has bookings
+SELECT e."Name", e."NextMaintenanceDate",
+       COUNT(b."BookingId") as conflicting_bookings
+FROM equipment e
+JOIN bookings b ON e."EquipmentId" = b."EquipmentId"
+WHERE e."NextMaintenanceDate" BETWEEN CURRENT_DATE AND CURRENT_DATE + 7
+  AND b."StartTime" >= e."NextMaintenanceDate"
+GROUP BY e."Name", e."NextMaintenanceDate"
+HAVING COUNT(b."BookingId") > 0;
+
+-- 60. [Admin] System Audit: Error tracking
+-- Use case: Identify recent system failures
+SELECT "Action", "TableName", "CreatedAt", "UserAgent"
+FROM audit_logs
+WHERE "Action" LIKE '%ERROR%' OR "Action" LIKE '%FAIL%'
+ORDER BY "CreatedAt" DESC
+LIMIT 50;
+
+-- 61. [Receptionist] Peak Hours Forecast based on Slots
+-- Use case: Staffing preparation
+SELECT ets."StartTime", COUNT(*) as booked_slots
+FROM equipment_time_slots ets
+WHERE ets."SlotDate" = CURRENT_DATE
+  AND ets."IsBooked" = true
+GROUP BY ets."StartTime"
+ORDER BY booked_slots DESC;
+
+-- 62. [Admin] Revenue Realization
+-- Use case: Potential vs Actual Revenue
+SELECT 
+    SUM(CASE WHEN "Status" = 3 THEN "TokensCost" ELSE 0 END) as realized_revenue,
+    SUM(CASE WHEN "Status" = 4 THEN "TokensCost" ELSE 0 END) as lost_revenue_cancelled,
+    SUM(CASE WHEN "Status" = 2 THEN "TokensCost" ELSE 0 END) as pending_revenue
+FROM bookings
+WHERE "StartTime" BETWEEN '2024-01-01' AND '2024-12-31';
+
+-- 63. [Admin] "Ghost" Members
+-- Use case: Retention Content
+SELECT u."Name", u."Email", us."EndDate"
+FROM users u
+JOIN user_subscriptions us ON u."UserId" = us."UserId"
+WHERE us."Status" = 0
+  AND u."UserId" NOT IN (
+      SELECT DISTINCT "UserId" FROM bookings WHERE "StartTime" > CURRENT_DATE - INTERVAL '30 days'
+  )
+  AND u."UserId" NOT IN (
+      SELECT DISTINCT "UserId" FROM workout_logs WHERE "WorkoutDate" > CURRENT_DATE - INTERVAL '30 days'
+  );
+
+-- 64. [Receptionist] Today's VIP Visits
+-- Use case: Greeting high-value members
+SELECT u."Name", u."ProfileImageUrl", mp."FitnessGoal",
+       b."StartTime"
+FROM bookings b
+JOIN users u ON b."UserId" = u."UserId"
+JOIN member_profiles mp ON u."UserId" = mp."UserId"
+WHERE b."StartTime" BETWEEN CURRENT_DATE AND CURRENT_DATE + 1
+  AND u."TokenBalance" > 500 -- VIP threshold
+ORDER BY b."StartTime";
+
+-- 65. [Admin] AI Coach Adoption Rate
+-- Use case: Feature adoption tracking
+SELECT 
+    (SELECT COUNT(DISTINCT "UserId") FROM ai_chat_logs) as ai_users,
+    (SELECT COUNT(DISTINCT "UserId") FROM users WHERE "Role" = 'Member') as total_members,
+    ROUND((SELECT COUNT(DISTINCT "UserId") FROM ai_chat_logs)::numeric / 
+          (SELECT COUNT(DISTINCT "UserId") FROM users WHERE "Role" = 'Member') * 100, 2) as adoption_rate;
+
+-- 66. [Receptionist] Daily Transaction Summary
+-- Use case: End of day report
+SELECT "PaymentMethod", COUNT(*) as count, SUM("Amount") as total
+FROM payments
+WHERE "CreatedAt" >= CURRENT_DATE
+  AND "Status" = 1
+GROUP BY "PaymentMethod";
+
+-- 67. [Admin] System Load: Concurrent Bookings
+-- Use case: Capacity planning
+SELECT date_trunc('hour', "StartTime") as hour_slot, COUNT(*) as concurrent_bookings
+FROM bookings
+GROUP BY hour_slot
+ORDER BY concurrent_bookings DESC
+LIMIT 10;
+
+-- 68. [Admin] New Member Conversion Time
+-- Use case: Onboarding efficiency (Time from created to first booking)
+SELECT AVG(age(first_booking, "CreatedAt")) as avg_time_to_first_booking
+FROM (
+    SELECT u."CreatedAt", MIN(b."StartTime") as first_booking
+    FROM users u
+    JOIN bookings b ON u."UserId" = b."UserId"
+    GROUP BY u."UserId", u."CreatedAt"
+) sub;
+
+-- 69. [Receptionist] Alert: Unverified Members with Bookings
+-- Use case: Enforce verification at front desk
+SELECT DISTINCT u."Name", u."Email", b."StartTime"
+FROM users u
+JOIN bookings b ON u."UserId" = b."UserId"
+WHERE u."EmailVerified" = false
+  AND b."StartTime" >= CURRENT_DATE;
+
+-- 70. [Admin] User Demographics vs Plan Choice
+-- Use case: Marketing targeting
+SELECT mp."FitnessGoal", sp."PlanName", COUNT(*)
+FROM member_profiles mp
+JOIN user_subscriptions us ON mp."UserId" = us."UserId"
+JOIN subscription_plans sp ON us."PlanId" = sp."PlanId"
+GROUP BY mp."FitnessGoal", sp."PlanName"
+ORDER BY COUNT(*) DESC;
+
+-- 71. [Admin] Coach Utilization vs Availability
+-- Use case: Coach efficiency
+SELECT cp."Id", u."Name",
+       COUNT(b."BookingId") as sessions_delivered,
+       cp."TotalClients"
+FROM coach_profiles cp
+JOIN users u ON cp."UserId" = u."UserId"
+LEFT JOIN bookings b ON cp."Id" = b."CoachId" AND b."Status" = 3
+WHERE b."StartTime" > CURRENT_DATE - INTERVAL '30 days'
+GROUP BY cp."Id", u."Name", cp."TotalClients";
+
+-- 72. [Receptionist] Impact of Maintenance on Bookings
+-- Use case: Maintenance scheduling efficiency
+SELECT e."Name",
+       COUNT(b."BookingId") as cancelled_due_to_maintenance
+FROM equipment e
+JOIN bookings b ON b."EquipmentId" = e."EquipmentId"
+WHERE b."Status" = 4 -- Cancelled
+  AND b."CancellationReason" LIKE '%maintenance%'
+GROUP BY e."Name";
+
+-- 73. [Admin] Database Stats (Row Counts)
+-- Use case: Growth monitoring
+SELECT
+    (SELECT COUNT(*) FROM users) as users_count,
+    (SELECT COUNT(*) FROM bookings) as bookings_count,
+    (SELECT COUNT(*) FROM ai_chat_logs) as chat_logs_count,
+    (SELECT COUNT(*) FROM equipment_time_slots) as time_slots_count;
+
+-- 74. [Receptionist] High Intensity Members Today
+-- Use case: Identify members doing intense sessions for safety monitoring
+SELECT u."Name", wp."DifficultyLevel", b."StartTime"
+FROM bookings b
+JOIN users u ON b."UserId" = u."UserId"
+JOIN workout_plans wp ON b."BookingId" = b."BookingId" -- Implicit connection via user/time in real app, simplified here
+WHERE b."StartTime" >= CURRENT_DATE
+  AND wp."DifficultyLevel" = 'Advanced';
+
+-- ==========================================
+-- END OF NEW ANALYTICS QUERIES
 -- ==========================================

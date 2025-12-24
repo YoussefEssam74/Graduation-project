@@ -19,3 +19,4 @@ export * from './milestones';
 export * from './coachReviews';
 export * from './chat';
 export * from './ai';
+export * from './meals';

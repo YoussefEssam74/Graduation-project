@@ -399,6 +399,22 @@ export default function SignUpPage() {
                 )}
               </div>
 
+              <div className="space-y-1">
+                <Label htmlFor="confirmPassword" className="text-xs font-medium text-slate-700">Confirm Password</Label>
+                <div className="relative">
+                  <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    id="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Confirm Password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-9 h-9 bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-primary focus:ring-primary/20 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
               {/* Terms Checkbox */}
               <div className="flex items-start gap-2 pt-1">
                 <input

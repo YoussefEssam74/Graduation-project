@@ -21,8 +21,20 @@ namespace ServiceAbstraction.Services
         Task<bool> IsCoachAvailableAsync(int coachId, DateTime startTime, DateTime endTime);
 
         /// <summary>
-        /// Check if the user is available (no overlapping bookings) during the specified time slot
+        /// Get equipment booked time slots for availability display
         /// </summary>
-        Task<bool> IsUserAvailableAsync(int userId, DateTime startTime, DateTime endTime);
+        Task<IEnumerable<BookingDto>> GetEquipmentBookedSlotsAsync(int equipmentId, DateTime startDate, DateTime endDate);
+
+        /// <summary>
+        /// Check if user has any active coach bookings during the specified time
+        /// Used to block manual equipment booking when user has coach session
+        /// </summary>
+        Task<bool> UserHasActiveCoachBookingAsync(int userId, DateTime startTime, DateTime endTime);
+
+        /// <summary>
+        /// Get all auto-booked equipment for a coach session
+        /// </summary>
+        Task<IEnumerable<BookingDto>> GetCoachSessionEquipmentAsync(int coachBookingId);
     }
 }
+

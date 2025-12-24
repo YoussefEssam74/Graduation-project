@@ -19,8 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
-import { usersApi, bookingsApi, coachReviewsApi } from "@/lib/api";
-import { UserDto } from "@/lib/api/auth";
+import { usersApi, bookingsApi, coachReviewsApi, type CoachDto } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import {
   Dialog,
@@ -31,33 +30,29 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { BackgroundImage } from "@/components/BackgroundImage"; // Kept for consistency if needed, though mostly using layout one now? 
-// Actually, previous step removed it from here because layout has it. 
-// I will NOT include BackgroundImage here to avoid double background, relying on Layout.tsx. 
-// Wait, the user's design shows a white card-like background for the filter section and cards floating? 
-// The screenshot shows a light gray/white background. The global background is fine.
-
 import { UserRole } from "@/types/gym";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Coach with rating from API + UI Mocks
-interface CoachWithRating extends UserDto {
-  averageRating: number;
-  reviewCount: number;
-  // Mock fields for UI
+// Coach with display-ready fields
+interface CoachWithDisplay extends CoachDto {
   tags: string[];
-  experience: number;
   status: "available" | "busy" | "offline";
-  price: number;
-  imageUrl?: string;
-  specialty: string;
-  bio?: string;
+  displayImageUrl: string;
 }
+
+// Default coach images for fallback
+const defaultCoachImages = [
+  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=800&auto=format&fit=crop&q=60',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=60',
+  'https://images.unsplash.com/photo-1581065184285-800d989f6d19?w=800&auto=format&fit=crop&q=60',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&auto=format&fit=crop&q=60',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=60',
+];
 
 function BookCoachContent() {
   const { user, refreshUser } = useAuth();
   const { showToast } = useToast();
-  const [coaches, setCoaches] = useState<CoachWithRating[]>([]);
+  const [coaches, setCoaches] = useState<CoachWithDisplay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -69,78 +64,67 @@ function BookCoachContent() {
   const [instantBooking, setInstantBooking] = useState(false);
 
   // Booking Modal
-  const [selectedCoach, setSelectedCoach] = useState<CoachWithRating | null>(null);
+  const [selectedCoach, setSelectedCoach] = useState<CoachWithDisplay | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [isBooking, setIsBooking] = useState(false);
 
-  // Mock data generators
-  const specialties = ["Yoga", "HIIT", "Strength", "Cardio", "CrossFit", "Pilates"];
-  const statuses: ("available" | "busy" | "offline")[] = ["available", "busy", "available", "offline"];
+  // Auto-booked equipment success modal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [autoBookedEquipment, setAutoBookedEquipment] = useState<Array<{ equipmentName: string; bookingId: number }>>([]);
+  const [lastBookedCoach, setLastBookedCoach] = useState<string>("");
+  const [lastBookingTime, setLastBookingTime] = useState<string>("");
 
-  const categories = ["All Coaches", "Yoga", "HIIT", "Strength", "Cardio"];
+  // Available categories from coaches specializations
+  const categories = ["All Coaches", "Yoga", "HIIT", "Strength", "Cardio", "CrossFit", "Pilates"];
 
-  // Fetch coaches
+  // Fetch coaches with real profile data
   useEffect(() => {
     const fetchCoaches = async () => {
       try {
-        const response = await usersApi.getCoaches();
+        const response = await usersApi.getCoachesWithProfiles();
         if (response.success && response.data) {
-          const coachesWithRatings = await Promise.all(
-            response.data.map(async (coach, idx) => {
-              try {
-                // Fetch real ratings if possible, else mock or default
-                // We'll trust the API for basics and mock the rest for the UI demo
-                // In a real app, these would come from the DB
-                const ratingResponse = await coachReviewsApi.getCoachAverageRating(coach.userId);
-                const reviewsResponse = await coachReviewsApi.getCoachReviews(coach.userId);
+          const coachesWithDisplay: CoachWithDisplay[] = response.data.map((coach, idx) => {
+            // Build tags from specialization and certifications
+            const tags: string[] = [];
+            if (coach.specialization) tags.push(coach.specialization);
+            if (coach.certifications && coach.certifications.length > 0) {
+              tags.push(...coach.certifications.slice(0, 2));
+            }
 
-                return {
-                  ...coach,
-                  averageRating: ratingResponse.success ? (ratingResponse.data || 0) : 4.8, // Mock high rating for visuals
-                  reviewCount: reviewsResponse.success ? (reviewsResponse.data?.length || 0) : Math.floor(Math.random() * 200) + 20,
-
-                  // Augmented Data
-                  imageUrl: coach.profileImageUrl || `https://images.unsplash.com/photo-${[
-                    '1570295999919-56ceb5ecca61', // Man 1
-                    '1534528741775-53994a69daeb', // Woman 1
-                    '1581065184285-800d989f6d19', // Man 2
-                    '1544005313-94ddf0286df2', // Woman 2
-                    '1506794778202-cad84cf45f1d', // Man 3
-                  ][idx % 5]}?w=800&auto=format&fit=crop&q=60`,
-                  tags: [specialties[idx % specialties.length], idx % 2 === 0 ? "Nutrition" : "Mindfulness"],
-                  experience: Math.floor(Math.random() * 10) + 2,
-                  status: statuses[idx % statuses.length],
-                  price: Math.floor(Math.random() * (100 - 40) + 40),
-                  specialty: specialties[idx % specialties.length]
-                };
-              } catch {
-                return coach as any;
-              }
-            })
-          );
-          setCoaches(coachesWithRatings);
+            return {
+              ...coach,
+              tags: tags.length > 0 ? tags : ["Personal Training"],
+              status: coach.isAvailable ? "available" : "busy",
+              displayImageUrl: coach.profileImageUrl || defaultCoachImages[idx % defaultCoachImages.length],
+            };
+          });
+          setCoaches(coachesWithDisplay);
         }
       } catch (error) {
         console.error("Failed to load coaches", error);
+        showToast("Failed to load coaches", "error");
       } finally {
         setIsLoading(false);
       }
     };
     fetchCoaches();
-  }, []);
+  }, [showToast]);
 
   const filteredCoaches = coaches.filter(coach => {
     const matchesSearch = coach.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      coach.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === "All Coaches" || coach.tags.includes(selectedCategory) || coach.specialty === selectedCategory;
+      coach.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (coach.specialization?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = selectedCategory === "All Coaches" ||
+      coach.tags.includes(selectedCategory) ||
+      coach.specialization === selectedCategory;
     const matchesAvailability = !onlyAvailable || coach.status === 'available';
 
     return matchesSearch && matchesCategory && matchesAvailability;
   });
 
-  const handleBookClick = (coach: CoachWithRating) => {
+  const handleBookClick = (coach: CoachWithDisplay) => {
     setSelectedCoach(coach);
     setIsModalOpen(true);
   };
@@ -167,16 +151,39 @@ function BookCoachContent() {
       const res = await bookingsApi.createBooking({
         userId: user.userId,
         coachId: selectedCoach.userId,
-        bookingType: "PersonalTraining",
+        bookingType: "Session",
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         notes: `Session with ${selectedCoach.name}`
       });
 
-      if (res.success) {
-        showToast(`Booked session with ${selectedCoach.name}!`, "success");
+      if (res.success && res.data) {
         setIsModalOpen(false);
         refreshUser();
+
+        // Store booking info for success modal
+        setLastBookedCoach(selectedCoach.name);
+        setLastBookingTime(`${bookingDate} at ${bookingTime}`);
+
+        // Fetch auto-booked equipment for this coach session
+        try {
+          const equipmentRes = await bookingsApi.getCoachSessionEquipment(res.data.bookingId);
+          if (equipmentRes.success && equipmentRes.data && equipmentRes.data.length > 0) {
+            setAutoBookedEquipment(
+              equipmentRes.data.map(eq => ({
+                equipmentName: eq.equipmentName || "Equipment",
+                bookingId: eq.bookingId
+              }))
+            );
+            setShowSuccessModal(true);
+          } else {
+            // No auto-booked equipment, just show success toast
+            showToast(`Booked session with ${selectedCoach.name}!`, "success");
+          }
+        } catch (eqError) {
+          console.error("Error fetching auto-booked equipment:", eqError);
+          showToast(`Booked session with ${selectedCoach.name}!`, "success");
+        }
       } else {
         showToast(res.message || "Failed to book session", "error");
       }
@@ -293,7 +300,7 @@ function BookCoachContent() {
                   {/* Image Card */}
                   <div className="relative h-48 rounded-2xl overflow-hidden mb-4 bg-slate-100">
                     <img
-                      src={coach.imageUrl}
+                      src={coach.displayImageUrl}
                       alt={coach.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
@@ -320,21 +327,21 @@ function BookCoachContent() {
                         <h3 className="font-bold text-lg text-slate-900 leading-tight">{coach.name}</h3>
                         <div className="flex items-center gap-1 mt-1">
                           <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
-                          <span className="text-sm font-bold text-slate-900">{coach.averageRating.toFixed(1)}</span>
-                          <span className="text-xs text-slate-400">({coach.reviewCount} reviews)</span>
+                          <span className="text-sm font-bold text-slate-900">{(coach.rating || 0).toFixed(1)}</span>
+                          <span className="text-xs text-slate-400">({coach.totalReviews || 0} reviews)</span>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-black text-green-500">{coach.price} T<span className="text-xs text-slate-400 font-normal">/hr</span></div>
+                        <div className="text-lg font-black text-green-500">{coach.hourlyRate || 0} T<span className="text-xs text-slate-400 font-normal">/hr</span></div>
                       </div>
                     </div>
 
                     <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
-                      {coach.bio || `Specializing in ${coach.specialty} and helping clients reach their peak performance through personalized plans.`}
+                      {coach.bio || `Specializing in ${coach.specialization || 'fitness training'} and helping clients reach their peak performance through personalized plans.`}
                     </p>
 
                     <div className="pt-3 border-t border-slate-50 flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-400">{coach.experience} Years Exp.</span>
+                      <span className="text-xs font-bold text-slate-400">{coach.experienceYears || 0} Years Exp.</span>
 
                       <div className="flex gap-2">
                         <Button
@@ -393,7 +400,7 @@ function BookCoachContent() {
             </div>
             <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-600 flex justify-between items-center">
               <span>Session Cost</span>
-              <span className="font-bold text-slate-900">{selectedCoach?.price} Tokens</span>
+              <span className="font-bold text-slate-900">{selectedCoach?.hourlyRate || 0} Tokens</span>
             </div>
           </div>
           <DialogFooter>
@@ -401,6 +408,61 @@ function BookCoachContent() {
             <Button onClick={confirmBooking} disabled={isBooking} className="bg-green-500 hover:bg-green-600">
               {isBooking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Confirm Booking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto-Booked Equipment Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <Check className="h-5 w-5" />
+              Session Booked Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              Your session with {lastBookedCoach} on {lastBookingTime} has been confirmed.
+            </DialogDescription>
+          </DialogHeader>
+
+          {autoBookedEquipment.length > 0 && (
+            <div className="space-y-4 py-4">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <h4 className="font-bold text-green-800 flex items-center gap-2 mb-3">
+                  <span className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                    🏋️
+                  </span>
+                  Equipment Auto-Reserved
+                </h4>
+                <p className="text-sm text-green-700 mb-3">
+                  Based on your workout plan, the following equipment has been automatically booked for your session:
+                </p>
+                <ul className="space-y-2">
+                  {autoBookedEquipment.map((eq, idx) => (
+                    <li key={idx} className="flex items-center gap-2 text-sm text-green-800">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <span className="font-medium">{eq.equipmentName}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                💡 This equipment is reserved exclusively for your coach session. No additional tokens were charged.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowSuccessModal(false);
+                setAutoBookedEquipment([]);
+              }}
+              className="bg-green-500 hover:bg-green-600 w-full"
+            >
+              Got it!
             </Button>
           </DialogFooter>
         </DialogContent>

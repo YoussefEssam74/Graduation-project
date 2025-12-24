@@ -37,6 +37,8 @@ namespace Graduation_Project
 
             // Add Distributed Cache (use in-memory cache for development, Redis for production)
             builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddMemoryCache(); // For EquipmentTimeSlotService caching
+            // For production, use Redis:
             // For production, use Redis:
             // builder.Services.AddStackExchangeRedisCache(options =>
             // {
@@ -47,8 +49,14 @@ namespace Graduation_Project
             // Add Chat Service
             builder.Services.AddScoped<IChatService, ChatService>();
 
+            // Add Equipment Time Slot Service (for background service and booking logic)
+            builder.Services.AddScoped<ServiceAbstraction.Services.IEquipmentTimeSlotService, Service.Services.EquipmentTimeSlotService>();
+
             // Add Service Manager (creates service instances internally with lazy loading - E-Commerce pattern)
             builder.Services.AddScoped<IServiceManager, ServiceManager>();
+
+            // RULE 5: Add Background Service for Daily Booking Cleanup
+            builder.Services.AddHostedService<Service.BackgroundServices.BookingCleanupService>();
 
             // Add JWT Authentication with proper validation
             var jwtKey = builder.Configuration["Jwt:Key"]

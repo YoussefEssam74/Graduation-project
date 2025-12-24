@@ -240,12 +240,23 @@ namespace Presentation.Controllers
                     return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
                 }
 
-                // Use provided sessionId or create new one
-                var sessionId = request.SessionId ?? Guid.NewGuid();
+                // Use provided sessionId or generate new one based on user ID and timestamp
+                int sessionId;
+                if (request.SessionId.HasValue && request.SessionId.Value > 0)
+                {
+                    sessionId = request.SessionId.Value;
+                }
+                else
+                {
+                    // Generate unique session ID: userId + timestamp hash
+                    sessionId = Math.Abs((request.UserId.ToString() + DateTime.UtcNow.Ticks).GetHashCode());
+                }
 
                 // Save the chat interaction to the database
                 try
                 {
+                    _logger.LogInformation("Attempting to save chat interaction for user {UserId}, session {SessionId}", request.UserId, sessionId);
+
                     await _serviceManager.AIChatService.SaveChatInteractionAsync(
                         userId: request.UserId,
                         userMessage: request.Message,
@@ -254,11 +265,29 @@ namespace Presentation.Controllers
                         responseTimeMs: (int)stopwatch.ElapsedMilliseconds,
                         sessionId: sessionId
                     );
+
+                    _logger.LogInformation("Successfully saved chat interaction for user {UserId}, session {SessionId}", request.UserId, sessionId);
                 }
                 catch (Exception saveEx)
                 {
-                    // Log but don't fail the request if saving fails
-                    _logger.LogWarning(saveEx, "Failed to save chat interaction for user {UserId}", request.UserId);
+                    // Log the full exception details
+                    _logger.LogError(saveEx, "CRITICAL: Failed to save chat interaction for user {UserId}. Error: {ErrorMessage}. StackTrace: {StackTrace}",
+                        request.UserId, saveEx.Message, saveEx.StackTrace);
+
+                    // Don't fail the request but include warning in response
+                    return Ok(new
+                    {
+                        success = true,
+                        data = new
+                        {
+                            response,
+                            tokensSpent = 1,
+                            responseTimeMs = stopwatch.ElapsedMilliseconds,
+                            newBalance = currentBalance - 1,
+                            sessionId = sessionId,
+                            warning = "Chat was not saved due to a database error. Please contact support."
+                        }
+                    });
                 }
 
                 return Ok(new
@@ -306,7 +335,7 @@ namespace Presentation.Controllers
         /// GET: api/ai/sessions/{userId}/{sessionId}
         /// </summary>
         [HttpGet("sessions/{userId}/{sessionId}")]
-        public async Task<IActionResult> GetSessionMessages(int userId, Guid sessionId)
+        public async Task<IActionResult> GetSessionMessages(int userId, int sessionId)
         {
             try
             {
@@ -340,11 +369,65 @@ namespace Presentation.Controllers
                     "POST /api/ai/generate-nutrition-plan - Generate AI nutrition plan (50 tokens)",
                     "POST /api/ai/gemini-chat - Chat with Gemini AI coach (1 token per message)",
                     "GET /api/ai/sessions/{userId} - Get all chat sessions for user",
-                    "GET /api/ai/sessions/{userId}/{sessionId} - Get messages for specific session"
+                    "GET /api/ai/sessions/{userId}/{sessionId} - Get messages for specific session",
+                    "POST /api/ai/test-save - Test saving chat interaction"
                 }
             });
         }
+
+        /// <summary>
+        /// Test endpoint to verify chat saving functionality
+        /// POST: api/ai/test-save
+        /// </summary>
+        [HttpPost("test-save")]
+        [AllowAnonymous]
+        public async Task<IActionResult> TestSave([FromBody] TestSaveRequest request)
+        {
+            try
+            {
+                var sessionId = Math.Abs((request.UserId.ToString() + DateTime.UtcNow.Ticks).GetHashCode());
+                _logger.LogInformation("Testing save for user {UserId}", request.UserId);
+
+                await _serviceManager.AIChatService.SaveChatInteractionAsync(
+                    userId: request.UserId,
+                    userMessage: "Test user message",
+                    aiResponse: "Test AI response",
+                    tokensUsed: 1,
+                    responseTimeMs: 100,
+                    sessionId: sessionId
+                );
+
+                // Try to retrieve what we just saved
+                var sessions = await _serviceManager.AIChatService.GetChatSessionsAsync(request.UserId);
+                var sessionsList = sessions.ToList();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Save test completed",
+                    savedSessionId = sessionId,
+                    retrievedSessionsCount = sessionsList.Count,
+                    sessions = sessionsList
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Test save failed for user {UserId}", request.UserId);
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Test save failed",
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
         #endregion
+    }
+
+    public class TestSaveRequest
+    {
+        public int UserId { get; set; }
     }
 
     /// <summary>
@@ -354,6 +437,6 @@ namespace Presentation.Controllers
     {
         public int UserId { get; set; }
         public string Message { get; set; } = string.Empty;
-        public Guid? SessionId { get; set; }
+        public int? SessionId { get; set; }
     }
 }
