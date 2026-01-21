@@ -1,0 +1,47 @@
+{# Jinja2 Template for Meal Plan JSON #}
+{
+  "plan_id": "{{ plan_id }}",
+  "user_id": {{ user_id }},
+  "created_at": "{{ created_at }}",
+  "duration_days": {{ duration_days }},
+  
+  "daily_targets": {
+    "calories": {{ daily_targets.target_calories }},
+    "protein_g": {{ daily_targets.protein_g }},
+    "carbs_g": {{ daily_targets.carbs_g }},
+    "fat_g": {{ daily_targets.fat_g }}
+  },
+  
+  "days": [
+    {% for day in days %}
+    {
+      "day": {{ day.day }},
+      "meals": [
+        {% for meal in day.meals %}
+        {
+          "slot": "{{ meal.slot }}",
+          "meal_id": {{ meal.meal_id }},
+          "name": "{{ meal.name }}",
+          "calories": {{ meal.calories }},
+          "protein_g": {{ meal.protein_g }},
+          "carbs_g": {{ meal.carbs_g }},
+          "fat_g": {{ meal.fat_g }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ],
+      "totals": {
+        "calories": {{ day.totals.calories }},
+        "protein_g": {{ day.totals.protein_g }},
+        "carbs_g": {{ day.totals.carbs_g }},
+        "fat_g": {{ day.totals.fat_g }}
+      }
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  
+  "notes": [
+    {% for note in notes %}
+    "{{ note }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}

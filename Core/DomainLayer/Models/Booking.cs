@@ -25,6 +25,7 @@ namespace IntelliFit.Domain.Models
         public bool IsAutoBookedForCoachSession { get; set; } = false;  // True if equipment auto-booked for coach session
         public int? ParentCoachBookingId { get; set; }  // Reference to parent coach booking (if auto-booked)
         public bool IsAiGenerated { get; set; } = false;  // True if booked by AI based on workout plan
+        public int? WorkoutScheduledDayId { get; set; }  // Reference to scheduled workout day (for AI-booked equipment)
 
         public virtual User User { get; set; } = null!;
         public virtual Equipment? Equipment { get; set; }
@@ -32,5 +33,6 @@ namespace IntelliFit.Domain.Models
         public virtual Booking? ParentCoachBooking { get; set; }  // Parent coach session (for auto-booked equipment)
         public virtual ICollection<Booking> ChildEquipmentBookings { get; set; } = new List<Booking>();  // Child equipment bookings
         public virtual ICollection<EquipmentTimeSlot> EquipmentTimeSlots { get; set; } = new List<EquipmentTimeSlot>();
+        public virtual WorkoutScheduledDay? WorkoutScheduledDay { get; set; }  // Scheduled workout day for this booking
     }
 }

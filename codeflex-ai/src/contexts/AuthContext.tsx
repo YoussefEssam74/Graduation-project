@@ -20,6 +20,8 @@ interface AuthContextType {
   adjustTokens: (amount: number) => void;
   // convenience: deduct tokens (positive number -> decreases balance)
   deductTokens: (amount?: number) => void;
+  // update token balance to specific value (used after API operations that return new balance)
+  updateTokenBalance: (newBalance: number) => void;
   // refresh user data from server (e.g., after token purchase)
   refreshUser: () => Promise<void>;
   // Change password (for first-login flow)
@@ -315,6 +317,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     adjustTokens(-Math.abs(amount));
   };
 
+  const updateTokenBalance = (newBalance: number) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, tokenBalance: newBalance } as User;
+      if (typeof window !== 'undefined') localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const refreshUser = async () => {
     if (!user?.userId) return;
 
@@ -373,6 +384,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         adjustTokens,
         deductTokens,
+        updateTokenBalance,
         refreshUser,
         isLoading,
         isRedirecting,

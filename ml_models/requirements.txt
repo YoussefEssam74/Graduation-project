@@ -1,53 +1,78 @@
-# TensorFlow and Deep Learning
-tensorflow==2.15.0
-tensorflow-hub==0.15.0
+# ============================================================
+# PulseGym AI - Requirements
+# ============================================================
+# Hybrid Architecture: Rule-based + RAG + Ollama/Phi-3
+# All components are FREE and run LOCALLY (no external APIs)
+# ============================================================
 
+# ----------------------
+# Core Data Processing
+# ----------------------
+pandas>=2.1.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
 
-# Data Processing
-pandas==2.1.4
-numpy==1.24.3
-scikit-learn==1.3.2
+# ----------------------
+# API Framework
+# ----------------------
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
 
-# Visualization
-matplotlib==3.8.2
-seaborn==0.13.0
-plotly==5.18.0
-
+# ----------------------
 # Configuration
-pyyaml==6.0.1
-python-dotenv==1.0.0
+# ----------------------
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
 
-# Utilities
-joblib==1.3.2
-tqdm==4.66.1
-
+# ----------------------
 # Database
-psycopg2-binary==2.9.9
-sqlalchemy==2.0.23
+# ----------------------
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.0
 
-# API and Serving
-flask==3.0.0
-flask-cors==4.0.0
-requests==2.31.0
+# ----------------------
+# Embeddings & Vector Search (FREE, Local)
+# ----------------------
+sentence-transformers>=2.2.2        # all-MiniLM-L6-v2 model (Apache 2.0)
+faiss-cpu>=1.7.4                    # Facebook AI Similarity Search
+transformers>=4.36.0                # HuggingFace transformers
+torch>=2.0.0                        # PyTorch backend
 
-# Jupyter for experimentation
-jupyterlab==4.0.9
-ipykernel==6.27.1
-ipywidgets==8.1.1
+# ----------------------
+# Template Engine (for structured output)
+# ----------------------
+jinja2>=3.1.0                       # JSON template generation
 
-# Model Optimization
-tensorflow-model-optimization==0.7.5
+# ----------------------
+# Analytics & Forecasting
+# ----------------------
+prophet>=1.1.0                      # Time series forecasting (optional)
+xgboost>=2.0.0                      # Gradient boosting (optional)
 
-# Logging and Monitoring
-wandb==0.16.1  # Optional: for experiment tracking
-mlflow==2.9.2  # Optional: for ML lifecycle management
+# ----------------------
+# Utilities
+# ----------------------
+joblib>=1.3.0
+tqdm>=4.66.0
 
-# Embeddings & Transformers (open-source, free)
-sentence-transformers==2.2.2
-transformers==4.36.0
-torch==2.1.0
-accelerate==0.25.0
-huggingface-hub==0.18.0
+# ----------------------
+# Audio Processing (optional - for whisper/tts)
+# ----------------------
+# openai-whisper>=20231117          # Uncomment for voice features
+# TTS>=0.21.0                       # Uncomment for text-to-speech
+
+# ----------------------
+# Development/Testing
+# ----------------------
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# ============================================================
+# NOTE: Ollama is installed separately (not a Python package)
+# Install from: https://ollama.ai/download
+# Then run: ollama pull phi3:mini
+# ============================================================
 
 # Vector stores (open-source)
 faiss-cpu==1.7.4  # use faiss-gpu if CUDA available

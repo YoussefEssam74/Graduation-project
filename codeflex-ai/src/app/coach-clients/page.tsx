@@ -141,11 +141,10 @@ function CoachClientsContent() {
                   </div>
                   <div>
                     <h3 className="font-bold text-lg">{client.name}</h3>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      client.membershipType === "Premium"
+                    <span className={`text-xs px-2 py-1 rounded-full ${client.membershipType === "Premium"
                         ? "bg-yellow-500/10 text-yellow-500"
                         : "bg-blue-500/10 text-blue-500"
-                    }`}>
+                      }`}>
                       {client.membershipType}
                     </span>
                   </div>
@@ -196,10 +195,12 @@ function CoachClientsContent() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="flex-1 gap-2" size="sm">
-                  <Eye className="h-4 w-4" />
-                  View Profile
-                </Button>
+                <Link href={`/coach-clients/${client.id}`} className="flex-1">
+                  <Button variant="outline" className="w-full gap-2" size="sm">
+                    <Eye className="h-4 w-4" />
+                    View Plan
+                  </Button>
+                </Link>
                 <Button className="flex-1 gap-2" size="sm">
                   <Activity className="h-4 w-4" />
                   Track Progress

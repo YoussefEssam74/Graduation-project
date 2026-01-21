@@ -1,23 +1,178 @@
+# ============================================================
+# PulseGym AI - Docker Compose for ML Services
+# ============================================================
+# Hybrid Architecture: Rule-based + RAG + Ollama/Phi-3
+# All services are FREE and run LOCALLY
+# ============================================================
+
 version: '3.8'
+
 services:
+  # ----------------------------------------------------------
+  # Embedding Server (sentence-transformers)
+  # ----------------------------------------------------------
   embedding_server:
-    build: ./ml_models
+    build:
+      context: ./ml_models
+      dockerfile: Dockerfile
     command: python embedding_server.py
     ports:
       - "5001:5001"
-  coach_server:
-    build: ./ml_models/coach_server
-    command: python app.py
+    volumes:
+      - ./ml_models/data:/app/data
+    environment:
+      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # Analytics Server (Equipment, Revenue, Churn)
+  # ----------------------------------------------------------
+  analytics_server:
+    build:
+      context: ./ml_models
+      dockerfile: Dockerfile
+    command: python -m analytics_server.app
     ports:
-      - "5002:5002"
+      - "5005:5005"
+    volumes:
+      - ./ml_models/data:/app/data
+    environment:
+      - ANALYTICS_DB_CONN=${DATABASE_URL:-}
+    depends_on:
+      - embedding_server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # Workout Generator (RAG + Templates)
+  # ----------------------------------------------------------
+  workout_generator:
+    build:
+      context: ./ml_models
+      dockerfile: Dockerfile
+    command: python -m workout_generator.app
+    ports:
+      - "5010:5010"
+    volumes:
+      - ./ml_models/data:/app/data
+    depends_on:
+      - embedding_server
+    environment:
+      - EMBEDDING_SERVER_URL=http://embedding_server:5001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # Nutrition Generator (RAG + Templates)
+  # ----------------------------------------------------------
+  nutrition_generator:
+    build:
+      context: ./ml_models
+      dockerfile: Dockerfile
+    command: python -m nutrition_generator.app
+    ports:
+      - "5011:5011"
+    volumes:
+      - ./ml_models/data:/app/data
+    depends_on:
+      - embedding_server
+    environment:
+      - EMBEDDING_SERVER_URL=http://embedding_server:5001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # Coach Assistant (Ollama/Phi-3 for chat)
+  # ----------------------------------------------------------
+  coach_assistant:
+    build:
+      context: ./ml_models
+      dockerfile: Dockerfile
+    command: python -m coach_assistant.app
+    ports:
+      - "5012:5012"
+    volumes:
+      - ./ml_models/data:/app/data
+    depends_on:
+      - embedding_server
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - EMBEDDING_SERVER_URL=http://embedding_server:5001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # Whisper Server (Speech-to-Text) - Optional
+  # ----------------------------------------------------------
   whisper_server:
-    build: ./ml_models/whisper_server
+    build:
+      context: ./ml_models/whisper_server
+      dockerfile: Dockerfile
     command: python app.py
     ports:
       - "5003:5003"
+    profiles:
+      - voice  # Only starts with --profile voice
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # TTS Server (Text-to-Speech) - Optional
+  # ----------------------------------------------------------
   tts_server:
-    build: ./ml_models/tts_server
+    build:
+      context: ./ml_models/tts_server
+      dockerfile: Dockerfile
     command: python app.py
     ports:
       - "5004:5004"
-# Note: these are compose stubs for development only.
+    profiles:
+      - voice  # Only starts with --profile voice
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  default:
+    name: pulsegym-ml-network
+
+# ============================================================
+# Usage:
+# ----------------------------------------------------------
+# Start core services:
+#   docker-compose -f docker-compose.ml.yml up
+#
+# Start with voice features:
+#   docker-compose -f docker-compose.ml.yml --profile voice up
+#
+# IMPORTANT: Ollama must be running on host machine!
+#   1. Install Ollama: https://ollama.ai/download
+#   2. Pull model: ollama pull phi3:mini
+#   3. Start server: ollama serve
+# ============================================================

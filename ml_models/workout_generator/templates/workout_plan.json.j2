@@ -1,0 +1,49 @@
+{# Jinja2 Template for Workout Plan JSON #}
+{
+  "plan_id": "{{ plan_id }}",
+  "user_id": {{ user_id }},
+  "created_at": "{{ created_at }}",
+  "duration_weeks": {{ duration_weeks }},
+  "days_per_week": {{ days_per_week }},
+  "goal": "{{ goal }}",
+  "fitness_level": "{{ fitness_level }}",
+  "split_type": "{{ split_type }}",
+  
+  "weeks": [
+    {% for week in weeks %}
+    {
+      "week": {{ week.week }},
+      "theme": "{{ week.theme }}",
+      "days": [
+        {% for day in week.days %}
+        {
+          "day": {{ day.day }},
+          "name": "{{ day.name }}",
+          "focus": "{{ day.focus }}",
+          "exercises": [
+            {% for ex in day.exercises %}
+            {
+              "id": {{ ex.id }},
+              "name": "{{ ex.name }}",
+              "muscle_group": "{{ ex.muscle_group }}",
+              "sets": {{ ex.sets }},
+              "reps": "{{ ex.reps }}",
+              "rest_seconds": {{ ex.rest_seconds }},
+              "notes": "{{ ex.notes | replace('"', '\\"') }}"
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+          ]
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ],
+      "notes": "{{ week.notes }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  
+  "notes": [
+    {% for note in notes %}
+    "{{ note }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}

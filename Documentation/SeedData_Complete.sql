@@ -1,4 +1,4 @@
--- Active: 1764278759643@@127.0.0.1@5432@intellifit_db
+-- Active: 1764278759643@@127.0.0.1@5432@PulseGym-Ai
 -- IntelliFit Database Complete Seed Data - PostgreSQL
 -- ==========================================
 -- Password for admin@intellifit.com: 224466 (BCrypt hashed)

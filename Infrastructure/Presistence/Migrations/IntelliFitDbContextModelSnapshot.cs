@@ -324,11 +324,16 @@ namespace Presistence.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("WorkoutScheduledDayId")
+                        .HasColumnType("integer");
+
                     b.HasKey("BookingId");
 
                     b.HasIndex("ParentCoachBookingId");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("WorkoutScheduledDayId");
 
                     b.HasIndex("CoachId", "StartTime");
 
@@ -1646,6 +1651,9 @@ namespace Presistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("DaysPerWeek")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
@@ -1664,8 +1672,14 @@ namespace Presistence.Migrations
                     b.Property<int?>("GeneratedByCoachId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Goal")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("MlPlanJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("PlanName")
                         .IsRequired()
@@ -1675,7 +1689,13 @@ namespace Presistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<TimeSpan?>("PreferredWorkoutTime")
+                        .HasColumnType("interval");
+
                     b.Property<string>("Schedule")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SplitType")
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("StartDate")
@@ -1752,6 +1772,57 @@ namespace Presistence.Migrations
                     b.HasIndex("WorkoutPlanId");
 
                     b.ToTable("workout_plan_exercises", (string)null);
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutScheduledDay", b =>
+                {
+                    b.Property<int>("ScheduledDayId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("ScheduledDayId"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeSpan?>("EndTime")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ScheduledDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorkoutPlanId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ScheduledDayId");
+
+                    b.HasIndex("ScheduledDate");
+
+                    b.HasIndex("WorkoutPlanId", "ScheduledDate");
+
+                    b.ToTable("workout_scheduled_days", (string)null);
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutTemplate", b =>
@@ -1938,6 +2009,11 @@ namespace Presistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("IntelliFit.Domain.Models.WorkoutScheduledDay", "WorkoutScheduledDay")
+                        .WithMany("Bookings")
+                        .HasForeignKey("WorkoutScheduledDayId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Coach");
 
                     b.Navigation("Equipment");
@@ -1945,6 +2021,8 @@ namespace Presistence.Migrations
                     b.Navigation("ParentCoachBooking");
 
                     b.Navigation("User");
+
+                    b.Navigation("WorkoutScheduledDay");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.ChatMessage", b =>
@@ -2334,6 +2412,17 @@ namespace Presistence.Migrations
                     b.Navigation("WorkoutPlan");
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutScheduledDay", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.WorkoutPlan", "WorkoutPlan")
+                        .WithMany("ScheduledDays")
+                        .HasForeignKey("WorkoutPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorkoutPlan");
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutTemplate", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.CoachProfile", "CreatedByCoach")
@@ -2482,9 +2571,16 @@ namespace Presistence.Migrations
                 {
                     b.Navigation("AiGenerations");
 
+                    b.Navigation("ScheduledDays");
+
                     b.Navigation("WorkoutLogs");
 
                     b.Navigation("WorkoutPlanExercises");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutScheduledDay", b =>
+                {
+                    b.Navigation("Bookings");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutTemplate", b =>

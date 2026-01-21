@@ -17,5 +17,15 @@ namespace Shared.DTOs.WorkoutPlan
         public int? TotalWorkouts { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
+        
+        // AI-Generated plan specific fields
+        public string? PlanType { get; set; }  // Custom, AI_Generated, Coach_Created
+        public string? Goal { get; set; }  // muscle_gain, weight_loss, etc.
+        public string? SplitType { get; set; }  // Full Body, Upper/Lower, PPL
+        public int? DaysPerWeek { get; set; }
+        public int? DurationWeeks { get; set; }
+        public string? DifficultyLevel { get; set; }
+        public string? MlPlanJson { get; set; }
+        public List<ScheduledDayDto> ScheduledDays { get; set; } = new();  // Full ML response for display
     }
 }

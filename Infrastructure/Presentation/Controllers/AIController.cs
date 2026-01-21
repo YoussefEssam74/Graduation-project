@@ -12,7 +12,7 @@ namespace Presentation.Controllers
     // [Authorize] // Temporarily disabled for testing
     [ApiController]
     [Route("api/ai")]
-    public class AIController(IServiceManager _serviceManager, ILogger<AIController> _logger) : ApiControllerBase
+    public class AIController(IServiceManager _serviceManager, ILogger<AIController> _logger, IConfiguration _configuration) : ApiControllerBase
     {
         #region Chat
         [HttpPost("chat")]
@@ -349,6 +349,227 @@ namespace Presentation.Controllers
             }
         }
 
+        #region ML-Powered Workout Generator
+        /// <summary>
+        /// Generate a workout plan using ML service (uses 7,959 real exercises from CSV dataset)
+        /// POST: api/ai/ml-workout
+        /// Cost: 30 tokens
+        /// </summary>
+        [HttpPost("ml-workout")]
+        public async Task<IActionResult> GenerateMLWorkout([FromBody] MLWorkoutGenerationRequest request)
+        {
+            const int ML_WORKOUT_TOKEN_COST = 30;
+
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new { success = false, message = "Invalid request data", errors = ModelState });
+                }
+
+                _logger.LogInformation("Generating ML workout plan for user {UserId}", request.UserId);
+
+                // Check user has sufficient tokens (30 tokens required)
+                var currentBalance = await _serviceManager.TokenTransactionService.GetUserTokenBalanceAsync(request.UserId);
+                if (currentBalance < ML_WORKOUT_TOKEN_COST)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = $"Insufficient token balance. You need {ML_WORKOUT_TOKEN_COST} tokens but have {currentBalance}."
+                    });
+                }
+
+                // Call the ML service
+                var mlServiceUrl = _configuration["MLService:WorkoutGeneratorUrl"] ?? "http://localhost:5010";
+                using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
+                var mlRequest = new
+                {
+                    user_id = request.UserId,
+                    profile = new
+                    {
+                        fitness_level = request.Profile.FitnessLevel,
+                        goal = request.Profile.Goal,
+                        days_per_week = request.Profile.DaysPerWeek,
+                        injuries = request.Profile.Injuries ?? new List<string>(),
+                        allergies = request.Profile.Allergies ?? new List<string>(),
+                        preferred_equipment = request.Profile.PreferredEquipment ?? new List<string>()
+                    },
+                    plan_duration_weeks = request.PlanDurationWeeks
+                };
+
+                var jsonContent = System.Text.Json.JsonSerializer.Serialize(mlRequest);
+                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                _logger.LogInformation("Calling ML service at {Url}", $"{mlServiceUrl}/generate");
+                var response = await httpClient.PostAsync($"{mlServiceUrl}/generate", content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("ML service returned {StatusCode}: {Body}", response.StatusCode, responseBody);
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Failed to generate workout plan from ML service",
+                        error = responseBody
+                    });
+                }
+
+                var mlResponse = System.Text.Json.JsonSerializer.Deserialize<MLWorkoutGenerationResponse>(
+                    responseBody,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                );
+
+                if (mlResponse == null || mlResponse.Status != "success")
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "ML service returned invalid response"
+                    });
+                }
+
+                // Deduct tokens from user balance
+                try
+                {
+                    await _serviceManager.TokenTransactionService.CreateTransactionAsync(
+                        userId: request.UserId,
+                        dto: new CreateTokenTransactionDto
+                        {
+                            Amount = -ML_WORKOUT_TOKEN_COST,
+                            TransactionType = "Deduction",
+                            Description = "ML-Generated Workout Plan",
+                            ReferenceType = "MLWorkoutPlan"
+                        }
+                    );
+                }
+                catch (Exception tokenEx)
+                {
+                    _logger.LogError(tokenEx, "Failed to deduct tokens for user {UserId}", request.UserId);
+                    return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
+                }
+
+                // Save the workout plan to database
+                int? savedPlanId = null;
+                try
+                {
+                    var createPlanDto = new Shared.DTOs.WorkoutPlan.CreateAIWorkoutPlanDto
+                    {
+                        UserId = request.UserId,
+                        PlanName = $"AI Workout Plan - {request.Profile.Goal.Replace("_", " ").ToUpperInvariant()}",
+                        Description = $"ML-generated {mlResponse.Plan.SplitType} workout plan for {request.Profile.Goal.Replace("_", " ")} goal",
+                        DifficultyLevel = request.Profile.FitnessLevel,
+                        DurationWeeks = request.PlanDurationWeeks,
+                        DaysPerWeek = request.Profile.DaysPerWeek,
+                        Goal = request.Profile.Goal,
+                        SplitType = mlResponse.Plan.SplitType,
+                        MlPlanJson = responseBody, // Store full ML response as JSON
+                        TokensSpent = ML_WORKOUT_TOKEN_COST
+                    };
+
+                    var savedPlan = await _serviceManager.WorkoutPlanService.CreateAIWorkoutPlanAsync(createPlanDto);
+                    savedPlanId = savedPlan?.PlanId;
+                    _logger.LogInformation("Saved ML workout plan with ID {PlanId} for user {UserId}", savedPlanId, request.UserId);
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogError(saveEx, "Failed to save ML workout plan to database for user {UserId}", request.UserId);
+                    // Don't fail the request - plan generation was successful, just log the save error
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "ML workout plan generated successfully",
+                    data = new
+                    {
+                        planId = savedPlanId,
+                        plan = mlResponse.Plan,
+                        exercisesAvailable = mlResponse.ExercisesAvailable,
+                        safetySummary = mlResponse.SafetySummary,
+                        tokensSpent = ML_WORKOUT_TOKEN_COST,
+                        newBalance = currentBalance - ML_WORKOUT_TOKEN_COST
+                    }
+                });
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to connect to ML service");
+                return StatusCode(503, new
+                {
+                    success = false,
+                    message = "ML workout service is currently unavailable. Please try again later."
+                });
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogError(ex, "ML service request timed out");
+                return StatusCode(504, new
+                {
+                    success = false,
+                    message = "Workout generation timed out. Please try again."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating ML workout plan");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "An error occurred while generating the workout plan"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Check ML service health status
+        /// GET: api/ai/ml-health
+        /// </summary>
+        [HttpGet("ml-health")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CheckMLHealth()
+        {
+            try
+            {
+                var mlServiceUrl = _configuration["MLService:WorkoutGeneratorUrl"] ?? "http://localhost:5010";
+                using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+
+                var response = await httpClient.GetAsync($"{mlServiceUrl}/health");
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var healthData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(responseBody);
+                    return Ok(new
+                    {
+                        success = true,
+                        status = "healthy",
+                        mlService = healthData
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = false,
+                    status = "unhealthy",
+                    message = "ML service is not responding correctly"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ML service health check failed");
+                return Ok(new
+                {
+                    success = false,
+                    status = "unavailable",
+                    message = "ML service is not running"
+                });
+            }
+        }
+        #endregion
+
         #region Test
         /// <summary>
         /// Test endpoint to verify AI service is working
@@ -368,6 +589,8 @@ namespace Presentation.Controllers
                     "POST /api/ai/generate-workout-plan - Generate AI workout plan (50 tokens)",
                     "POST /api/ai/generate-nutrition-plan - Generate AI nutrition plan (50 tokens)",
                     "POST /api/ai/gemini-chat - Chat with Gemini AI coach (1 token per message)",
+                    "POST /api/ai/ml-workout - Generate ML-powered workout plan (30 tokens)",
+                    "GET /api/ai/ml-health - Check ML service health",
                     "GET /api/ai/sessions/{userId} - Get all chat sessions for user",
                     "GET /api/ai/sessions/{userId}/{sessionId} - Get messages for specific session",
                     "POST /api/ai/test-save - Test saving chat interaction"

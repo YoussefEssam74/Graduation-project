@@ -41,6 +41,7 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<WorkoutLog> WorkoutLogs { get; set; }
         public DbSet<WorkoutTemplate> WorkoutTemplates { get; set; }
         public DbSet<WorkoutTemplateExercise> WorkoutTemplateExercises { get; set; }
+        public DbSet<WorkoutScheduledDay> WorkoutScheduledDays { get; set; }
 
         // Nutrition
         public DbSet<NutritionPlan> NutritionPlans { get; set; }
@@ -98,6 +99,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<WorkoutLog>().ToTable("workout_logs");
             modelBuilder.Entity<WorkoutTemplate>().ToTable("workout_templates");
             modelBuilder.Entity<WorkoutTemplateExercise>().ToTable("workout_template_exercises");
+            modelBuilder.Entity<WorkoutScheduledDay>().ToTable("workout_scheduled_days");
             modelBuilder.Entity<NutritionPlan>().ToTable("nutrition_plans");
             modelBuilder.Entity<Meal>().ToTable("meals");
             modelBuilder.Entity<MealIngredient>().ToTable("meal_ingredients");
@@ -272,6 +274,12 @@ namespace IntelliFit.Infrastructure.Persistence
                     .WithMany(b => b.ChildEquipmentBookings)
                     .HasForeignKey(e => e.ParentCoachBookingId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                // WorkoutScheduledDay relationship
+                entity.HasOne(e => e.WorkoutScheduledDay)
+                    .WithMany(wsd => wsd.Bookings)
+                    .HasForeignKey(e => e.WorkoutScheduledDayId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // InBodyMeasurement Configuration
@@ -334,6 +342,19 @@ namespace IntelliFit.Infrastructure.Persistence
                     .WithMany(c => c.WorkoutPlansApproved)
                     .HasForeignKey(e => e.ApprovedBy)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // WorkoutScheduledDay Configuration
+            modelBuilder.Entity<WorkoutScheduledDay>(entity =>
+            {
+                entity.HasKey(e => e.ScheduledDayId);
+                entity.HasIndex(e => new { e.WorkoutPlanId, e.ScheduledDate });
+                entity.HasIndex(e => e.ScheduledDate);
+
+                entity.HasOne(e => e.WorkoutPlan)
+                    .WithMany(wp => wp.ScheduledDays)
+                    .HasForeignKey(e => e.WorkoutPlanId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // WorkoutPlanExercise Configuration

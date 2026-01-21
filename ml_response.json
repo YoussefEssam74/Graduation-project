@@ -1,0 +1,219 @@
+﻿{
+  "exercises_available": 7959,
+  "plan": {
+    "created_at": "2025-12-24T14:35:05.325740",
+    "days_per_week": 3,
+    "duration_weeks": 1,
+    "fitness_level": "beginner",
+    "goal": "muscle_gain",
+    "notes": [
+      "Always warm up for 5-10 minutes before starting",
+      "Stay hydrated throughout your workout",
+      "If any exercise causes pain, stop immediately",
+      "Focus on progressive overload - increase weight or reps each week"
+    ],
+    "split_type": "Full Body",
+    "user_id": 1,
+    "weeks": [
+      {
+        "days": [
+          {
+            "day": 1,
+            "exercises": [
+              {
+                "id": "i5cEhka",
+                "muscle_group": "chest",
+                "name": "decline push-up",
+                "notes": [
+                  "Place your hands on the ground slightly wider than shoulder-width apart, with your feet elevated on a stable surface.",
+                  "Keep your body in a straight line from head to toe, engaging your core muscles.",
+                  "Lower your chest towards the ground by bending your elbows, keeping them close to your body.",
+                  "Push through your palms to extend your arms and return to the starting position.",
+                  "Repeat for the desired number of repetitions."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              },
+              {
+                "id": "gen02864",
+                "muscle_group": "back",
+                "name": "Band Triceps Lunge",
+                "notes": [
+                  "Stand in a stable position preparing to perform the 'Band Triceps Lunge'.",
+                  "Grab the skierg machine securely and set up your stance according to proper form.",
+                  "Execute the main movement: focus on controlled motion targeting the triceps.",
+                  "Maintain a controlled tempo, exhale during the exertion phase and inhale during the return.",
+                  "Keep a neutral spine, engage your core, and avoid locking joints at full extension.",
+                  "Repeat for desired repetitions, starting with 8\u201312 reps for general strength or adjust as needed.",
+                  "Secondary muscles engaged: wrist extensors.",
+                  "After finishing, perform a brief cool-down and stretch the worked muscles."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              },
+              {
+                "id": "gen05815",
+                "muscle_group": "lower legs",
+                "name": "Advanced Forearms Press",
+                "notes": [
+                  "Stand in a stable position preparing to perform the 'Advanced Forearms Press'.",
+                  "Grab the Kettlebells securely and set up your stance according to proper form.",
+                  "Execute the main movement: focus on controlled motion targeting the forearms.",
+                  "Maintain a controlled tempo, exhale during the exertion phase and inhale during the return.",
+                  "Keep a neutral spine, engage your core, and avoid locking joints at full extension.",
+                  "Repeat for desired repetitions, starting with 8\u201312 reps for general strength or adjust as needed.",
+                  "Secondary muscles engaged: trapezius.",
+                  "After finishing, perform a brief cool-down and stretch the worked muscles."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              }
+            ],
+            "focus": "Chest, Back, Legs",
+            "name": "Day 1"
+          },
+          {
+            "day": 2,
+            "exercises": [
+              {
+                "id": "gen03104",
+                "muscle_group": "shoulders",
+                "name": "Cable Adductors Press",
+                "notes": [
+                  "Stand in a stable position preparing to perform the 'Cable Adductors Press'.",
+                  "Grab the roller securely and set up your stance according to proper form.",
+                  "Execute the main movement: focus on controlled motion targeting the adductors.",
+                  "Maintain a controlled tempo, exhale during the exertion phase and inhale during the return.",
+                  "Keep a neutral spine, engage your core, and avoid locking joints at full extension.",
+                  "Repeat for desired repetitions, starting with 8\u201312 reps for general strength or adjust as needed.",
+                  "Secondary muscles engaged: triceps.",
+                  "After finishing, perform a brief cool-down and stretch the worked muscles."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              },
+              {
+                "id": "gen05823",
+                "muscle_group": "upper arms",
+                "name": "Decline Biceps Lunge",
+                "notes": [
+                  "Stand in a stable position preparing to perform the 'Decline Biceps Lunge'.",
+                  "Grab the assisted securely and set up your stance according to proper form.",
+                  "Execute the main movement: focus on controlled motion targeting the biceps.",
+                  "Maintain a controlled tempo, exhale during the exertion phase and inhale during the return.",
+                  "Keep a neutral spine, engage your core, and avoid locking joints at full extension.",
+                  "Repeat for desired repetitions, starting with 8\u201312 reps for general strength or adjust as needed.",
+                  "Secondary muscles engaged: sternocleidomastoid.",
+                  "After finishing, perform a brief cool-down and stretch the worked muscles."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              },
+              {
+                "id": "CosupLu",
+                "muscle_group": "waist",
+                "name": "front plank with twist",
+                "notes": [
+                  "Start in a high plank position with your hands directly under your shoulders and your body in a straight line from head to toe.",
+                  "Engage your core and glutes to maintain a stable position.",
+                  "Rotate your torso to the right, lifting your right arm and extending it towards the ceiling.",
+                  "Keep your hips and legs stable as you twist.",
+                  "Hold for a moment, then return to the starting position.",
+                  "Repeat the twist on the left side.",
+                  "Continue alternating sides for the desired number of repetitions."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              }
+            ],
+            "focus": "Shoulders, Arms, Core",
+            "name": "Day 2"
+          },
+          {
+            "day": 3,
+            "exercises": [
+              {
+                "id": "gen03964",
+                "muscle_group": "chest",
+                "name": "Single-Leg Serratus Anterior Raise",
+                "notes": [
+                  "Stand in a stable position preparing to perform the 'Single-Leg Serratus Anterior Raise'.",
+                  "Grab the Assisted (partner) securely and set up your stance according to proper form.",
+                  "Execute the main movement: focus on controlled motion targeting the serratus anterior.",
+                  "Maintain a controlled tempo, exhale during the exertion phase and inhale during the return.",
+                  "Keep a neutral spine, engage your core, and avoid locking joints at full extension.",
+                  "Repeat for desired repetitions, starting with 8\u201312 reps for general strength or adjust as needed.",
+                  "Secondary muscles engaged: grip muscles.",
+                  "After finishing, perform a brief cool-down and stretch the worked muscles."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              },
+              {
+                "id": "gen03364",
+                "muscle_group": "back",
+                "name": "Cable Upper Back Raise",
+                "notes": [
+                  "Stand in a stable position preparing to perform the 'Cable Upper Back Raise'.",
+                  "Grab the upper body ergometer securely and set up your stance according to proper form.",
+                  "Execute the main movement: focus on controlled motion targeting the upper back.",
+                  "Maintain a controlled tempo, exhale during the exertion phase and inhale during the return.",
+                  "Keep a neutral spine, engage your core, and avoid locking joints at full extension.",
+                  "Repeat for desired repetitions, starting with 8\u201312 reps for general strength or adjust as needed.",
+                  "Secondary muscles engaged: glutes.",
+                  "After finishing, perform a brief cool-down and stretch the worked muscles."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              },
+              {
+                "id": "gen01555",
+                "muscle_group": "lower legs",
+                "name": "Explosive Adductors Row",
+                "notes": [
+                  "Stand in a stable position preparing to perform the 'Explosive Adductors Row'.",
+                  "Grab the skierg machine securely and set up your stance according to proper form.",
+                  "Execute the main movement: focus on controlled motion targeting the adductors.",
+                  "Maintain a controlled tempo, exhale during the exertion phase and inhale during the return.",
+                  "Keep a neutral spine, engage your core, and avoid locking joints at full extension.",
+                  "Repeat for desired repetitions, starting with 8\u201312 reps for general strength or adjust as needed.",
+                  "Secondary muscles engaged: biceps.",
+                  "After finishing, perform a brief cool-down and stretch the worked muscles."
+                ],
+                "reps": "8-12",
+                "rest_seconds": 90,
+                "sets": 4
+              }
+            ],
+            "focus": "Chest, Back, Legs",
+            "name": "Day 3"
+          }
+        ],
+        "notes": "Week 1: Focus on form and progressive overload.",
+        "theme": "Foundation - Focus on form and baseline",
+        "week": 1
+      }
+    ]
+  },
+  "safety_summary": {
+    "allergies": [],
+    "alternatives": {},
+    "injuries": [],
+    "normalized_allergies": [],
+    "normalized_injuries": [],
+    "sample_unsafe_exercises": [],
+    "sample_unsafe_foods": [],
+    "total_unsafe_exercises": 0,
+    "total_unsafe_foods": 0
+  },
+  "status": "success"
+}
+

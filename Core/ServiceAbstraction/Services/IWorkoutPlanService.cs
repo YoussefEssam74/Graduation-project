@@ -11,5 +11,9 @@ namespace ServiceAbstraction.Services
         Task<MemberWorkoutPlanDto> AssignPlanToMemberAsync(AssignWorkoutPlanDto assignDto);
         Task<MemberWorkoutPlanDto> UpdateProgressAsync(int memberPlanId, UpdateProgressDto progressDto);
         Task<MemberWorkoutPlanDto> CompletePlanAsync(int memberPlanId);
+        Task<MemberWorkoutPlanDto?> CreateAIWorkoutPlanAsync(CreateAIWorkoutPlanDto planDto);
+        Task<bool> ActivatePlanAsync(int planId, int userId);
+        Task<ScheduledWorkoutPlanResponse?> ScheduleWorkoutPlanAsync(ScheduleWorkoutPlanDto scheduleDto);
+        Task<bool> UpdateExerciseNotesAsync(UpdateExerciseNotesDto updateDto);
     }
 }
