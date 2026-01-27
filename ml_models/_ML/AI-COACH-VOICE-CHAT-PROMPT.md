@@ -4,7 +4,7 @@ Create a complete AI Coach assistant system for fitness guidance using fine-tune
 
 **Context:**
 - .NET 8 Web API backend
-- React 18 frontend with TypeScript
+- Next 18 frontend with TypeScript
 - PostgreSQL for conversation history
 - HuggingFace Llama 3.2 3B fine-tuned on fitness data
 - Real-time voice chat + text chat
@@ -19,7 +19,7 @@ Create a complete AI Coach assistant system for fitness guidance using fine-tune
 │           AI COACH VOICE + CHAT SYSTEM              │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
-│  Frontend (React)                                   │
+│  Frontend (Next)                                   │
 │  ├── Voice Input (Web Speech API / MediaRecorder)  │
 │  ├── Text Chat Interface                           │
 │  └── Audio Playback                                │
