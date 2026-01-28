@@ -1,0 +1,42 @@
+### Test Equipment Import
+POST http://localhost:5025/api/equipment/import-wger
+Content-Type: application/json
+
+###
+
+### Get All Equipment
+GET http://localhost:5025/api/equipment
+Content-Type: application/json
+
+###
+
+### Get Available Equipment
+GET http://localhost:5025/api/equipment/available
+Content-Type: application/json
+
+###
+
+### Test AI Workout Generation
+POST http://localhost:5025/api/aiworkout/generate
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "heightCm": 180,
+  "weightKg": 75,
+  "age": 25,
+  "activityLevel": "moderately_active",
+  "workoutGoal": "muscle_gain",
+  "medicalConditions": "",
+  "fitnessLevel": "intermediate",
+  "daysPerWeek": 4,
+  "durationMinutes": 60,
+  "preferredExercises": "Bench press, Squats",
+  "bodyFatPercentage": 15.0
+}
+
+###
+
+### Check ML Health
+GET http://localhost:5025/api/aiworkout/health/ml
+Content-Type: application/json

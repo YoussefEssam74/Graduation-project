@@ -1,0 +1,227 @@
+[
+    {
+        "id": "vol_beginner_001",
+        "category": "training_volume",
+        "text": "Beginners should perform 10-12 total sets per muscle group per week. Exceeding this increases injury risk without additional hypertrophy benefits.",
+        "metadata": {
+            "fitness_level": "beginner",
+            "priority": 1
+        }
+    },
+    {
+        "id": "vol_beginner_002",
+        "category": "training_volume",
+        "text": "New lifters should focus on compound movements like squats, deadlifts, bench press, and rows for the first 6 months of training.",
+        "metadata": {
+            "fitness_level": "beginner",
+            "priority": 1
+        }
+    },
+    {
+        "id": "vol_intermediate_001",
+        "category": "training_volume",
+        "text": "Intermediate lifters can handle 12-16 sets per muscle group per week with adequate recovery between sessions.",
+        "metadata": {
+            "fitness_level": "intermediate",
+            "priority": 1
+        }
+    },
+    {
+        "id": "vol_intermediate_002",
+        "category": "training_volume",
+        "text": "After 1-2 years of training, you can add isolation exercises to target specific muscle weaknesses identified in your assessment.",
+        "metadata": {
+            "fitness_level": "intermediate",
+            "priority": 2
+        }
+    },
+    {
+        "id": "vol_advanced_001",
+        "category": "training_volume",
+        "text": "Advanced lifters can train with 16-22 sets per muscle group per week, using periodization to manage fatigue.",
+        "metadata": {
+            "fitness_level": "advanced",
+            "priority": 1
+        }
+    },
+    {
+        "id": "safety_001",
+        "category": "safety",
+        "text": "Always allow 48-72 hours between training the same muscle group to prevent overtraining and allow for proper recovery.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "safety_002",
+        "category": "safety",
+        "text": "Never train to absolute failure on compound movements like squats and deadlifts. Leave 1-2 reps in reserve to maintain form.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "safety_003",
+        "category": "safety",
+        "text": "Warm up with 2-3 light sets before working sets to prepare joints and muscles, reducing injury risk.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "recovery_001",
+        "category": "recovery",
+        "text": "Sleep 7-9 hours per night for optimal muscle recovery and growth hormone release during deep sleep phases.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "recovery_002",
+        "category": "recovery",
+        "text": "Consume 1.6-2.2g of protein per kg of bodyweight daily to support muscle protein synthesis and recovery.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "recovery_003",
+        "category": "recovery",
+        "text": "Deload every 4-6 weeks by reducing volume or intensity by 40-50% to allow accumulated fatigue to dissipate.",
+        "metadata": {
+            "applies_to": "intermediate,advanced",
+            "priority": 2
+        }
+    },
+    {
+        "id": "muscle_balance_001",
+        "category": "muscle_balance",
+        "text": "Prioritize rear delts and upper back if shoulders appear rounded forward. Include face pulls and reverse flyes.",
+        "metadata": {
+            "weakness": "shoulders",
+            "priority": 1
+        }
+    },
+    {
+        "id": "muscle_balance_002",
+        "category": "muscle_balance",
+        "text": "If chest is underdeveloped, focus on progressive overload on bench press variations and add cable flyes for stretch.",
+        "metadata": {
+            "weakness": "chest",
+            "priority": 1
+        }
+    },
+    {
+        "id": "muscle_balance_003",
+        "category": "muscle_balance",
+        "text": "For arm development, prioritize compound movements first, then add direct bicep and tricep work with 6-10 weekly sets each.",
+        "metadata": {
+            "weakness": "arms",
+            "priority": 1
+        }
+    },
+    {
+        "id": "muscle_balance_004",
+        "category": "muscle_balance",
+        "text": "Train muscles bilaterally to prevent asymmetry. Use unilateral exercises like lunges and single-arm rows to correct imbalances.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "injury_lower_back_001",
+        "category": "injury_rules",
+        "text": "Users with lower back pain should avoid traditional deadlifts. Replace with hip hinges like Romanian deadlifts with lighter weight.",
+        "metadata": {
+            "injury_type": "lower_back",
+            "priority": 1
+        }
+    },
+    {
+        "id": "injury_lower_back_002",
+        "category": "injury_rules",
+        "text": "For lower back issues, strengthen core with planks and bird-dogs. Avoid sit-ups and twisting movements under load.",
+        "metadata": {
+            "injury_type": "lower_back",
+            "priority": 1
+        }
+    },
+    {
+        "id": "injury_knee_001",
+        "category": "injury_rules",
+        "text": "Users with knee pain should avoid deep squats and leg extensions. Use box squats and leg press with controlled range of motion.",
+        "metadata": {
+            "injury_type": "knee",
+            "priority": 1
+        }
+    },
+    {
+        "id": "injury_shoulder_001",
+        "category": "injury_rules",
+        "text": "Users with shoulder injuries should avoid behind-the-neck presses and upright rows. Use neutral grip pressing and lateral raises below 90 degrees.",
+        "metadata": {
+            "injury_type": "shoulder",
+            "priority": 1
+        }
+    },
+    {
+        "id": "injury_shoulder_002",
+        "category": "injury_rules",
+        "text": "For rotator cuff issues, include external rotation exercises with bands and avoid sleeping on the affected shoulder.",
+        "metadata": {
+            "injury_type": "shoulder",
+            "priority": 2
+        }
+    },
+    {
+        "id": "progression_001",
+        "category": "progression",
+        "text": "Use double progression: increase reps within a range (8-12), then add weight when you hit the top of the range.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "progression_002",
+        "category": "progression",
+        "text": "Beginners can add weight weekly. Intermediate lifters may only progress every 2-4 weeks on compound lifts.",
+        "metadata": {
+            "applies_to": "all",
+            "priority": 1
+        }
+    },
+    {
+        "id": "split_beginner_001",
+        "category": "workout_split",
+        "text": "Beginners should use full-body workouts 3 times per week, or upper/lower split 4 times per week for optimal frequency.",
+        "metadata": {
+            "fitness_level": "beginner",
+            "priority": 1
+        }
+    },
+    {
+        "id": "split_intermediate_001",
+        "category": "workout_split",
+        "text": "Intermediate lifters benefit from push/pull/legs or upper/lower splits training each muscle 2x per week.",
+        "metadata": {
+            "fitness_level": "intermediate",
+            "priority": 1
+        }
+    },
+    {
+        "id": "split_advanced_001",
+        "category": "workout_split",
+        "text": "Advanced lifters can use bro-splits or high-frequency programs depending on recovery capacity and goals.",
+        "metadata": {
+            "fitness_level": "advanced",
+            "priority": 1
+        }
+    }
+]
