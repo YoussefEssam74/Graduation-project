@@ -62,5 +62,8 @@ namespace IntelliFit.Domain.Models
         public virtual ICollection<ActivityFeed> ActivityFeeds { get; set; } = new List<ActivityFeed>();
         public virtual ICollection<UserMilestone> UserMilestones { get; set; } = new List<UserMilestone>();
         public virtual ICollection<AiWorkflowJob> AiWorkflowJobs { get; set; } = new List<AiWorkflowJob>();
+
+        // New AI/ML navigation properties
+        public virtual ICollection<UserAchievement> UserAchievements { get; set; } = new List<UserAchievement>();
     }
 }

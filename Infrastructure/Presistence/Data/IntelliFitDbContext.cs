@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using IntelliFit.Domain.Models;
+using IntelliFit.Domain.Models.AI;
 using IntelliFit.Domain.Enums;
 
 namespace IntelliFit.Infrastructure.Persistence
@@ -39,6 +40,7 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<WorkoutPlan> WorkoutPlans { get; set; }
         public DbSet<WorkoutPlanExercise> WorkoutPlanExercises { get; set; }
         public DbSet<WorkoutLog> WorkoutLogs { get; set; }
+        public DbSet<WorkoutLogExercise> WorkoutLogExercises { get; set; }  // NEW: Normalized exercise logs
         public DbSet<WorkoutTemplate> WorkoutTemplates { get; set; }
         public DbSet<WorkoutTemplateExercise> WorkoutTemplateExercises { get; set; }
 
@@ -48,15 +50,22 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<MealIngredient> MealIngredients { get; set; }
         public DbSet<Ingredient> Ingredients { get; set; }
 
-        // AI
+        // AI / ML
         public DbSet<AiChatLog> AiChatLogs { get; set; }
         public DbSet<AiProgramGeneration> AiProgramGenerations { get; set; }
         public DbSet<AiWorkflowJob> AiWorkflowJobs { get; set; }
+        public DbSet<UserFeatureSnapshot> UserFeatureSnapshots { get; set; }  // NEW: ML feature store
+        public DbSet<AiModelVersion> AiModelVersions { get; set; }  // NEW: Model versioning
+        public DbSet<AiInferenceLog> AiInferenceLogs { get; set; }  // NEW: Inference logging
+        public DbSet<VectorEmbedding> VectorEmbeddings { get; set; }  // NEW: Vector storage
+        public DbSet<FitnessKnowledge> FitnessKnowledge { get; set; }  // NEW: RAG knowledge base
 
         // Engagement
         public DbSet<ActivityFeed> ActivityFeeds { get; set; }
         public DbSet<ProgressMilestone> ProgressMilestones { get; set; }
         public DbSet<UserMilestone> UserMilestones { get; set; }
+        public DbSet<Achievement> Achievements { get; set; }  // NEW: Achievement definitions
+        public DbSet<UserAchievement> UserAchievements { get; set; }  // NEW: User achievement tracking
 
         // System
         public DbSet<Notification> Notifications { get; set; }
@@ -96,6 +105,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<WorkoutPlan>().ToTable("workout_plans");
             modelBuilder.Entity<WorkoutPlanExercise>().ToTable("workout_plan_exercises");
             modelBuilder.Entity<WorkoutLog>().ToTable("workout_logs");
+            modelBuilder.Entity<WorkoutLogExercise>().ToTable("workout_log_exercises");  // NEW
             modelBuilder.Entity<WorkoutTemplate>().ToTable("workout_templates");
             modelBuilder.Entity<WorkoutTemplateExercise>().ToTable("workout_template_exercises");
             modelBuilder.Entity<NutritionPlan>().ToTable("nutrition_plans");
@@ -105,9 +115,16 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<AiChatLog>().ToTable("ai_chat_logs");
             modelBuilder.Entity<AiProgramGeneration>().ToTable("ai_program_generations");
             modelBuilder.Entity<AiWorkflowJob>().ToTable("ai_workflow_jobs");
+            modelBuilder.Entity<UserFeatureSnapshot>().ToTable("user_feature_snapshots");  // NEW
+            modelBuilder.Entity<AiModelVersion>().ToTable("ai_model_versions");  // NEW
+            modelBuilder.Entity<AiInferenceLog>().ToTable("ai_inference_logs");  // NEW
+            modelBuilder.Entity<VectorEmbedding>().ToTable("vector_embeddings");  // NEW
+            modelBuilder.Entity<FitnessKnowledge>().ToTable("fitness_knowledge");  // NEW
             modelBuilder.Entity<ActivityFeed>().ToTable("activity_feeds");
             modelBuilder.Entity<ProgressMilestone>().ToTable("progress_milestones");
             modelBuilder.Entity<UserMilestone>().ToTable("user_milestones");
+            modelBuilder.Entity<Achievement>().ToTable("achievements");  // NEW
+            modelBuilder.Entity<UserAchievement>().ToTable("user_achievements");  // NEW
             modelBuilder.Entity<Notification>().ToTable("notifications");
             modelBuilder.Entity<ChatMessage>().ToTable("chat_messages");
             modelBuilder.Entity<CoachReview>().ToTable("coach_reviews");
@@ -694,6 +711,183 @@ namespace IntelliFit.Infrastructure.Persistence
 
             modelBuilder.Entity<Exercise>().HasIndex(e => e.MuscleGroup);
             modelBuilder.Entity<Exercise>().HasIndex(e => e.DifficultyLevel);
+
+            // ========== NEW ENTITY CONFIGURATIONS ==========
+
+            // WorkoutLogExercise Configuration (normalized exercise tracking)
+            modelBuilder.Entity<WorkoutLogExercise>(entity =>
+            {
+                entity.HasKey(e => e.WorkoutLogExerciseId);
+                entity.Property(e => e.TotalVolume).HasPrecision(12, 2);
+
+                entity.HasOne(e => e.WorkoutLog)
+                    .WithMany(wl => wl.WorkoutLogExercises)
+                    .HasForeignKey(e => e.LogId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Exercise)
+                    .WithMany()
+                    .HasForeignKey(e => e.ExerciseId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.PlannedExercise)
+                    .WithMany()
+                    .HasForeignKey(e => e.PlannedExerciseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Performance indexes
+                entity.HasIndex(e => new { e.LogId, e.OrderPerformed });
+                entity.HasIndex(e => e.ExerciseId);
+                entity.HasIndex(e => e.IsPersonalRecord);
+            });
+
+            // Achievement Configuration
+            modelBuilder.Entity<Achievement>(entity =>
+            {
+                entity.HasKey(e => e.AchievementId);
+                entity.HasIndex(e => e.Code).IsUnique();
+                entity.HasIndex(e => e.Category);
+                entity.Property(e => e.Code).HasMaxLength(50);
+                entity.Property(e => e.Name).HasMaxLength(100);
+                entity.Property(e => e.Category).HasMaxLength(50);
+                entity.Property(e => e.Rarity).HasMaxLength(20);
+            });
+
+            // UserAchievement Configuration
+            modelBuilder.Entity<UserAchievement>(entity =>
+            {
+                entity.HasKey(e => e.UserAchievementId);
+                entity.HasIndex(e => new { e.UserId, e.AchievementId }).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.IsEarned });
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.UserAchievements)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Achievement)
+                    .WithMany(a => a.UserAchievements)
+                    .HasForeignKey(e => e.AchievementId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // UserFeatureSnapshot Configuration (ML feature store)
+            modelBuilder.Entity<UserFeatureSnapshot>(entity =>
+            {
+                entity.HasKey(e => e.SnapshotId);
+                entity.HasIndex(e => new { e.UserId, e.IsLatest });
+                entity.HasIndex(e => new { e.UserId, e.ComputedAt });
+                entity.HasIndex(e => e.FeatureVersion);
+
+                entity.Property(e => e.HeightCm).HasPrecision(5, 2);
+                entity.Property(e => e.WeightKg).HasPrecision(5, 2);
+                entity.Property(e => e.Bmi).HasPrecision(4, 2);
+                entity.Property(e => e.BodyFatPercentage).HasPrecision(5, 2);
+                entity.Property(e => e.MuscleMassKg).HasPrecision(5, 2);
+                entity.Property(e => e.ExperienceYears).HasPrecision(4, 1);
+                entity.Property(e => e.AvgWorkoutDuration).HasPrecision(6, 2);
+                entity.Property(e => e.WorkoutConsistencyScore).HasPrecision(5, 2);
+                entity.Property(e => e.BenchPressMax).HasPrecision(6, 2);
+                entity.Property(e => e.SquatMax).HasPrecision(6, 2);
+                entity.Property(e => e.DeadliftMax).HasPrecision(6, 2);
+                entity.Property(e => e.OverheadPressMax).HasPrecision(6, 2);
+                entity.Property(e => e.TotalVolumeLastWeek).HasPrecision(12, 2);
+                entity.Property(e => e.VolumeProgressionRate).HasPrecision(6, 3);
+                entity.Property(e => e.AiAcceptanceRate).HasPrecision(5, 2);
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // AiModelVersion Configuration
+            modelBuilder.Entity<AiModelVersion>(entity =>
+            {
+                entity.HasKey(e => e.ModelVersionId);
+                entity.HasIndex(e => new { e.ModelName, e.Version }).IsUnique();
+                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => e.IsDefault);
+
+                entity.Property(e => e.ModelName).HasMaxLength(100);
+                entity.Property(e => e.Version).HasMaxLength(50);
+                entity.Property(e => e.Accuracy).HasPrecision(5, 4);
+                entity.Property(e => e.Precision).HasPrecision(5, 4);
+                entity.Property(e => e.Recall).HasPrecision(5, 4);
+                entity.Property(e => e.F1Score).HasPrecision(5, 4);
+                entity.Property(e => e.AverageLatencyMs).HasPrecision(8, 2);
+            });
+
+            // AiInferenceLog Configuration (high-volume logging)
+            modelBuilder.Entity<AiInferenceLog>(entity =>
+            {
+                entity.HasKey(e => e.InferenceId);
+                entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+                entity.HasIndex(e => new { e.ModelVersionId, e.CreatedAt });
+                entity.HasIndex(e => e.InferenceType);
+                entity.HasIndex(e => e.IsSuccess);
+                entity.HasIndex(e => e.CreatedAt); // For time-based partitioning
+
+                entity.Property(e => e.InferenceType).HasMaxLength(100);
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.ModelVersion)
+                    .WithMany()
+                    .HasForeignKey(e => e.ModelVersionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.FeatureSnapshot)
+                    .WithMany()
+                    .HasForeignKey(e => e.FeatureSnapshotId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // VectorEmbedding Configuration
+            modelBuilder.Entity<VectorEmbedding>(entity =>
+            {
+                entity.HasKey(e => e.EmbeddingId);
+                entity.HasIndex(e => new { e.ContentType, e.ContentId }).IsUnique();
+                entity.HasIndex(e => e.EmbeddingModel);
+
+                entity.Property(e => e.ContentType).HasMaxLength(50);
+                entity.Property(e => e.EmbeddingModel).HasMaxLength(100);
+                // Note: For actual vector operations, install pgvector extension and add:
+                // ALTER TABLE vector_embeddings ADD COLUMN embedding_vector vector(1536);
+                // CREATE INDEX ON vector_embeddings USING ivfflat (embedding_vector vector_cosine_ops);
+            });
+
+            // FitnessKnowledge Configuration (RAG knowledge base)
+            modelBuilder.Entity<FitnessKnowledge>(entity =>
+            {
+                entity.HasKey(e => e.KnowledgeId);
+                entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => e.Priority);
+
+                entity.Property(e => e.Category).HasMaxLength(50);
+                entity.Property(e => e.Subcategory).HasMaxLength(50);
+                entity.Property(e => e.Source).HasMaxLength(50);
+                entity.Property(e => e.Title).HasMaxLength(255);
+                entity.Property(e => e.Priority).HasPrecision(3, 2);
+
+                entity.HasOne(e => e.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.ApprovedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ApprovedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Global Query Filters for soft delete (when implemented)
+            // Uncomment when ready to implement soft delete globally:
+            // modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
         }
     }
 }
