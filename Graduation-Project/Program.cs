@@ -47,6 +47,17 @@ namespace Graduation_Project
             // Add Chat Service
             builder.Services.AddScoped<IChatService, ChatService>();
 
+            // Add Workout AI Services (Flan-T5 ML service integration)
+            builder.Services.AddHttpClient<IMLServiceClient, MLServiceClient>(client =>
+            {
+                var baseUrl = builder.Configuration["MLService:BaseUrl"] ?? "http://localhost:5300";
+                var timeout = int.Parse(builder.Configuration["MLService:TimeoutSeconds"] ?? "120");
+                client.BaseAddress = new Uri(baseUrl);
+                client.Timeout = TimeSpan.FromSeconds(timeout);
+            });
+            builder.Services.AddScoped<IWorkoutAIService, WorkoutAIService>();
+            builder.Services.AddScoped<IWorkoutFeedbackService, WorkoutFeedbackService>();
+
             // Add Equipment Time Slot Service (for background service and booking logic)
             builder.Services.AddScoped<ServiceAbstraction.Services.IEquipmentTimeSlotService, Service.Services.EquipmentTimeSlotService>();
 

@@ -32,6 +32,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 import torch
@@ -62,60 +63,137 @@ MAX_INPUT_LENGTH = 512
 MAX_OUTPUT_LENGTH = 2048
 SEED = 42
 
+# Data paths (relative to ml_models directory)
+EXERCISE_DB_PATH = "../_ML/Dataset/Dataset_Workout_plans.csv"  # 7961 real exercises!
+GYM_MEMBERS_CSV = "../_ML/Dataset/gym recommendation.csv"  # 14591 user profiles!
+# Optional: 30 exercises with GIFs
+EXERCISEDB_JSON_PATH = "../_ML/exercisedb_v1_sample/exercises.json"
+
 # ========================================
 # Data Generation & Preprocessing
 # ========================================
 
 
 class TrainingDataGenerator:
-    """Generate synthetic training data for workout plan generation"""
+    """Generate training data using REAL exercise database and gym member data"""
 
     FITNESS_LEVELS = ["Beginner", "Intermediate", "Advanced"]
     FITNESS_GOALS = ["Strength", "Muscle", "Cardio", "WeightLoss", "Endurance"]
-    EQUIPMENT_SETS = [
-        ["Barbell", "Dumbbells", "Bench"],
-        ["Dumbbells", "Resistance Bands"],
-        ["Bodyweight"],
-        ["Barbell", "Pull-up Bar"],
-        ["Dumbbells", "Kettlebells"],
-    ]
-    MUSCLE_GROUPS = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
 
-    COMPOUND_EXERCISES = {
-        "Chest": ["Barbell Bench Press", "Dumbbell Bench Press", "Incline Press"],
-        "Back": ["Barbell Row", "Deadlift", "Pull-up", "Lat Pulldown"],
-        "Legs": ["Barbell Squat", "Leg Press", "Romanian Deadlift"],
-        "Shoulders": ["Overhead Press", "Lateral Raise", "Shrug"],
-        "Arms": ["Barbell Curl", "Tricep Dip", "Tricep Rope Pushdown"],
-    }
+    def __init__(self, exercise_db_path: str = None, gym_data_path: str = None):
+        """Load real exercise database and gym member data"""
+        # Load exercise database
+        if exercise_db_path and os.path.exists(exercise_db_path):
+            logger.info(
+                f"Loading exercise database from {exercise_db_path}...")
+            with open(exercise_db_path, 'r') as f:
+                self.exercises = json.load(f)
+            logger.info(f"✅ Loaded {len(self.exercises)} real exercises")
+        else:
+            logger.warning("Exercise database not found, using fallback data")
+            self.exercises = self._get_fallback_exercises()
 
-    ISOLATION_EXERCISES = {
-        "Chest": ["Dumbbell Fly", "Cable Fly", "Pec Deck"],
-        "Back": ["Face Pull", "Cable Row", "Machine Row"],
-        "Legs": ["Leg Curl", "Leg Extension", "Calf Raise"],
-        "Shoulders": ["Machine Shoulder Press", "Cable Lateral Raise"],
-        "Arms": ["Dumbbell Curl", "Machine Curl", "Cable Curl"],
-    }
+        # Load gym member data (optional - for realistic user profiles)
+        self.gym_members_df = None
+        if gym_data_path and os.path.exists(gym_data_path):
+            try:
+                logger.info(f"Loading gym member data from {gym_data_path}...")
+                self.gym_members_df = pd.read_csv(gym_data_path)
+                logger.info(
+                    f"✅ Loaded {len(self.gym_members_df)} gym member profiles")
+            except Exception as e:
+                logger.warning(f"Could not load gym data: {e}")
 
-    @staticmethod
-    def generate_sample(idx: int) -> Dict:
-        """Generate a single training example"""
+        # Organize exercises by body part and equipment
+        self._organize_exercises()
+
+    def _get_fallback_exercises(self) -> List[Dict]:
+        """Fallback exercises if database not found"""
+        return [
+            {"name": "Barbell Bench Press", "bodyParts": ["chest"], "equipments": ["barbell"],
+             "targetMuscles": ["pectorals"], "secondaryMuscles": ["shoulders", "triceps"]},
+            {"name": "Barbell Squat", "bodyParts": ["upper legs"], "equipments": ["barbell"],
+             "targetMuscles": ["quadriceps"], "secondaryMuscles": ["glutes", "hamstrings"]},
+            {"name": "Barbell Row", "bodyParts": ["back"], "equipments": ["barbell"],
+             "targetMuscles": ["latissimus dorsi"], "secondaryMuscles": ["biceps", "trapezius"]}
+        ]
+
+    def _organize_exercises(self):
+        """Organize exercises by body part and equipment for efficient selection"""
+        self.exercises_by_bodypart = {}
+        self.exercises_by_equipment = {}
+        self.all_equipments = set()
+        self.all_bodyparts = set()
+
+        for exercise in self.exercises:
+            # By body part
+            for bodypart in exercise.get('bodyParts', []):
+                self.all_bodyparts.add(bodypart)
+                if bodypart not in self.exercises_by_bodypart:
+                    self.exercises_by_bodypart[bodypart] = []
+                self.exercises_by_bodypart[bodypart].append(exercise)
+
+            # By equipment
+            for equipment in exercise.get('equipments', []):
+                self.all_equipments.add(equipment)
+                if equipment not in self.exercises_by_equipment:
+                    self.exercises_by_equipment[equipment] = []
+                self.exercises_by_equipment[equipment].append(exercise)
+
+        logger.info(
+            f"Organized exercises: {len(self.all_bodyparts)} body parts, {len(self.all_equipments)} equipment types")
+
+    def generate_sample(self, idx: int) -> Dict:
+        """
+        Generate a single training example using REAL exercises and gym member data
+        Includes optional user context (InBody, muscle scan, strength profile, feedback)
+        """
         import random
 
+        # Use real gym member data for realistic profiles (if available)
+        user_profile = self._get_realistic_user_profile()
+
         # Random parameters
-        fitness_level = random.choice(TrainingDataGenerator.FITNESS_LEVELS)
-        goal = random.choice(TrainingDataGenerator.FITNESS_GOALS)
-        equipment = random.choice(TrainingDataGenerator.EQUIPMENT_SETS)
+        fitness_level = user_profile.get(
+            'fitness_level', random.choice(self.FITNESS_LEVELS))
+        goal = random.choice(self.FITNESS_GOALS)
+
+        # Select random equipment from REAL exercise database
+        available_equipment = random.sample(
+            list(self.all_equipments),
+            k=min(random.randint(2, 5), len(self.all_equipments))
+        )
         days = random.choice([3, 4, 5])
 
-        # Build input prompt
+        # Build input prompt with realistic user context
         input_text = f"Generate a {days}-day workout plan for {fitness_level.lower()} lifter, goal is {goal.lower()}"
 
-        if equipment:
-            equipment_str = ", ".join(equipment)
+        # Add InBody data (30% of samples) - use REAL gym member data
+        if random.random() < 0.3 and user_profile:
+            weight = user_profile.get('weight', random.randint(55, 95))
+            fat_pct = user_profile.get(
+                'fat_percentage', random.randint(10, 30))
+            muscle_mass = int(weight * (1 - fat_pct / 100))
+            input_text += f", user has {muscle_mass}kg muscle mass and {fat_pct}% body fat"
+
+        # Add muscle scan data (20% of samples) - use real body parts
+        if random.random() < 0.2:
+            weak_areas = random.sample(
+                list(self.all_bodyparts), k=random.randint(1, 2))
+            input_text += f", focus on weak areas: {', '.join(weak_areas)}"
+
+        # Add strength profile data (40% of samples)
+        if random.random() < 0.4:
+            bench_1rm = random.randint(60, 120)
+            squat_1rm = random.randint(80, 160)
+            input_text += f", user's known strength: Bench Press 1RM={bench_1rm}kg, Squat 1RM={squat_1rm}kg"
+
+        if available_equipment:
+            # Limit to 3 for readability
+            equipment_str = ", ".join(available_equipment[:3])
             input_text += f", has access to {equipment_str}"
 
-        injuries = random.choice([[], ["Shoulder"], ["Lower Back"], ["Knee"]])
+        injuries = random.choice([[], ["shoulder"], ["lower back"], ["knee"]])
         if injuries:
             input_text += f", avoid exercises for {', '.join(injuries)}"
 
@@ -132,7 +210,7 @@ class TrainingDataGenerator:
             "days": []
         }
 
-        # Generate days
+        # Generate days using REAL exercises from database
         for day_num in range(1, days + 1):
             day = {
                 "day_number": day_num,
@@ -140,41 +218,52 @@ class TrainingDataGenerator:
                 "exercises": []
             }
 
-            # Random muscle groups for this day
+            # Random body parts for this day from REAL database
             num_exercises = random.randint(4, 7)
-            day_muscles = random.sample(TrainingDataGenerator.MUSCLE_GROUPS,
-                                        min(num_exercises, len(TrainingDataGenerator.MUSCLE_GROUPS)))
+            day_bodyparts = random.sample(
+                list(self.all_bodyparts),
+                min(num_exercises, len(self.all_bodyparts))
+            )
 
-            for muscle in day_muscles:
-                # Add compound exercise
-                if muscle in TrainingDataGenerator.COMPOUND_EXERCISES:
-                    exercise_name = random.choice(
-                        TrainingDataGenerator.COMPOUND_EXERCISES[muscle]
-                    )
-                    day["exercises"].append({
-                        "exercise_id": hash(exercise_name) % 1000 + 1,
-                        "exercise_name": exercise_name,
-                        "muscle_group": muscle,
-                        "sets": random.choice([3, 4, 5]),
-                        "reps": f"{random.randint(6, 12)}-{random.randint(13, 15)}",
-                        "rest_seconds": random.choice([90, 120, 150]),
-                        "notes": "Focus on form"
-                    })
+            for bodypart in day_bodyparts:
+                # Get exercises for this body part that match available equipment
+                available_exercises = [
+                    ex for ex in self.exercises_by_bodypart.get(bodypart, [])
+                    if any(eq in available_equipment for eq in ex.get('equipments', []))
+                ]
 
-                # Sometimes add isolation exercise
-                if random.random() > 0.5 and muscle in TrainingDataGenerator.ISOLATION_EXERCISES:
-                    exercise_name = random.choice(
-                        TrainingDataGenerator.ISOLATION_EXERCISES[muscle]
-                    )
-                    day["exercises"].append({
-                        "exercise_id": hash(exercise_name) % 1000 + 1,
-                        "exercise_name": exercise_name,
-                        "muscle_group": muscle,
-                        "sets": random.choice([2, 3]),
-                        "reps": f"{random.randint(10, 15)}-{random.randint(16, 20)}",
-                        "rest_seconds": random.choice([60, 90]),
-                        "notes": "Controlled tempo"
-                    })
+                if not available_exercises:
+                    continue
+
+                # Select random exercise from REAL database
+                exercise = random.choice(available_exercises)
+
+                # Determine sets/reps based on goal
+                if goal == "Strength":
+                    sets, reps = random.choice(
+                        [4, 5]), f"{random.randint(3, 6)}"
+                    rest = random.choice([180, 240])
+                elif goal == "Muscle":
+                    sets, reps = random.choice(
+                        [3, 4]), f"{random.randint(8, 12)}"
+                    rest = random.choice([90, 120])
+                else:  # Endurance/Cardio/WeightLoss
+                    sets, reps = random.choice(
+                        [2, 3]), f"{random.randint(12, 20)}"
+                    rest = random.choice([60, 90])
+
+                day["exercises"].append({
+                    "exercise_id": exercise.get('exerciseId', hash(exercise['name']) % 1000),
+                    "exercise_name": exercise['name'],
+                    "muscle_group": bodypart,
+                    "target_muscles": exercise.get('targetMuscles', []),
+                    "secondary_muscles": exercise.get('secondaryMuscles', []),
+                    "equipment": exercise.get('equipments', [])[0] if exercise.get('equipments') else 'bodyweight',
+                    "sets": sets,
+                    "reps": reps,
+                    "rest_seconds": rest,
+                    "notes": random.choice(["Focus on form", "Controlled tempo", "Full range of motion"])
+                })
 
             plan["days"].append(day)
 
@@ -187,9 +276,10 @@ class TrainingDataGenerator:
 
         plan["metadata"] = {
             "total_exercises": sum(len(day["exercises"]) for day in plan["days"]),
-            "equipment_needed": equipment,
-            "muscle_groups_hit": day_muscles,
-            "injuries_accommodated": injuries
+            "equipment_needed": available_equipment,
+            "bodyparts_targeted": day_bodyparts,
+            "injuries_accommodated": injuries,
+            "data_source": "exercisedb_v1"
         }
 
         return {
@@ -197,19 +287,41 @@ class TrainingDataGenerator:
             "output": json.dumps(plan, indent=2)
         }
 
-    @staticmethod
-    def generate_dataset(num_samples: int = 5000) -> List[Dict]:
-        """Generate complete training dataset"""
-        logger.info(f"Generating {num_samples} synthetic training examples...")
+    def _get_realistic_user_profile(self) -> Dict:
+        """Get realistic user profile from gym member data"""
+        if self.gym_members_df is None or len(self.gym_members_df) == 0:
+            return {}
+
+        import random
+
+        # Select random gym member
+        member = self.gym_members_df.sample(n=1).iloc[0]
+
+        # Map experience level (1-3) to fitness level
+        exp_level = member.get('Experience_Level', 2)
+        fitness_map = {1: 'Beginner', 2: 'Intermediate', 3: 'Advanced'}
+
+        return {
+            'fitness_level': fitness_map.get(exp_level, 'Intermediate'),
+            'weight': member.get('Weight (kg)', 70),
+            'fat_percentage': member.get('Fat_Percentage', 20),
+            'age': member.get('Age', 30),
+            'bmi': member.get('BMI', 24),
+            'workout_frequency': member.get('Workout_Frequency (days/week)', 3)
+        }
+
+    def generate_dataset(self, num_samples: int = 5000) -> List[Dict]:
+        """Generate complete training dataset using REAL exercises and gym data"""
+        logger.info(
+            f"Generating {num_samples} training examples from REAL exercise database...")
 
         dataset = []
         for i in tqdm(range(num_samples), desc="Generating data"):
-            dataset.append(TrainingDataGenerator.generate_sample(i))
+            dataset.append(self.generate_sample(i))
 
         return dataset
 
-    @staticmethod
-    def save_dataset(dataset: List[Dict], output_path: str) -> None:
+    def save_dataset(self, dataset: List[Dict], output_path: str) -> None:
         """Save dataset to JSONL format"""
         logger.info(f"Saving dataset to {output_path}...")
 
@@ -218,6 +330,11 @@ class TrainingDataGenerator:
                 f.write(json.dumps(item) + '\n')
 
         logger.info(f"✅ Dataset saved: {len(dataset)} examples")
+        logger.info(
+            f"   Using {len(self.exercises)} real exercises from database")
+        if self.gym_members_df is not None:
+            logger.info(
+                f"   Using {len(self.gym_members_df)} real gym member profiles")
 
 
 # ========================================
@@ -635,9 +752,21 @@ def main():
     # Generate data if requested
     if args.generate_data > 0:
         logger.info(
-            f"\n📊 Generating {args.generate_data} synthetic training examples...")
-        dataset = TrainingDataGenerator.generate_dataset(args.generate_data)
-        TrainingDataGenerator.save_dataset(dataset, args.data)
+            f"\n📊 Generating {args.generate_data} training examples using REAL exercise database...")
+
+        # Resolve paths relative to script location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        exercise_db = os.path.join(script_dir, EXERCISE_DB_PATH)
+        gym_data = os.path.join(script_dir, GYM_MEMBERS_CSV)
+
+        # Initialize generator with real data
+        generator = TrainingDataGenerator(
+            exercise_db_path=exercise_db,
+            gym_data_path=gym_data
+        )
+
+        dataset = generator.generate_dataset(args.generate_data)
+        generator.save_dataset(dataset, args.data)
 
     # Check if data file exists
     if not os.path.exists(args.data):

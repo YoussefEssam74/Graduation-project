@@ -60,6 +60,11 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<VectorEmbedding> VectorEmbeddings { get; set; }  // NEW: Vector storage
         public DbSet<FitnessKnowledge> FitnessKnowledge { get; set; }  // NEW: RAG knowledge base
 
+        // AI Feedback Loop (Flan-T5 workout generation)
+        public DbSet<WorkoutFeedback> WorkoutFeedbacks { get; set; }  // User feedback for AI learning
+        public DbSet<UserStrengthProfile> UserStrengthProfiles { get; set; }  // Per-exercise strength tracking
+        public DbSet<MuscleDevelopmentScan> MuscleDevelopmentScans { get; set; }  // Vision AI analysis
+
         // Engagement
         public DbSet<ActivityFeed> ActivityFeeds { get; set; }
         public DbSet<ProgressMilestone> ProgressMilestones { get; set; }
@@ -120,6 +125,9 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<AiInferenceLog>().ToTable("ai_inference_logs");  // NEW
             modelBuilder.Entity<VectorEmbedding>().ToTable("vector_embeddings");  // NEW
             modelBuilder.Entity<FitnessKnowledge>().ToTable("fitness_knowledge");  // NEW
+            modelBuilder.Entity<WorkoutFeedback>().ToTable("workout_feedbacks");  // AI feedback loop
+            modelBuilder.Entity<UserStrengthProfile>().ToTable("user_strength_profiles");  // Strength tracking
+            modelBuilder.Entity<MuscleDevelopmentScan>().ToTable("muscle_development_scans");  // Vision AI
             modelBuilder.Entity<ActivityFeed>().ToTable("activity_feeds");
             modelBuilder.Entity<ProgressMilestone>().ToTable("progress_milestones");
             modelBuilder.Entity<UserMilestone>().ToTable("user_milestones");
@@ -883,6 +891,96 @@ namespace IntelliFit.Infrastructure.Persistence
                     .WithMany()
                     .HasForeignKey(e => e.ApprovedByUserId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ========== WORKOUT AI FEEDBACK LOOP CONFIGURATIONS ==========
+
+            // WorkoutFeedback Configuration (AI learning feedback)
+            modelBuilder.Entity<WorkoutFeedback>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+                entity.HasIndex(e => e.WorkoutLogId);
+                entity.HasIndex(e => e.WorkoutPlanId);
+                entity.HasIndex(e => e.FeedbackType);
+
+                // ExerciseFeedback stored as JSONB
+                entity.Property(e => e.ExerciseFeedback)
+                    .HasColumnType("jsonb");
+
+                entity.Property(e => e.DifficultyLevel).HasMaxLength(20);
+                entity.Property(e => e.FeedbackType).HasMaxLength(20);
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.WorkoutFeedbacks)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.WorkoutLog)
+                    .WithMany()
+                    .HasForeignKey(e => e.WorkoutLogId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.WorkoutPlan)
+                    .WithMany(wp => wp.WorkoutFeedbacks)
+                    .HasForeignKey(e => e.WorkoutPlanId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // UserStrengthProfile Configuration (per-exercise strength tracking)
+            modelBuilder.Entity<UserStrengthProfile>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.UserId, e.ExerciseId }).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.UpdatedAt });
+                entity.HasIndex(e => e.ConfidenceScore);
+
+                entity.Property(e => e.Estimated1RM).HasPrecision(6, 2);
+                entity.Property(e => e.ConfidenceScore).HasPrecision(4, 3);
+                entity.Property(e => e.AvgWorkingWeight).HasPrecision(6, 2);
+                entity.Property(e => e.MaxWeightLifted).HasPrecision(6, 2);
+                entity.Property(e => e.StrengthTrend).HasMaxLength(20);
+                entity.Property(e => e.LastUpdatedFrom).HasMaxLength(50);
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.StrengthProfiles)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Exercise)
+                    .WithMany(e => e.UserStrengthProfiles)
+                    .HasForeignKey(e => e.ExerciseId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MuscleDevelopmentScan Configuration (Vision AI analysis)
+            modelBuilder.Entity<MuscleDevelopmentScan>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.UserId, e.ScanDate });
+                entity.HasIndex(e => e.ImageType);
+
+                entity.Property(e => e.ImageUrl).HasMaxLength(500);
+                entity.Property(e => e.ImageType).HasMaxLength(20);
+                entity.Property(e => e.ModelVersion).HasMaxLength(100);
+                entity.Property(e => e.BodyFatEstimate).HasPrecision(5, 2);
+                entity.Property(e => e.MuscleDefinitionScore).HasPrecision(4, 3);
+                entity.Property(e => e.ConfidenceScore).HasPrecision(4, 3);
+
+                // MuscleScores stored as JSONB
+                entity.Property(e => e.MuscleScores)
+                    .HasColumnType("jsonb");
+
+                // Array columns for muscle groups
+                entity.Property(e => e.UnderdevelopedMuscles)
+                    .HasColumnType("text[]");
+                entity.Property(e => e.WellDevelopedMuscles)
+                    .HasColumnType("text[]");
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.MuscleScans)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Global Query Filters for soft delete (when implemented)

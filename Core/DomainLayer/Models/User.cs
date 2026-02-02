@@ -63,7 +63,23 @@ namespace IntelliFit.Domain.Models
         public virtual ICollection<UserMilestone> UserMilestones { get; set; } = new List<UserMilestone>();
         public virtual ICollection<AiWorkflowJob> AiWorkflowJobs { get; set; } = new List<AiWorkflowJob>();
 
-        // New AI/ML navigation properties
+        // AI/ML navigation properties (v2.0.0)
         public virtual ICollection<UserAchievement> UserAchievements { get; set; } = new List<UserAchievement>();
+        
+        // NEW: AI Feedback Loop navigation properties (v2.0.1)
+        /// <summary>
+        /// User feedback submitted after workouts (drives AI learning)
+        /// </summary>
+        public virtual ICollection<WorkoutFeedback> WorkoutFeedbacks { get; set; } = new List<WorkoutFeedback>();
+        
+        /// <summary>
+        /// AI-learned strength levels per exercise (updated from feedback)
+        /// </summary>
+        public virtual ICollection<UserStrengthProfile> StrengthProfiles { get; set; } = new List<UserStrengthProfile>();
+        
+        /// <summary>
+        /// Body photo analysis results (CLIP model - identifies muscle weaknesses)
+        /// </summary>
+        public virtual ICollection<MuscleDevelopmentScan> MuscleScans { get; set; } = new List<MuscleDevelopmentScan>();
     }
 }

@@ -1510,6 +1510,73 @@ namespace Presistence.Migrations
                     b.ToTable("member_profiles", (string)null);
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.MuscleDevelopmentScan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AsymmetryDetected")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("BodyFatEstimate")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("ConfidenceScore")
+                        .HasPrecision(4, 3)
+                        .HasColumnType("numeric(4,3)");
+
+                    b.Property<string>("ImageType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ModelVersion")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("MuscleDefinitionScore")
+                        .HasPrecision(4, 3)
+                        .HasColumnType("numeric(4,3)");
+
+                    b.Property<string>("MuscleScores")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("PostureNotes")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("ProcessingTimeMs")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ScanDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string[]>("UnderdevelopedMuscles")
+                        .HasColumnType("text[]");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string[]>("WellDevelopedMuscles")
+                        .HasColumnType("text[]");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImageType");
+
+                    b.HasIndex("UserId", "ScanDate");
+
+                    b.ToTable("muscle_development_scans", (string)null);
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.Notification", b =>
                 {
                     b.Property<int>("NotificationId")
@@ -2073,6 +2140,70 @@ namespace Presistence.Migrations
                     b.ToTable("user_milestones", (string)null);
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.UserStrengthProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("AvgWorkingWeight")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<decimal>("ConfidenceScore")
+                        .HasPrecision(4, 3)
+                        .HasColumnType("numeric(4,3)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Estimated1RM")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<int>("ExerciseId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FeedbackCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastUpdatedFrom")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("LastWorkoutDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("MaxWeightLifted")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
+                    b.Property<string>("StrengthTrend")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfidenceScore");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("UserId", "ExerciseId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "UpdatedAt");
+
+                    b.ToTable("user_strength_profiles", (string)null);
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.UserSubscription", b =>
                 {
                     b.Property<int>("SubscriptionId")
@@ -2122,6 +2253,63 @@ namespace Presistence.Migrations
                     b.HasIndex("UserId", "Status");
 
                     b.ToTable("user_subscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutFeedback", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comments")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DifficultyLevel")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ExerciseFeedback")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("FeedbackType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorkoutLogId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WorkoutLogLogId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("WorkoutPlanId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeedbackType");
+
+                    b.HasIndex("WorkoutLogId");
+
+                    b.HasIndex("WorkoutLogLogId");
+
+                    b.HasIndex("WorkoutPlanId");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("workout_feedbacks", (string)null);
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutLog", b =>
@@ -2254,6 +2442,9 @@ namespace Presistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PlanId"));
 
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("AiPrompt")
                         .HasColumnType("text");
 
@@ -2266,8 +2457,14 @@ namespace Presistence.Migrations
                     b.Property<int?>("ApprovedBy")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DaysPerWeek")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
@@ -2284,11 +2481,29 @@ namespace Presistence.Migrations
                     b.Property<string>("Exercises")
                         .HasColumnType("text");
 
+                    b.Property<string>("FitnessLevel")
+                        .HasColumnType("text");
+
                     b.Property<int?>("GeneratedByCoachId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("GenerationLatencyMs")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Goal")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ModelVersion")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlanData")
+                        .HasColumnType("text");
 
                     b.Property<string>("PlanName")
                         .IsRequired()
@@ -2296,6 +2511,12 @@ namespace Presistence.Migrations
 
                     b.Property<string>("PlanType")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestParameters")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestParametersHash")
                         .HasColumnType("text");
 
                     b.Property<string>("Schedule")
@@ -2313,6 +2534,9 @@ namespace Presistence.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserContextSnapshot")
+                        .HasColumnType("text");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -2838,6 +3062,17 @@ namespace Presistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.MuscleDevelopmentScan", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.User", "User")
+                        .WithMany("MuscleScans")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.Notification", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
@@ -2941,6 +3176,25 @@ namespace Presistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.UserStrengthProfile", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.Exercise", "Exercise")
+                        .WithMany("UserStrengthProfiles")
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.User", "User")
+                        .WithMany("StrengthProfiles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.UserSubscription", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.Payment", "Payment")
@@ -2965,6 +3219,36 @@ namespace Presistence.Migrations
                     b.Navigation("Plan");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutFeedback", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.User", "User")
+                        .WithMany("WorkoutFeedbacks")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.WorkoutLog", "WorkoutLog")
+                        .WithMany()
+                        .HasForeignKey("WorkoutLogId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.WorkoutLog", null)
+                        .WithMany("Feedbacks")
+                        .HasForeignKey("WorkoutLogLogId");
+
+                    b.HasOne("IntelliFit.Domain.Models.WorkoutPlan", "WorkoutPlan")
+                        .WithMany("WorkoutFeedbacks")
+                        .HasForeignKey("WorkoutPlanId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+
+                    b.Navigation("WorkoutLog");
+
+                    b.Navigation("WorkoutPlan");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutLog", b =>
@@ -3130,6 +3414,8 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.Exercise", b =>
                 {
+                    b.Navigation("UserStrengthProfiles");
+
                     b.Navigation("WorkoutPlanExercises");
 
                     b.Navigation("WorkoutTemplateExercises");
@@ -3187,11 +3473,15 @@ namespace Presistence.Migrations
 
                     b.Navigation("MemberProfile");
 
+                    b.Navigation("MuscleScans");
+
                     b.Navigation("Notifications");
 
                     b.Navigation("NutritionPlans");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("StrengthProfiles");
 
                     b.Navigation("TokenTransactions");
 
@@ -3201,6 +3491,8 @@ namespace Presistence.Migrations
 
                     b.Navigation("UserSubscriptions");
 
+                    b.Navigation("WorkoutFeedbacks");
+
                     b.Navigation("WorkoutLogs");
 
                     b.Navigation("WorkoutPlans");
@@ -3208,12 +3500,16 @@ namespace Presistence.Migrations
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutLog", b =>
                 {
+                    b.Navigation("Feedbacks");
+
                     b.Navigation("WorkoutLogExercises");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.WorkoutPlan", b =>
                 {
                     b.Navigation("AiGenerations");
+
+                    b.Navigation("WorkoutFeedbacks");
 
                     b.Navigation("WorkoutLogs");
 
