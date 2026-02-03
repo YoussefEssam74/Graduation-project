@@ -24,7 +24,7 @@ namespace IntelliFit.Domain.Models
         public virtual Equipment? Equipment { get; set; }  // Navigation to specific equipment
         public virtual ICollection<WorkoutPlanExercise> WorkoutPlanExercises { get; set; } = new List<WorkoutPlanExercise>();
         public virtual ICollection<WorkoutTemplateExercise> WorkoutTemplateExercises { get; set; } = new List<WorkoutTemplateExercise>();
-        
+
         /// <summary>
         /// NEW: User strength profiles for this exercise (AI-learned from feedback)
         /// </summary>

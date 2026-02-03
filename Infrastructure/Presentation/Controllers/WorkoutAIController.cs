@@ -77,7 +77,7 @@ public class WorkoutAIController : ApiControllerBase
             {
                 _logger.LogWarning("Failed to generate plan for user {UserId}: {Error}",
                     request.UserId, result.ErrorMessage);
-                
+
                 return BadRequest(result);
             }
 
@@ -108,12 +108,12 @@ public class WorkoutAIController : ApiControllerBase
     public async Task<IActionResult> CheckMLServiceHealth()
     {
         var isHealthy = await _workoutAIService.IsMLServiceHealthyAsync();
-        
+
         return Ok(new
         {
             status = isHealthy ? "healthy" : "unavailable",
-            message = isHealthy 
-                ? "ML service is running and model is loaded" 
+            message = isHealthy
+                ? "ML service is running and model is loaded"
                 : "ML service is unavailable. Make sure the Python FastAPI server is running on port 5300."
         });
     }

@@ -35,7 +35,7 @@ public class WorkoutAIService : IWorkoutAIService
         _mlClient = mlClient;
         _cache = cache;
         _logger = logger;
-        
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -256,7 +256,7 @@ public class WorkoutAIService : IWorkoutAIService
         var inBodyMeasurements = await _unitOfWork.Repository<InBodyMeasurement>()
             .FindAsync(m => m.UserId == userId);
         var latestInBody = inBodyMeasurements.OrderByDescending(m => m.CreatedAt).FirstOrDefault();
-        
+
         if (latestInBody != null)
         {
             context.InBodyData = new MLInBodyData
@@ -272,7 +272,7 @@ public class WorkoutAIService : IWorkoutAIService
         var muscleScans = await _unitOfWork.Repository<MuscleDevelopmentScan>()
             .FindAsync(s => s.UserId == userId);
         var latestScan = muscleScans.OrderByDescending(s => s.ScanDate).FirstOrDefault();
-        
+
         if (latestScan != null)
         {
             context.MuscleScan = new MLMuscleScanData
@@ -286,7 +286,7 @@ public class WorkoutAIService : IWorkoutAIService
         // Get strength profile
         var strengthProfiles = await _unitOfWork.Repository<UserStrengthProfile>()
             .FindAsync(p => p.UserId == userId);
-        
+
         if (strengthProfiles.Any())
         {
             var exercises = await _unitOfWork.Repository<Exercise>().GetAllAsync();
@@ -333,7 +333,7 @@ public class WorkoutAIService : IWorkoutAIService
                 {
                     var exerciseFeedbacks = JsonSerializer.Deserialize<List<ExerciseFeedbackJson>>(
                         feedback.ExerciseFeedback, _jsonOptions);
-                    
+
                     if (exerciseFeedbacks != null)
                     {
                         foreach (var ef in exerciseFeedbacks.Where(e => e.WeightFeeling != "Perfect"))
@@ -405,17 +405,17 @@ public class WorkoutAIService : IWorkoutAIService
             DifficultyLevel = MapFitnessLevelToDifficulty(request.FitnessLevel),
             Status = "Active",
             IsActive = true,
-            
+
             // AI-specific fields
             PlanData = JsonSerializer.Serialize(planData, _jsonOptions),
             RequestParameters = JsonSerializer.Serialize(mlRequest, _jsonOptions),
             RequestParametersHash = ComputeHash(mlRequest),
-            UserContextSnapshot = mlRequest.UserContext != null 
-                ? JsonSerializer.Serialize(mlRequest.UserContext, _jsonOptions) 
+            UserContextSnapshot = mlRequest.UserContext != null
+                ? JsonSerializer.Serialize(mlRequest.UserContext, _jsonOptions)
                 : null,
             ModelVersion = mlResponse.ModelVersion,
             GenerationLatencyMs = mlResponse.GenerationLatencyMs,
-            
+
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -440,7 +440,7 @@ public class WorkoutAIService : IWorkoutAIService
             Equipment = string.Join(",", request.Equipment.OrderBy(e => e)),
             Injuries = string.Join(",", request.Injuries.OrderBy(i => i))
         };
-        
+
         return $"{CACHE_PREFIX}{ComputeHash(keyData)}";
     }
 

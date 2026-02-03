@@ -25,7 +25,7 @@ public class MLServiceClient : IMLServiceClient
         _httpClient = httpClient;
         _logger = logger;
         _baseUrl = configuration["MLService:BaseUrl"] ?? "http://localhost:5300";
-        
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -56,7 +56,7 @@ public class MLServiceClient : IMLServiceClient
                 _logger.LogError(
                     "ML service returned error {StatusCode}: {Error}",
                     response.StatusCode, errorContent);
-                
+
                 return new MLWorkoutResponse
                 {
                     IsValidJson = false,
@@ -65,7 +65,7 @@ public class MLServiceClient : IMLServiceClient
             }
 
             var result = await response.Content.ReadFromJsonAsync<MLWorkoutResponse>(_jsonOptions);
-            
+
             _logger.LogInformation(
                 "Received ML response: valid_json={IsValid}, latency={Latency}ms",
                 result?.IsValidJson, result?.GenerationLatencyMs);

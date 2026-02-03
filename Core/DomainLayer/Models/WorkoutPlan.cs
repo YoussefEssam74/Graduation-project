@@ -13,7 +13,7 @@ namespace IntelliFit.Domain.Models
         public int UserId { get; set; }
         public string PlanName { get; set; } = null!;
         public string? Description { get; set; }
-        
+
         // Legacy fields (for coach-created plans)
         public string PlanType { get; set; } = "Custom";
         public string? DifficultyLevel { get; set; }
@@ -27,50 +27,50 @@ namespace IntelliFit.Domain.Models
         public int? ApprovedBy { get; set; }
         public DateTime? ApprovedAt { get; set; }
         public int TokensSpent { get; set; } = 0;
-        
+
         // NEW: AI-generated plan fields
         public string? FitnessLevel { get; set; } // Beginner, Intermediate, Advanced
         public string? Goal { get; set; } // Muscle, Strength, WeightLoss, Endurance
         public int? DaysPerWeek { get; set; }
-        
+
         /// <summary>
         /// Full AI-generated plan structure as JSON (from Flan-T5)
         /// Contains: days, exercises, sets, reps, rest, progressive overload
         /// </summary>
         public string? PlanData { get; set; } // JSONB in database
-        
+
         /// <summary>
         /// Request parameters that generated this plan (for cache key)
         /// Contains: equipment, injuries, preferences
         /// </summary>
         public string? RequestParameters { get; set; } // JSONB in database
-        
+
         /// <summary>
         /// MD5/SHA256 hash of request parameters for quick cache lookup
         /// </summary>
         public string? RequestParametersHash { get; set; }
-        
+
         /// <summary>
         /// Snapshot of user context at generation time
         /// Contains: InBody data, strength profile, muscle scan results
         /// Used to understand WHY this plan was generated this way
         /// </summary>
         public string? UserContextSnapshot { get; set; } // JSONB in database
-        
+
         /// <summary>
         /// AI model version used for generation (e.g., "flan-t5-v1.2.0")
         /// </summary>
         public string? ModelVersion { get; set; }
-        
+
         /// <summary>
         /// Time taken to generate plan in milliseconds (for monitoring)
         /// </summary>
         public int? GenerationLatencyMs { get; set; }
-        
+
         // Plan status
         public bool IsActive { get; set; } = false;
         public bool IsCompleted { get; set; } = false;
-        
+
         // Timestamps
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
@@ -86,7 +86,7 @@ namespace IntelliFit.Domain.Models
         public virtual ICollection<WorkoutLog> WorkoutLogs { get; set; } = new List<WorkoutLog>();
         public virtual ICollection<AiProgramGeneration> AiGenerations { get; set; } = new List<AiProgramGeneration>();
         public virtual ICollection<WorkoutPlanExercise> WorkoutPlanExercises { get; set; } = new List<WorkoutPlanExercise>();
-        
+
         // NEW: AI feedback loop navigation properties
         public virtual ICollection<WorkoutFeedback> WorkoutFeedbacks { get; set; } = new List<WorkoutFeedback>();
     }

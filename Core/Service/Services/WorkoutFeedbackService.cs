@@ -34,7 +34,7 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
         _unitOfWork = unitOfWork;
         _mapper = mapper;
         _logger = logger;
-        
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -93,7 +93,7 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
 
             // 3. Process each exercise feedback and update strength profiles
             var strengthUpdates = new List<StrengthProfileUpdate>();
-            
+
             foreach (var exerciseFeedback in request.ExerciseFeedbacks)
             {
                 var update = await UpdateStrengthProfileAsync(userId, exerciseFeedback);
@@ -176,7 +176,7 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
             // Get or create strength profile
             var profile = await _unitOfWork.Repository<UserStrengthProfile>()
                 .FirstOrDefaultAsync(p => p.UserId == userId && p.ExerciseId == exerciseFeedback.ExerciseId);
-            
+
             var isNew = profile == null;
 
             if (isNew)
@@ -209,14 +209,14 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
                     profile.ConfidenceScore = Math.Max(0.1m, oldConfidence - IMPERFECT_CONFIDENCE_PENALTY);
                     adjustmentReason = "Weight felt too light - increased estimate";
                     break;
-                    
+
                 case "tooheavy":
                     // Weight was too heavy - actual 1RM is probably lower
                     calculated1RM *= (1 - TOO_HEAVY_DECREASE);
                     profile.ConfidenceScore = Math.Max(0.1m, oldConfidence - IMPERFECT_CONFIDENCE_PENALTY);
                     adjustmentReason = "Weight felt too heavy - decreased estimate";
                     break;
-                    
+
                 case "perfect":
                     // Weight was perfect - increase confidence
                     profile.ConfidenceScore = Math.Min(1.0m, oldConfidence + PERFECT_CONFIDENCE_BOOST);
@@ -286,7 +286,7 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
+            _logger.LogError(ex,
                 "Error updating strength profile for user {UserId}, exercise {ExerciseId}",
                 userId, exerciseFeedback.ExerciseId);
             return null;
@@ -303,7 +303,7 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
     {
         if (reps >= 37) reps = 36; // Prevent division by zero
         if (reps <= 0) reps = 1;
-        
+
         return weight * (36m / (37m - reps));
     }
 
@@ -313,7 +313,7 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
     private static string DetermineStrengthTrend(decimal old1RM, decimal new1RM)
     {
         if (old1RM == 0) return "Stable";
-        
+
         var changePercent = ((new1RM - old1RM) / old1RM) * 100;
 
         return changePercent switch
@@ -334,7 +334,7 @@ public class WorkoutFeedbackService : IWorkoutFeedbackService
 
         try
         {
-            return JsonSerializer.Deserialize<List<ExerciseFeedbackDto>>(json, _jsonOptions) 
+            return JsonSerializer.Deserialize<List<ExerciseFeedbackDto>>(json, _jsonOptions)
                    ?? new List<ExerciseFeedbackDto>();
         }
         catch

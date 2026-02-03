@@ -16,7 +16,7 @@ namespace IntelliFit.Examples
         // ============================================
         // SCENARIO 1: New User (No Context)
         // ============================================
-        
+
         public async Task<object> Scenario1_NewUser()
         {
             /*
@@ -24,7 +24,7 @@ namespace IntelliFit.Examples
              * Data Available: None (no InBody, no photos, no strength profile)
              * Expected: Generic plan based on fitness level
              */
-            
+
             var request = new
             {
                 UserId = 12345,
@@ -34,35 +34,35 @@ namespace IntelliFit.Examples
                 Equipment = new[] { "Barbell", "Dumbbells" },
                 Injuries = Array.Empty<string>()
             };
-            
+
             // Step 1: Check cache (will MISS - first time)
             var cacheKey = $"workout-plan:{request.UserId}:{GetRequestHash(request)}";
             // Cache result: NULL
-            
+
             // Step 2: Check database (will MISS - no saved plans)
             // Database query: SELECT * FROM workout_plans WHERE user_id = 12345 AND request_parameters_hash = 'abc123'
             // Result: NULL
-            
+
             // Step 3: Build user context
             var userContext = new
             {
                 // Query InBody: SELECT * FROM in_body_measurements WHERE user_id = 12345 ORDER BY measurement_date DESC LIMIT 1
                 InBodyData = (object?)null, // NULL - no measurements
-                
+
                 // Query Muscle Scans: SELECT * FROM muscle_development_scan WHERE user_id = 12345 ORDER BY scan_date DESC LIMIT 1
                 MuscleScan = (object?)null, // NULL - no photos uploaded
-                
+
                 // Query Strength Profile: SELECT * FROM user_strength_profile WHERE user_id = 12345
                 StrengthProfile = new List<object>(), // Empty - no workouts completed
-                
+
                 // Query Recent Feedback: SELECT * FROM workout_feedback WHERE user_id = 12345 ORDER BY created_at DESC LIMIT 5
                 FeedbackSummary = (object?)null // NULL - no feedback yet
             };
-            
+
             // Step 4: Build prompt (minimal context)
             var prompt = BuildPrompt(request, userContext);
             // Result: "Generate a 4-day workout plan for intermediate lifter, goal is muscle, has Barbell, Dumbbells."
-            
+
             // Step 5: Call Python ML service
             var mlResponse = await CallMLService(prompt);
             /*
@@ -84,7 +84,7 @@ namespace IntelliFit.Examples
              *   "model_version": "flan-t5-v1.0.0"
              * }
              */
-            
+
             // Step 6: Save to database
             var savedPlan = await SaveToDatabase(mlResponse, request, userContext);
             /*
@@ -100,18 +100,18 @@ namespace IntelliFit.Examples
              *   true, NOW()
              * )
              */
-            
+
             // Step 7: Cache result
             await CacheResult(cacheKey, savedPlan, TimeSpan.FromDays(7));
-            
+
             return savedPlan;
         }
-        
-        
+
+
         // ============================================
         // SCENARIO 2: User with InBody Data
         // ============================================
-        
+
         public async Task<object> Scenario2_WithInBody()
         {
             /*
@@ -119,7 +119,7 @@ namespace IntelliFit.Examples
              * Data Available: InBody measurements
              * Expected: Plan adjusted for body composition
              */
-            
+
             var request = new
             {
                 UserId = 12345,
@@ -128,7 +128,7 @@ namespace IntelliFit.Examples
                 DaysPerWeek = 4,
                 Equipment = new[] { "Barbell", "Dumbbells" }
             };
-            
+
             // Build user context
             var userContext = new
             {
@@ -144,12 +144,12 @@ namespace IntelliFit.Examples
                 StrengthProfile = new List<object>(),
                 FeedbackSummary = (object?)null
             };
-            
+
             // Build prompt (includes InBody data)
             var prompt = "Generate a 4-day workout plan for intermediate lifter, goal is muscle, " +
                         "user has 65.5kg muscle mass and 18.2% body fat, " +
                         "has Barbell, Dumbbells.";
-            
+
             // Call ML service
             var mlResponse = await CallMLService(prompt);
             /*
@@ -160,15 +160,15 @@ namespace IntelliFit.Examples
              *   "exercises": [...] // Volume adjusted based on muscle mass
              * }
              */
-            
+
             return mlResponse;
         }
-        
-        
+
+
         // ============================================
         // SCENARIO 3: User with Body Photo Analysis
         // ============================================
-        
+
         public async Task<object> Scenario3_WithBodyScan()
         {
             /*
@@ -176,7 +176,7 @@ namespace IntelliFit.Examples
              * Data Available: InBody + Muscle development scan
              * Expected: Plan focused on weak muscle groups
              */
-            
+
             var request = new
             {
                 UserId = 12345,
@@ -185,11 +185,11 @@ namespace IntelliFit.Examples
                 DaysPerWeek = 4,
                 Equipment = new[] { "Barbell", "Dumbbells", "Cables" }
             };
-            
+
             var userContext = new
             {
                 InBodyData = new { MuscleMassKg = 65.5m, BodyFatPercent = 18.2m },
-                
+
                 // Query Muscle Scan (FOUND!)
                 MuscleScan = new
                 {
@@ -206,17 +206,17 @@ namespace IntelliFit.Examples
                     WellDevelopedMuscles = new[] { "legs", "chest" },
                     ScanDate = DateTime.UtcNow.AddDays(-3)
                 },
-                
+
                 StrengthProfile = new List<object>(),
                 FeedbackSummary = (object?)null
             };
-            
+
             // Build prompt (includes weak areas)
             var prompt = "Generate a 4-day workout plan for intermediate lifter, goal is muscle, " +
                         "user has 65.5kg muscle mass and 18.2% body fat, " +
                         "focus on weak areas: back, shoulders, " + // FROM PHOTO ANALYSIS
                         "has Barbell, Dumbbells, Cables.";
-            
+
             // Call ML service
             var mlResponse = await CallMLService(prompt);
             /*
@@ -251,15 +251,15 @@ namespace IntelliFit.Examples
              *   ]
              * }
              */
-            
+
             return mlResponse;
         }
-        
-        
+
+
         // ============================================
         // SCENARIO 4: Complete Workflow with Feedback Loop
         // ============================================
-        
+
         public async Task<object> Scenario4_CompleteFeedbackLoop()
         {
             /*
@@ -267,7 +267,7 @@ namespace IntelliFit.Examples
              * Data Available: InBody + Muscle Scan + Strength Profile + Feedback
              * Expected: FULLY PERSONALIZED plan with exact weight recommendations
              */
-            
+
             var request = new
             {
                 UserId = 12345,
@@ -276,17 +276,17 @@ namespace IntelliFit.Examples
                 DaysPerWeek = 4,
                 Equipment = new[] { "Barbell", "Dumbbells", "Cables" }
             };
-            
+
             var userContext = new
             {
                 InBodyData = new { MuscleMassKg = 65.5m, BodyFatPercent = 18.2m },
-                
+
                 MuscleScan = new
                 {
                     UnderdevelopedMuscles = new[] { "back", "shoulders" },
                     WellDevelopedMuscles = new[] { "legs", "chest" }
                 },
-                
+
                 // Query Strength Profile (FOUND! - learned from feedback)
                 StrengthProfile = new[]
                 {
@@ -295,7 +295,7 @@ namespace IntelliFit.Examples
                     new { ExerciseName = "Deadlift", OneRmKg = 120m, ConfidenceScore = 0.78m },
                     new { ExerciseName = "Overhead Press", OneRmKg = 55m, ConfidenceScore = 0.80m }
                 },
-                
+
                 // Query Recent Feedback
                 FeedbackSummary = new
                 {
@@ -307,7 +307,7 @@ namespace IntelliFit.Examples
                     }
                 }
             };
-            
+
             // Build enriched prompt
             var prompt = "Generate a 4-day workout plan for intermediate lifter, goal is muscle, " +
                         "user has 65.5kg muscle mass and 18.2% body fat, " +
@@ -315,7 +315,7 @@ namespace IntelliFit.Examples
                         "user's known strength: Bench Press 1RM=80kg, Squat 1RM=100kg, Deadlift 1RM=120kg, " +
                         "recent feedback: chest exercises weights were too light, leg exercises weights were perfect, " +
                         "has Barbell, Dumbbells, Cables.";
-            
+
             // Call ML service
             var mlResponse = await CallMLService(prompt);
             /*
@@ -383,22 +383,22 @@ namespace IntelliFit.Examples
              *   "progressive_overload_notes": "Increase weights by 2.5kg when you can complete all sets with good form"
              * }
              */
-            
+
             return mlResponse;
         }
-        
-        
+
+
         // ============================================
         // SCENARIO 5: After Workout - Feedback Submission
         // ============================================
-        
+
         public async Task ProcessFeedback()
         {
             /*
              * User: Just completed workout, giving feedback
              * Action: Update strength profile based on weight feelings
              */
-            
+
             var feedbackRequest = new
             {
                 UserId = 12345,
@@ -414,7 +414,7 @@ namespace IntelliFit.Examples
                 },
                 Comments = "Great workout! Chest needs more weight though."
             };
-            
+
             // Step 1: Save feedback
             /*
              * INSERT INTO workout_feedback (
@@ -422,7 +422,7 @@ namespace IntelliFit.Examples
              *   rating, difficulty_level, exercise_feedback, comments
              * ) VALUES (...)
              */
-            
+
             // Step 2: Update strength profiles
             foreach (var exercise in feedbackRequest.ExerciseFeedback)
             {
@@ -455,47 +455,47 @@ namespace IntelliFit.Examples
                  * WHERE user_id = 12345 AND exercise_id = 45
                  */
             }
-            
+
             // Step 3: Clear cache (so next plan uses updated strength data)
             /*
              * DELETE FROM redis WHERE key LIKE 'workout-plan:12345:*'
              */
         }
-        
-        
+
+
         // ============================================
         // Helper Methods (Pseudocode)
         // ============================================
-        
+
         private string GetRequestHash(object request)
         {
             // Create MD5/SHA256 hash of request parameters
             return "abc123";
         }
-        
+
         private string BuildPrompt(object request, object userContext)
         {
             // Build enriched prompt string
             return "prompt";
         }
-        
+
         private async Task<object> CallMLService(string prompt)
         {
             // HTTP POST to http://localhost:5300/predict
             return new { };
         }
-        
+
         private async Task<object> SaveToDatabase(object mlResponse, object request, object userContext)
         {
             // INSERT INTO workout_plans
             return new { };
         }
-        
+
         private async Task CacheResult(string key, object value, TimeSpan expiration)
         {
             // Redis SET with TTL
         }
-        
+
         private async Task UpdateStrengthProfile(object exercise)
         {
             // UPDATE user_strength_profile based on feedback

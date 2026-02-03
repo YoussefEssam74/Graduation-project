@@ -50,7 +50,7 @@ namespace IntelliFit.Domain.Models
         /// Use this instead of ExercisesCompleted JSON string.
         /// </summary>
         public virtual ICollection<WorkoutLogExercise> WorkoutLogExercises { get; set; } = new List<WorkoutLogExercise>();
-        
+
         /// <summary>
         /// NEW: User feedback submitted for this workout (AI learning)
         /// </summary>

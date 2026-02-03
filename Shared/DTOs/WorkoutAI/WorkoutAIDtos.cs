@@ -172,12 +172,12 @@ public class GenerateAIWorkoutPlanRequest
     public int DaysPerWeek { get; set; } = 4;
     public List<string> Equipment { get; set; } = new();
     public List<string> Injuries { get; set; } = new();
-    
+
     /// <summary>
     /// If true, include user's InBody, strength profile, and muscle scan data
     /// </summary>
     public bool IncludeUserContext { get; set; } = true;
-    
+
     /// <summary>
     /// If true, skip cache and force regeneration
     /// </summary>
@@ -266,22 +266,22 @@ public class SubmitWorkoutFeedbackRequest
 {
     public int WorkoutLogId { get; set; }
     public int? WorkoutPlanId { get; set; }
-    
+
     /// <summary>
     /// Overall workout rating (1-5 stars)
     /// </summary>
     public int Rating { get; set; }
-    
+
     /// <summary>
     /// Overall difficulty: TooEasy, Perfect, TooHard
     /// </summary>
     public string? DifficultyLevel { get; set; }
-    
+
     /// <summary>
     /// Per-exercise feedback
     /// </summary>
     public List<ExerciseFeedbackDto> ExerciseFeedbacks { get; set; } = new();
-    
+
     /// <summary>
     /// Free-text comments
     /// </summary>
@@ -296,15 +296,15 @@ public class ExerciseFeedbackDto
     public int ExerciseId { get; set; }
     public string? ExerciseName { get; set; }
     public decimal? WeightUsed { get; set; }
-    
+
     /// <summary>
     /// How the weight felt: TooLight, Perfect, TooHeavy
     /// </summary>
     public string WeightFeeling { get; set; } = "Perfect";
-    
+
     public int SetsCompleted { get; set; }
     public int SetsPlanned { get; set; }
-    
+
     /// <summary>
     /// Form quality: Poor, Fair, Good, Excellent
     /// </summary>
