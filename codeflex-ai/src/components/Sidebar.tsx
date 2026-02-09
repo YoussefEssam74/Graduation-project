@@ -73,10 +73,10 @@ export default function Sidebar() {
 
     const getAdminNav = () => [
         { href: "/admin-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
-        { href: "/admin-users", icon: Users2Icon, label: "Manage Staff" },
-        { href: "/admin-members", icon: Users2Icon, label: "Members" },
-        { href: "/admin-coaches", icon: UserCogIcon, label: "Coaches" },
+        { href: "/admin-users", icon: Users2Icon, label: "Create Staff" },
+        { href: "/admin-coaches", icon: UserCogIcon, label: "Manage Staff" },
         { href: "/admin-equipment", icon: DumbbellIcon, label: "Equipment" },
+        { href: "/admin-packages", icon: Ticket, label: "Packages" },
         { href: "/admin-analytics", icon: ActivityIcon, label: "Analytics" },
     ];
 

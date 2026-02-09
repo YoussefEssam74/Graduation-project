@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
+import Link from "next/link";
 
 function AdminCoachesContent() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,10 +135,12 @@ function AdminCoachesContent() {
           </h1>
           <p className="text-muted-foreground mt-2">View and manage all gym coaches</p>
         </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
-          <UserCog className="h-4 w-4 mr-2" />
-          Add New Coach
-        </Button>
+        <Link href="/admin-users">
+          <Button className="bg-purple-600 hover:bg-purple-700">
+            <UserCog className="h-4 w-4 mr-2" />
+            Create New Staff
+          </Button>
+        </Link>
       </div>
 
       {/* Stats Cards */}

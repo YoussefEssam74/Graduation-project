@@ -7,7 +7,7 @@ import {
   Activity,
   Dumbbell,
   UserCog,
-  Shield,
+  Ticket,
   BarChart3,
   Calendar,
   AlertTriangle,
@@ -63,13 +63,11 @@ function AdminDashboardContent() {
   ];
 
   const quickActions = [
-    { icon: Users, label: "Manage Members", color: "text-blue-500", bgColor: "bg-blue-100", href: "/admin-members" },
-    { icon: UserCog, label: "Manage Coaches", color: "text-purple-500", bgColor: "bg-purple-100", href: "/admin-coaches" },
-    { icon: UserPlus, label: "Create Staff Account", color: "text-emerald-500", bgColor: "bg-emerald-100", href: "/admin-users" },
+    { icon: UserCog, label: "Manage Staff", color: "text-purple-500", bgColor: "bg-purple-100", href: "/admin-coaches" },
+    { icon: UserPlus, label: "Create Staff", color: "text-emerald-500", bgColor: "bg-emerald-100", href: "/admin-users" },
     { icon: Dumbbell, label: "Equipment Management", color: "text-green-500", bgColor: "bg-green-100", href: "/admin-equipment" },
     { icon: BarChart3, label: "Analytics & Reports", color: "text-orange-500", bgColor: "bg-orange-100", href: "/admin-analytics" },
-    { icon: Shield, label: "System Settings", color: "text-red-500", bgColor: "bg-red-100", href: "/admin-settings" },
-    { icon: Calendar, label: "Booking Management", color: "text-indigo-500", bgColor: "bg-indigo-100", href: "/admin-bookings" },
+    { icon: Ticket, label: "Packages", color: "text-red-500", bgColor: "bg-red-100", href: "/admin-packages" },
   ];
 
   return (
