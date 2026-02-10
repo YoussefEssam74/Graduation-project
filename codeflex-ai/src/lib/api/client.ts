@@ -1,5 +1,6 @@
 // API Base URL from environment variable
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5025/api';
+const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5025/api').replace(/\/$/, '');
+export const API_BASE_URL = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
 
 // Helper function to get auth token from localStorage
 export const getAuthToken = (): string | null => {
@@ -30,10 +31,14 @@ export interface ApiResponse<T> {
   errors?: string[];
 }
 
+export interface ApiFetchOptions extends RequestInit {
+  skipAuth?: boolean;
+}
+
 // Generic fetch wrapper with auth token
 export async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiFetchOptions = {}
 ): Promise<ApiResponse<T>> {
   const token = getAuthToken();
 
@@ -42,7 +47,7 @@ export async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (token) {
+  if (token && !options.skipAuth) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -113,15 +118,21 @@ export async function apiFetch<T>(
       });
       return {
         success: false,
-        message: data?.error || data?.message || data?.title || 'An error occurred',
-        errors: data?.errors || [data?.error || response.statusText],
+        message: data?.errorMessage || data?.error || data?.message || data?.title || 'An error occurred',
+        errors: data?.errors || [data?.errorMessage || data?.error || response.statusText],
       };
     }
 
     // Backend returns data directly, wrap it in ApiResponse format
-    // If backend already has success field, use as-is, otherwise wrap it
+    // If backend already has success field, use its success value but wrap the whole response in data
     if (typeof data === 'object' && data !== null && 'success' in data) {
-      return data;
+      // Backend returned something like { success: true/false, planId: 1, ... }
+      // We need to wrap it so the frontend sees { success: true, data: { success: true, planId: 1, ... } }
+      return {
+        success: data.success,
+        data: data,
+        message: data.errorMessage || data.message,
+      };
     }
 
     return {

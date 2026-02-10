@@ -55,6 +55,7 @@ export const authApi = {
     const response = await apiFetch<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
+      skipAuth: true,
     });
 
     // Store token if login successful
@@ -72,6 +73,7 @@ export const authApi = {
     const response = await apiFetch<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
+      skipAuth: true,
     });
 
     // Store token if registration successful
@@ -117,7 +119,7 @@ export const authApi = {
    * Check if email exists
    */
   async emailExists(email: string): Promise<ApiResponse<boolean>> {
-    return apiFetch<boolean>(`/auth/email-exists?email=${encodeURIComponent(email)}`);
+    return apiFetch<boolean>(`/auth/email-exists?email=${encodeURIComponent(email)}`, { skipAuth: true });
   },
 
   /**

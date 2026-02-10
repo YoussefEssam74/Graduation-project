@@ -48,7 +48,7 @@ public class MLServiceClient : IMLServiceClient
                 "Sending workout generation request to ML service for user {UserId}",
                 request.UserId);
 
-            var response = await _httpClient.PostAsJsonAsync("/predict", request, _jsonOptions);
+            var response = await _httpClient.PostAsJsonAsync("/generate-direct", request, _jsonOptions);
 
             if (!response.IsSuccessStatusCode)
             {

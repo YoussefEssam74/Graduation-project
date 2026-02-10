@@ -58,6 +58,15 @@ namespace Graduation_Project
             builder.Services.AddScoped<IWorkoutAIService, WorkoutAIService>();
             builder.Services.AddScoped<IWorkoutFeedbackService, WorkoutFeedbackService>();
 
+            // Add Workout Plan Generator Service (Python FastAPI integration)
+            builder.Services.AddHttpClient<ServiceAbstraction.Services.IWorkoutGeneratorService, Service.Services.WorkoutGeneratorService>(client =>
+            {
+                var baseUrl = builder.Configuration["WorkoutGeneratorAPI:BaseUrl"] ?? "http://localhost:8000";
+                var timeout = int.Parse(builder.Configuration["WorkoutGeneratorAPI:TimeoutSeconds"] ?? "60");
+                client.BaseAddress = new Uri(baseUrl);
+                client.Timeout = TimeSpan.FromSeconds(timeout);
+            });
+
             // Add Equipment Time Slot Service (for background service and booking logic)
             builder.Services.AddScoped<ServiceAbstraction.Services.IEquipmentTimeSlotService, Service.Services.EquipmentTimeSlotService>();
 

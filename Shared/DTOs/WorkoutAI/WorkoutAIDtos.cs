@@ -202,13 +202,22 @@ public class AIWorkoutPlanResult
 
 /// <summary>
 /// Structured workout plan data from AI
+/// NOTE: No [JsonPropertyName] here - ASP.NET Core's CamelCase policy outputs camelCase to frontend.
+/// Snake_case deserialization from ML is handled via SnakeCaseLower in ParsePlanData.
 /// </summary>
 public class AIGeneratedPlanData
 {
     public string? Schedule { get; set; }
+    public string? PlanName { get; set; }
+    public string? FitnessLevel { get; set; }
+    public string? Goal { get; set; }
+    public int? DaysPerWeek { get; set; }
+    public string? GeneratedAt { get; set; }
     public List<AIWorkoutDay>? Days { get; set; }
     public AIProgressiveOverload? ProgressiveOverload { get; set; }
     public List<string>? WeeklyTips { get; set; }
+    public string? Notes { get; set; }
+    public int? ProgramDurationWeeks { get; set; }
 }
 
 /// <summary>
@@ -217,8 +226,9 @@ public class AIGeneratedPlanData
 public class AIWorkoutDay
 {
     public int DayNumber { get; set; }
-    public string? DayName { get; set; } // "Push Day", "Leg Day", etc.
-    public string? Focus { get; set; } // "Chest, Shoulders, Triceps"
+    public string? DayName { get; set; }
+    public string? Focus { get; set; }
+    public List<string>? FocusAreas { get; set; }
     public List<AIExercise>? Exercises { get; set; }
     public int? EstimatedDurationMinutes { get; set; }
 }
@@ -230,13 +240,24 @@ public class AIExercise
 {
     public int? ExerciseId { get; set; }
     public string Name { get; set; } = null!;
-    public int Sets { get; set; }
-    public string? Reps { get; set; } // "8-12" or "12"
-    public decimal? WeightKg { get; set; } // Recommended weight based on strength profile
+
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int? Sets { get; set; }
+
+    public string? Reps { get; set; }
+    public string? Rest { get; set; }
     public int? RestSeconds { get; set; }
-    public string? Tempo { get; set; } // "3-1-2" (eccentric-pause-concentric)
+    public decimal? WeightKg { get; set; }
+    public string? WeightRecommendation { get; set; }
+    public List<string>? TargetMuscles { get; set; }
+    public string? Equipment { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? Description { get; set; }
+    public string? Tempo { get; set; }
     public string? Notes { get; set; }
-    public List<string>? Alternatives { get; set; } // Alternative exercises if equipment unavailable
+    public string? MovementPattern { get; set; }
+    public string? ExerciseType { get; set; }
+    public List<string>? Alternatives { get; set; }
 }
 
 /// <summary>
@@ -399,4 +420,63 @@ public class MuscleScanResultDto
     public DateTime ScanDate { get; set; }
 }
 
+/// <summary>
+/// Request to save AI-generated plan from frontend (after direct ML API call)
+/// Used when frontend calls FastAPI directly and then saves result to backend
+/// </summary>
+public class SaveAIGeneratedPlanRequest
+{
+    public int UserId { get; set; }
+    public string PlanName { get; set; } = null!;
+    public string FitnessLevel { get; set; } = null!;
+    public string Goal { get; set; } = null!;
+    public int DaysPerWeek { get; set; }
+    public int ProgramDurationWeeks { get; set; }
+    public List<WorkoutDayData> Days { get; set; } = new();
+    public string? Notes { get; set; }
+    public int GenerationLatencyMs { get; set; }
+    public string ModelVersion { get; set; } = null!;
+    public bool AIGenerated { get; set; } = true;
+}
+
+/// <summary>
+/// Workout day data structure
+/// </summary>
+public class WorkoutDayData
+{
+    public int DayNumber { get; set; }
+    public string DayName { get; set; } = null!;
+    public List<string> FocusAreas { get; set; } = new();
+    public int? EstimatedDurationMinutes { get; set; }
+    public List<WorkoutExerciseData> Exercises { get; set; } = new();
+}
+
+/// <summary>
+/// Exercise data structure
+/// </summary>
+public class WorkoutExerciseData
+{
+    public string Name { get; set; } = null!;
+    public string Sets { get; set; } = null!;
+    public string Reps { get; set; } = null!;
+    public string Rest { get; set; } = null!;
+    public List<string>? TargetMuscles { get; set; }
+    public string? Equipment { get; set; }
+    public string? MovementPattern { get; set; }
+    public string? ExerciseType { get; set; }
+    public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Response after saving plan
+/// </summary>
+public class SavePlanResponse
+{
+    public bool Success { get; set; }
+    public int? PlanId { get; set; }
+    public string? Message { get; set; }
+    public string? Error { get; set; }
+}
+
 #endregion
+

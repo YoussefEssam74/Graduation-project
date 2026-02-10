@@ -33,6 +33,14 @@ public interface IWorkoutAIService
     /// </summary>
     /// <returns>True if service is running and model is loaded</returns>
     Task<bool> IsMLServiceHealthyAsync();
+
+    /// <summary>
+    /// Save AI-generated workout plan (called after frontend generates via direct ML API)
+    /// Used in optimized flow: Frontend → ML API → Frontend → Backend (save)
+    /// </summary>
+    /// <param name="request">Generated plan data to save</param>
+    /// <returns>Save result with plan ID</returns>
+    Task<SavePlanResponse> SaveAIGeneratedPlanAsync(SaveAIGeneratedPlanRequest request);
 }
 
 /// <summary>
