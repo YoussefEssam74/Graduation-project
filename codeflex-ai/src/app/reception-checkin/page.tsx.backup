@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import {
   Search,
   Camera,
@@ -10,7 +9,6 @@ import {
   AlertTriangle,
   X,
   Dumbbell,
-  CreditCard,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,11 +18,9 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
 import { receptionApi, CheckInDto, MemberSearchDto, LiveActivityDto, AlertDto, ReceptionStatsDto } from "@/lib/api/reception";
 import { useToast } from "@/components/ui/toast";
-import { Html5Qrcode } from "html5-qrcode";
 
 function ReceptionCheckInContent() {
   const { showToast } = useToast();
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [selectedMember, setSelectedMember] = useState<CheckInDto | null>(null);
@@ -34,15 +30,12 @@ function ReceptionCheckInContent() {
   const [stats, setStats] = useState<ReceptionStatsDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
-  const qrReaderElementId = "qr-reader";
 
   // Load initial data
   useEffect(() => {
     loadLiveActivities();
     loadAlerts();
     loadStats();
-    loadInitialMembers(); // Load members on page load
     const interval = setInterval(() => {
       loadLiveActivities();
       loadStats();
@@ -60,9 +53,8 @@ function ReceptionCheckInContent() {
       searchTimeoutRef.current = setTimeout(() => {
         handleSearch(searchQuery);
       }, 300);
-    } else if (searchQuery.trim().length === 0) {
-      // Reload all members when search is cleared
-      loadInitialMembers();
+    } else {
+      setSearchResults([]);
     }
 
     return () => {
@@ -105,21 +97,6 @@ function ReceptionCheckInContent() {
     }
   };
 
-  const loadInitialMembers = async () => {
-    setIsLoading(true);
-    try {
-      // Load all members by searching with empty string or a common character
-      const response = await receptionApi.searchMembers("");
-      if (response.success && response.data) {
-        setSearchResults(response.data);
-      }
-    } catch (error) {
-      console.error("Failed to load members:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSearch = async (query: string) => {
     setIsLoading(true);
     try {
@@ -159,6 +136,15 @@ function ReceptionCheckInContent() {
         accessArea: "General Access",
       });
 
+  const handleCheckIn = async () => {
+    if (!selectedMember) return;
+
+    try {
+      const response = await receptionApi.checkInMember({
+        userId: selectedMember.userId,
+        accessArea: "General Access",
+      });
+
       if (response.success) {
         showToast(`${selectedMember.name} checked in successfully`, "success");
         setSelectedMember(null);
@@ -174,89 +160,7 @@ function ReceptionCheckInContent() {
     setSelectedMember(null);
     setSearchQuery("");
     setSearchResults([]);
-    stopScanner();
   };
-
-  const startScanner = async () => {
-    try {
-      // Check if we're on HTTPS or localhost
-      const isSecureContext = window.isSecureContext;
-      if (!isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        showToast("Camera access requires HTTPS. Please use localhost or HTTPS.", "error");
-        return;
-      }
-
-      // Request camera permission first
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        // Stop the test stream immediately
-        stream.getTracks().forEach(track => track.stop());
-      } catch (permError: any) {
-        if (permError.name === 'NotAllowedError') {
-          showToast("Camera permission denied. Please allow camera access in your browser settings.", "error");
-        } else if (permError.name === 'NotFoundError') {
-          showToast("No camera found on this device.", "error");
-        } else if (permError.name === 'NotReadableError') {
-          showToast("Camera is already in use by another application.", "error");
-        } else {
-          showToast(`Camera error: ${permError.message}`, "error");
-        }
-        return;
-      }
-
-      if (!html5QrcodeRef.current) {
-        html5QrcodeRef.current = new Html5Qrcode(qrReaderElementId);
-      }
-
-      const cameras = await Html5Qrcode.getCameras();
-      if (cameras && cameras.length > 0) {
-        const cameraId = cameras[0].id;
-        
-        await html5QrcodeRef.current.start(
-          cameraId,
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            // QR Code scanned successfully
-            console.log("QR Code detected:", decodedText);
-            handleQRScan(decodedText);
-            stopScanner();
-          },
-          (errorMessage) => {
-            // Scanning error (can be ignored, happens continuously)
-          }
-        );
-
-        setIsScanning(true);
-        showToast("Camera started. Point at a QR code to scan.", "success");
-      } else {
-        showToast("No cameras found on this device", "error");
-      }
-    } catch (error: any) {
-      console.error("Error starting scanner:", error);
-      showToast(`Failed to start camera: ${error.message || 'Unknown error'}`, "error");
-    }
-  };
-
-  const stopScanner = async () => {
-    try {
-      if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
-        await html5QrcodeRef.current.stop();
-      }
-      setIsScanning(false);
-    } catch (error) {
-      console.error("Error stopping scanner:", error);
-    }
-  };
-
-  // Cleanup scanner on unmount
-  useEffect(() => {
-    return () => {
-      stopScanner();
-    };
-  }, []);
 
   const handleQRScan = async (qrCode: string) => {
     setIsLoading(true);
@@ -320,20 +224,6 @@ function ReceptionCheckInContent() {
           </div>
 
           <div className="flex items-center gap-6">
-            <Button
-              onClick={() => router.push("/reception/payments")}
-              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg"
-            >
-              <CreditCard className="h-4 w-4" />
-              Payments
-            </Button>
-            <Button
-              onClick={() => router.push("/reception/member-details/1")}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
-            >
-              <Search className="h-4 w-4" />
-              Member Details
-            </Button>
             <div className="text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Capacity</p>
               <p className="text-2xl font-bold text-blue-600">{capacityPercentage}%</p>
@@ -368,27 +258,17 @@ function ReceptionCheckInContent() {
                 <div className="relative mb-6">
                   <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden relative">
                     {isScanning ? (
-                      <>
-                        {/* QR Reader Container */}
-                        <div id={qrReaderElementId} className="w-full h-full" />
-                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 z-10">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="border-4 border-green-500 rounded-lg w-64 h-64 animate-pulse" />
+                        <div className="absolute bottom-4 bg-red-600 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2">
                           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                           Camera Active
                         </div>
-                        <Button
-                          onClick={stopScanner}
-                          variant="ghost"
-                          size="sm"
-                          className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 text-white z-10"
-                        >
-                          <X className="h-5 w-5 mr-2" />
-                          Stop Scanner
-                        </Button>
-                      </>
+                      </div>
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <Button
-                          onClick={startScanner}
+                          onClick={() => setIsScanning(true)}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           <Camera className="h-5 w-5 mr-2" />
@@ -593,6 +473,246 @@ function ReceptionCheckInContent() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+export default function ReceptionCheckInPage() {
+  return (
+    <ProtectedRoute allowedRoles={[UserRole.Receptionist]}>
+      <ReceptionCheckInContent />
+    </ProtectedRoute>
+  );
+}
+        return "bg-blue-500/10 text-blue-500";
+      default:
+        return "bg-gray-500/10 text-gray-500";
+    }
+  };
+
+  const getMembershipColor = (type: string) => {
+    switch (type) {
+      case "Premium":
+        return "bg-gradient-to-r from-yellow-500 to-orange-500";
+      case "Standard":
+        return "bg-gradient-to-r from-blue-500 to-cyan-500";
+      case "Basic":
+        return "bg-gradient-to-r from-gray-500 to-gray-600";
+      default:
+        return "bg-gradient-to-r from-primary to-primary/50";
+    }
+  };
+
+  const handleCheckIn = () => {
+    // Placeholder for check-in logic
+    alert("Check-in functionality would be implemented here");
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold">
+            <span className="text-foreground">Member Check-In</span>
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manage member check-ins and check-outs
+          </p>
+        </div>
+        <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
+          <Activity className="h-5 w-5 text-white" />
+          <div className="text-white">
+            <div className="text-2xl font-bold">{currentlyCheckedIn}</div>
+            <div className="text-xs opacity-90">Currently Inside</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid md:grid-cols-4 gap-6">
+        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-3xl font-bold text-primary">{totalToday}</div>
+              <div className="text-sm text-muted-foreground mt-1">Total Today</div>
+            </div>
+            <div className="p-3 bg-primary/10 rounded-full">
+              <Users className="h-6 w-6 text-primary" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-3xl font-bold text-green-500">{currentlyCheckedIn}</div>
+              <div className="text-sm text-muted-foreground mt-1">Checked In</div>
+            </div>
+            <div className="p-3 bg-green-500/10 rounded-full">
+              <UserCheck className="h-6 w-6 text-green-500" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-3xl font-bold text-blue-500">{checkedOut}</div>
+              <div className="text-sm text-muted-foreground mt-1">Checked Out</div>
+            </div>
+            <div className="p-3 bg-blue-500/10 rounded-full">
+              <CheckCircle className="h-6 w-6 text-blue-500" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-3xl font-bold text-purple-500">2h 15m</div>
+              <div className="text-sm text-muted-foreground mt-1">Avg Duration</div>
+            </div>
+            <div className="p-3 bg-purple-500/10 rounded-full">
+              <Clock className="h-6 w-6 text-purple-500" />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Quick Check-In */}
+      <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
+        <h3 className="text-xl font-bold mb-4">Quick Check-In/Out</h3>
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Scan card or enter member ID..."
+                className="pl-10 text-lg h-12"
+              />
+            </div>
+          </div>
+          <Button className="gap-2 h-12 px-8" onClick={handleCheckIn}>
+            <UserCheck className="h-5 w-5" />
+            Check In
+          </Button>
+          <Button variant="outline" className="gap-2 h-12 px-8">
+            <CheckCircle className="h-5 w-5" />
+            Check Out
+          </Button>
+        </div>
+      </Card>
+
+      {/* Search */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by member name or ID..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={checkInType === "checkin" ? "default" : "outline"}
+            onClick={() => setCheckInType("checkin")}
+            size="sm"
+          >
+            Checked In
+          </Button>
+          <Button
+            variant={checkInType === "checkout" ? "default" : "outline"}
+            onClick={() => setCheckInType("checkout")}
+            size="sm"
+          >
+            Checked Out
+          </Button>
+        </div>
+      </div>
+
+      {/* Today's Activity */}
+      <Card className="border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Calendar className="h-6 w-6 text-primary" />
+            Today's Activity
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left p-4 font-semibold">Member</th>
+                <th className="text-left p-4 font-semibold">Member ID</th>
+                <th className="text-left p-4 font-semibold">Membership</th>
+                <th className="text-left p-4 font-semibold">Check-In Time</th>
+                <th className="text-left p-4 font-semibold">Duration</th>
+                <th className="text-left p-4 font-semibold">Status</th>
+                <th className="text-left p-4 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCheckIns.map((checkIn) => (
+                <tr key={checkIn.id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full ${getMembershipColor(checkIn.membershipType)} flex items-center justify-center text-white font-bold text-sm`}>
+                        {checkIn.avatar}
+                      </div>
+                      <span className="font-semibold">{checkIn.memberName}</span>
+                    </div>
+                  </td>
+                  <td className="p-4 font-mono text-sm">{checkIn.memberId}</td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getMembershipColor(checkIn.membershipType)}`}>
+                      {checkIn.membershipType}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      {checkIn.checkInTime}
+                    </div>
+                  </td>
+                  <td className="p-4 text-sm font-semibold">{checkIn.duration}</td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(checkIn.status)}`}>
+                      {checkIn.status}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      {checkIn.status === "Checked In" ? (
+                        <Button size="sm" variant="outline" className="text-blue-500">
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Check Out
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="text-green-500">
+                          <UserCheck className="h-4 w-4 mr-1" />
+                          Check In Again
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Empty State */}
+      {filteredCheckIns.length === 0 && (
+        <div className="text-center py-12">
+          <UserCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No check-ins found</h3>
+          <p className="text-muted-foreground">Try adjusting your search query</p>
+        </div>
+      )}
     </div>
   );
 }

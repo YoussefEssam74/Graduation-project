@@ -1,5 +1,6 @@
 using ServiceAbstraction;
 using ServiceAbstraction.Services;
+using Core.ServiceAbstraction.Services;
 using IntelliFit.ServiceAbstraction;
 using IntelliFit.ServiceAbstraction.Services;
 using DomainLayer.Contracts;
@@ -49,6 +50,8 @@ namespace Service
         private readonly Lazy<IUserMilestoneService> _lazyUserMilestoneService;
         private readonly Lazy<IWorkoutTemplateService> _lazyWorkoutTemplateService;
         private readonly Lazy<IAuditLogService> _lazyAuditLogService;
+        private readonly Lazy<IReceptionService> _lazyReceptionService;
+        private readonly Lazy<IReceptionPaymentService> _lazyReceptionPaymentService;
 
         public ServiceManager(
             IUnitOfWork unitOfWork,
@@ -93,6 +96,8 @@ namespace Service
             _lazyUserMilestoneService = new Lazy<IUserMilestoneService>(() => new UserMilestoneService(_unitOfWork, _mapper));
             _lazyWorkoutTemplateService = new Lazy<IWorkoutTemplateService>(() => new WorkoutTemplateService(_unitOfWork, _mapper));
             _lazyAuditLogService = new Lazy<IAuditLogService>(() => new AuditLogService(_unitOfWork, _mapper));
+            _lazyReceptionService = new Lazy<IReceptionService>(() => new ReceptionService(_unitOfWork, _mapper));
+            _lazyReceptionPaymentService = new Lazy<IReceptionPaymentService>(() => new ReceptionPaymentService(_unitOfWork, _mapper));
         }
 
         // BookingService needs TokenTransactionService and EquipmentTimeSlotService - initialize with factory getter
@@ -128,6 +133,8 @@ namespace Service
         public IUserMilestoneService UserMilestoneService => _lazyUserMilestoneService.Value;
         public IWorkoutTemplateService WorkoutTemplateService => _lazyWorkoutTemplateService.Value;
         public IAuditLogService AuditLogService => _lazyAuditLogService.Value;
+        public IReceptionService ReceptionService => _lazyReceptionService.Value;
+        public IReceptionPaymentService ReceptionPaymentService => _lazyReceptionPaymentService.Value;
     }
 }
 

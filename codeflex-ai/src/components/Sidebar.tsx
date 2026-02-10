@@ -18,7 +18,8 @@ import {
     TrophyIcon,
     UtensilsIcon,
     UsersIcon,
-    SunIcon
+    SunIcon,
+    CreditCard
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -66,9 +67,10 @@ export default function Sidebar() {
 
     const getReceptionNav = () => [
         { href: "/reception-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
-        { href: "/reception-members", icon: Users2Icon, label: "Members" },
+        { href: "/reception/members", icon: Users2Icon, label: "Members" },
         { href: "/reception-bookings", icon: CalendarIcon, label: "Bookings" },
         { href: "/reception-checkin", icon: ActivityIcon, label: "Check-In" },
+        { href: "/reception/payments", icon: CreditCard, label: "Payments" },
     ];
 
     const getAdminNav = () => [
