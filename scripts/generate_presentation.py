@@ -7,6 +7,8 @@ following the standard university presentation structure.
 Usage:
     python scripts/generate_presentation.py [output_path]
 
+Customize team info by editing the PROJECT_INFO dictionary below.
+
 Dependencies:
     pip install python-pptx
 """
@@ -18,6 +20,23 @@ from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
+
+
+# ── Project Info (customize these) ───────────────────────────────────────────
+PROJECT_INFO = {
+    "team_members": [
+        "Youssef Essam",
+        # Add remaining team member names below:
+        "Team Member 2",
+        "Team Member 3",
+        "Team Member 4",
+    ],
+    "supervisor": "Dr. [Supervisor Name]",
+    "university": "[University Name]",
+    "faculty": "Faculty of Computer Science",
+    "year": "2024 – 2025",
+    "github_url": "github.com/YoussefEssam74/Graduation-project",
+}
 
 
 # ── Color Palette ────────────────────────────────────────────────────────────
@@ -154,17 +173,15 @@ def slide_01_title(prs):
     p2.font.color.rgb = RGBColor(0xAA, 0xCC, 0xFF)
 
     # Team members
-    info_items = [
-        "Team Members:",
-        "    • Youssef Essam",
-        "    • Team Member 2",
-        "    • Team Member 3",
-        "    • Team Member 4",
+    info_items = ["Team Members:"]
+    for member in PROJECT_INFO["team_members"]:
+        info_items.append(f"    • {member}")
+    info_items.extend([
         "",
-        "Supervisor: Dr. [Supervisor Name]",
-        "University: [University Name] – Faculty of Computer Science",
-        "Year: 2024 – 2025",
-    ]
+        f"Supervisor: {PROJECT_INFO['supervisor']}",
+        f"University: {PROJECT_INFO['university']} – {PROJECT_INFO['faculty']}",
+        f"Year: {PROJECT_INFO['year']}",
+    ])
     add_bullet_content(slide, Inches(1), Inches(3.5), Inches(8), Inches(3.5),
                        info_items, font_size=14, color=RGBColor(0xCC, 0xCC, 0xDD))
 
@@ -1103,7 +1120,7 @@ def slide_22_thank_you(prs):
         "IntelliFit – Smart Gym Management System",
         "AI-Powered Coaching • Equipment Booking • InBody Tracking",
         "",
-        "GitHub: github.com/YoussefEssam74/Graduation-project",
+        f"GitHub: {PROJECT_INFO['github_url']}",
     ]
     add_bullet_content(slide, Inches(1.5), Inches(4.5), Inches(7), Inches(2.5),
                        contact_items, font_size=14,
