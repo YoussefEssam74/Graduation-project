@@ -414,3 +414,6 @@ ml_models/**/gifs_720x720/
 
 # Build diagnostics
 build_diag.txt
+
+# Generated presentation files
+*.pptx
