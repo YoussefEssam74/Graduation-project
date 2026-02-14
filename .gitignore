@@ -380,3 +380,40 @@ Graduation-Project/appsettings.json
 .vscode/settings.json
 Graduation-Project/appsettings.json
 Graduation-Project/appsettings.json
+
+# Machine Learning Model Files - Too large for Git
+# Training data
+ml_models/**/training_data*.jsonl
+ml_models/**/training_data*.json
+ml_models/**/*.jsonl
+ml_models/**/data/exercises_comprehensive*.json
+
+# Model checkpoints and weights
+ml_models/**/checkpoint-*/
+ml_models/**/models/**/checkpoint-*/
+ml_models/**/*.safetensors
+ml_models/**/optimizer.pt
+ml_models/**/pytorch_model.bin
+ml_models/**/model.safetensors
+ml_models/**/adapter_model.safetensors
+
+# Training outputs
+ml_models/**/trainer_state.json
+ml_models/**/training_args.bin
+ml_models/**/rng_state.pth
+ml_models/**/scheduler.pt
+
+# Large datasets
+ml_models/**/data/exercises_comprehensive_real.json
+ml_models/**/data/gym recommendation.csv
+Documentation/ML/Dataset/Workout*.csv
+
+# Large GIF files
+ml_models/**/gifs_1080x1080/
+ml_models/**/gifs_720x720/
+
+# Build diagnostics
+build_diag.txt
+
+# Generated presentation files
+*.pptx

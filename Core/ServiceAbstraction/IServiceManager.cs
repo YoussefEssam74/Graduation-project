@@ -1,4 +1,5 @@
 using ServiceAbstraction.Services;
+using Core.ServiceAbstraction.Services;
 using IntelliFit.ServiceAbstraction;
 using IntelliFit.ServiceAbstraction.Services;
 
@@ -28,6 +29,8 @@ namespace ServiceAbstraction
         public IUserMilestoneService UserMilestoneService { get; }
         public IWorkoutTemplateService WorkoutTemplateService { get; }
         public IAuditLogService AuditLogService { get; }
+        public IReceptionService ReceptionService { get; }
+        public IReceptionPaymentService ReceptionPaymentService { get; }
 
     }
 }

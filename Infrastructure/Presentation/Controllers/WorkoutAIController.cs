@@ -306,5 +306,68 @@ public class WorkoutAIController : ApiControllerBase
         return Ok(scan);
     }
 
+    /// <summary>
+    /// Save AI-generated workout plan (called after frontend generates via direct ML API)
+    /// POST: api/workout-ai/save-plan
+    /// </summary>
+    /// <remarks>
+    /// This endpoint is used when frontend calls FastAPI directly for generation,
+    /// then saves the result to the backend database asynchronously.
+    /// Optimized flow: Frontend → ML API (direct) → Frontend → Backend (save)
+    /// </remarks>
+    [HttpPost("save-plan")]
+    [AllowAnonymous]  // Allow anonymous for direct ML API workflow (frontend already authenticated)
+    [ProducesResponseType(typeof(SavePlanResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SaveAIGeneratedPlan([FromBody] SaveAIGeneratedPlanRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new SavePlanResponse
+                {
+                    Success = false,
+                    Error = "Invalid request data"
+                });
+            }
+
+            // Ensure user ID matches authenticated user
+            var authenticatedUserId = GetUserIdFromToken();
+            if (request.UserId != authenticatedUserId && !IsAdmin)
+            {
+                return Forbid();
+            }
+
+            _logger.LogInformation(
+                "Saving AI-generated plan for user {UserId}: {PlanName} ({Model}, {Latency}ms)",
+                request.UserId, request.PlanName, request.ModelVersion, request.GenerationLatencyMs);
+
+            var result = await _workoutAIService.SaveAIGeneratedPlanAsync(request);
+
+            if (!result.Success)
+            {
+                _logger.LogWarning("Failed to save plan for user {UserId}: {Error}",
+                    request.UserId, result.Error);
+
+                return BadRequest(result);
+            }
+
+            _logger.LogInformation("Saved plan {PlanId} for user {UserId}",
+                result.PlanId, request.UserId);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving AI-generated workout plan");
+            return StatusCode(500, new SavePlanResponse
+            {
+                Success = false,
+                Error = "An error occurred while saving the workout plan"
+            });
+        }
+    }
+
     #endregion
 }

@@ -1,53 +1,58 @@
 -- Active: 1764278759643@@127.0.0.1@5432@PulseGym_v1.0.1
--- IntelliFit Database Complete Seed Data - PostgreSQL
+-- IntelliFit Database Complete Seed Data - PostgreSQL (UPDATED FOR CURRENT SCHEMA)
 -- ==========================================
--- Password for admin@intellifit.com: 224466 (BCrypt hashed)
--- Password for all other test accounts: password (BCrypt hashed)
+-- Test Account Credentials:
+-- Member (ID 1): member@intellifit.com / 224466
+-- Coach (ID 7): sarah.johnson@intellifit.com / 224466  
+-- Receptionist (ID 10): reception@intellifit.com / 224466
+-- Admin (ID 11): admin@intellifit.com / 224466
 -- ==========================================
 
 -- ==========================================
--- TRUNCATE ALL TABLES
+-- TRUNCATE ALL TABLES (with proper order for FK constraints)
 -- ==========================================
-TRUNCATE TABLE user_milestones, activity_feeds, notifications, coach_reviews, 
-user_subscriptions, payments, token_transactions, inbody_measurements, 
-meal_ingredients, meals, nutrition_plans, workout_templates, workout_template_exercises,
-workout_logs, workout_plan_exercises, workout_plans, bookings, equipment, equipment_categories,
-ai_program_generations, ai_chat_logs, ai_workflow_jobs, audit_logs, exercises, ingredients,
-progress_milestones, subscription_plans, token_packages,
-member_profiles, coach_profiles, users RESTART IDENTITY CASCADE;
-
-TRUNCATE TABLE "users" RESTART IDENTITY CASCADE;
--- ==========================================
--- USERS (Main Table - Single table with Role column)
--- Note: UserId is auto-generated. Role determines user type (Member, Coach, Admin)
--- All attributes: UserId (auto), Email, PasswordHash, Name, Phone, DateOfBirth, Gender, Role, ProfileImageUrl, 
--- Address, EmergencyContactName, EmergencyContactPhone, TokenBalance, IsActive, EmailVerified, MustChangePassword, IsFirstLogin, LastLoginAt, CreatedAt, UpdatedAt
--- ==========================================
-INSERT INTO users ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "Role", "ProfileImageUrl", "Address", "EmergencyContactName", "EmergencyContactPhone", "TokenBalance", "IsActive", "EmailVerified", "MustChangePassword", "IsFirstLogin", "LastLoginAt", "CreatedAt", "UpdatedAt") VALUES
--- Members (UserId: 1-6)
-('member@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'John Doe', '+1234567890', '1995-05-15', 0, 'Member', NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, false, false, NULL, NOW(), NOW()),
-('michael.smith@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Member', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NULL, NOW(), NOW()),
-('david.wilson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'David Wilson', '+1234567894', '1998-03-10', 0, 'Member', NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, false, false, NULL, NOW(), NOW()),
-('jessica.brown@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Jessica Brown', '+1234567895', '1996-11-05', 1, 'Member', NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, false, false, NULL, NOW(), NOW()),
-('lisa.anderson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, 'Member', NULL, '258 Spruce Way, White Plains, NY 10601', 'John Anderson', '+1234567807', 25, true, true, false, false, NULL, NOW(), NOW()),
-('amanda.garcia@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, 'Member', NULL, '741 Ash Pl, New Rochelle, NY 10801', 'Carlos Garcia', '+1234567809', 60, true, true, false, false, NULL, NOW(), NOW()),
--- Coaches (UserId: 7-9)
-('sarah.johnson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, 'Coach', NULL, '456 Oak Ave, Brooklyn, NY 11201', 'Mike Johnson', '+1234567801', 0, true, true, false, false, NULL, NOW(), NOW()),
-('emily.davis@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Emily Davis', '+1234567893', '1988-11-30', 1, 'Coach', NULL, '321 Elm St, Manhattan, NY 10002', 'Tom Davis', '+1234567803', 0, true, true, false, false, NULL, NOW(), NOW()),
-('robert.taylor@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Robert Taylor', '+1234567896', '1985-07-14', 0, 'Coach', NULL, '147 Birch St, Long Island, NY 11530', 'Mary Taylor', '+1234567806', 0, true, true, false, false, NULL, NOW(), NOW()),
--- Receptionists (UserId: 10)
-('reception@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Receptionist', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NULL, NOW(), NOW()),
--- Admin (UserId: 11) - Password: 224466
-('admin@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Admin User', '+1234567810', '1985-01-01', 0, 'Admin', NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, false, false, NULL, NOW(), NOW());
+TRUNCATE TABLE "WorkoutFeedback", "UserStrengthProfile", "WorkoutLogExercise", "WorkoutLog",
+"WorkoutPlanExercise", "WorkoutPlan", "WorkoutTemplateExercise", "WorkoutTemplate",
+"MuscleDevelopmentScan", "InBodyMeasurement", "MealIngredient", "Meal", "NutritionPlan",
+"UserMilestone", "ProgressMilestone", "CoachReview", "Booking", "CoachSessionEquipment",
+"EquipmentTimeSlot", "Equipment", "EquipmentCategory", "ActivityFeed", "Notification",
+"ChatMessage", "AiChatLog", "AiWorkflowJob", "AiProgramGeneration", "AuditLog",
+"TokenTransaction", "Payment", "UserSubscription", "SubscriptionPlan", "TokenPackage",
+"Exercise", "Ingredient", "MemberProfile", "CoachProfile", "User"
+RESTART IDENTITY CASCADE;
 
 -- ==========================================
--- SUBSCRIPTION PLANS (Must be inserted BEFORE members due to FK constraint)
+-- 1. USERS (Base table - ID sequence 1-11)
 -- ==========================================
-INSERT INTO subscription_plans ("PlanName", "Description", "Price", "DurationDays", "TokensIncluded", "Features", "MaxBookingsPerDay", "IsPopular", "IsActive", "CreatedAt", "UpdatedAt") VALUES
+INSERT INTO "User" ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Gender", "Role", "ProfileImageUrl", "Address", "EmergencyContactName", "EmergencyContactPhone", "TokenBalance", "IsActive", "EmailVerified", "MustChangePassword", "IsFirstLogin", "LastLoginAt", "CreatedAt", "UpdatedAt") VALUES
+-- ID 1: Member (John Doe)
+('member@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'John Doe', '+1234567890', '1995-05-15', 0, 'Member', NULL, '123 Main St, New York, NY 10001', 'Jane Doe', '+1234567800', 50, true, true, false, false, NOW(), NOW(), NOW()),
+-- ID 2-6: Additional Members
+('michael.smith@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Michael Smith', '+1234567892', '1992-08-18', 0, 'Member', NULL, '789 Pine Rd, Queens, NY 11354', 'Emma Smith', '+1234567802', 75, true, true, false, false, NOW(), NOW(), NOW()),
+('david.wilson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'David Wilson', '+1234567894', '1998-03-10', 0, 'Member', NULL, '654 Maple Dr, Bronx, NY 10451', 'Lisa Wilson', '+1234567804', 30, true, true, false, false, NOW(), NOW(), NOW()),
+('jessica.brown@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Jessica Brown', '+1234567895', '1996-11-05', 1, 'Member', NULL, '987 Cedar Ln, Staten Island, NY 10301', 'James Brown', '+1234567805', 100, true, true, false, false, NOW(), NOW(), NOW()),
+('lisa.anderson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Lisa Anderson', '+1234567897', '1994-07-18', 1, 'Member', NULL, '258 Spruce Way, White Plains, NY 10601', 'John Anderson', '+1234567807', 25, true, true, false, false, NOW(), NOW(), NOW()),
+('amanda.garcia@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Amanda Garcia', '+1234567899', '1997-12-08', 1, 'Member', NULL, '741 Ash Pl, New Rochelle, NY 10801', 'Carlos Garcia', '+1234567809', 60, true, true, false, false, NOW(), NOW(), NOW()),
+-- ID 7: Coach (Sarah Johnson)
+('sarah.johnson@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Sarah Johnson', '+1234567891', '1990-03-22', 1, 'Coach', NULL, '456 Oak Ave, Brooklyn, NY 11201', 'Mike Johnson', '+1234567801', 0, true, true, false, false, NOW(), NOW(), NOW()),
+-- ID 8-9: Additional Coaches
+('emily.davis@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Emily Davis', '+1234567893', '1988-11-30', 1, 'Coach', NULL, '321 Elm St, Manhattan, NY 10002', 'Tom Davis', '+1234567803', 0, true, true, false, false, NOW(), NOW(), NOW()),
+('robert.taylor@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Robert Taylor', '+1234567896', '1985-07-14', 0, 'Coach', NULL, '147 Birch St, Long Island, NY 11530', 'Mary Taylor', '+1234567806', 0, true, true, false, false, NOW(), NOW(), NOW()),
+-- ID 10: Receptionist
+('reception@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Reception Staff', '+1234567898', '1993-06-20', 1, 'Receptionist', NULL, '100 Gym Plaza, New York, NY 10003', NULL, NULL, 0, true, true, false, false, NOW(), NOW(), NOW()),
+-- ID 11: Admin
+('admin@intellifit.com', '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6', 'Admin User', '+1234567810', '1985-01-01', 0, 'Admin', NULL, 'IntelliFit HQ, NY', NULL, NULL, 100, true, true, false, false, NOW(), NOW(), NOW());
+
+-- ==========================================
+-- 2. SUBSCRIPTION PLANS (Independent table)
+-- ==========================================
+INSERT INTO "SubscriptionPlan" ("PlanName", "Description", "Price", "DurationDays", "TokensIncluded", "Features", "MaxBookingsPerDay", "IsPopular", "IsActive", "CreatedAt", "UpdatedAt") VALUES
 ('Basic Monthly', 'Access to gym facilities and basic equipment', 49.99, 30, 20, '["Gym Access", "Equipment Use", "Locker Room"]', 2, false, true, NOW(), NOW()),
-('Standard Monthly', 'Includes group classes and nutrition consultation', 79.99, 30, 50, '["Gym Access", "Group Classes", "Nutrition Consultation", "Progress Tracking"]', 5, true, true, NOW(), NOW()),
-('Premium Monthly', 'Full access with personal training sessions', 129.99, 30, 100, '["Gym Access", "Group Classes", "Personal Training", "Nutrition Plan", "Workout Plan", "Priority Booking"]', 10, true, true, NOW(), NOW()),
-('Basic Quarterly', '3-month basic membership with discount', 134.99, 90, 60, '["Gym Access", "Equipment Use", "Locker Room"]', 2, false, true, NOW(), NOW()),
+('Standard Monthly', 'Includes group classes and nutrition consultation', 79.99, 30, 50, '["Gym Access", "Group Classes", "Nutrition Consultation"]', 5, true, true, NOW(), NOW()),
+('Premium Monthly', 'Full access with personal training sessions', 129.99, 30, 100, '["Gym Access", "Personal Training", "Nutrition Plan", "AI Workout Generator"]', 10, true, true, NOW(), NOW());
+
+-- ==========================================
+-- 3. MEMBER PROFILES (FK: UserId → User)
 ('Standard Quarterly', '3-month standard membership', 214.99, 90, 150, '["Gym Access", "Group Classes", "Nutrition Consultation", "Progress Tracking"]', 5, true, true, NOW(), NOW()),
 ('Premium Quarterly', '3-month premium with personal training', 349.99, 90, 300, '["Gym Access", "Group Classes", "Personal Training", "Nutrition Plan", "Workout Plan", "Priority Booking"]', 10, true, true, NOW(), NOW()),
 ('Basic Annual', 'Full year basic membership with best value', 499.99, 365, 240, '["Gym Access", "Equipment Use", "Locker Room", "Free Guest Pass"]', 2, false, true, NOW(), NOW()),

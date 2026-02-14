@@ -25,6 +25,16 @@ public class WorkoutAIService : IWorkoutAIService
     private const string CACHE_PREFIX = "workout_plan:";
     private const int CACHE_DURATION_HOURS = 24;
 
+    /// <summary>
+    /// Snake_case JSON options for deserializing ML service responses (Python snake_case → C# PascalCase)
+    /// </summary>
+    private static readonly JsonSerializerOptions _snakeCaseOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+    };
+
     public WorkoutAIService(
         IUnitOfWork unitOfWork,
         IMLServiceClient mlClient,
@@ -75,7 +85,7 @@ public class WorkoutAIService : IWorkoutAIService
             // 4. Call ML service
             var mlResponse = await _mlClient.GenerateWorkoutPlanAsync(mlRequest);
 
-            if (mlResponse == null || !mlResponse.IsValidJson)
+            if (mlResponse == null || (mlResponse.Plan == null && !mlResponse.IsValidJson))
             {
                 return new AIWorkoutPlanResult
                 {
@@ -252,116 +262,150 @@ public class WorkoutAIService : IWorkoutAIService
         var context = new MLUserContext();
         var hasData = false;
 
-        // Get latest InBody measurement
-        var inBodyMeasurements = await _unitOfWork.Repository<InBodyMeasurement>()
-            .FindAsync(m => m.UserId == userId);
-        var latestInBody = inBodyMeasurements.OrderByDescending(m => m.CreatedAt).FirstOrDefault();
-
-        if (latestInBody != null)
+        // 1. InBody Data
+        try
         {
-            context.InBodyData = new MLInBodyData
+            var inBodyMeasurements = await _unitOfWork.Repository<InBodyMeasurement>()
+                .FindAsync(m => m.UserId == userId);
+            var latestInBody = inBodyMeasurements.OrderByDescending(m => m.CreatedAt).FirstOrDefault();
+
+            if (latestInBody != null)
             {
-                MuscleMassKg = latestInBody.MuscleMass,
-                BodyFatPercent = latestInBody.BodyFatPercentage,
-                SkeletalMuscleMass = latestInBody.MuscleMass // Use muscle mass as skeletal muscle mass
-            };
-            hasData = true;
-        }
-
-        // Get latest muscle scan
-        var muscleScans = await _unitOfWork.Repository<MuscleDevelopmentScan>()
-            .FindAsync(s => s.UserId == userId);
-        var latestScan = muscleScans.OrderByDescending(s => s.ScanDate).FirstOrDefault();
-
-        if (latestScan != null)
-        {
-            context.MuscleScan = new MLMuscleScanData
-            {
-                WeakAreas = latestScan.UnderdevelopedMuscles?.ToList(),
-                StrongAreas = latestScan.WellDevelopedMuscles?.ToList()
-            };
-            hasData = true;
-        }
-
-        // Get strength profile
-        var strengthProfiles = await _unitOfWork.Repository<UserStrengthProfile>()
-            .FindAsync(p => p.UserId == userId);
-
-        if (strengthProfiles.Any())
-        {
-            var exercises = await _unitOfWork.Repository<Exercise>().GetAllAsync();
-            var exerciseDict = exercises.ToDictionary(e => e.ExerciseId, e => e.Name);
-
-            context.StrengthProfile = strengthProfiles
-                .Where(p => p.ConfidenceScore >= 0.5m) // Only include confident estimates
-                .OrderByDescending(p => p.ConfidenceScore)
-                .Take(10) // Limit to top 10 exercises
-                .Select(p => new MLStrengthProfileEntry
+                context.InBodyData = new MLInBodyData
                 {
-                    ExerciseName = exerciseDict.TryGetValue(p.ExerciseId, out var name) ? name : "Unknown",
-                    OneRmKg = p.Estimated1RM,
-                    ConfidenceScore = p.ConfidenceScore
-                })
-                .ToList();
-            hasData = true;
+                    MuscleMassKg = latestInBody.MuscleMass,
+                    BodyFatPercent = latestInBody.BodyFatPercentage,
+                    SkeletalMuscleMass = latestInBody.MuscleMass // Use muscle mass as skeletal muscle mass
+                };
+                hasData = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error building InBody context for user {UserId}: {Message}", userId, ex.Message);
         }
 
-        // Get recent feedback summary
-        var feedbacks = await _unitOfWork.Repository<WorkoutFeedback>()
-            .FindAsync(f => f.UserId == userId);
-        var recentFeedbacks = feedbacks
-            .OrderByDescending(f => f.CreatedAt)
-            .Take(5)
-            .ToList();
-
-        if (recentFeedbacks.Any())
+        // 2. Muscle Scan
+        try
         {
-            var avgRating = recentFeedbacks
-                .Where(f => f.Rating.HasValue)
-                .Select(f => f.Rating!.Value)
-                .DefaultIfEmpty(0)
-                .Average();
+            var muscleScans = await _unitOfWork.Repository<MuscleDevelopmentScan>()
+                .FindAsync(s => s.UserId == userId);
+            var latestScan = muscleScans.OrderByDescending(s => s.ScanDate).FirstOrDefault();
 
-            // Aggregate weight adjustments from exercise feedback
-            var weightAdjustments = new Dictionary<string, string>();
-            foreach (var feedback in recentFeedbacks)
+            if (latestScan != null)
             {
-                if (string.IsNullOrEmpty(feedback.ExerciseFeedback))
-                    continue;
+                // Safety check for null lists
+                var weak = latestScan.UnderdevelopedMuscles?.ToList() ?? new List<string>();
+                var strong = latestScan.WellDevelopedMuscles?.ToList() ?? new List<string>();
 
-                try
+                context.MuscleScan = new MLMuscleScanData
                 {
-                    var exerciseFeedbacks = JsonSerializer.Deserialize<List<ExerciseFeedbackJson>>(
-                        feedback.ExerciseFeedback, _jsonOptions);
+                    WeakAreas = weak,
+                    StrongAreas = strong
+                };
+                hasData = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error building Muscle Scan context for user {UserId}: {Message}", userId, ex.Message);
+        }
 
-                    if (exerciseFeedbacks != null)
+        // 3. Strength Profile
+        try
+        {
+            var strengthProfiles = await _unitOfWork.Repository<UserStrengthProfile>()
+                .FindAsync(p => p.UserId == userId);
+
+            if (strengthProfiles.Any())
+            {
+                var exercises = await _unitOfWork.Repository<Exercise>().GetAllAsync();
+                var exerciseDict = exercises.ToDictionary(e => e.ExerciseId, e => e.Name);
+
+                context.StrengthProfile = strengthProfiles
+                    .Where(p => p.ConfidenceScore >= 0.5m) // Only include confident estimates
+                    .OrderByDescending(p => p.ConfidenceScore)
+                    .Take(10) // Limit to top 10 exercises
+                    .Select(p => new MLStrengthProfileEntry
                     {
-                        foreach (var ef in exerciseFeedbacks.Where(e => e.WeightFeeling != "Perfect"))
+                        ExerciseName = exerciseDict.TryGetValue(p.ExerciseId, out var name) ? name : "Unknown",
+                        OneRmKg = p.Estimated1RM,
+                        ConfidenceScore = p.ConfidenceScore
+                    })
+                    .ToList();
+                hasData = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error building Strength Profile context for user {UserId}: {Message}", userId, ex.Message);
+        }
+
+        // 4. Feedback Summary
+        try
+        {
+            var feedbacks = await _unitOfWork.Repository<WorkoutFeedback>()
+                .FindAsync(f => f.UserId == userId);
+            var recentFeedbacks = feedbacks
+                .OrderByDescending(f => f.CreatedAt)
+                .Take(5)
+                .ToList();
+
+            if (recentFeedbacks.Any())
+            {
+                var avgRating = recentFeedbacks
+                    .Where(f => f.Rating.HasValue)
+                    .Select(f => f.Rating!.Value)
+                    .DefaultIfEmpty(0)
+                    .Average();
+
+                // Aggregate weight adjustments from exercise feedback
+                var weightAdjustments = new Dictionary<string, string>();
+                foreach (var feedback in recentFeedbacks)
+                {
+                    if (string.IsNullOrEmpty(feedback.ExerciseFeedback))
+                        continue;
+
+                    try
+                    {
+                        var exerciseFeedbacks = JsonSerializer.Deserialize<List<ExerciseFeedbackJson>>(
+                            feedback.ExerciseFeedback, _jsonOptions);
+
+                        if (exerciseFeedbacks != null)
                         {
-                            var key = ef.ExerciseName ?? "exercises";
-                            if (!weightAdjustments.ContainsKey(key))
+                            foreach (var ef in exerciseFeedbacks.Where(e => e.WeightFeeling != "Perfect"))
                             {
-                                weightAdjustments[key] = ef.WeightFeeling ?? "unknown";
+                                var key = ef.ExerciseName ?? "exercises";
+                                if (!weightAdjustments.ContainsKey(key))
+                                {
+                                    weightAdjustments[key] = ef.WeightFeeling ?? "unknown";
+                                }
                             }
                         }
                     }
+                    catch { /* Ignore parsing errors */ }
                 }
-                catch { /* Ignore parsing errors */ }
-            }
 
-            context.FeedbackSummary = new MLFeedbackSummary
-            {
-                AvgRating = (decimal)avgRating,
-                WeightAdjustments = weightAdjustments.Any() ? weightAdjustments : null
-            };
-            hasData = true;
+                context.FeedbackSummary = new MLFeedbackSummary
+                {
+                    AvgRating = (decimal)avgRating,
+                    WeightAdjustments = weightAdjustments.Any() ? weightAdjustments : null
+                };
+                hasData = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error building Feedback context for user {UserId}: {Message}", userId, ex.Message);
         }
 
         return hasData ? context : null;
     }
 
     /// <summary>
-    /// Parse ML response plan data into structured format
+    /// Parse ML response plan data into structured format.
+    /// Uses SnakeCaseLower to map Python snake_case keys to C# PascalCase properties.
+    /// Then populates Focus string from FocusAreas list for frontend display.
     /// </summary>
     private AIGeneratedPlanData? ParsePlanData(Dictionary<string, object>? plan)
     {
@@ -370,8 +414,35 @@ public class WorkoutAIService : IWorkoutAIService
 
         try
         {
-            var json = JsonSerializer.Serialize(plan, _jsonOptions);
-            return JsonSerializer.Deserialize<AIGeneratedPlanData>(json, _jsonOptions);
+            // Serialize the raw dictionary (preserves original snake_case keys from ML)
+            var json = JsonSerializer.Serialize(plan);
+
+            // Deserialize using SnakeCaseLower: maps day_number → DayNumber, focus_areas → FocusAreas, etc.
+            var planData = JsonSerializer.Deserialize<AIGeneratedPlanData>(json, _snakeCaseOptions);
+
+            if (planData?.Days != null)
+            {
+                foreach (var day in planData.Days)
+                {
+                    // Populate Focus string from FocusAreas list for frontend display
+                    if (string.IsNullOrEmpty(day.Focus) && day.FocusAreas?.Any() == true)
+                    {
+                        day.Focus = string.Join(", ", day.FocusAreas.Select(f =>
+                            System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(f)));
+                    }
+
+                    // Ensure every day has a proper name
+                    if (string.IsNullOrEmpty(day.DayName))
+                    {
+                        day.DayName = $"Day {day.DayNumber}";
+                    }
+
+                    // Ensure exercises list is never null
+                    day.Exercises ??= new List<AIExercise>();
+                }
+            }
+
+            return planData;
         }
         catch (Exception ex)
         {
@@ -505,6 +576,184 @@ public class WorkoutAIService : IWorkoutAIService
             "advanced" => "3",
             _ => "2"
         };
+    }
+
+    /// <summary>
+    /// Save AI-generated workout plan (called after frontend generates via direct ML API)
+    /// </summary>
+    public async Task<SavePlanResponse> SaveAIGeneratedPlanAsync(SaveAIGeneratedPlanRequest request)
+    {
+        try
+        {
+            // Serialize the plan data to JSON
+            var planDataJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                days = request.Days,
+                plan_name = request.PlanName,
+                fitness_level = request.FitnessLevel,
+                goal = request.Goal,
+                days_per_week = request.DaysPerWeek,
+                program_duration_weeks = request.ProgramDurationWeeks
+            });
+
+            // Create workout plan entity
+            var workoutPlan = new WorkoutPlan
+            {
+                UserId = request.UserId,
+                PlanName = request.PlanName,
+                DurationWeeks = request.ProgramDurationWeeks,
+                DifficultyLevel = request.FitnessLevel,
+                FitnessLevel = request.FitnessLevel,
+                Goal = request.Goal,
+                DaysPerWeek = request.DaysPerWeek,
+                PlanType = "AI-Generated",
+                Status = "Active",
+                Description = request.Notes ?? $"AI-generated plan ({request.ModelVersion}, {request.GenerationLatencyMs}ms)",
+                PlanData = planDataJson,
+                ModelVersion = request.ModelVersion,
+                GenerationLatencyMs = request.GenerationLatencyMs,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<WorkoutPlan>().AddAsync(workoutPlan);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Save exercises for each day
+            int dayNumber = 1;
+            foreach (var dayData in request.Days)
+            {
+                int orderIndex = 1;
+                foreach (var exerciseData in dayData.Exercises)
+                {
+                    // Try to find exercise by name, create placeholder if not found
+                    var exercise = (await _unitOfWork.Repository<Exercise>()
+                        .FindAsync(e => e.Name.ToLower() == exerciseData.Name.ToLower()))
+                        .FirstOrDefault();
+
+                    int exerciseId;
+                    if (exercise == null)
+                    {
+                        // Create a placeholder exercise for AI-generated names
+                        var newExercise = new Exercise
+                        {
+                            Name = exerciseData.Name,
+                            Category = exerciseData.ExerciseType ?? "Unknown",
+                            MuscleGroup = exerciseData.TargetMuscles?.FirstOrDefault() ?? "General",
+                            Description = $"AI-generated exercise: {exerciseData.Notes ?? ""}",
+                            DifficultyLevel = "Intermediate",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        await _unitOfWork.Repository<Exercise>().AddAsync(newExercise);
+                        await _unitOfWork.SaveChangesAsync();
+                        exerciseId = newExercise.ExerciseId;
+                    }
+                    else
+                    {
+                        exerciseId = exercise.ExerciseId;
+                    }
+
+                    var planExercise = new WorkoutPlanExercise
+                    {
+                        WorkoutPlanId = workoutPlan.PlanId,
+                        ExerciseId = exerciseId,
+                        DayNumber = dayNumber,
+                        OrderInDay = orderIndex++,
+                        Sets = ParseSets(exerciseData.Sets),
+                        Reps = ParseReps(exerciseData.Reps),
+                        RestSeconds = ParseRestSeconds(exerciseData.Rest),
+                        Notes = exerciseData.Notes ?? ""
+                    };
+
+                    await _unitOfWork.Repository<WorkoutPlanExercise>().AddAsync(planExercise);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+                dayNumber++;
+            }
+
+            _logger.LogInformation(
+                "Successfully saved AI-generated plan {PlanId} for user {UserId} ({Model}, {Latency}ms)",
+                workoutPlan.PlanId, request.UserId, request.ModelVersion, request.GenerationLatencyMs);
+
+            return new SavePlanResponse
+            {
+                Success = true,
+                PlanId = workoutPlan.PlanId,
+                Message = $"Workout plan '{request.PlanName}' saved successfully"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving AI-generated plan for user {UserId}", request.UserId);
+            return new SavePlanResponse
+            {
+                Success = false,
+                Error = $"Failed to save workout plan: {ex.Message}"
+            };
+        }
+    }
+
+    /// <summary>
+    /// Parse sets string like "3" or "3-4" to integer
+    /// </summary>
+    private static int ParseSets(string sets)
+    {
+        if (int.TryParse(sets, out var result))
+            return result;
+
+        // Handle range like "3-4", take first value
+        if (sets.Contains("-"))
+        {
+            var parts = sets.Split('-');
+            if (parts.Length > 0 && int.TryParse(parts[0], out var first))
+                return first;
+        }
+
+        return 3; // Default
+    }
+
+    /// <summary>
+    /// Parse reps string like "8-12" to integer (take average or first value)
+    /// </summary>
+    private static int ParseReps(string reps)
+    {
+        if (int.TryParse(reps, out var result))
+            return result;
+
+        // Handle range like "8-12", take first value
+        if (reps.Contains("-"))
+        {
+            var parts = reps.Split('-');
+            if (parts.Length > 0 && int.TryParse(parts[0], out var first))
+                return first;
+        }
+
+        return 10; // Default
+    }
+
+    /// <summary>
+    /// Parse rest string like "90 sec" or "1-2 min" to seconds
+    /// </summary>
+    private static int ParseRestSeconds(string rest)
+    {
+        var lower = rest.ToLower().Trim();
+
+        // Extract first number
+        var match = System.Text.RegularExpressions.Regex.Match(lower, @"\d+");
+        if (!match.Success)
+            return 90; // Default
+
+        var value = int.Parse(match.Value);
+
+        // Convert minutes to seconds
+        if (lower.Contains("min"))
+            return value * 60;
+
+        return value; // Assume seconds
     }
 
     #endregion

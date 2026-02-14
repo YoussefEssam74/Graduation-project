@@ -34,7 +34,7 @@ function AICoachContent() {
   // Auto scroll to bottom on new messages or when AI is typing
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -50,17 +50,11 @@ function AICoachContent() {
       try {
         console.log("Loading chat sessions for user:", user.userId);
         const response = await aiApi.getChatSessions(user.userId);
-        // Backend returns { success: true, sessions: [...] }
-        // @ts-ignore - response has sessions at root level
-        if (response.success && response.sessions) {
-          // @ts-ignore
-          console.log(
-            "Chat sessions loaded:",
-            response.sessions.length,
-            "sessions"
-          );
-          // @ts-ignore
-          setSessions(response.sessions);
+        // Backend returns { success: true, sessions: [...] } at root level
+        const res = response as any;
+        if (res.success && res.sessions) {
+          console.log("Chat sessions loaded:", res.sessions.length, "sessions");
+          setSessions(res.sessions);
         } else {
           console.error("Failed to load chat sessions:", response.message);
         }
@@ -81,13 +75,12 @@ function AICoachContent() {
 
     try {
       const response = await aiApi.getSessionMessages(user.userId, sessionId);
-      // Backend returns { success: true, messages: [...] }
-      // @ts-ignore - response has messages at root level
-      if (response.success && response.messages) {
+      // Backend returns { success: true, messages: [...] } at root level
+      const res = response as any;
+      if (res.success && res.messages) {
         // Convert the messages to the display format
         const withAiResponses: DisplayMessage[] = [];
-        // @ts-ignore
-        response.messages.forEach((msg: AIChatLogDto) => {
+        res.messages.forEach((msg: AIChatLogDto) => {
           withAiResponses.push({
             id: `user-${msg.chatLogId}`,
             role: "user",
@@ -149,7 +142,7 @@ function AICoachContent() {
       const response = await aiApi.sendMessage(
         user.userId,
         input,
-        currentSessionId || undefined
+        currentSessionId || undefined,
       );
 
       if (response.success && response.data) {
@@ -187,7 +180,7 @@ function AICoachContent() {
             setSessions(sessionsResponse.data.sessions);
             console.log(
               "Sessions reloaded:",
-              sessionsResponse.data.sessions.length
+              sessionsResponse.data.sessions.length,
             );
           }
         } catch (sessionError) {
@@ -236,10 +229,11 @@ function AICoachContent() {
                 <div
                   key={session.sessionId}
                   onClick={() => loadSessionMessages(session.sessionId)}
-                  className={`p-3 rounded-xl cursor-pointer transition-colors ${currentSessionId === session.sessionId
-                    ? "bg-blue-50 border border-blue-200"
-                    : "hover:bg-slate-50"
-                    }`}
+                  className={`p-3 rounded-xl cursor-pointer transition-colors ${
+                    currentSessionId === session.sessionId
+                      ? "bg-blue-50 border border-blue-200"
+                      : "hover:bg-slate-50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <History className="h-4 w-4 text-slate-400" />
@@ -314,10 +308,11 @@ function AICoachContent() {
                 className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
               >
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === "ai"
-                    ? "bg-gradient-to-br from-blue-500 to-blue-700"
-                    : "bg-slate-200"
-                    }`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    msg.role === "ai"
+                      ? "bg-gradient-to-br from-blue-500 to-blue-700"
+                      : "bg-slate-200"
+                  }`}
                 >
                   {msg.role === "ai" ? (
                     <Brain className="h-4 w-4 text-white" />
@@ -328,15 +323,17 @@ function AICoachContent() {
                   )}
                 </div>
                 <div
-                  className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${msg.role === "ai"
-                    ? "bg-white text-slate-700 rounded-tl-none shadow-sm"
-                    : "bg-blue-600 text-white rounded-tr-none"
-                    }`}
+                  className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === "ai"
+                      ? "bg-white text-slate-700 rounded-tl-none shadow-sm"
+                      : "bg-blue-600 text-white rounded-tr-none"
+                  }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                   <p
-                    className={`text-[10px] mt-2 ${msg.role === "ai" ? "text-slate-400" : "text-blue-200"
-                      }`}
+                    className={`text-[10px] mt-2 ${
+                      msg.role === "ai" ? "text-slate-400" : "text-blue-200"
+                    }`}
                   >
                     {msg.timestamp}
                   </p>

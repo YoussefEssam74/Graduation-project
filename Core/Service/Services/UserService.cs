@@ -270,6 +270,7 @@ namespace Service.Services
             }
 
             // Calculate favorite exercises
+#pragma warning disable CS0618
             var exerciseCounts = logs
                 .Where(w => !string.IsNullOrEmpty(w.ExercisesCompleted))
                 .SelectMany(w =>
@@ -282,6 +283,7 @@ namespace Service.Services
                     }
                     catch { return Enumerable.Empty<string?>(); }
                 })
+#pragma warning restore CS0618
                 .Where(e => e != null)
                 .GroupBy(e => e!)
                 .OrderByDescending(g => g.Count())
@@ -370,7 +372,9 @@ namespace Service.Services
                     WorkoutDate = w.WorkoutDate,
                     DurationMinutes = w.DurationMinutes,
                     CaloriesBurned = w.CaloriesBurned,
+#pragma warning disable CS0618
                     ExercisesCompleted = w.ExercisesCompleted,
+#pragma warning restore CS0618
                     FeelingRating = w.FeelingRating,
                     Notes = w.Notes,
                     PlanName = w.Plan?.PlanName
