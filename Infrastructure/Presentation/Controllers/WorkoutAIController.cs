@@ -369,5 +369,74 @@ public class WorkoutAIController : ApiControllerBase
         }
     }
 
+    /// <summary>
+    /// Get user's saved AI-generated workout plans
+    /// GET: api/workout-ai/my-plans
+    /// </summary>
+    [HttpGet("my-plans")]
+    [ProducesResponseType(typeof(List<UserAIWorkoutPlanDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyAIPlans()
+    {
+        try
+        {
+            var userId = GetUserIdFromToken();
+            var plans = await _workoutAIService.GetUserAIPlansAsync(userId);
+            return Ok(plans);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching AI plans");
+            return StatusCode(500, new { error = "Failed to fetch workout plans" });
+        }
+    }
+
+    /// <summary>
+    /// Get AI-generated workout plans for a specific user (admin/coach)
+    /// GET: api/workout-ai/user-plans/{userId}
+    /// </summary>
+    [HttpGet("user-plans/{userId:int}")]
+    [ProducesResponseType(typeof(List<UserAIWorkoutPlanDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserAIPlans(int userId)
+    {
+        try
+        {
+            var plans = await _workoutAIService.GetUserAIPlansAsync(userId);
+            return Ok(plans);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching AI plans for user {UserId}", userId);
+            return StatusCode(500, new { error = "Failed to fetch workout plans" });
+        }
+    }
+
+    /// <summary>
+    /// Delete AI-generated workout plan
+    /// DELETE: api/workout-ai/my-plans/{planId}
+    /// </summary>
+    [HttpDelete("my-plans/{planId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAIPlan(int planId)
+    {
+        try
+        {
+            var userId = GetUserIdFromToken();
+            var success = await _workoutAIService.DeleteUserAIPlanAsync(planId, userId);
+            
+            if (!success)
+            {
+                return NotFound(new { message = "Plan not found or you do not have permission to delete it" });
+            }
+            
+            return Ok(new { success = true, message = "Plan deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting AI plan {PlanId}", planId);
+            return StatusCode(500, new { error = "Failed to delete workout plan" });
+        }
+    }
+
     #endregion
 }

@@ -301,3 +301,64 @@ export async function getExerciseAlternatives(
     body: JSON.stringify({ exerciseName, equipment, targetMuscles }),
   });
 }
+
+// ============================================================
+// USER AI PLANS
+// ============================================================
+
+export interface UserAIPlanExercise {
+  workoutPlanExerciseId: number;
+  exerciseId: number;
+  exerciseName: string;
+  dayNumber: number;
+  orderInDay: number;
+  sets?: number;
+  reps?: number;
+  restSeconds?: number;
+  notes?: string;
+  equipmentId?: number;
+  equipmentRequired?: string;
+  muscleGroup?: string;
+}
+
+export interface UserAIPlanDay {
+  dayNumber: number;
+  dayName?: string;
+  exercises: UserAIPlanExercise[];
+}
+
+export interface UserAIWorkoutPlan {
+  planId: number;
+  planName: string;
+  description?: string;
+  fitnessLevel?: string;
+  goal?: string;
+  daysPerWeek?: number;
+  durationWeeks?: number;
+  planType?: string;
+  status: string;
+  isActive: boolean;
+  modelVersion?: string;
+  generationLatencyMs?: number;
+  planData?: string;
+  createdAt: string;
+  updatedAt: string;
+  days: UserAIPlanDay[];
+}
+
+/**
+ * Get the current user's saved AI workout plans
+ */
+export async function getMyAIPlans(): Promise<ApiResponse<UserAIWorkoutPlan[]>> {
+  return apiFetch<UserAIWorkoutPlan[]>("/workout-ai/my-plans", {
+    method: "GET",
+  });
+}
+/**
+ * Delete an AI workout plan
+ */
+export async function deleteAIPlan(planId: number): Promise<ApiResponse<void>> {
+  return apiFetch<void>(`/workout-ai/my-plans/${planId}`, {
+    method: "DELETE",
+  });
+}

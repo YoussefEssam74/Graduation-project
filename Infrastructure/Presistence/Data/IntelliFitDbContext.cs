@@ -59,6 +59,9 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<AiInferenceLog> AiInferenceLogs { get; set; }  // NEW: Inference logging
         public DbSet<VectorEmbedding> VectorEmbeddings { get; set; }  // NEW: Vector storage
         public DbSet<FitnessKnowledge> FitnessKnowledge { get; set; }  // NEW: RAG knowledge base
+        public DbSet<UserAIWorkoutPlan> UserAIWorkoutPlans { get; set; }
+        public DbSet<UserAIWorkoutPlanDay> UserAIWorkoutPlanDays { get; set; }
+        public DbSet<UserAIWorkoutPlanExercise> UserAIWorkoutPlanExercises { get; set; }
 
         // AI Feedback Loop (Flan-T5 workout generation)
         public DbSet<WorkoutFeedback> WorkoutFeedbacks { get; set; }  // User feedback for AI learning
@@ -981,6 +984,75 @@ namespace IntelliFit.Infrastructure.Persistence
                     .WithMany(u => u.MuscleScans)
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserAIWorkoutPlan Configuration
+            modelBuilder.Entity<UserAIWorkoutPlan>(entity =>
+            {
+                entity.ToTable("user_ai_workout_plans");
+                entity.HasKey(e => e.PlanId);
+                entity.HasIndex(e => new { e.UserId, e.IsActive });
+                entity.HasIndex(e => e.CreatedAt);
+
+                entity.Property(e => e.PlanName).HasMaxLength(255);
+                entity.Property(e => e.FitnessLevel).HasMaxLength(50);
+                entity.Property(e => e.Goal).HasMaxLength(50);
+                entity.Property(e => e.Status).HasMaxLength(20);
+                entity.Property(e => e.ModelVersion).HasMaxLength(50);
+
+                entity.HasOne(e => e.User)
+                    .WithMany() // Assuming User doesn't need a collection back for now, or update User.cs later
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserAIWorkoutPlanDay Configuration
+            modelBuilder.Entity<UserAIWorkoutPlanDay>(entity =>
+            {
+                entity.ToTable("user_ai_workout_plan_days");
+                entity.HasKey(e => e.DayId);
+                entity.HasIndex(e => e.PlanId);
+
+                entity.Property(e => e.DayName).HasMaxLength(100);
+
+                entity.HasOne(e => e.Plan)
+                    .WithMany(p => p.Days)
+                    .HasForeignKey(e => e.PlanId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // UserAIWorkoutPlanExercise Configuration
+            modelBuilder.Entity<UserAIWorkoutPlanExercise>(entity =>
+            {
+                entity.ToTable("user_ai_workout_plan_exercises");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.PlanDayId);
+                entity.HasIndex(e => e.ExerciseId);
+
+                entity.Property(e => e.ExerciseName).HasMaxLength(255);
+                entity.Property(e => e.WeightRecommendation).HasMaxLength(255);
+                entity.Property(e => e.WeightKg).HasPrecision(6, 2);
+                entity.Property(e => e.Sets).HasMaxLength(50);
+                entity.Property(e => e.Reps).HasMaxLength(50);
+                entity.Property(e => e.Rest).HasMaxLength(50);
+                entity.Property(e => e.Tempo).HasMaxLength(50);
+                entity.Property(e => e.ExerciseType).HasMaxLength(50);
+                entity.Property(e => e.MovementPattern).HasMaxLength(50);
+
+                entity.HasOne(e => e.Day)
+                    .WithMany(d => d.Exercises)
+                    .HasForeignKey(e => e.PlanDayId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Exercise)
+                    .WithMany()
+                    .HasForeignKey(e => e.ExerciseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Equipment)
+                    .WithMany()
+                    .HasForeignKey(e => e.EquipmentId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Global Query Filters for soft delete (when implemented)

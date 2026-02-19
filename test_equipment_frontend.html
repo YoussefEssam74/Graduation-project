@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Equipment API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 10px 5px 10px 0; }
+        button:hover { background: #0056b3; }
+        #output { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Equipment API Diagnostic Test</h1>
+    <p>This will test if your browser can connect to the equipment API</p>
+    
+    <button onclick="testAPI()">Test Equipment API</button>
+    <button onclick="testWithAuth()">Test with Auth Token</button>
+    <button onclick="clearOutput()">Clear</button>
+    
+    <div id="output"></div>
+
+    <script>
+        const API_URL = 'http://localhost:5025/api/equipment';
+        
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            output.appendChild(div);
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        async function testAPI() {
+            clearOutput();
+            log('<h2>Testing Equipment API (No Auth)</h2>');
+            log('API URL: ' + API_URL);
+            log('Sending request...');
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log('Response status: ' + response.status + ' ' + response.statusText, 
+                    response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    log('❌ Request failed!', 'error');
+                    log('This might be a CORS issue. Check browser console (F12).', 'warning');
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                log('✅ Request successful!', 'success');
+                log('<h3>Response Structure:</h3>');
+                log('<pre>success: ' + data.success + '</pre>');
+                log('<pre>data count: ' + (data.data ? data.data.length : 0) + '</pre>');
+                
+                if (data.data && data.data.length > 0) {
+                    log('<h3>First Equipment Item:</h3>');
+                    log('<pre>' + JSON.stringify(data.data[0], null, 2) + '</pre>');
+                    log('✅ Equipment data is loading correctly!', 'success');
+                    log('<br>If you still see "can\'t load" in the app:', 'warning');
+                    log('1. Hard refresh the page (Ctrl+Shift+R)', 'warning');
+                    log('2. Clear browser cache', 'warning');
+                    log('3. Check if you\'re logged in', 'warning');
+                } else {
+                    log('❌ No equipment data returned!', 'error');
+                    log('The database might be empty. Run the INSERT_TEST_DATA.sql script.', 'error');
+                }
+                
+            } catch (error) {
+                log('❌ ERROR: ' + error.message, 'error');
+                log('This is likely a CORS issue or the backend is not running.', 'error');
+                log('<br>Check:', 'warning');
+                log('1. Is backend running on http://localhost:5025?', 'warning');
+                log('2. Check browser console (F12) for CORS errors', 'warning');
+            }
+        }
+
+        async function testWithAuth() {
+            clearOutput();
+            log('<h2>Testing Equipment API (With Auth)</h2>');
+            
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+            if (!token) {
+                log('⚠️ No auth token found in localStorage or sessionStorage', 'warning');
+                log('You might not be logged in. Try logging in first.', 'warning');
+                return;
+            }
+            
+            log('Found auth token: ' + token.substring(0, 20) + '...', 'success');
+            log('Sending request with Authorization header...');
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+                
+                log('Response status: ' + response.status + ' ' + response.statusText, 
+                    response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    log('❌ Request failed! Token might be invalid or expired.', 'error');
+                    return;
+                }
+                
+                const data = await response.json();
+                log('✅ Authenticated request successful!', 'success');
+                log('<pre>Equipment count: ' + (data.data ? data.data.length : 0) + '</pre>');
+                
+            } catch (error) {
+                log('❌ ERROR: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

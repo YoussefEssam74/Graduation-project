@@ -231,7 +231,7 @@ VALUES
         NOW ()
     ),
     (
-        'robert.taylor@intel lifit.com',
+        'robert.taylor@intellifit.com',
         '$2a$11$PWTp8fypbCqoyv/gC1HqTem8sRjs0n12yHnzaD/Anucm16Z13yKA6',
         'Robert Taylor',
         '+1234567896',

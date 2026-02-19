@@ -459,7 +459,7 @@ export default function InBodyPage() {
                   title: "BMI",
                   icon: Activity,
                   color: "text-slate-400",
-                  val: latest.bmi ?? "--",
+                  val: latest.bmi != null ? Number(latest.bmi).toFixed(1) : "--",
                   unit: (latest.bmi ?? 0) < 25 ? "Normal" : "High",
                   unitColor: (latest.bmi ?? 0) < 25 ? "text-green-500" : "text-orange-500"
                 },

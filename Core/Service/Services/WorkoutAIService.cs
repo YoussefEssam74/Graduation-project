@@ -229,6 +229,36 @@ public class WorkoutAIService : IWorkoutAIService
         return health?.Status == "healthy";
     }
 
+    public async Task<bool> DeleteUserAIPlanAsync(int planId, int userId)
+    {
+        var planRepo = _unitOfWork.Repository<UserAIWorkoutPlan>();
+        var dayRepo = _unitOfWork.Repository<UserAIWorkoutPlanDay>();
+        var exRepo = _unitOfWork.Repository<UserAIWorkoutPlanExercise>();
+
+        var plan = await planRepo.GetByIdAsync(planId);
+        if (plan == null) return false;
+
+        if (plan.UserId != userId)
+        {
+            throw new UnauthorizedAccessException("User does not have permission to delete this plan.");
+        }
+
+        // Delete associated days and exercises
+        var days = await dayRepo.FindAsync(d => d.PlanId == planId);
+        foreach (var day in days)
+        {
+            var exercises = await exRepo.FindAsync(e => e.PlanDayId == day.DayId);
+            exRepo.RemoveRange(exercises);
+        }
+        dayRepo.RemoveRange(days);
+        
+        // Delete the plan
+        planRepo.Remove(plan);
+        await _unitOfWork.SaveChangesAsync();
+        
+        return true;
+    }
+
     #region Private Methods
 
     /// <summary>
@@ -600,17 +630,17 @@ public class WorkoutAIService : IWorkoutAIService
             var workoutPlan = new WorkoutPlan
             {
                 UserId = request.UserId,
-                PlanName = request.PlanName,
+                PlanName = request.PlanName ?? "AI Workout Plan",
                 DurationWeeks = request.ProgramDurationWeeks,
-                DifficultyLevel = request.FitnessLevel,
-                FitnessLevel = request.FitnessLevel,
-                Goal = request.Goal,
+                DifficultyLevel = request.FitnessLevel ?? "Intermediate",
+                FitnessLevel = request.FitnessLevel ?? "Intermediate",
+                Goal = request.Goal ?? "General",
                 DaysPerWeek = request.DaysPerWeek,
                 PlanType = "AI-Generated",
                 Status = "Active",
-                Description = request.Notes ?? $"AI-generated plan ({request.ModelVersion}, {request.GenerationLatencyMs}ms)",
+                Description = request.Notes ?? $"AI-generated plan ({request.ModelVersion ?? "v1"}, {request.GenerationLatencyMs}ms)",
                 PlanData = planDataJson,
-                ModelVersion = request.ModelVersion,
+                ModelVersion = request.ModelVersion ?? "v1",
                 GenerationLatencyMs = request.GenerationLatencyMs,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -662,9 +692,9 @@ public class WorkoutAIService : IWorkoutAIService
                         ExerciseId = exerciseId,
                         DayNumber = dayNumber,
                         OrderInDay = orderIndex++,
-                        Sets = ParseSets(exerciseData.Sets),
-                        Reps = ParseReps(exerciseData.Reps),
-                        RestSeconds = ParseRestSeconds(exerciseData.Rest),
+                        Sets = ParseSets(exerciseData.Sets ?? "3"),
+                        Reps = ParseReps(exerciseData.Reps ?? "10"),
+                        RestSeconds = ParseRestSeconds(exerciseData.Rest ?? "60s"),
                         Notes = exerciseData.Notes ?? ""
                     };
 
@@ -694,6 +724,178 @@ public class WorkoutAIService : IWorkoutAIService
                 Success = false,
                 Error = $"Failed to save workout plan: {ex.Message}"
             };
+        }
+    }
+
+    /// <summary>
+    /// Get all AI-generated workout plans for a user
+    /// </summary>
+    public async Task<List<UserAIWorkoutPlanDto>> GetUserAIPlansAsync(int userId)
+    {
+        try
+        {
+            // Get all workout plans for the user
+            var plans = (await _unitOfWork.Repository<WorkoutPlan>()
+                .FindAsync(p => p.UserId == userId))
+                .OrderByDescending(p => p.CreatedAt)
+                .ToList();
+
+            var result = new List<UserAIWorkoutPlanDto>();
+
+            foreach (var plan in plans)
+            {
+                // Get exercises for this plan
+                var planExercises = (await _unitOfWork.Repository<WorkoutPlanExercise>()
+                    .FindAsync(pe => pe.WorkoutPlanId == plan.PlanId))
+                    .OrderBy(pe => pe.DayNumber)
+                    .ThenBy(pe => pe.OrderInDay)
+                    .ToList();
+
+                // Fetch the actual Exercise entities to get their names and equipment info
+                var exerciseIds = planExercises.Select(pe => pe.ExerciseId).Distinct().ToList();
+                var exerciseEntities = new Dictionary<int, Exercise>();
+                foreach (var exId in exerciseIds)
+                {
+                    var exercise = await _unitOfWork.Repository<Exercise>().GetByIdAsync(exId);
+                    if (exercise != null)
+                    {
+                        exerciseEntities[exId] = exercise;
+                    }
+                }
+
+                // Also try to extract exercise names from PlanData JSON as a fallback
+                var planDataExerciseNames = new Dictionary<int, Dictionary<int, string>>(); // dayNumber -> orderInDay -> name
+                if (!string.IsNullOrEmpty(plan.PlanData))
+                {
+                    try
+                    {
+                        using var jsonDoc = System.Text.Json.JsonDocument.Parse(plan.PlanData);
+                        if (jsonDoc.RootElement.TryGetProperty("days", out var daysEl))
+                        {
+                            foreach (var dayEl in daysEl.EnumerateArray())
+                            {
+                                var dayNum = dayEl.TryGetProperty("day_number", out var dnEl) ? dnEl.GetInt32() : 0;
+                                if (dayNum > 0 && dayEl.TryGetProperty("exercises", out var exsEl))
+                                {
+                                    var orderMap = new Dictionary<int, string>();
+                                    int order = 1;
+                                    foreach (var exEl in exsEl.EnumerateArray())
+                                    {
+                                        var exName = exEl.TryGetProperty("exercise_name", out var enEl) 
+                                            ? enEl.GetString() 
+                                            : exEl.TryGetProperty("name", out var nEl) 
+                                                ? nEl.GetString() 
+                                                : null;
+                                        if (!string.IsNullOrEmpty(exName))
+                                        {
+                                            orderMap[order] = exName;
+                                        }
+                                        order++;
+                                    }
+                                    planDataExerciseNames[dayNum] = orderMap;
+                                }
+                            }
+                        }
+                    }
+                    catch { /* Ignore JSON parse errors */ }
+                }
+
+                // Group exercises by day
+                var dayGroups = planExercises
+                    .GroupBy(pe => pe.DayNumber)
+                    .OrderBy(g => g.Key)
+                    .Select(g => new UserAIPlanDayDto
+                    {
+                        DayNumber = g.Key,
+                        DayName = $"Day {g.Key}",
+                        Exercises = g.Select(pe => {
+                            // Get exercise entity for additional data
+                            var exEntity = exerciseEntities.TryGetValue(pe.ExerciseId, out var ex) ? ex : null;
+                            
+                            // Resolve name: 1) from Exercise entity, 2) from PlanData JSON, 3) fallback
+                            var name = exEntity?.Name;
+                            if (string.IsNullOrEmpty(name) || name == "Unknown Exercise" || name.StartsWith("AI_"))
+                            {
+                                // Try from PlanData
+                                if (planDataExerciseNames.TryGetValue(pe.DayNumber, out var dayExNames) &&
+                                    dayExNames.TryGetValue(pe.OrderInDay, out var pdName))
+                                {
+                                    name = pdName;
+                                }
+                            }
+                            return new UserAIPlanExerciseDto
+                            {
+                                WorkoutPlanExerciseId = pe.WorkoutPlanExerciseId,
+                                ExerciseId = pe.ExerciseId,
+                                ExerciseName = name ?? pe.Notes ?? "Exercise",
+                                DayNumber = pe.DayNumber,
+                                OrderInDay = pe.OrderInDay,
+                                Sets = pe.Sets,
+                                Reps = pe.Reps,
+                                RestSeconds = pe.RestSeconds,
+                                Notes = pe.Notes,
+                                EquipmentId = exEntity?.EquipmentId,
+                                EquipmentRequired = exEntity?.EquipmentRequired,
+                                MuscleGroup = exEntity?.MuscleGroup
+                            };
+
+                        }).ToList()
+                    })
+                    .ToList();
+
+                // Try to get day names from PlanData JSON
+                if (!string.IsNullOrEmpty(plan.PlanData))
+                {
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(plan.PlanData);
+                        if (doc.RootElement.TryGetProperty("days", out var daysElement))
+                        {
+                            foreach (var dayEl in daysElement.EnumerateArray())
+                            {
+                                if (dayEl.TryGetProperty("day_number", out var dayNumEl) &&
+                                    dayEl.TryGetProperty("day_name", out var dayNameEl))
+                                {
+                                    var dayNum = dayNumEl.GetInt32();
+                                    var dayDto = dayGroups.FirstOrDefault(d => d.DayNumber == dayNum);
+                                    if (dayDto != null)
+                                    {
+                                        dayDto.DayName = dayNameEl.GetString() ?? $"Day {dayNum}";
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch { /* Ignore JSON parse errors */ }
+                }
+
+                result.Add(new UserAIWorkoutPlanDto
+                {
+                    PlanId = plan.PlanId,
+                    PlanName = plan.PlanName,
+                    Description = plan.Description,
+                    FitnessLevel = plan.FitnessLevel,
+                    Goal = plan.Goal,
+                    DaysPerWeek = plan.DaysPerWeek,
+                    DurationWeeks = plan.DurationWeeks,
+                    PlanType = plan.PlanType,
+                    Status = plan.Status,
+                    IsActive = plan.IsActive,
+                    ModelVersion = plan.ModelVersion,
+                    GenerationLatencyMs = plan.GenerationLatencyMs,
+                    PlanData = plan.PlanData,
+                    CreatedAt = plan.CreatedAt,
+                    UpdatedAt = plan.UpdatedAt,
+                    Days = dayGroups
+                });
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching AI plans for user {UserId}", userId);
+            return new List<UserAIWorkoutPlanDto>();
         }
     }
 

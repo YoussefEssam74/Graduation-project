@@ -41,6 +41,21 @@ public interface IWorkoutAIService
     /// <param name="request">Generated plan data to save</param>
     /// <returns>Save result with plan ID</returns>
     Task<SavePlanResponse> SaveAIGeneratedPlanAsync(SaveAIGeneratedPlanRequest request);
+
+    /// <summary>
+    /// Get all AI-generated workout plans for a user
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>List of user's AI workout plans</returns>
+    Task<List<UserAIWorkoutPlanDto>> GetUserAIPlansAsync(int userId);
+
+    /// <summary>
+    /// Delete an AI-generated workout plan
+    /// </summary>
+    /// <param name="planId">Plan ID</param>
+    /// <param name="userId">User ID (for ownership check)</param>
+    /// <returns>True if deleted successfully</returns>
+    Task<bool> DeleteUserAIPlanAsync(int planId, int userId);
 }
 
 /// <summary>

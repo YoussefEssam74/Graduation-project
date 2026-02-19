@@ -71,29 +71,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           <header className="lg:hidden h-14 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 sticky top-0 z-40">
             <span className="font-bold text-lg text-slate-900 dark:text-white">Pulse<span className="text-blue-600">Gym</span></span>
             {/* Mobile Menu Button would go here */}
-          </header>
-
-          {/* Top Header (Desktop - Search & Profile) */}
-          <header className="hidden lg:flex h-16 items-center justify-between px-6 bg-transparent">
-            {/* Search Bar */}
-            <div className="relative w-80">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                type="text"
-                className="block w-full pl-9 pr-3 py-2 border-0 bg-white dark:bg-slate-800 dark:text-white rounded-full text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
-                placeholder="Search..."
-              />
-            </div>
-
-            {/* Top Right Actions */}
-            <div className="flex items-center gap-4">
-              {/* Removed Profile and Notifications as per request */}
-            </div>
-          </header>
+          </header>          
 
           {/* Page Content */}
           <main className="flex-1 p-3 md:p-6 pt-0">

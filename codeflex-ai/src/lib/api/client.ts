@@ -124,10 +124,20 @@ export async function apiFetch<T>(
     }
 
     // Backend returns data directly, wrap it in ApiResponse format
-    // If backend already has success field, use its success value but wrap the whole response in data
+    // If backend already has success field, handle the ApiResponse<T> wrapper pattern
     if (typeof data === 'object' && data !== null && 'success' in data) {
-      // Backend returned something like { success: true/false, planId: 1, ... }
-      // We need to wrap it so the frontend sees { success: true, data: { success: true, planId: 1, ... } }
+      // Check if this is a backend ApiResponse<T> wrapper: { success, data, message, errors }
+      // If it has a 'data' field, unwrap it so the frontend gets the actual payload
+      if ('data' in data) {
+        return {
+          success: data.success,
+          data: data.data,
+          message: data.errorMessage || data.message,
+          errors: data.errors,
+        };
+      }
+      // For other objects with 'success' but no 'data' field (e.g. { success: true, planId: 1, ... })
+      // Keep the whole object as data
       return {
         success: data.success,
         data: data,

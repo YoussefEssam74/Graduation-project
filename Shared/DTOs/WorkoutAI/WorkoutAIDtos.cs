@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Shared.DTOs.WorkoutAI;
@@ -427,15 +428,15 @@ public class MuscleScanResultDto
 public class SaveAIGeneratedPlanRequest
 {
     public int UserId { get; set; }
-    public string PlanName { get; set; } = null!;
-    public string FitnessLevel { get; set; } = null!;
-    public string Goal { get; set; } = null!;
+    public string? PlanName { get; set; }
+    public string? FitnessLevel { get; set; }
+    public string? Goal { get; set; }
     public int DaysPerWeek { get; set; }
     public int ProgramDurationWeeks { get; set; }
     public List<WorkoutDayData> Days { get; set; } = new();
     public string? Notes { get; set; }
     public int GenerationLatencyMs { get; set; }
-    public string ModelVersion { get; set; } = null!;
+    public string? ModelVersion { get; set; }
     public bool AIGenerated { get; set; } = true;
 }
 
@@ -445,7 +446,7 @@ public class SaveAIGeneratedPlanRequest
 public class WorkoutDayData
 {
     public int DayNumber { get; set; }
-    public string DayName { get; set; } = null!;
+    public string? DayName { get; set; }
     public List<string> FocusAreas { get; set; } = new();
     public int? EstimatedDurationMinutes { get; set; }
     public List<WorkoutExerciseData> Exercises { get; set; } = new();
@@ -457,14 +458,47 @@ public class WorkoutDayData
 public class WorkoutExerciseData
 {
     public string Name { get; set; } = null!;
-    public string Sets { get; set; } = null!;
-    public string Reps { get; set; } = null!;
-    public string Rest { get; set; } = null!;
+
+    [JsonConverter(typeof(FlexibleStringConverter))]
+    public string? Sets { get; set; }
+
+    [JsonConverter(typeof(FlexibleStringConverter))]
+    public string? Reps { get; set; }
+
+    [JsonConverter(typeof(FlexibleStringConverter))]
+    public string? Rest { get; set; }
+
     public List<string>? TargetMuscles { get; set; }
     public string? Equipment { get; set; }
     public string? MovementPattern { get; set; }
     public string? ExerciseType { get; set; }
     public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Custom JSON converter that accepts both string and number JSON tokens
+/// and deserializes them as a C# string. This is needed because the ML API
+/// sometimes sends numeric fields (sets, reps) as JSON numbers instead of strings.
+/// </summary>
+public class FlexibleStringConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return reader.TokenType switch
+        {
+            JsonTokenType.String => reader.GetString(),
+            JsonTokenType.Number => reader.TryGetInt64(out var l) ? l.ToString() : reader.GetDecimal().ToString(),
+            JsonTokenType.True => "true",
+            JsonTokenType.False => "false",
+            JsonTokenType.Null => null,
+            _ => reader.GetString()
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value);
+    }
 }
 
 /// <summary>
@@ -476,6 +510,58 @@ public class SavePlanResponse
     public int? PlanId { get; set; }
     public string? Message { get; set; }
     public string? Error { get; set; }
+}
+
+/// <summary>
+/// DTO for returning user's saved AI workout plans
+/// </summary>
+public class UserAIWorkoutPlanDto
+{
+    public int PlanId { get; set; }
+    public string PlanName { get; set; } = null!;
+    public string? Description { get; set; }
+    public string? FitnessLevel { get; set; }
+    public string? Goal { get; set; }
+    public int? DaysPerWeek { get; set; }
+    public int? DurationWeeks { get; set; }
+    public string? PlanType { get; set; }
+    public string Status { get; set; } = "Active";
+    public bool IsActive { get; set; }
+    public string? ModelVersion { get; set; }
+    public int? GenerationLatencyMs { get; set; }
+    public string? PlanData { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public List<UserAIPlanDayDto> Days { get; set; } = new();
+}
+
+/// <summary>
+/// DTO for a day in the user's AI workout plan
+/// </summary>
+public class UserAIPlanDayDto
+{
+    public int DayNumber { get; set; }
+    public string? DayName { get; set; }
+    public List<UserAIPlanExerciseDto> Exercises { get; set; } = new();
+}
+
+/// <summary>
+/// DTO for an exercise in the user's AI workout plan
+/// </summary>
+public class UserAIPlanExerciseDto
+{
+    public int WorkoutPlanExerciseId { get; set; }
+    public int ExerciseId { get; set; }
+    public string ExerciseName { get; set; } = null!;
+    public int DayNumber { get; set; }
+    public int OrderInDay { get; set; }
+    public int? Sets { get; set; }
+    public int? Reps { get; set; }
+    public int? RestSeconds { get; set; }
+    public string? Notes { get; set; }
+    public int? EquipmentId { get; set; }
+    public string? EquipmentRequired { get; set; }
+    public string? MuscleGroup { get; set; }
 }
 
 #endregion

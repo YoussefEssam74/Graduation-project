@@ -5,6 +5,10 @@ Matches the C# MLServiceClient expected API contract
 import re
 import sys
 import os
+
+# Fix OMP: Error #15: Initializing libomp.dll, but found libiomp5md.dll already initialized.
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import torch
 import json
 import time
