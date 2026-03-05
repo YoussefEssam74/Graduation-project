@@ -4,6 +4,7 @@ using IntelliFit.Domain.Models;
 using IntelliFit.ServiceAbstraction.Services;
 using Shared.DTOs.Reception;
 using Microsoft.EntityFrameworkCore;
+using BCrypt.Net;
 
 namespace Service.Services
 {
@@ -56,8 +57,8 @@ namespace Service.Services
             // Get today's session
             var today = DateTime.UtcNow.Date;
             var todaySession = bookings
-                .Where(b => b.UserId == userId && 
-                           b.StartTime.Date == today && 
+                .Where(b => b.UserId == userId &&
+                           b.StartTime.Date == today &&
                            b.CoachId.HasValue &&
                            b.Status != IntelliFit.Domain.Enums.BookingStatus.Cancelled)
                 .OrderBy(b => b.StartTime)
@@ -228,7 +229,7 @@ namespace Service.Services
         public async Task<MemberDetailsDto?> GetMemberDetailsAsync(int userId)
         {
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
-            
+
             // Debug logging
             Console.WriteLine($"[GetMemberDetailsAsync] UserId: {userId}");
             Console.WriteLine($"[GetMemberDetailsAsync] User found: {user != null}");
@@ -239,7 +240,7 @@ namespace Service.Services
                 Console.WriteLine($"[GetMemberDetailsAsync] Expected Member: {IntelliFit.Domain.Enums.UserRole.Member}");
                 Console.WriteLine($"[GetMemberDetailsAsync] Expected Member as int: {(int)IntelliFit.Domain.Enums.UserRole.Member}");
             }
-            
+
             if (user == null || user.Role != IntelliFit.Domain.Enums.UserRole.Member)
                 return null;
 
@@ -275,7 +276,7 @@ namespace Service.Services
             // Get payment summary
             var userPayments = payments.Where(p => p.UserId == userId).OrderByDescending(p => p.CreatedAt).ToList();
             var lastPayment = userPayments.FirstOrDefault();
-            
+
             PaymentSummaryDto? paymentSummary = null;
             if (lastPayment != null)
             {
@@ -392,8 +393,8 @@ namespace Service.Services
                 UserId = request.UserId,
                 ActivityType = "CheckIn",
                 Title = "Checked In",
-                Description = string.IsNullOrEmpty(request.AccessArea) 
-                    ? "Checked In • General Access" 
+                Description = string.IsNullOrEmpty(request.AccessArea)
+                    ? "Checked In • General Access"
                     : $"Checked In • {request.AccessArea}",
                 CreatedAt = DateTime.UtcNow
             };
@@ -460,8 +461,8 @@ namespace Service.Services
             // Check for late check-outs (bookings that should have ended but no checkout time)
             var bookings = await _unitOfWork.Repository<Booking>().GetAllAsync();
             var lateCheckouts = bookings
-                .Where(b => b.CheckInTime.HasValue && 
-                           !b.CheckOutTime.HasValue && 
+                .Where(b => b.CheckInTime.HasValue &&
+                           !b.CheckOutTime.HasValue &&
                            b.EndTime < DateTime.UtcNow.AddHours(-1))
                 .Take(5);
 
@@ -529,8 +530,107 @@ namespace Service.Services
                 return $"{(int)timeSpan.TotalHours}h ago";
             if (timeSpan.TotalDays < 7)
                 return $"{(int)timeSpan.TotalDays}d ago";
-            
+
             return dateTime.ToString("MMM dd");
+        }
+
+        public async Task<CreateMemberResponseDto> CreateMemberAsync(CreateMemberDto createDto)
+        {
+            // Check if email already exists
+            var existingUser = await _unitOfWork.Repository<User>()
+                .FirstOrDefaultAsync(u => u.Email == createDto.Email);
+            if (existingUser != null)
+                throw new InvalidOperationException("A user with this email already exists");
+
+            // Validate plan exists
+            var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(createDto.PlanId);
+            if (plan == null)
+                throw new KeyNotFoundException($"Subscription plan with ID {createDto.PlanId} not found");
+
+            // 1. Create user (password = nationalId)
+            var user = new User
+            {
+                Email = createDto.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(createDto.NationalId),
+                Name = createDto.Name,
+                Phone = createDto.Phone,
+                DateOfBirth = createDto.DateOfBirth.HasValue
+                    ? DateTime.SpecifyKind(createDto.DateOfBirth.Value, DateTimeKind.Utc)
+                    : null,
+                Gender = createDto.Gender.HasValue
+                    ? (IntelliFit.Domain.Enums.GenderType)createDto.Gender.Value
+                    : null,
+                Address = createDto.Address,
+                EmergencyContactName = createDto.EmergencyContactName,
+                EmergencyContactPhone = createDto.EmergencyContactPhone,
+                Role = IntelliFit.Domain.Enums.UserRole.Member,
+                IsActive = true,
+                MustChangePassword = true,
+                IsFirstLogin = true,
+                TokenBalance = plan.TokensIncluded,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<User>().AddAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 2. Create member profile
+            var memberProfile = new MemberProfile
+            {
+                UserId = user.UserId,
+                SubscriptionPlanId = plan.PlanId,
+                MembershipStartDate = DateTime.UtcNow,
+                MembershipEndDate = DateTime.UtcNow.AddDays(plan.DurationDays),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<MemberProfile>().AddAsync(memberProfile);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 3. Create payment record
+            var payment = new Payment
+            {
+                UserId = user.UserId,
+                Amount = createDto.Amount,
+                PaymentMethod = createDto.PaymentMethod,
+                PaymentType = "Subscription",
+                Status = IntelliFit.Domain.Enums.PaymentStatus.Completed,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<Payment>().AddAsync(payment);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 4. Create subscription
+            var subscription = new UserSubscription
+            {
+                UserId = user.UserId,
+                PlanId = plan.PlanId,
+                PaymentId = payment.PaymentId,
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow.AddDays(plan.DurationDays),
+                Status = IntelliFit.Domain.Enums.SubscriptionStatus.Active,
+                AutoRenew = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<UserSubscription>().AddAsync(subscription);
+            await _unitOfWork.SaveChangesAsync();
+
+            return new CreateMemberResponseDto
+            {
+                UserId = user.UserId,
+                Name = user.Name,
+                Email = user.Email,
+                MemberNumber = $"#{user.UserId:D5}",
+                SubscriptionPlan = plan.PlanName,
+                SubscriptionEndDate = subscription.EndDate,
+                Message = "Member created successfully"
+            };
         }
     }
 }

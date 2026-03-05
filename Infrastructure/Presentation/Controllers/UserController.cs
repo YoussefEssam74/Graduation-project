@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction;
 using Shared.DTOs.User;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Presentation.Controllers
 {
     [Authorize]
     [Route("api/users")]
-    public class UserController(IServiceManager _serviceManager) : ApiControllerBase
+    public class UserController(IServiceManager _serviceManager, IWebHostEnvironment _env) : ApiControllerBase
     {
         #region Get User
 
@@ -135,6 +136,63 @@ namespace Presentation.Controllers
 
             var context = await _serviceManager.UserService.GetUserAIContextAsync(id);
             return Ok(context);
+        }
+
+        #endregion
+
+        #region Upload Profile Image
+
+        /// <summary>
+        /// Upload profile image for a user
+        /// </summary>
+        [HttpPost("{id}/upload-image")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadProfileImage(int id, IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { error = "No file uploaded" });
+
+                // Validate file type
+                var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
+                if (!allowedTypes.Contains(file.ContentType.ToLower()))
+                    return BadRequest(new { error = "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." });
+
+                // Validate file size (max 5MB)
+                if (file.Length > 5 * 1024 * 1024)
+                    return BadRequest(new { error = "File size exceeds 5MB limit" });
+
+                // Create uploads directory
+                var uploadsDir = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "profiles");
+                Directory.CreateDirectory(uploadsDir);
+
+                // Generate unique filename
+                var fileExtension = Path.GetExtension(file.FileName);
+                var fileName = $"{id}_{Guid.NewGuid():N}{fileExtension}";
+                var filePath = Path.Combine(uploadsDir, fileName);
+
+                // Save file
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                // Update user profile image URL
+                var imageUrl = $"/uploads/profiles/{fileName}";
+                var updateDto = new UpdateProfileDto { ProfileImageUrl = imageUrl };
+                var updatedUser = await _serviceManager.UserService.UpdateProfileAsync(id, updateDto);
+
+                return Ok(new { profileImageUrl = imageUrl, message = "Profile image uploaded successfully" });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to upload image", details = ex.Message });
+            }
         }
 
         #endregion

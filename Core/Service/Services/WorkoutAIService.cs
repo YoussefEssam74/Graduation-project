@@ -251,11 +251,11 @@ public class WorkoutAIService : IWorkoutAIService
             exRepo.RemoveRange(exercises);
         }
         dayRepo.RemoveRange(days);
-        
+
         // Delete the plan
         planRepo.Remove(plan);
         await _unitOfWork.SaveChangesAsync();
-        
+
         return true;
     }
 
@@ -781,10 +781,10 @@ public class WorkoutAIService : IWorkoutAIService
                                     int order = 1;
                                     foreach (var exEl in exsEl.EnumerateArray())
                                     {
-                                        var exName = exEl.TryGetProperty("exercise_name", out var enEl) 
-                                            ? enEl.GetString() 
-                                            : exEl.TryGetProperty("name", out var nEl) 
-                                                ? nEl.GetString() 
+                                        var exName = exEl.TryGetProperty("exercise_name", out var enEl)
+                                            ? enEl.GetString()
+                                            : exEl.TryGetProperty("name", out var nEl)
+                                                ? nEl.GetString()
                                                 : null;
                                         if (!string.IsNullOrEmpty(exName))
                                         {
@@ -800,73 +800,127 @@ public class WorkoutAIService : IWorkoutAIService
                     catch { /* Ignore JSON parse errors */ }
                 }
 
-                // Group exercises by day
-                var dayGroups = planExercises
-                    .GroupBy(pe => pe.DayNumber)
-                    .OrderBy(g => g.Key)
-                    .Select(g => new UserAIPlanDayDto
-                    {
-                        DayNumber = g.Key,
-                        DayName = $"Day {g.Key}",
-                        Exercises = g.Select(pe => {
-                            // Get exercise entity for additional data
-                            var exEntity = exerciseEntities.TryGetValue(pe.ExerciseId, out var ex) ? ex : null;
-                            
-                            // Resolve name: 1) from Exercise entity, 2) from PlanData JSON, 3) fallback
-                            var name = exEntity?.Name;
-                            if (string.IsNullOrEmpty(name) || name == "Unknown Exercise" || name.StartsWith("AI_"))
-                            {
-                                // Try from PlanData
-                                if (planDataExerciseNames.TryGetValue(pe.DayNumber, out var dayExNames) &&
-                                    dayExNames.TryGetValue(pe.OrderInDay, out var pdName))
-                                {
-                                    name = pdName;
-                                }
-                            }
-                            return new UserAIPlanExerciseDto
-                            {
-                                WorkoutPlanExerciseId = pe.WorkoutPlanExerciseId,
-                                ExerciseId = pe.ExerciseId,
-                                ExerciseName = name ?? pe.Notes ?? "Exercise",
-                                DayNumber = pe.DayNumber,
-                                OrderInDay = pe.OrderInDay,
-                                Sets = pe.Sets,
-                                Reps = pe.Reps,
-                                RestSeconds = pe.RestSeconds,
-                                Notes = pe.Notes,
-                                EquipmentId = exEntity?.EquipmentId,
-                                EquipmentRequired = exEntity?.EquipmentRequired,
-                                MuscleGroup = exEntity?.MuscleGroup
-                            };
+                List<UserAIPlanDayDto> dayGroups;
 
-                        }).ToList()
-                    })
-                    .ToList();
-
-                // Try to get day names from PlanData JSON
-                if (!string.IsNullOrEmpty(plan.PlanData))
+                if (planExercises.Any())
                 {
-                    try
-                    {
-                        using var doc = System.Text.Json.JsonDocument.Parse(plan.PlanData);
-                        if (doc.RootElement.TryGetProperty("days", out var daysElement))
+                    // ── Path A: WorkoutPlanExercise rows exist → use them ──
+                    dayGroups = planExercises
+                        .GroupBy(pe => pe.DayNumber)
+                        .OrderBy(g => g.Key)
+                        .Select(g => new UserAIPlanDayDto
                         {
-                            foreach (var dayEl in daysElement.EnumerateArray())
+                            DayNumber = g.Key,
+                            DayName = $"Day {g.Key}",
+                            Exercises = g.Select(pe =>
                             {
-                                if (dayEl.TryGetProperty("day_number", out var dayNumEl) &&
-                                    dayEl.TryGetProperty("day_name", out var dayNameEl))
+                                var exEntity = exerciseEntities.TryGetValue(pe.ExerciseId, out var ex) ? ex : null;
+
+                                var name = exEntity?.Name;
+                                if (string.IsNullOrEmpty(name) || name == "Unknown Exercise" || name.StartsWith("AI_"))
                                 {
-                                    var dayNum = dayNumEl.GetInt32();
-                                    var dayDto = dayGroups.FirstOrDefault(d => d.DayNumber == dayNum);
-                                    if (dayDto != null)
+                                    if (planDataExerciseNames.TryGetValue(pe.DayNumber, out var dayExNames) &&
+                                        dayExNames.TryGetValue(pe.OrderInDay, out var pdName))
                                     {
-                                        dayDto.DayName = dayNameEl.GetString() ?? $"Day {dayNum}";
+                                        name = pdName;
+                                    }
+                                }
+                                return new UserAIPlanExerciseDto
+                                {
+                                    WorkoutPlanExerciseId = pe.WorkoutPlanExerciseId,
+                                    ExerciseId = pe.ExerciseId,
+                                    ExerciseName = name ?? pe.Notes ?? "Exercise",
+                                    DayNumber = pe.DayNumber,
+                                    OrderInDay = pe.OrderInDay,
+                                    Sets = pe.Sets,
+                                    Reps = pe.Reps,
+                                    RestSeconds = pe.RestSeconds,
+                                    Notes = pe.Notes,
+                                    EquipmentId = exEntity?.EquipmentId,
+                                    EquipmentRequired = exEntity?.EquipmentRequired,
+                                    MuscleGroup = exEntity?.MuscleGroup
+                                };
+                            }).ToList()
+                        })
+                        .ToList();
+
+                    // Enrich day names from PlanData
+                    if (!string.IsNullOrEmpty(plan.PlanData))
+                    {
+                        try
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(plan.PlanData);
+                            if (doc.RootElement.TryGetProperty("days", out var daysElement))
+                            {
+                                foreach (var dayEl in daysElement.EnumerateArray())
+                                {
+                                    if (dayEl.TryGetProperty("day_number", out var dayNumEl) &&
+                                        dayEl.TryGetProperty("day_name", out var dayNameEl))
+                                    {
+                                        var dayNum = dayNumEl.GetInt32();
+                                        var dayDto = dayGroups.FirstOrDefault(d => d.DayNumber == dayNum);
+                                        if (dayDto != null)
+                                        {
+                                            dayDto.DayName = dayNameEl.GetString() ?? $"Day {dayNum}";
+                                        }
                                     }
                                 }
                             }
                         }
+                        catch { /* Ignore JSON parse errors */ }
                     }
-                    catch { /* Ignore JSON parse errors */ }
+                }
+                else if (!string.IsNullOrEmpty(plan.PlanData))
+                {
+                    // ── Path B: No WorkoutPlanExercise rows → reconstruct from PlanData JSON ──
+                    dayGroups = new List<UserAIPlanDayDto>();
+                    try
+                    {
+                        var planData = JsonSerializer.Deserialize<AIGeneratedPlanData>(plan.PlanData, _snakeCaseOptions);
+                        if (planData?.Days != null)
+                        {
+                            foreach (var day in planData.Days)
+                            {
+                                var dayDto = new UserAIPlanDayDto
+                                {
+                                    DayNumber = day.DayNumber,
+                                    DayName = day.DayName ?? $"Day {day.DayNumber}",
+                                    Exercises = new List<UserAIPlanExerciseDto>()
+                                };
+
+                                if (day.Exercises != null)
+                                {
+                                    int order = 1;
+                                    foreach (var ex in day.Exercises)
+                                    {
+                                        dayDto.Exercises.Add(new UserAIPlanExerciseDto
+                                        {
+                                            WorkoutPlanExerciseId = 0,
+                                            ExerciseId = ex.ExerciseId ?? 0,
+                                            ExerciseName = ex.Name ?? "Exercise",
+                                            DayNumber = day.DayNumber,
+                                            OrderInDay = order++,
+                                            Sets = ex.Sets,
+                                            Reps = ParseReps(ex.Reps ?? "10"),
+                                            RestSeconds = ex.RestSeconds ?? ParseRestSeconds(ex.Rest ?? "60"),
+                                            Notes = ex.Notes,
+                                            MuscleGroup = ex.TargetMuscles?.FirstOrDefault()
+                                        });
+                                    }
+                                }
+
+                                dayGroups.Add(dayDto);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to reconstruct exercises from PlanData for plan {PlanId}", plan.PlanId);
+                    }
+                }
+                else
+                {
+                    dayGroups = new List<UserAIPlanDayDto>();
                 }
 
                 result.Add(new UserAIWorkoutPlanDto

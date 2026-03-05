@@ -21,6 +21,8 @@ TRUNCATE TABLE "WorkoutFeedback", "UserStrengthProfile", "WorkoutLogExercise", "
 "Exercise", "Ingredient", "MemberProfile", "CoachProfile", "User"
 RESTART IDENTITY CASCADE;
 
+
+
 -- ==========================================
 -- 1. USERS (Base table - ID sequence 1-11)
 -- ==========================================
@@ -47,18 +49,18 @@ INSERT INTO "User" ("Email", "PasswordHash", "Name", "Phone", "DateOfBirth", "Ge
 -- 2. SUBSCRIPTION PLANS (Independent table)
 -- ==========================================
 INSERT INTO "SubscriptionPlan" ("PlanName", "Description", "Price", "DurationDays", "TokensIncluded", "Features", "MaxBookingsPerDay", "IsPopular", "IsActive", "CreatedAt", "UpdatedAt") VALUES
-('Basic Monthly', 'Access to gym facilities and basic equipment', 49.99, 30, 20, '["Gym Access", "Equipment Use", "Locker Room"]', 2, false, true, NOW(), NOW()),
-('Standard Monthly', 'Includes group classes and nutrition consultation', 79.99, 30, 50, '["Gym Access", "Group Classes", "Nutrition Consultation"]', 5, true, true, NOW(), NOW()),
-('Premium Monthly', 'Full access with personal training sessions', 129.99, 30, 100, '["Gym Access", "Personal Training", "Nutrition Plan", "AI Workout Generator"]', 10, true, true, NOW(), NOW());
+('Basic Monthly', 'Book gym equipment with tokens', 49.99, 30, 20, '["Equipment Booking", "Locker Room"]', 2, false, true, NOW(), NOW()),
+('Standard Monthly', 'Equipment booking plus AI-powered workout and coaching features', 79.99, 30, 50, '["Equipment Booking", "AI Coach", "AI Workout Generator"]', 5, true, true, NOW(), NOW()),
+('Premium Monthly', 'Full access: equipment booking, AI features, personal coach booking and plan reviews', 129.99, 30, 100, '["Equipment Booking", "AI Coach", "AI Workout Generator", "Coach Booking", "Coach Plan Review"]', 10, true, true, NOW(), NOW());
 
 -- ==========================================
 -- 3. MEMBER PROFILES (FK: UserId → User)
-('Standard Quarterly', '3-month standard membership', 214.99, 90, 150, '["Gym Access", "Group Classes", "Nutrition Consultation", "Progress Tracking"]', 5, true, true, NOW(), NOW()),
-('Premium Quarterly', '3-month premium with personal training', 349.99, 90, 300, '["Gym Access", "Group Classes", "Personal Training", "Nutrition Plan", "Workout Plan", "Priority Booking"]', 10, true, true, NOW(), NOW()),
-('Basic Annual', 'Full year basic membership with best value', 499.99, 365, 240, '["Gym Access", "Equipment Use", "Locker Room", "Free Guest Pass"]', 2, false, true, NOW(), NOW()),
-('Standard Annual', 'Full year standard membership', 799.99, 365, 600, '["Gym Access", "Group Classes", "Nutrition Consultation", "Progress Tracking", "Free Guest Pass"]', 5, true, true, NOW(), NOW()),
-('Premium Annual', 'Full year premium with all benefits', 1299.99, 365, 1200, '["Gym Access", "Group Classes", "Personal Training", "Nutrition Plan", "Workout Plan", "Priority Booking", "Free Guest Pass"]', 10, true, true, NOW(), NOW()),
-('Student Monthly', 'Special student pricing with valid ID', 39.99, 30, 30, '["Gym Access", "Group Classes", "Student Lounge"]', 3, false, true, NOW(), NOW());
+('Standard Quarterly', '3-month membership with equipment booking and AI features', 214.99, 90, 150, '["Equipment Booking", "AI Coach", "AI Workout Generator", "Progress Tracking"]', 5, true, true, NOW(), NOW()),
+('Premium Quarterly', '3-month premium with equipment, AI, and personal coach', 349.99, 90, 300, '["Equipment Booking", "AI Coach", "AI Workout Generator", "Coach Booking", "Coach Plan Review", "Priority Booking"]', 10, true, true, NOW(), NOW()),
+('Basic Annual', 'Full year basic - book equipment with tokens and best value', 499.99, 365, 240, '["Equipment Booking", "Locker Room", "Free Guest Pass"]', 2, false, true, NOW(), NOW()),
+('Standard Annual', 'Full year membership with equipment booking and AI features', 799.99, 365, 600, '["Equipment Booking", "AI Coach", "AI Workout Generator", "Progress Tracking", "Free Guest Pass"]', 5, true, true, NOW(), NOW()),
+('Premium Annual', 'Full year premium - equipment, AI, personal coach, all benefits', 1299.99, 365, 1200, '["Equipment Booking", "AI Coach", "AI Workout Generator", "Coach Booking", "Coach Plan Review", "Priority Booking", "Free Guest Pass"]', 10, true, true, NOW(), NOW()),
+('Student Monthly', 'Student pricing - equipment booking and group classes', 39.99, 30, 30, '["Equipment Booking", "Group Classes"]', 3, false, true, NOW(), NOW());
 
 -- ==========================================
 -- TOKEN PACKAGES

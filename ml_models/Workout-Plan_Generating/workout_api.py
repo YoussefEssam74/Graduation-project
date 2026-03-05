@@ -401,6 +401,282 @@ def extract_workout_from_model_output(text: str, req_days: int = 4, req_goal: st
     return plan
 
 
+# ==============================================================
+# Injury-Aware Exercise Filtering (Post-Processing)
+# ==============================================================
+
+# Keywords in exercise names that are UNSAFE for each injury type.
+# These are matched case-insensitively against the exercise "name" field.
+INJURY_EXERCISE_BLACKLIST: Dict[str, List[str]] = {
+    "Lower Back": [
+        "deadlift", "romanian deadlift", "stiff leg deadlift", "good morning",
+        "barbell row", "bent over row", "t-bar row", "pendlay row",
+        "back squat", "barbell squat", "front squat",
+        "clean", "snatch", "hyperextension", "back extension",
+        "sit-up", "situp", "crunch",  # spinal flexion under load
+        "kettlebell swing",
+    ],
+    "Shoulder": [
+        "overhead press", "military press", "shoulder press",
+        "arnold press", "push press", "behind the neck",
+        "upright row", "lateral raise", "front raise",
+        "face pull", "dumbbell fly", "chest fly",
+        "bench press",  # heavy bench stresses shoulders
+        "incline press", "dip", "handstand",
+        "snatch", "clean and press",
+    ],
+    "Knee": [
+        "squat", "back squat", "front squat", "goblet squat",
+        "leg press", "lunge", "walking lunge", "reverse lunge",
+        "bulgarian split squat", "split squat",
+        "leg extension", "box jump", "jump squat",
+        "pistol squat", "step up", "step-up",
+        "hack squat", "sissy squat",
+        "running", "sprint",
+    ],
+    "Wrist": [
+        "barbell curl", "wrist curl", "reverse curl",
+        "clean", "snatch", "front squat",  # front rack stresses wrists
+        "push-up", "pushup", "push up",
+        "handstand", "planche",
+        "bench press", "overhead press",  # heavy pressing loads wrists
+        "farmer walk", "farmer carry",
+        "kettlebell", "dumbbell snatch",
+    ],
+    "Elbow": [
+        "skull crusher", "skullcrusher", "french press",
+        "tricep extension", "triceps extension", "overhead extension",
+        "close grip bench", "close-grip bench",
+        "preacher curl", "concentration curl",
+        "barbell curl", "dip",
+        "chin-up", "chin up",
+        "pull-up", "pullup",  # heavy pulling stresses elbows
+    ],
+    "Hip": [
+        "squat", "back squat", "front squat",
+        "deadlift", "sumo deadlift", "romanian deadlift",
+        "lunge", "walking lunge", "hip thrust",
+        "bulgarian split squat", "leg press",
+        "step up", "step-up",
+        "good morning", "kettlebell swing",
+        "running", "sprint", "box jump",
+    ],
+    "Ankle": [
+        "squat", "back squat", "front squat", "goblet squat",
+        "lunge", "walking lunge", "reverse lunge",
+        "calf raise", "standing calf raise", "seated calf raise",
+        "box jump", "jump squat", "jump rope",
+        "running", "sprint", "burpee",
+        "step up", "step-up",
+        "pistol squat",
+    ],
+}
+
+# For each injury, safe replacement exercises grouped by focus area.
+INJURY_SAFE_REPLACEMENTS: Dict[str, Dict[str, List[Dict[str, str]]]] = {
+    "Lower Back": {
+        "back": [
+            {"name": "Lat Pulldown", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Seated Cable Row", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Chest Supported Dumbbell Row", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Straight Arm Pulldown", "sets": "3", "reps": "12-15", "rest": "45s"},
+        ],
+        "legs": [
+            {"name": "Leg Press (Controlled)", "sets": "3", "reps": "10-12", "rest": "90s"},
+            {"name": "Leg Curl", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Leg Extension", "sets": "3", "reps": "12-15", "rest": "60s"},
+            {"name": "Wall Sit", "sets": "3", "reps": "30-45s hold", "rest": "60s"},
+        ],
+        "core": [
+            {"name": "Dead Bug", "sets": "3", "reps": "10 each side", "rest": "45s"},
+            {"name": "Bird Dog", "sets": "3", "reps": "10 each side", "rest": "45s"},
+            {"name": "Pallof Press", "sets": "3", "reps": "12 each side", "rest": "45s"},
+        ],
+    },
+    "Shoulder": {
+        "chest": [
+            {"name": "Cable Crossover (Low-to-High)", "sets": "3", "reps": "12-15", "rest": "60s"},
+            {"name": "Floor Press", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Svend Press", "sets": "3", "reps": "12-15", "rest": "45s"},
+        ],
+        "shoulders": [
+            {"name": "Band Pull-Apart", "sets": "3", "reps": "15-20", "rest": "45s"},
+            {"name": "Cable External Rotation", "sets": "3", "reps": "12-15", "rest": "45s"},
+            {"name": "Scapular Wall Slides", "sets": "3", "reps": "12-15", "rest": "45s"},
+        ],
+        "back": [
+            {"name": "Lat Pulldown (Neutral Grip)", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Seated Cable Row", "sets": "3", "reps": "10-12", "rest": "60s"},
+        ],
+    },
+    "Knee": {
+        "legs": [
+            {"name": "Leg Curl (Hamstrings)", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Glute Bridge", "sets": "3", "reps": "12-15", "rest": "60s"},
+            {"name": "Hip Thrust", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Seated Calf Raise", "sets": "3", "reps": "15-20", "rest": "45s"},
+            {"name": "Lying Leg Curl", "sets": "3", "reps": "10-12", "rest": "60s"},
+        ],
+        "cardio": [
+            {"name": "Seated Cycling (Low Resistance)", "sets": "1", "reps": "15-20 min", "rest": "none"},
+            {"name": "Swimming", "sets": "1", "reps": "20 min", "rest": "none"},
+            {"name": "Upper Body Ergometer", "sets": "1", "reps": "15 min", "rest": "none"},
+        ],
+    },
+    "Wrist": {
+        "chest": [
+            {"name": "Machine Chest Press", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Pec Deck Machine", "sets": "3", "reps": "12-15", "rest": "60s"},
+        ],
+        "arms": [
+            {"name": "Cable Bicep Curl (Straight Bar)", "sets": "3", "reps": "12-15", "rest": "45s"},
+            {"name": "Cable Tricep Pushdown (Rope)", "sets": "3", "reps": "12-15", "rest": "45s"},
+            {"name": "Hammer Curl (Neutral Grip)", "sets": "3", "reps": "10-12", "rest": "45s"},
+        ],
+        "back": [
+            {"name": "Lat Pulldown (Wide Grip)", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Machine Row", "sets": "3", "reps": "10-12", "rest": "60s"},
+        ],
+    },
+    "Elbow": {
+        "arms": [
+            {"name": "Cable Bicep Curl (EZ Bar)", "sets": "3", "reps": "12-15", "rest": "45s"},
+            {"name": "Resistance Band Tricep Extension", "sets": "3", "reps": "15-20", "rest": "45s"},
+        ],
+        "back": [
+            {"name": "Lat Pulldown (Wide Grip)", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Seated Cable Row (Neutral Grip)", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Chest Supported Row", "sets": "3", "reps": "10-12", "rest": "60s"},
+        ],
+        "chest": [
+            {"name": "Machine Chest Press", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Cable Crossover", "sets": "3", "reps": "12-15", "rest": "60s"},
+        ],
+    },
+    "Hip": {
+        "legs": [
+            {"name": "Leg Extension", "sets": "3", "reps": "12-15", "rest": "60s"},
+            {"name": "Lying Leg Curl", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Seated Calf Raise", "sets": "3", "reps": "15-20", "rest": "45s"},
+            {"name": "Adductor Machine (Light)", "sets": "3", "reps": "12-15", "rest": "45s"},
+        ],
+        "core": [
+            {"name": "Dead Bug", "sets": "3", "reps": "10 each side", "rest": "45s"},
+            {"name": "Pallof Press", "sets": "3", "reps": "12 each side", "rest": "45s"},
+        ],
+        "cardio": [
+            {"name": "Upper Body Ergometer", "sets": "1", "reps": "15 min", "rest": "none"},
+            {"name": "Seated Cycling (Low Resistance)", "sets": "1", "reps": "15 min", "rest": "none"},
+        ],
+    },
+    "Ankle": {
+        "legs": [
+            {"name": "Leg Press (Controlled)", "sets": "3", "reps": "10-12", "rest": "90s"},
+            {"name": "Leg Extension", "sets": "3", "reps": "12-15", "rest": "60s"},
+            {"name": "Lying Leg Curl", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Hip Thrust", "sets": "3", "reps": "10-12", "rest": "60s"},
+            {"name": "Glute Bridge", "sets": "3", "reps": "12-15", "rest": "60s"},
+        ],
+        "cardio": [
+            {"name": "Seated Cycling", "sets": "1", "reps": "20 min", "rest": "none"},
+            {"name": "Swimming", "sets": "1", "reps": "20 min", "rest": "none"},
+        ],
+    },
+}
+
+
+def _is_exercise_unsafe(exercise_name: str, injury: str) -> bool:
+    """Check if an exercise is unsafe for a given injury."""
+    blacklist = INJURY_EXERCISE_BLACKLIST.get(injury, [])
+    name_lower = exercise_name.lower()
+    for keyword in blacklist:
+        if keyword.lower() in name_lower:
+            return True
+    return False
+
+
+def _get_replacement(injury: str, focus_hint: str, used_names: set) -> Optional[Dict[str, str]]:
+    """Pick a safe replacement exercise for the given injury and focus area."""
+    replacements = INJURY_SAFE_REPLACEMENTS.get(injury, {})
+
+    # Try to match by focus hint first
+    focus_lower = focus_hint.lower()
+    for category, exercises in replacements.items():
+        if category in focus_lower or focus_lower in category:
+            for ex in exercises:
+                if ex["name"] not in used_names:
+                    used_names.add(ex["name"])
+                    return dict(ex)  # copy
+
+    # Fallback: pick from any category
+    for category, exercises in replacements.items():
+        for ex in exercises:
+            if ex["name"] not in used_names:
+                used_names.add(ex["name"])
+                return dict(ex)
+
+    return None
+
+
+def filter_exercises_for_injuries(plan: Dict[str, Any], injuries: List[str]) -> Dict[str, Any]:
+    """
+    Post-process a generated workout plan to remove exercises that are
+    unsafe for the user's reported injuries and replace them with safe
+    alternatives. This is the DEFINITIVE safety layer because the small
+    ML model cannot reliably follow injury constraints from prompt alone.
+    """
+    if not injuries or not plan:
+        return plan
+
+    used_names: set = set()  # track replacements already used to avoid duplicates
+    removed_count = 0
+    replaced_count = 0
+
+    for day in plan.get("days", []):
+        focus_hint = " ".join(day.get("focus_areas", []))
+        day_name = day.get("day_name", "")
+        focus_hint = f"{focus_hint} {day_name}"
+
+        safe_exercises = []
+        for exercise in day.get("exercises", []):
+            ex_name = exercise.get("name", "")
+
+            # Check against ALL reported injuries
+            is_unsafe = False
+            triggering_injury = ""
+            for injury in injuries:
+                if _is_exercise_unsafe(ex_name, injury):
+                    is_unsafe = True
+                    triggering_injury = injury
+                    break
+
+            if is_unsafe:
+                removed_count += 1
+                # Try to find a safe replacement
+                replacement = _get_replacement(triggering_injury, focus_hint, used_names)
+                if replacement:
+                    replacement["notes"] = f"⚠️ Replaced '{ex_name}' (unsafe for {triggering_injury} injury)"
+                    safe_exercises.append(replacement)
+                    replaced_count += 1
+                    print(f"   🔄 Replaced '{ex_name}' → '{replacement['name']}' ({triggering_injury})")
+                else:
+                    print(f"   ❌ Removed '{ex_name}' (unsafe for {triggering_injury}, no replacement found)")
+            else:
+                safe_exercises.append(exercise)
+
+        day["exercises"] = safe_exercises
+
+    if removed_count > 0:
+        injury_list = ", ".join(injuries)
+        existing_notes = plan.get("notes", "")
+        plan["notes"] = f"{existing_notes} | ⚠️ {removed_count} exercises filtered for injuries: {injury_list}. {replaced_count} replaced with safe alternatives."
+        print(f"🛡️ Injury filter: {removed_count} removed, {replaced_count} replaced for [{injury_list}]")
+    else:
+        print(f"✅ Injury filter: all exercises are safe for [{', '.join(injuries)}]")
+
+    return plan
+
+
 def generate_workout_plan(prompt: str, req: 'MLWorkoutRequest' = None, max_length: int = 1024) -> tuple[Dict[str, Any] | None, bool, str | None]:
     """Generate workout plan from prompt. Returns (plan, is_valid, error)"""
     try:
@@ -500,6 +776,13 @@ def predict(req: MLWorkoutRequest) -> MLWorkoutResponse:
                 prompt_used=prompt,
                 error=error or "AI model failed to generate a valid workout plan"
             )
+
+        # ── Injury Post-Processing Filter ──
+        # The small model can't reliably avoid exercises for injured areas,
+        # so we deterministically filter and replace them here.
+        if req.injuries:
+            print(f"🛡️ Applying injury filter for: {req.injuries}")
+            plan = filter_exercises_for_injuries(plan, req.injuries)
 
         return MLWorkoutResponse(
             plan=plan,

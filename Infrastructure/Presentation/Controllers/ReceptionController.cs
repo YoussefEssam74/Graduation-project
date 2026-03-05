@@ -166,5 +166,34 @@ namespace Presentation.Controllers
         }
 
         #endregion
+
+        #region Create Member
+
+        /// <summary>
+        /// Create a new member with subscription and payment
+        /// </summary>
+        [HttpPost("create-member")]
+        public async Task<IActionResult> CreateMember([FromBody] CreateMemberDto createDto)
+        {
+            try
+            {
+                var result = await _serviceManager.ReceptionService.CreateMemberAsync(createDto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to create member", details = ex.Message });
+            }
+        }
+
+        #endregion
     }
 }

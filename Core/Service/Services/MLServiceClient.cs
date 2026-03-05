@@ -34,7 +34,7 @@ public class MLServiceClient : IMLServiceClient
 
         // Configure HttpClient
         _httpClient.BaseAddress = new Uri(_baseUrl);
-        _httpClient.Timeout = TimeSpan.FromSeconds(120); // ML inference can take time
+        _httpClient.Timeout = TimeSpan.FromSeconds(300); // Per-day generation: up to 5 model calls on CPU
     }
 
     /// <summary>

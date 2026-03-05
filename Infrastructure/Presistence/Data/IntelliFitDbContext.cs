@@ -311,8 +311,18 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.Property(e => e.BodyFatPercentage).HasPrecision(5, 2);
                 entity.Property(e => e.MuscleMass).HasPrecision(5, 2);
                 entity.Property(e => e.BodyWaterPercentage).HasPrecision(5, 2);
-                entity.Property(e => e.BoneMass).HasPrecision(5, 2);
-                entity.Property(e => e.ProteinPercentage).HasPrecision(5, 2);
+                entity.Property(e => e.Protein).HasPrecision(5, 2);
+                entity.Property(e => e.Minerals).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalRightArmLean).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalRightArmFat).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalLeftArmLean).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalLeftArmFat).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalTrunkLean).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalTrunkFat).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalRightLegLean).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalRightLegFat).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalLeftLegLean).HasPrecision(5, 2);
+                entity.Property(e => e.SegmentalLeftLegFat).HasPrecision(5, 2);
 
                 entity.HasOne(e => e.User)
                     .WithMany(u => u.InBodyMeasurements)

@@ -17,12 +17,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
-import { receptionApi, CheckInDto, MemberSearchDto, LiveActivityDto, AlertDto, ReceptionStatsDto } from "@/lib/api/reception";
+import {
+  receptionApi,
+  CheckInDto,
+  MemberSearchDto,
+  LiveActivityDto,
+  AlertDto,
+  ReceptionStatsDto,
+} from "@/lib/api/reception";
 import { useToast } from "@/components/ui/toast";
 import { Html5Qrcode } from "html5-qrcode";
 
 function ReceptionCheckInContent() {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -181,23 +190,38 @@ function ReceptionCheckInContent() {
     try {
       // Check if we're on HTTPS or localhost
       const isSecureContext = window.isSecureContext;
-      if (!isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        showToast("Camera access requires HTTPS. Please use localhost or HTTPS.", "error");
+      if (
+        !isSecureContext &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+      ) {
+        showToast(
+          "Camera access requires HTTPS. Please use localhost or HTTPS.",
+          "error",
+        );
         return;
       }
 
       // Request camera permission first
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         // Stop the test stream immediately
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       } catch (permError: any) {
-        if (permError.name === 'NotAllowedError') {
-          showToast("Camera permission denied. Please allow camera access in your browser settings.", "error");
-        } else if (permError.name === 'NotFoundError') {
+        if (permError.name === "NotAllowedError") {
+          showToast(
+            "Camera permission denied. Please allow camera access in your browser settings.",
+            "error",
+          );
+        } else if (permError.name === "NotFoundError") {
           showToast("No camera found on this device.", "error");
-        } else if (permError.name === 'NotReadableError') {
-          showToast("Camera is already in use by another application.", "error");
+        } else if (permError.name === "NotReadableError") {
+          showToast(
+            "Camera is already in use by another application.",
+            "error",
+          );
         } else {
           showToast(`Camera error: ${permError.message}`, "error");
         }
@@ -211,7 +235,7 @@ function ReceptionCheckInContent() {
       const cameras = await Html5Qrcode.getCameras();
       if (cameras && cameras.length > 0) {
         const cameraId = cameras[0].id;
-        
+
         await html5QrcodeRef.current.start(
           cameraId,
           {
@@ -226,7 +250,7 @@ function ReceptionCheckInContent() {
           },
           (errorMessage) => {
             // Scanning error (can be ignored, happens continuously)
-          }
+          },
         );
 
         setIsScanning(true);
@@ -236,7 +260,10 @@ function ReceptionCheckInContent() {
       }
     } catch (error: any) {
       console.error("Error starting scanner:", error);
-      showToast(`Failed to start camera: ${error.message || 'Unknown error'}`, "error");
+      showToast(
+        `Failed to start camera: ${error.message || "Unknown error"}`,
+        "error",
+      );
     }
   };
 
@@ -299,7 +326,7 @@ function ReceptionCheckInContent() {
   };
 
   const capacityPercentage = stats
-    ? Math.round(((stats.todayCheckIns / stats.activeMembers) * 100) || 0)
+    ? Math.round((stats.todayCheckIns / stats.activeMembers) * 100 || 0)
     : 0;
 
   return (
@@ -313,7 +340,9 @@ function ReceptionCheckInContent() {
                 <Dumbbell className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">PulseGym</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  PulseGym
+                </h1>
                 <p className="text-xs text-gray-500">STAFF PORTAL</p>
               </div>
             </div>
@@ -335,16 +364,28 @@ function ReceptionCheckInContent() {
               Member Details
             </Button>
             <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Capacity</p>
-              <p className="text-2xl font-bold text-blue-600">{capacityPercentage}%</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">
+                Capacity
+              </p>
+              <p className="text-2xl font-bold text-blue-600">
+                {capacityPercentage}%
+              </p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Checked In</p>
-              <p className="text-2xl font-bold text-green-600">{stats?.todayCheckIns || 0}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">
+                Checked In
+              </p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats?.todayCheckIns || 0}
+              </p>
             </div>
             <div className="text-center border-l border-gray-200 dark:border-gray-700 pl-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate()}</p>
-              <p className="text-xs text-gray-500">Alex M. - Front Desk</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {formatDate()}
+              </p>
+              <p className="text-xs text-gray-500">
+                {user?.name || "Front Desk"}
+              </p>
             </div>
           </div>
         </div>
@@ -403,7 +444,10 @@ function ReceptionCheckInContent() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                        {selectedMember.name.split(" ").map(n => n[0]).join("")}
+                        {selectedMember.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
                       </div>
                       <div>
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -431,23 +475,37 @@ function ReceptionCheckInContent() {
 
                   <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-green-200 dark:border-green-800">
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">Last Visit</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        Last Visit
+                      </p>
                       <p className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 mt-1">
                         <Calendar className="h-4 w-4" />
                         {selectedMember.lastVisit
-                          ? new Date(selectedMember.lastVisit).toLocaleDateString()
+                          ? new Date(
+                              selectedMember.lastVisit,
+                            ).toLocaleDateString()
                           : "First time"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">Streak</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        Streak
+                      </p>
                       <p className="text-sm font-semibold flex items-center gap-2 mt-1">
                         <Flame className="h-4 w-4 text-orange-500" />
-                        <span className={selectedMember.hasActiveStreak ? "text-orange-600" : "text-gray-400"}>
+                        <span
+                          className={
+                            selectedMember.hasActiveStreak
+                              ? "text-orange-600"
+                              : "text-gray-400"
+                          }
+                        >
                           {selectedMember.currentStreak} Days
                         </span>
                         {selectedMember.hasActiveStreak && (
-                          <Badge className="bg-green-600 text-white text-xs">ACTIVE</Badge>
+                          <Badge className="bg-green-600 text-white text-xs">
+                            ACTIVE
+                          </Badge>
                         )}
                       </p>
                     </div>
@@ -457,11 +515,15 @@ function ReceptionCheckInContent() {
                     <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                         <Dumbbell className="h-4 w-4" />
-                        <p className="text-sm font-semibold">PT Session Today</p>
+                        <p className="text-sm font-semibold">
+                          PT Session Today
+                        </p>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         With Trainer {selectedMember.todaySession.coachName} at{" "}
-                        {new Date(selectedMember.todaySession.startTime).toLocaleTimeString([], {
+                        {new Date(
+                          selectedMember.todaySession.startTime,
+                        ).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
@@ -518,7 +580,9 @@ function ReceptionCheckInContent() {
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {member.name}
                           </p>
-                          <p className="text-sm text-gray-500">{member.memberNumber}</p>
+                          <p className="text-sm text-gray-500">
+                            {member.memberNumber}
+                          </p>
                         </div>
                         {member.subscriptionPlan && (
                           <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -541,9 +605,13 @@ function ReceptionCheckInContent() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-orange-500" />
-                    <h3 className="font-bold text-gray-900 dark:text-white">Alerts</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-white">
+                      Alerts
+                    </h3>
                   </div>
-                  <Badge className="bg-red-600 text-white">{alerts.length} New</Badge>
+                  <Badge className="bg-red-600 text-white">
+                    {alerts.length} New
+                  </Badge>
                 </div>
                 <div className="space-y-3">
                   {alerts.slice(0, 3).map((alert) => (
@@ -566,16 +634,24 @@ function ReceptionCheckInContent() {
             {/* Live Feed */}
             <Card className="p-6 bg-white dark:bg-gray-800">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-900 dark:text-white">Live Feed</h3>
+                <h3 className="font-bold text-gray-900 dark:text-white">
+                  Live Feed
+                </h3>
                 <button className="text-sm text-blue-600 hover:text-blue-700 font-semibold">
                   VIEW ALL
                 </button>
               </div>
               <div className="space-y-4">
                 {liveActivities.slice(0, 5).map((activity) => (
-                  <div key={activity.activityId} className="flex items-start gap-3">
+                  <div
+                    key={activity.activityId}
+                    className="flex items-start gap-3"
+                  >
                     <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                      {activity.userName.split(" ").map(n => n[0]).join("")}
+                      {activity.userName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -584,7 +660,9 @@ function ReceptionCheckInContent() {
                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         {activity.description}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">{activity.timeAgo}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {activity.timeAgo}
+                      </p>
                     </div>
                   </div>
                 ))}

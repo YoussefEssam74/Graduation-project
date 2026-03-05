@@ -1,6 +1,6 @@
-import { apiFetch, type ApiResponse } from './client';
-import { apiCache, CACHE_TTL } from './cache';
-import { UserDto } from './auth';
+import { apiFetch, apiFetchFormData, type ApiResponse } from "./client";
+import { apiCache, CACHE_TTL } from "./cache";
+import { UserDto } from "./auth";
 
 export interface UpdateProfileDto {
   name?: string;
@@ -73,7 +73,7 @@ export interface UserAIContextDto {
 }
 
 const CACHE_KEYS = {
-  COACHES: 'users:coaches',
+  COACHES: "users:coaches",
   USER: (id: number) => `users:${id}`,
   USER_METRICS: (id: number) => `users:${id}:metrics`,
   USER_WORKOUT_SUMMARY: (id: number) => `users:${id}:workout-summary`,
@@ -84,14 +84,17 @@ export const usersApi = {
   /**
    * Get user by ID (cached for 5 minutes)
    */
-  async getUser(id: number, forceRefresh = false): Promise<ApiResponse<UserDto>> {
+  async getUser(
+    id: number,
+    forceRefresh = false,
+  ): Promise<ApiResponse<UserDto>> {
     if (!forceRefresh) {
       const cached = apiCache.get<UserDto>(CACHE_KEYS.USER(id));
       if (cached) {
         return { success: true, data: cached };
       }
     }
-    
+
     const response = await apiFetch<UserDto>(`/users/${id}`);
     if (response.success && response.data) {
       apiCache.set(CACHE_KEYS.USER(id), response.data, CACHE_TTL.MEDIUM);
@@ -102,17 +105,20 @@ export const usersApi = {
   /**
    * Update user profile (invalidates user cache)
    */
-  async updateProfile(id: number, data: UpdateProfileDto): Promise<ApiResponse<UserDto>> {
+  async updateProfile(
+    id: number,
+    data: UpdateProfileDto,
+  ): Promise<ApiResponse<UserDto>> {
     const response = await apiFetch<UserDto>(`/users/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
-    
+
     if (response.success) {
       apiCache.invalidate(CACHE_KEYS.USER(id));
       apiCache.invalidate(CACHE_KEYS.USER_METRICS(id));
     }
-    
+
     return response;
   },
 
@@ -128,13 +134,13 @@ export const usersApi = {
    */
   async deactivateUser(id: number): Promise<ApiResponse<boolean>> {
     const response = await apiFetch<boolean>(`/users/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
-    
+
     if (response.success) {
       apiCache.invalidatePrefix(`users:${id}`);
     }
-    
+
     return response;
   },
 
@@ -148,8 +154,8 @@ export const usersApi = {
         return { success: true, data: cached };
       }
     }
-    
-    const response = await apiFetch<UserDto[]>('/users/coaches');
+
+    const response = await apiFetch<UserDto[]>("/users/coaches");
     if (response.success && response.data) {
       apiCache.set(CACHE_KEYS.COACHES, response.data, CACHE_TTL.LONG);
     }
@@ -159,16 +165,18 @@ export const usersApi = {
   /**
    * Get all coaches with detailed profile information
    */
-  async getCoachesWithProfiles(forceRefresh = false): Promise<ApiResponse<CoachDto[]>> {
-    const cacheKey = 'users:coaches:details';
+  async getCoachesWithProfiles(
+    forceRefresh = false,
+  ): Promise<ApiResponse<CoachDto[]>> {
+    const cacheKey = "users:coaches:details";
     if (!forceRefresh) {
       const cached = apiCache.get<CoachDto[]>(cacheKey);
       if (cached) {
         return { success: true, data: cached };
       }
     }
-    
-    const response = await apiFetch<CoachDto[]>('/users/coaches/details');
+
+    const response = await apiFetch<CoachDto[]>("/users/coaches/details");
     if (response.success && response.data) {
       apiCache.set(cacheKey, response.data, CACHE_TTL.LONG);
     }
@@ -178,17 +186,24 @@ export const usersApi = {
   /**
    * Get user physical metrics (cached for 5 minutes)
    */
-  async getUserMetrics(id: number, forceRefresh = false): Promise<ApiResponse<UserMetricsDto>> {
+  async getUserMetrics(
+    id: number,
+    forceRefresh = false,
+  ): Promise<ApiResponse<UserMetricsDto>> {
     if (!forceRefresh) {
       const cached = apiCache.get<UserMetricsDto>(CACHE_KEYS.USER_METRICS(id));
       if (cached) {
         return { success: true, data: cached };
       }
     }
-    
+
     const response = await apiFetch<UserMetricsDto>(`/users/${id}/metrics`);
     if (response.success && response.data) {
-      apiCache.set(CACHE_KEYS.USER_METRICS(id), response.data, CACHE_TTL.MEDIUM);
+      apiCache.set(
+        CACHE_KEYS.USER_METRICS(id),
+        response.data,
+        CACHE_TTL.MEDIUM,
+      );
     }
     return response;
   },
@@ -197,34 +212,45 @@ export const usersApi = {
    * Get user workout summary with stats
    */
   async getUserWorkoutSummary(
-    id: number, 
-    startDate?: string, 
-    endDate?: string
+    id: number,
+    startDate?: string,
+    endDate?: string,
   ): Promise<ApiResponse<UserWorkoutSummaryDto>> {
     let endpoint = `/users/${id}/workout-summary`;
     const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
     if (params.toString()) endpoint += `?${params.toString()}`;
-    
+
     return apiFetch<UserWorkoutSummaryDto>(endpoint);
   },
 
   /**
    * Get comprehensive user context for AI personalization
    */
-  async getUserAIContext(id: number, forceRefresh = false): Promise<ApiResponse<UserAIContextDto>> {
+  async getUserAIContext(
+    id: number,
+    forceRefresh = false,
+  ): Promise<ApiResponse<UserAIContextDto>> {
     if (!forceRefresh) {
-      const cached = apiCache.get<UserAIContextDto>(CACHE_KEYS.USER_AI_CONTEXT(id));
+      const cached = apiCache.get<UserAIContextDto>(
+        CACHE_KEYS.USER_AI_CONTEXT(id),
+      );
       if (cached) {
         return { success: true, data: cached };
       }
     }
-    
-    const response = await apiFetch<UserAIContextDto>(`/users/${id}/ai-context`);
+
+    const response = await apiFetch<UserAIContextDto>(
+      `/users/${id}/ai-context`,
+    );
     if (response.success && response.data) {
       // Short cache for AI context since it includes recent workout data
-      apiCache.set(CACHE_KEYS.USER_AI_CONTEXT(id), response.data, CACHE_TTL.SHORT);
+      apiCache.set(
+        CACHE_KEYS.USER_AI_CONTEXT(id),
+        response.data,
+        CACHE_TTL.SHORT,
+      );
     }
     return response;
   },
@@ -234,5 +260,20 @@ export const usersApi = {
    */
   invalidateUserCache(id: number): void {
     apiCache.invalidatePrefix(`users:${id}`);
+  },
+
+  /**
+   * Upload profile image for a user
+   */
+  async uploadProfileImage(
+    id: number,
+    file: File,
+  ): Promise<ApiResponse<{ profileImageUrl: string; message: string }>> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiFetchFormData<{ profileImageUrl: string; message: string }>(
+      `/users/${id}/upload-image`,
+      formData,
+    );
   },
 };

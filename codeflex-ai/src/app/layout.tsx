@@ -6,10 +6,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { SignalRProvider } from "@/contexts/SignalRContext";
 import { ToastProvider } from "@/components/ui/toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { usePathname } from 'next/navigation';
+import { usePathname } from "next/navigation";
 import { NotificationListener } from "@/components/Notifications/NotificationListener";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -35,14 +36,18 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-          <p className="text-muted-foreground">Redirecting to your dashboard...</p>
+          <p className="text-muted-foreground">
+            Redirecting to your dashboard...
+          </p>
         </div>
       </div>
     );
   }
 
   // Hide nav on auth pages
-  const isAuthPage = pathname && (pathname.startsWith('/login') || pathname.startsWith('/signup'));
+  const isAuthPage =
+    pathname &&
+    (pathname.startsWith("/login") || pathname.startsWith("/signup"));
 
   if (isAuthPage) {
     return (
@@ -69,14 +74,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <div className="flex-1 lg:pl-[240px] flex flex-col min-h-screen">
           {/* Mobile Header (Hidden on Desktop) */}
           <header className="lg:hidden h-14 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 sticky top-0 z-40">
-            <span className="font-bold text-lg text-slate-900 dark:text-white">Pulse<span className="text-blue-600">Gym</span></span>
+            <span className="font-bold text-lg text-slate-900 dark:text-white">
+              Pulse<span className="text-blue-600">Gym</span>
+            </span>
             {/* Mobile Menu Button would go here */}
-          </header>          
+          </header>
 
           {/* Page Content */}
-          <main className="flex-1 p-3 md:p-6 pt-0">
-            {children}
-          </main>
+          <main className="flex-1 p-3 md:p-6 pt-0">{children}</main>
         </div>
 
         <NotificationListener />
@@ -106,7 +111,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -114,11 +122,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <ToastProvider>
-              <SignalRProvider>
-                <LayoutContent>{children}</LayoutContent>
-              </SignalRProvider>
-            </ToastProvider>
+            <SubscriptionProvider>
+              <ToastProvider>
+                <SignalRProvider>
+                  <LayoutContent>{children}</LayoutContent>
+                </SignalRProvider>
+              </ToastProvider>
+            </SubscriptionProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

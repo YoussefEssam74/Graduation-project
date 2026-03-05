@@ -1,14 +1,15 @@
-import { apiFetch, type ApiResponse } from './client';
+import { apiFetch, type ApiResponse } from "./client";
 
 export interface PaymentDto {
   paymentId: number;
   userId: number;
+  userName: string;
   amount: number;
   paymentMethod: string;
   status: number;
   statusText: string;
   transactionId?: string;
-  description?: string;
+  paymentDate: string;
   createdAt: string;
 }
 
@@ -16,16 +17,20 @@ export interface CreatePaymentDto {
   userId: number;
   amount: number;
   paymentMethod: string;
-  description?: string;
+  paymentType?: string;
+  packageId?: number;
+  transactionId?: string;
 }
 
 export const paymentApi = {
   /**
    * Create a new payment
    */
-  async createPayment(data: CreatePaymentDto): Promise<ApiResponse<PaymentDto>> {
-    return apiFetch<PaymentDto>('/payment', {
-      method: 'POST',
+  async createPayment(
+    data: CreatePaymentDto,
+  ): Promise<ApiResponse<PaymentDto>> {
+    return apiFetch<PaymentDto>("/payment", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
@@ -50,14 +55,14 @@ export const paymentApi = {
   async updatePaymentStatus(
     id: number,
     status: number,
-    transactionId?: string
+    transactionId?: string,
   ): Promise<ApiResponse<PaymentDto>> {
-    const url = transactionId 
+    const url = transactionId
       ? `/payment/${id}/status?transactionId=${encodeURIComponent(transactionId)}`
       : `/payment/${id}/status`;
-      
+
     return apiFetch<PaymentDto>(url, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(status),
     });
   },

@@ -53,7 +53,7 @@ SEED = 42
 NUM_SAMPLES = 5000  # Reduced from 10000 to save memory
 
 # Training parameters - Optimized for CPU with low memory
-EPOCHS = 3  # Reduced from 6 for faster completion
+EPOCHS = 3  # Reduced from 6 for fa0ster completion
 BATCH_SIZE = 1  # Minimal batch size for CPU
 GRADIENT_ACCUMULATION = 2  # Minimal accumulation to save memory
 LEARNING_RATE = 8e-5

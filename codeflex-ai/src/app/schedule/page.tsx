@@ -812,19 +812,19 @@ function ScheduleContent() {
                   <div className="bg-orange-50 rounded-xl p-4 text-center">
                     <p className="text-sm text-orange-600 mb-1">BMR</p>
                     <p className="text-2xl font-black text-orange-800">
-                      {selectedInBody.basalMetabolicRate}
+                      {selectedInBody.bmr}
                     </p>
                   </div>
                   <div className="bg-teal-50 rounded-xl p-4 text-center">
                     <p className="text-sm text-teal-600 mb-1">Body Water</p>
                     <p className="text-2xl font-black text-teal-800">
-                      {selectedInBody.bodyWater}%
+                      {selectedInBody.bodyWaterPercentage}%
                     </p>
                   </div>
                   <div className="bg-pink-50 rounded-xl p-4 text-center">
-                    <p className="text-sm text-pink-600 mb-1">Bone Mass</p>
+                    <p className="text-sm text-pink-600 mb-1">Minerals</p>
                     <p className="text-2xl font-black text-pink-800">
-                      {selectedInBody.boneMass} kg
+                      {selectedInBody.minerals} kg
                     </p>
                   </div>
                 </div>
