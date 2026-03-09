@@ -533,6 +533,32 @@ public class UserAIWorkoutPlanDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public List<UserAIPlanDayDto> Days { get; set; } = new();
+
+    // Coach review fields
+    public int? AssignedCoachId { get; set; }
+    public string? AssignedCoachName { get; set; }
+    public string? ApprovalNotes { get; set; }
+
+    // Member info (for coach review view)
+    public int? MemberId { get; set; }
+    public string? MemberName { get; set; }
+}
+
+/// <summary>
+/// Request to update the status of a workout plan (coach approves/rejects)
+/// </summary>
+public class UpdatePlanStatusRequest
+{
+    public string Status { get; set; } = null!; // "Approved", "Rejected", "UnderReview"
+    public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Request to share/check coach assignment for a saved plan
+/// </summary>
+public class ShareWithCoachRequest
+{
+    public int PlanId { get; set; }
 }
 
 /// <summary>
@@ -562,6 +588,16 @@ public class UserAIPlanExerciseDto
     public int? EquipmentId { get; set; }
     public string? EquipmentRequired { get; set; }
     public string? MuscleGroup { get; set; }
+}
+
+/// <summary>
+/// Request to get alternative exercises for substitution
+/// </summary>
+public class ExerciseAlternativesRequest
+{
+    public string ExerciseName { get; set; } = null!;
+    public List<string> Equipment { get; set; } = new();
+    public List<string> TargetMuscles { get; set; } = new();
 }
 
 #endregion

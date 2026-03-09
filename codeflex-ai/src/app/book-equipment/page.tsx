@@ -151,8 +151,8 @@ function BookEquipmentContent() {
 
         try {
             setIsCheckingCoachSession(true);
-            const startDateTime = new Date(`${date}T${start}:00`).toISOString();
-            const endDateTime = new Date(`${date}T${end}:00`).toISOString();
+            const startDateTime = `${date}T${start}:00`;
+            const endDateTime = `${date}T${end}:00`;
 
             const response = await bookingsApi.checkUserHasCoachBooking(
                 user.userId,
@@ -220,8 +220,8 @@ function BookEquipmentContent() {
                 userId: user.userId,
                 equipmentId: selectedEquipment.equipmentId,
                 bookingType: "Equipment",
-                startTime: bookingStartTime.toISOString(),
-                endTime: bookingEndTime.toISOString(),
+                startTime: `${bookingDate}T${startTime}:00`,
+                endTime: `${bookingDate}T${endTime}:00`,
                 notes: `Booked ${selectedEquipment.name} from ${startTime} to ${endTime}`,
             });
 
@@ -426,16 +426,26 @@ function BookEquipmentContent() {
                                                 onClick={() => {
                                                     setSelectedEquipment(eq);
                                                     setBookingModalOpen(true);
-                                                    // Set default date to today
-                                                    const today = new Date().toISOString().split('T')[0];
-                                                    setBookingDate(today);
-                                                    // Set default start time to next hour
+                                                    // Set default start time to next hour, clamped to business hours (6 AM - 9 PM)
                                                     const now = new Date();
-                                                    const nextHour = new Date(now.setHours(now.getHours() + 1, 0, 0, 0));
+                                                    const nextHour = new Date(now.getTime());
+                                                    nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+                                                    const OPEN_HOUR = 6;
+                                                    const LAST_START_HOUR = 21; // last slot 9 PM, ends 10 PM
+                                                    if (nextHour.getHours() < OPEN_HOUR) {
+                                                        nextHour.setHours(OPEN_HOUR, 0, 0, 0);
+                                                    } else if (nextHour.getHours() > LAST_START_HOUR) {
+                                                        nextHour.setDate(nextHour.getDate() + 1);
+                                                        nextHour.setHours(OPEN_HOUR, 0, 0, 0);
+                                                    }
                                                     const startTimeStr = nextHour.toTimeString().slice(0, 5);
                                                     setStartTime(startTimeStr);
+                                                    // Update date if it rolled over to next day
+                                                    const updatedDate = nextHour.toISOString().split('T')[0];
+                                                    setBookingDate(updatedDate);
                                                     // Set default end time to 1 hour after start
-                                                    const endHour = new Date(nextHour.setHours(nextHour.getHours() + 1));
+                                                    const endHour = new Date(nextHour.getTime());
+                                                    endHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
                                                     const endTimeStr = endHour.toTimeString().slice(0, 5);
                                                     setEndTime(endTimeStr);
                                                 }}

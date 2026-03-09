@@ -17,9 +17,11 @@ import {
 import {
   getMyAIPlans,
   deleteAIPlan,
+  getExerciseAlternatives,
   type UserAIWorkoutPlan,
   type UserAIPlanDay,
   type UserAIPlanExercise,
+  type AIExercise,
 } from "@/lib/api/workoutAI";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -47,6 +49,7 @@ import {
   MapPin,
   Ticket,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -323,6 +326,127 @@ function EquipmentModal({
   );
 }
 
+// ---- Related Exercises Modal ----
+function RelatedExercisesModal({
+  exercise,
+  onClose,
+}: {
+  exercise: UserAIPlanExercise;
+  onClose: () => void;
+}) {
+  const [alternatives, setAlternatives] = useState<AIExercise[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+      try {
+        const res = await getExerciseAlternatives(
+          exercise.exerciseName,
+          [],
+          exercise.muscleGroup ? [exercise.muscleGroup] : [],
+        );
+        if (res.success && res.data) setAlternatives(res.data);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [exercise]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
+          <div>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-blue-500" />
+              Similar Exercises
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Alternatives to{" "}
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                {exercise.exerciseName}
+              </span>
+              {exercise.muscleGroup && (
+                <span className="ml-1 text-blue-500">· {exercise.muscleGroup}</span>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+          >
+            <X className="h-5 w-5 text-slate-400" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 overflow-y-auto flex-1 space-y-3">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
+            </div>
+          ) : alternatives.length === 0 ? (
+            <div className="text-center py-10">
+              <Dumbbell className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No similar exercises found
+              </p>
+            </div>
+          ) : (
+            alternatives.map((alt, idx) => (
+              <div
+                key={alt.exerciseId ?? idx}
+                className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-100 dark:border-slate-600/30 hover:border-blue-200 dark:hover:border-blue-500/30 transition-all"
+              >
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                  <Dumbbell className="h-4 w-4 text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-800 dark:text-white">
+                    {alt.name}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {alt.targetMuscles && alt.targetMuscles.length > 0 && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-medium">
+                        {alt.targetMuscles[0]}
+                      </span>
+                    )}
+                    {alt.equipment && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-400 font-medium">
+                        {alt.equipment}
+                      </span>
+                    )}
+                    {alt.notes && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-medium">
+                        {alt.notes}
+                      </span>
+                    )}
+                  </div>
+                  {alt.description && (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 line-clamp-2">
+                      {alt.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- Empty State ----
 function EmptyState({
   icon,
@@ -413,6 +537,8 @@ function ProgramsContent() {
     "ai",
   );
   const [selectedExercise, setSelectedExercise] =
+    useState<UserAIPlanExercise | null>(null);
+  const [relatedExercise, setRelatedExercise] =
     useState<UserAIPlanExercise | null>(null);
 
   useEffect(() => {
@@ -798,10 +924,38 @@ function ProgramsContent() {
                                     })}
                                   </span>
                                 </div>
+                                {plan.assignedCoachName && (
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                    <svg className="h-3 w-3 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    Assigned to Coach {plan.assignedCoachName}
+                                    {plan.approvalNotes && (
+                                      <span className="ml-1 text-slate-400 dark:text-slate-500 italic">&ldquo;{plan.approvalNotes}&rdquo;</span>
+                                    )}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {plan.isActive && (
+                              {plan.status === "UnderReview" && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full flex-shrink-0 flex items-center gap-1">
+                                  <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" /></svg>
+                                  Under Review
+                                </span>
+                              )}
+                              {plan.status === "Approved" && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 rounded-full flex-shrink-0 flex items-center gap-1">
+                                  <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                  Approved
+                                </span>
+                              )}
+                              {plan.status === "Rejected" && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 rounded-full flex-shrink-0">
+                                  Rejected
+                                </span>
+                              )}
+                              {plan.status === "Active" && plan.isActive && (
                                 <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 rounded-full flex-shrink-0">
                                   Active
                                 </span>
@@ -909,47 +1063,56 @@ function ProgramsContent() {
                                   {isDayOpen && (
                                     <div className="border-t border-slate-100 dark:border-slate-700 divide-y divide-slate-50 dark:divide-slate-700/50">
                                       {day.exercises.map((ex, idx) => (
-                                        <button
+                                        <div
                                           key={ex.workoutPlanExerciseId || idx}
-                                          onClick={() =>
-                                            setSelectedExercise(ex)
-                                          }
-                                          className="w-full flex items-center justify-between px-5 py-3 hover:bg-blue-50/50 dark:hover:bg-blue-500/5 transition-colors text-left group"
+                                          className="flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-500/5 transition-colors group"
                                         >
-                                          <div className="flex items-center gap-3">
-                                            <span className="text-xs text-slate-400 dark:text-slate-500 font-mono w-5">
-                                              {ex.orderInDay || idx + 1}
-                                            </span>
-                                            <div>
-                                              <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                                {ex.exerciseName}
+                                          <button
+                                            onClick={() => setSelectedExercise(ex)}
+                                            className="flex-1 flex items-center justify-between px-5 py-3 text-left"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-xs text-slate-400 dark:text-slate-500 font-mono w-5">
+                                                {ex.orderInDay || idx + 1}
                                               </span>
-                                              {ex.muscleGroup && (
-                                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-                                                  {ex.muscleGroup}
-                                                </p>
-                                              )}
+                                              <div>
+                                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                  {ex.exerciseName}
+                                                </span>
+                                                {ex.muscleGroup && (
+                                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                                    {ex.muscleGroup}
+                                                  </p>
+                                                )}
+                                              </div>
                                             </div>
-                                          </div>
-                                          <div className="flex items-center gap-2 text-xs">
-                                            {ex.sets && (
-                                              <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-medium text-slate-500 dark:text-slate-400">
-                                                {ex.sets}s
-                                              </span>
-                                            )}
-                                            {ex.reps && (
-                                              <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-medium text-slate-500 dark:text-slate-400">
-                                                {ex.reps}r
-                                              </span>
-                                            )}
-                                            {ex.restSeconds && (
-                                              <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-medium text-slate-500 dark:text-slate-400">
-                                                {ex.restSeconds}s rest
-                                              </span>
-                                            )}
-                                            <Dumbbell className="h-3.5 w-3.5 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
-                                          </div>
-                                        </button>
+                                            <div className="flex items-center gap-2 text-xs">
+                                              {ex.sets && (
+                                                <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-medium text-slate-500 dark:text-slate-400">
+                                                  {ex.sets}s
+                                                </span>
+                                              )}
+                                              {ex.reps && (
+                                                <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-medium text-slate-500 dark:text-slate-400">
+                                                  {ex.reps}r
+                                                </span>
+                                              )}
+                                              {ex.restSeconds && (
+                                                <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded font-medium text-slate-500 dark:text-slate-400">
+                                                  {ex.restSeconds}s rest
+                                                </span>
+                                              )}
+                                              <Dumbbell className="h-3.5 w-3.5 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                                            </div>
+                                          </button>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setRelatedExercise(ex); }}
+                                            title="Show similar exercises"
+                                            className="mr-3 p-1.5 rounded-lg text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-blue-500 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-all flex-shrink-0"
+                                          >
+                                            <RefreshCw className="h-3.5 w-3.5" />
+                                          </button>
+                                        </div>
                                       ))}
                                     </div>
                                   )}
@@ -1253,6 +1416,14 @@ function ProgramsContent() {
           onClose={() => setSelectedExercise(null)}
           onBookSuccess={handleBookEquipmentSuccess}
           userId={user.userId}
+        />
+      )}
+
+      {/* Related Exercises Modal */}
+      {relatedExercise && (
+        <RelatedExercisesModal
+          exercise={relatedExercise}
+          onClose={() => setRelatedExercise(null)}
         />
       )}
     </div>

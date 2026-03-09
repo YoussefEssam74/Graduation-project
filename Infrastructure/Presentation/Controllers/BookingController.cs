@@ -195,7 +195,10 @@ namespace Presentation.Controllers
             [FromQuery] DateTime startTime,
             [FromQuery] DateTime endTime)
         {
-            var hasCoachBooking = await _serviceManager.BookingService.UserHasActiveCoachBookingAsync(userId, startTime, endTime);
+            // Ensure UTC kind so PostgreSQL timestamp with time zone is handled correctly
+            var start = DateTime.SpecifyKind(startTime, DateTimeKind.Utc);
+            var end = DateTime.SpecifyKind(endTime, DateTimeKind.Utc);
+            var hasCoachBooking = await _serviceManager.BookingService.UserHasActiveCoachBookingAsync(userId, start, end);
             return Ok(new { hasCoachBooking, message = hasCoachBooking ? "User has active coach booking. Manual equipment booking is blocked." : "User can book equipment manually." });
         }
 
