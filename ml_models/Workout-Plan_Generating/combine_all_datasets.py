@@ -66,7 +66,6 @@ MUSCLE_ALIASES = {
     "thigh - outer": "abductors", "outer thigh": "abductors",
     "hip flexor": "quadriceps", "hip flexors": "quadriceps",
     "erector spinae": "lower back", "rhomboids": "middle back",
-    "serratus anterior": "chest",
     # ExerciseDB v2 uppercase mappings
     "upper back": "middle back",
     "spine": "lower back",
@@ -967,6 +966,8 @@ def main():
     print()
 
     # ── Step 2: Add from IntelliFit_AI_Ready (richest new source) ──
+    # Note: exercise_master_clean.csv is skipped — it fully overlaps with
+    # exercises_final.json and has fewer fields (no instructions/gifUrl).
     intellifit = load_intellifit_ai_ready()
     added_intellifit = 0
     enriched_intellifit = 0
