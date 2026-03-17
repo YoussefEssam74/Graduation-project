@@ -42,8 +42,11 @@ namespace Service
         private readonly Lazy<IStatsService> _lazyStatsService;
         private readonly Lazy<IMealService> _lazyMealService;
         private readonly Lazy<IAIChatService> _lazyAIChatService;
+        private readonly Lazy<IAIContextBuilderService> _lazyAIContextBuilderService;
         private readonly Lazy<INotificationService> _lazyNotificationService;
         private readonly Lazy<IAIService> _lazyAIService;
+        private readonly IWorkoutAIService _workoutAIService;
+        private readonly IExerciseRagService _exerciseRagService;
         private readonly Lazy<IWorkoutLogService> _lazyWorkoutLogService;
         private readonly Lazy<ICoachReviewService> _lazyCoachReviewService;
         private readonly Lazy<IActivityFeedService> _lazyActivityFeedService;
@@ -61,7 +64,9 @@ namespace Service
             IHubContext<NotificationHub> hubContext,
             IMapper mapper,
             IMemoryCache memoryCache,
-            ILoggerFactory loggerFactory)
+                ILoggerFactory loggerFactory,
+                IWorkoutAIService workoutAIService,
+                IExerciseRagService exerciseRagService)
         {
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
@@ -71,12 +76,14 @@ namespace Service
             _mapper = mapper;
             _memoryCache = memoryCache;
             _loggerFactory = loggerFactory;
+            _workoutAIService = workoutAIService;
+            _exerciseRagService = exerciseRagService;
 
             // Initialize lazy services
             _lazyAuthService = new Lazy<IAuthService>(() => new AuthService(_unitOfWork, _tokenService));
             _lazyUserService = new Lazy<IUserService>(() => new UserService(_unitOfWork));
             _lazyTokenTransactionService = new Lazy<ITokenTransactionService>(() => new TokenTransactionService(_unitOfWork, _mapper));
-            _lazyEquipmentTimeSlotService = new Lazy<IEquipmentTimeSlotService>(() => 
+            _lazyEquipmentTimeSlotService = new Lazy<IEquipmentTimeSlotService>(() =>
                 new EquipmentTimeSlotService(_unitOfWork, _memoryCache, _loggerFactory.CreateLogger<EquipmentTimeSlotService>()));
             _lazySubscriptionService = new Lazy<ISubscriptionService>(() => new SubscriptionService(_unitOfWork));
             _lazyPaymentService = new Lazy<IPaymentService>(() => new PaymentService(_unitOfWork, _mapper));
@@ -87,9 +94,18 @@ namespace Service
             _lazyInBodyService = new Lazy<IInBodyService>(() => new InBodyService(_unitOfWork));
             _lazyStatsService = new Lazy<IStatsService>(() => new StatsService(_unitOfWork));
             _lazyMealService = new Lazy<IMealService>(() => new MealService(_unitOfWork));
-            _lazyAIChatService = new Lazy<IAIChatService>(() => new AIChatService(_unitOfWork));
+            _lazyAIContextBuilderService = new Lazy<IAIContextBuilderService>(() =>
+                new AIContextBuilderService(_unitOfWork, _loggerFactory.CreateLogger<AIContextBuilderService>()));
             _lazyNotificationService = new Lazy<INotificationService>(() => new NotificationService(_hubContext, _unitOfWork, _mapper));
             _lazyAIService = new Lazy<IAIService>(() => new AIService(_configuration, _aiLogger));
+            _lazyAIChatService = new Lazy<IAIChatService>(() =>
+                new AIChatService(
+                    _unitOfWork,
+                    _lazyAIService.Value,
+                    _lazyAIContextBuilderService.Value,
+                        _workoutAIService,
+                        _exerciseRagService,
+                        _loggerFactory.CreateLogger<AIChatService>()));
             _lazyWorkoutLogService = new Lazy<IWorkoutLogService>(() => new WorkoutLogService(_unitOfWork, _mapper));
             _lazyCoachReviewService = new Lazy<ICoachReviewService>(() => new CoachReviewService(_unitOfWork, _mapper));
             _lazyActivityFeedService = new Lazy<IActivityFeedService>(() => new ActivityFeedService(_unitOfWork, _mapper));
@@ -101,12 +117,12 @@ namespace Service
         }
 
         // BookingService needs TokenTransactionService and EquipmentTimeSlotService - initialize with factory getter
-        private Lazy<IBookingService> LazyBookingService => 
-            _lazyBookingService ??= new Lazy<IBookingService>(() => 
+        private Lazy<IBookingService> LazyBookingService =>
+            _lazyBookingService ??= new Lazy<IBookingService>(() =>
                 new BookingService(
-                    _unitOfWork, 
-                    _mapper, 
-                    _lazyTokenTransactionService.Value, 
+                    _unitOfWork,
+                    _mapper,
+                    _lazyTokenTransactionService.Value,
                     _lazyEquipmentTimeSlotService.Value,
                     _loggerFactory.CreateLogger<BookingService>()));
 
