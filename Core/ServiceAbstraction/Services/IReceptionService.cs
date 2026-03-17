@@ -13,5 +13,6 @@ namespace IntelliFit.ServiceAbstraction.Services
         Task<bool> CheckOutMemberAsync(CheckOutRequestDto request);
         Task<IEnumerable<LiveActivityDto>> GetLiveActivitiesAsync(int limit = 20);
         Task<IEnumerable<AlertDto>> GetActiveAlertsAsync();
+        Task<CreateMemberResponseDto> CreateMemberAsync(CreateMemberDto createDto);
     }
 }

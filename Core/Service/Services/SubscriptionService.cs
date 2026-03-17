@@ -83,6 +83,39 @@ namespace Service.Services
                               s.EndDate > DateTime.UtcNow);
         }
 
+        public async Task<UserSubscriptionDetailsDto?> GetUserSubscriptionDetailsAsync(int userId)
+        {
+            var subscriptions = await _unitOfWork.Repository<UserSubscription>().GetAllAsync();
+            var activeSub = subscriptions
+                .Where(s => s.UserId == userId &&
+                           s.Status == IntelliFit.Domain.Enums.SubscriptionStatus.Active &&
+                           s.EndDate > DateTime.UtcNow)
+                .OrderByDescending(s => s.EndDate)
+                .FirstOrDefault();
+
+            if (activeSub == null) return null;
+
+            var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(activeSub.PlanId);
+            if (plan == null) return null;
+
+            return new UserSubscriptionDetailsDto
+            {
+                SubscriptionId = activeSub.SubscriptionId,
+                UserId = activeSub.UserId,
+                PlanId = plan.PlanId,
+                PlanName = plan.PlanName,
+                Description = plan.Description,
+                Features = plan.Features,
+                Price = plan.Price,
+                TokensIncluded = plan.TokensIncluded,
+                StartDate = activeSub.StartDate,
+                EndDate = activeSub.EndDate,
+                DaysRemaining = Math.Max(0, (activeSub.EndDate - DateTime.UtcNow).Days),
+                Status = activeSub.Status.ToString(),
+                AutoRenew = activeSub.AutoRenew
+            };
+        }
+
         private SubscriptionPlanDto MapToPlanDto(SubscriptionPlan plan)
         {
             return new SubscriptionPlanDto
@@ -93,6 +126,9 @@ namespace Service.Services
                 DurationDays = plan.DurationDays,
                 Description = plan.Description,
                 TokensIncluded = plan.TokensIncluded,
+                Features = plan.Features,
+                MaxBookingsPerDay = plan.MaxBookingsPerDay,
+                IsPopular = plan.IsPopular,
                 IsActive = plan.IsActive
             };
         }

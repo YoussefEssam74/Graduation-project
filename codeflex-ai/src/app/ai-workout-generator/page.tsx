@@ -52,6 +52,7 @@ import {
   type CreateLoggedExerciseDto,
   type CreateSetLogDto,
 } from "@/lib/api/workoutLogs";
+import { inbodyApi, type InBodyMeasurementDto } from "@/lib/api/inbody";
 import { useRouter } from "next/navigation";
 
 // Exercise Detail Modal Component
@@ -464,6 +465,7 @@ function AIWorkoutGeneratorContent() {
   const [muscleScan, setMuscleScan] = useState<MuscleScanResultDto | null>(
     null,
   );
+  const [inbodyData, setInbodyData] = useState<InBodyMeasurementDto | null>(null);
   const [mlServiceHealthy, setMlServiceHealthy] = useState<boolean | null>(
     null,
   );
@@ -520,9 +522,10 @@ function AIWorkoutGeneratorContent() {
     if (!user) return;
 
     try {
-      const [strengthRes, scanRes] = await Promise.all([
+      const [strengthRes, scanRes, inbodyRes] = await Promise.all([
         getUserStrengthProfile(user.userId),
         getLatestMuscleScan(user.userId),
+        inbodyApi.getLatestMeasurement(user.userId),
       ]);
 
       if (strengthRes.success && strengthRes.data) {
@@ -531,6 +534,10 @@ function AIWorkoutGeneratorContent() {
 
       if (scanRes.success && scanRes.data) {
         setMuscleScan(scanRes.data);
+      }
+
+      if (inbodyRes.success && inbodyRes.data) {
+        setInbodyData(inbodyRes.data);
       }
     } catch (error) {
       console.error("Failed to load user context:", error);
@@ -1029,6 +1036,34 @@ function AIWorkoutGeneratorContent() {
                   <option value="Cardio">Cardio & Endurance</option>
                   <option value="Endurance">Endurance Training</option>
                 </select>
+
+                {/* BMI Recommendation Warning */}
+                {goal === "Muscle" && inbodyData && (() => {
+                  const heightM = inbodyData.height > 3 ? inbodyData.height / 100 : inbodyData.height;
+                  const bmi = inbodyData.bmi || (heightM > 0 ? inbodyData.weight / (heightM * heightM) : 0);
+                  
+                  if (bmi > 25) {
+                    return (
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 flex items-start gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600" />
+                        <div className="flex-1">
+                          <p className="font-medium text-amber-900">Health Recommendation</p>
+                          <p className="mt-1 opacity-90 leading-relaxed">
+                            Based on your recent body analysis (BMI: {bmi.toFixed(1)}), prioritizing <strong>Weight Loss</strong> initially might be more beneficial for your joint health and metabolism before focusing on heavy muscle building.
+                          </p>
+                          <button 
+                            onClick={() => setGoal("WeightLoss")}
+                            className="mt-2 text-xs font-semibold text-amber-700 bg-amber-100 px-3 py-1.5 rounded hover:bg-amber-200 transition-colors inline-flex items-center gap-1"
+                          >
+                            Switch to Weight Loss
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Days Per Week */}

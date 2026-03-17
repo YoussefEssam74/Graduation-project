@@ -126,6 +126,11 @@ function BookCoachContent() {
 
   const handleBookClick = (coach: CoachWithDisplay) => {
     setSelectedCoach(coach);
+    // Set smart default: tomorrow at 09:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setBookingDate(tomorrow.toISOString().split('T')[0]);
+    setBookingTime("09:00");
     setIsModalOpen(true);
   };
 
@@ -143,17 +148,18 @@ function BookCoachContent() {
     }
 
     setIsBooking(true);
-    const startTime = new Date(`${bookingDate}T${bookingTime}:00`);
-    const endTime = new Date(startTime);
-    endTime.setHours(endTime.getHours() + 1);
+    // Calculate end time (1 hour session) and use local datetime strings (no UTC conversion)
+    const [h, m] = bookingTime.split(':').map(Number);
+    const endHour = String(h + 1).padStart(2, '0');
+    const endTimeStr = `${endHour}:${String(m).padStart(2, '0')}`;
 
     try {
       const res = await bookingsApi.createBooking({
         userId: user.userId,
         coachId: selectedCoach.userId,
         bookingType: "Session",
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: `${bookingDate}T${bookingTime}:00`,
+        endTime: `${bookingDate}T${endTimeStr}:00`,
         notes: `Session with ${selectedCoach.name}`
       });
 

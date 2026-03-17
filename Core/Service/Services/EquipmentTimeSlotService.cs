@@ -163,6 +163,12 @@ namespace Service.Services
             // Invalidate cache
             InvalidateCache(equipmentId, date);
 
+            if (!slotList.Any())
+            {
+                throw new InvalidOperationException(
+                    "No time slots are available for the selected time range. Equipment can only be booked between 6 AM and 10 PM.");
+            }
+
             var equipment = await _unitOfWork.Repository<Equipment>().GetByIdAsync(equipmentId);
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
 

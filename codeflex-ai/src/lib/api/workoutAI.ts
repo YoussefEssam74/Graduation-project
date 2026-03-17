@@ -344,6 +344,13 @@ export interface UserAIWorkoutPlan {
   createdAt: string;
   updatedAt: string;
   days: UserAIPlanDay[];
+  // Coach review fields
+  assignedCoachId?: number;
+  assignedCoachName?: string;
+  approvalNotes?: string;
+  // For coach review view
+  memberId?: number;
+  memberName?: string;
 }
 
 /**
@@ -361,4 +368,30 @@ export async function deleteAIPlan(planId: number): Promise<ApiResponse<void>> {
   return apiFetch<void>(`/workout-ai/my-plans/${planId}`, {
     method: "DELETE",
   });
+}
+
+/**
+ * Get plans assigned to the authenticated coach for review
+ */
+export async function getCoachReviewPlans(): Promise<ApiResponse<UserAIWorkoutPlan[]>> {
+  return apiFetch<UserAIWorkoutPlan[]>("/workout-ai/coach-review-plans", {
+    method: "GET",
+  });
+}
+
+/**
+ * Update status of a workout plan (coach approves/rejects)
+ */
+export async function updatePlanStatus(
+  planId: number,
+  status: "Approved" | "Rejected" | "UnderReview",
+  notes?: string,
+): Promise<ApiResponse<{ success: boolean; message?: string }>> {
+  return apiFetch<{ success: boolean; message?: string }>(
+    `/workout-ai/plans/${planId}/status`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ status, notes }),
+    },
+  );
 }

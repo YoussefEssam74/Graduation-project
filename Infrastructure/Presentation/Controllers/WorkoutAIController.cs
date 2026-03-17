@@ -438,5 +438,124 @@ public class WorkoutAIController : ApiControllerBase
         }
     }
 
+    /// <summary>
+    /// Share plan with coach (plan is already auto-assigned on save; this returns assigned coach info)
+    /// POST: api/workout-ai/share-with-coach
+    /// </summary>
+    [HttpPost("share-with-coach")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ShareWithCoach([FromBody] ShareWithCoachRequest request)
+    {
+        try
+        {
+            var userId = GetUserIdFromToken();
+            // Plans are auto-assigned to an available coach during save.
+            // This endpoint returns the coach info for the plan.
+            var plans = await _workoutAIService.GetUserAIPlansAsync(userId);
+            var plan = plans.FirstOrDefault(p => p.PlanId == request.PlanId);
+
+            if (plan == null)
+                return NotFound(new { message = "Plan not found" });
+
+            return Ok(new
+            {
+                success = true,
+                planId = plan.PlanId,
+                status = plan.Status,
+                assignedCoachId = plan.AssignedCoachId,
+                assignedCoachName = plan.AssignedCoachName,
+                message = plan.AssignedCoachId.HasValue
+                    ? $"Plan is assigned to coach {plan.AssignedCoachName} for review."
+                    : "Plan saved. No available coach found at this time."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in share-with-coach");
+            return StatusCode(500, new { error = "Failed to retrieve coach assignment" });
+        }
+    }
+
+    /// <summary>
+    /// Get all plans assigned to the authenticated coach for review
+    /// GET: api/workout-ai/coach-review-plans
+    /// </summary>
+    [HttpGet("coach-review-plans")]
+    [ProducesResponseType(typeof(List<UserAIWorkoutPlanDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetCoachReviewPlans()
+    {
+        try
+        {
+            if (!IsCoach && !IsAdmin)
+                return Forbid();
+
+            var userId = GetUserIdFromToken();
+            var plans = await _workoutAIService.GetCoachReviewPlansAsync(userId);
+            return Ok(plans);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching coach review plans");
+            return StatusCode(500, new { error = "Failed to fetch review plans" });
+        }
+    }
+
+    /// <summary>
+    /// Update plan status (coach approves/rejects)
+    /// PUT: api/workout-ai/plans/{planId}/status
+    /// </summary>
+    [HttpPut("plans/{planId}/status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdatePlanStatus(int planId, [FromBody] UpdatePlanStatusRequest request)
+    {
+        try
+        {
+            if (!IsCoach && !IsAdmin)
+                return Forbid();
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = GetUserIdFromToken();
+            var success = await _workoutAIService.UpdatePlanStatusAsync(planId, userId, request.Status, request.Notes);
+
+            if (!success)
+                return NotFound(new { message = "Plan not found or not assigned to you" });
+
+            return Ok(new { success = true, message = $"Plan status updated to {request.Status}" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating plan {PlanId} status", planId);
+            return StatusCode(500, new { error = "Failed to update plan status" });
+        }
+    }
+
+    /// <summary>
+    /// Get alternative exercises for substitution
+    /// POST: api/workout-ai/exercise-alternatives
+    /// </summary>
+    [HttpPost("exercise-alternatives")]
+    [ProducesResponseType(typeof(List<AIExercise>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetExerciseAlternatives([FromBody] ExerciseAlternativesRequest request)
+    {
+        try
+        {
+            var alternatives = await _workoutAIService.GetExerciseAlternativesAsync(
+                request.ExerciseName ?? "",
+                request.TargetMuscles ?? new List<string>());
+            return Ok(alternatives);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting exercise alternatives");
+            return StatusCode(500, new { error = "Failed to get exercise alternatives" });
+        }
+    }
+
     #endregion
 }

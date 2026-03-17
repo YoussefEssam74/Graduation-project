@@ -109,6 +109,26 @@ namespace Presentation.Controllers
                 return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to check subscription status", new List<string> { ex.Message }));
             }
         }
+
+        /// <summary>
+        /// Get user's active subscription details
+        /// </summary>
+        [HttpGet("user/{userId}")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<UserSubscriptionDetailsDto>>> GetUserSubscription(int userId)
+        {
+            try
+            {
+                var details = await _serviceManager.SubscriptionService.GetUserSubscriptionDetailsAsync(userId);
+                if (details == null)
+                    return NotFound(ApiResponse<UserSubscriptionDetailsDto>.ErrorResponse("No active subscription found"));
+                return Ok(ApiResponse<UserSubscriptionDetailsDto>.SuccessResponse(details));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<UserSubscriptionDetailsDto>.ErrorResponse("Failed to retrieve subscription details", new List<string> { ex.Message }));
+            }
+        }
         #endregion
     }
 }

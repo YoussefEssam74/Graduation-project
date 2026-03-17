@@ -1,27 +1,28 @@
 "use client";
 
 import {
-    UserIcon,
-    Ticket,
-    LayoutDashboardIcon,
-    CalendarIcon,
-    ActivityIcon,
-    CoinsIcon,
-    BrainIcon,
-    Users2Icon,
-    ShieldIcon,
-    LogOutIcon,
-    DumbbellIcon,
-    UserCogIcon,
-    SettingsIcon,
-    Menu,
-    TrophyIcon,
-    UtensilsIcon,
-    UsersIcon,
-    SunIcon
+  UserIcon,
+  Ticket,
+  LayoutDashboardIcon,
+  CalendarIcon,
+  ActivityIcon,
+  CoinsIcon,
+  BrainIcon,
+  Users2Icon,
+  ShieldIcon,
+  LogOutIcon,
+  DumbbellIcon,
+  UserCogIcon,
+  SettingsIcon,
+  Menu,
+  TrophyIcon,
+  UtensilsIcon,
+  UsersIcon,
+  SunIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { UserRole } from "@/types/gym";
 import { Button } from "./ui/button";
 import { usePathname } from "next/navigation";
@@ -41,21 +42,47 @@ const normalizeRole = (role: string): UserRole => {
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { hasAiAccess, hasCoachAccess } = useSubscription();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
-  // Role-based navigation items
-  const getMemberNav = () => [
-    { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
-    { href: "/programs", icon: DumbbellIcon, label: "My Program" },
-    { href: "/ai-workout-generator", icon: BrainIcon, label: "AI Workout" },
-    { href: "/bookings", icon: CalendarIcon, label: "Calendar" },
-    { href: "/community", icon: UsersIcon, label: "Community" },
-    { href: "/ai-coach", icon: BrainIcon, label: "AI Chat" },
-    { href: "/tokens", icon: CoinsIcon, label: "Tokens" },
-    { href: "/inbody", icon: ActivityIcon, label: "Analytics" }, // InBody -> Analytics
-    { href: "/achievements", icon: TrophyIcon, label: "Achievements" },
-  ];
+  // Role-based navigation items — filtered by subscription plan
+  const getMemberNav = () => {
+    const items = [
+      { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
+      { href: "/programs", icon: DumbbellIcon, label: "My Program" },
+      { href: "/bookings", icon: CalendarIcon, label: "Calendar" },
+      { href: "/community", icon: UsersIcon, label: "Community" },
+      { href: "/tokens", icon: CoinsIcon, label: "Tokens" },
+      { href: "/inbody", icon: ActivityIcon, label: "Analytics" },
+      { href: "/achievements", icon: TrophyIcon, label: "Achievements" },
+    ];
+
+    // AI features — only for plans that include AI
+    if (hasAiAccess) {
+      items.splice(2, 0, {
+        href: "/ai-workout-generator",
+        icon: BrainIcon,
+        label: "AI Workout",
+      });
+      items.splice(5, 0, {
+        href: "/ai-coach",
+        icon: BrainIcon,
+        label: "AI Chat",
+      });
+    }
+
+    // Coach booking — only for plans that include coach
+    if (hasCoachAccess) {
+      items.splice(hasAiAccess ? 4 : 2, 0, {
+        href: "/book-coach",
+        icon: UserIcon,
+        label: "Book Coach",
+      });
+    }
+
+    return items;
+  };
 
   const getCoachNav = () => [
     { href: "/coach-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
@@ -65,21 +92,26 @@ export default function Sidebar() {
     { href: "/coach-profile", icon: UserIcon, label: "My Profile" },
   ];
 
-    const getReceptionNav = () => [
-        { href: "/reception-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
-        { href: "/reception-members", icon: Users2Icon, label: "Members" },
-        { href: "/reception-bookings", icon: CalendarIcon, label: "Bookings" },
-        { href: "/reception-checkin", icon: ActivityIcon, label: "Check-In" },
-    ];
+  const getReceptionNav = () => [
+    {
+      href: "/reception-dashboard",
+      icon: LayoutDashboardIcon,
+      label: "Dashboard",
+    },
+    { href: "/reception-members", icon: Users2Icon, label: "Members" },
+    { href: "/reception-bookings", icon: CalendarIcon, label: "Bookings" },
+    { href: "/reception-checkin", icon: ActivityIcon, label: "Check-In" },
+    { href: "/reception-inbody", icon: DumbbellIcon, label: "InBody" },
+  ];
 
-    const getAdminNav = () => [
-        { href: "/admin-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
-        { href: "/admin-users", icon: Users2Icon, label: "Create Staff" },
-        { href: "/admin-coaches", icon: UserCogIcon, label: "Manage Staff" },
-        { href: "/admin-equipment", icon: DumbbellIcon, label: "Equipment" },
-        { href: "/admin-packages", icon: Ticket, label: "Packages" },
-        { href: "/admin-analytics", icon: ActivityIcon, label: "Analytics" },
-    ];
+  const getAdminNav = () => [
+    { href: "/admin-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
+    { href: "/admin-users", icon: Users2Icon, label: "Create Staff" },
+    { href: "/admin-coaches", icon: UserCogIcon, label: "Manage Staff" },
+    { href: "/admin-equipment", icon: DumbbellIcon, label: "Equipment" },
+    { href: "/admin-packages", icon: Ticket, label: "Packages" },
+    { href: "/admin-analytics", icon: ActivityIcon, label: "Analytics" },
+  ];
 
   const getNavItems = () => {
     if (!user) return [];

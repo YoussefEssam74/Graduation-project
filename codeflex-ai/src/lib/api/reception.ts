@@ -1,4 +1,4 @@
-import { apiFetch, type ApiResponse } from './client';
+import { apiFetch, type ApiResponse } from "./client";
 
 // DTOs
 export interface CheckInDto {
@@ -133,6 +133,31 @@ export interface ReceptionStatsDto {
   expiringSubscriptions: number;
 }
 
+export interface CreateMemberDto {
+  email: string;
+  name: string;
+  nationalId: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: number;
+  address?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  planId: number;
+  paymentMethod: string;
+  amount: number;
+}
+
+export interface CreateMemberResponseDto {
+  userId: number;
+  name: string;
+  email: string;
+  memberNumber: string;
+  subscriptionPlan: string;
+  subscriptionEndDate: string;
+  message: string;
+}
+
 export const receptionApi = {
   /**
    * Get member details for check-in by user ID
@@ -152,29 +177,35 @@ export const receptionApi = {
    * Search members by name, email, or member ID
    */
   async searchMembers(query: string): Promise<ApiResponse<MemberSearchDto[]>> {
-    return apiFetch<MemberSearchDto[]>(`/reception/search?query=${encodeURIComponent(query)}`);
+    return apiFetch<MemberSearchDto[]>(
+      `/reception/search?query=${encodeURIComponent(query)}`,
+    );
   },
 
   /**
    * Get all members list with full details
    */
   async getAllMembers(): Promise<ApiResponse<MemberListDto[]>> {
-    return apiFetch<MemberListDto[]>('/reception/members');
+    return apiFetch<MemberListDto[]>("/reception/members");
   },
 
   /**
    * Get member details by ID
    */
-  async getMemberDetails(userId: number): Promise<ApiResponse<MemberDetailsDto>> {
+  async getMemberDetails(
+    userId: number,
+  ): Promise<ApiResponse<MemberDetailsDto>> {
     return apiFetch<MemberDetailsDto>(`/reception/members/${userId}`);
   },
 
   /**
    * Check in a member
    */
-  async checkInMember(request: CheckInRequestDto): Promise<ApiResponse<{ message: string }>> {
-    return apiFetch<{ message: string }>('/reception/checkin', {
-      method: 'POST',
+  async checkInMember(
+    request: CheckInRequestDto,
+  ): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>("/reception/checkin", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   },
@@ -182,9 +213,11 @@ export const receptionApi = {
   /**
    * Check out a member
    */
-  async checkOutMember(request: CheckOutRequestDto): Promise<ApiResponse<{ message: string }>> {
-    return apiFetch<{ message: string }>('/reception/checkout', {
-      method: 'POST',
+  async checkOutMember(
+    request: CheckOutRequestDto,
+  ): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>("/reception/checkout", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   },
@@ -192,7 +225,9 @@ export const receptionApi = {
   /**
    * Get live activity feed for reception dashboard
    */
-  async getLiveActivities(limit: number = 20): Promise<ApiResponse<LiveActivityDto[]>> {
+  async getLiveActivities(
+    limit: number = 20,
+  ): Promise<ApiResponse<LiveActivityDto[]>> {
     return apiFetch<LiveActivityDto[]>(`/reception/activities?limit=${limit}`);
   },
 
@@ -200,13 +235,25 @@ export const receptionApi = {
    * Get active alerts for reception
    */
   async getAlerts(): Promise<ApiResponse<AlertDto[]>> {
-    return apiFetch<AlertDto[]>('/reception/alerts');
+    return apiFetch<AlertDto[]>("/reception/alerts");
   },
 
   /**
    * Get reception dashboard statistics
    */
   async getStats(): Promise<ApiResponse<ReceptionStatsDto>> {
-    return apiFetch<ReceptionStatsDto>('/reception/stats');
+    return apiFetch<ReceptionStatsDto>("/reception/stats");
+  },
+
+  /**
+   * Create a new member with subscription and payment
+   */
+  async createMember(
+    data: CreateMemberDto,
+  ): Promise<ApiResponse<CreateMemberResponseDto>> {
+    return apiFetch<CreateMemberResponseDto>("/reception/create-member", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   },
 };

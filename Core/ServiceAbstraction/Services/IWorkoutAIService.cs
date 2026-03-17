@@ -56,6 +56,31 @@ public interface IWorkoutAIService
     /// <param name="userId">User ID (for ownership check)</param>
     /// <returns>True if deleted successfully</returns>
     Task<bool> DeleteUserAIPlanAsync(int planId, int userId);
+
+    /// <summary>
+    /// Get all AI-generated workout plans assigned to a coach for review
+    /// </summary>
+    /// <param name="coachUserId">The User.Id of the authenticated coach</param>
+    /// <returns>List of plans awaiting or reviewed</returns>
+    Task<List<UserAIWorkoutPlanDto>> GetCoachReviewPlansAsync(int coachUserId);
+
+    /// <summary>
+    /// Update the status of an AI-generated workout plan (coach approves/rejects)
+    /// </summary>
+    /// <param name="planId">Plan ID</param>
+    /// <param name="coachUserId">The User.Id of the authenticated coach (for authorization)</param>
+    /// <param name="status">New status: Approved, Rejected, UnderReview</param>
+    /// <param name="notes">Optional approval/rejection notes</param>
+    /// <returns>True if updated successfully</returns>
+    Task<bool> UpdatePlanStatusAsync(int planId, int coachUserId, string status, string? notes);
+
+    /// <summary>
+    /// Get alternative exercises for substitution based on muscle group
+    /// </summary>
+    /// <param name="exerciseName">Current exercise name to exclude</param>
+    /// <param name="targetMuscles">Muscle groups to match</param>
+    /// <returns>List of alternative exercises</returns>
+    Task<List<AIExercise>> GetExerciseAlternativesAsync(string exerciseName, List<string> targetMuscles);
 }
 
 /// <summary>

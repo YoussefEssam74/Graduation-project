@@ -1268,10 +1268,6 @@ namespace Presistence.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
 
-                    b.Property<decimal?>("BoneMass")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1288,6 +1284,10 @@ namespace Presistence.Migrations
                     b.Property<int?>("MetabolicAge")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("Minerals")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<decimal?>("MuscleMass")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
@@ -1295,7 +1295,47 @@ namespace Presistence.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
-                    b.Property<decimal?>("ProteinPercentage")
+                    b.Property<decimal?>("Protein")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalLeftArmFat")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalLeftArmLean")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalLeftLegFat")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalLeftLegLean")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalRightArmFat")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalRightArmLean")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalRightLegFat")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalRightLegLean")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalTrunkFat")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("SegmentalTrunkLean")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
 
