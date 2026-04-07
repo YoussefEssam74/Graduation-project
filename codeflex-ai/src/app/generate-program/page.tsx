@@ -4,17 +4,70 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { vapi } from "@/lib/vapi";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { Mic, ArrowRight, Square, Bot, Sparkles, Loader2, Ticket } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Mic, ArrowRight, Square, Bot, Sparkles, Loader2, Ticket, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
+import Link from "next/link";
+import { inbodyApi, type InBodyMeasurementDto } from "@/lib/api/inbody";
 
 interface VoiceMessage {
   role: "user" | "assistant";
   content: string;
 }
+
+const MAX_INBODY_VALID_DAYS = 30;
+
+const getInbodyAgeInDays = (measurementDate: string): number => {
+  const ageMs = Date.now() - new Date(measurementDate).getTime();
+  return Math.max(0, Math.floor(ageMs / (1000 * 60 * 60 * 24)));
+};
+
+const isPositiveMetric = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value > 0;
+
+const isInbodyComplete = (measurement: InBodyMeasurementDto | null): boolean => {
+  if (!measurement) return false;
+
+  return (
+    isPositiveMetric(measurement.weight) &&
+    isPositiveMetric(measurement.height) &&
+    isPositiveMetric(measurement.bodyFatPercentage) &&
+    isPositiveMetric(measurement.muscleMass)
+  );
+};
+
+const areInbodyMeasurementsUnchanged = (
+  latest: InBodyMeasurementDto,
+  previous: InBodyMeasurementDto,
+): boolean => {
+  const comparableKeys: Array<keyof InBodyMeasurementDto> = [
+    "weight",
+    "height",
+    "bodyFatPercentage",
+    "muscleMass",
+    "bmi",
+    "bmr",
+  ];
+
+  const keysWithValues = comparableKeys.filter(
+    (key) =>
+      latest[key] !== undefined &&
+      latest[key] !== null &&
+      previous[key] !== undefined &&
+      previous[key] !== null,
+  );
+
+  if (keysWithValues.length === 0) {
+    return false;
+  }
+
+  return keysWithValues.every(
+    (key) => Math.abs(Number(latest[key]) - Number(previous[key])) < 0.0001,
+  );
+};
 
 function GenerateProgramContent() {
   const { user } = useAuth();
@@ -25,6 +78,12 @@ function GenerateProgramContent() {
   const [callActive, setCallActive] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
+  const [latestInbody, setLatestInbody] =
+    useState<InBodyMeasurementDto | null>(null);
+  const [inbodyHistory, setInbodyHistory] = useState<InBodyMeasurementDto[]>(
+    [],
+  );
+  const [isLoadingInbodyStatus, setIsLoadingInbodyStatus] = useState(true);
 
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
@@ -60,10 +119,109 @@ function GenerateProgramContent() {
     };
   }, []);
 
+  useEffect(() => {
+    const loadInbodyStatus = async () => {
+      if (!user?.userId) {
+        setLatestInbody(null);
+        setInbodyHistory([]);
+        setIsLoadingInbodyStatus(false);
+        return;
+      }
+
+      setIsLoadingInbodyStatus(true);
+      try {
+        const response = await inbodyApi.getUserMeasurements(user.userId);
+
+        if (response.success && response.data && response.data.length > 0) {
+          const sortedMeasurements = [...response.data].sort(
+            (a, b) =>
+              new Date(b.measurementDate).getTime() -
+              new Date(a.measurementDate).getTime(),
+          );
+
+          setLatestInbody(sortedMeasurements[0]);
+          setInbodyHistory(sortedMeasurements);
+        } else {
+          setLatestInbody(null);
+          setInbodyHistory([]);
+        }
+      } catch (error) {
+        console.error("Failed to load InBody status:", error);
+        setLatestInbody(null);
+        setInbodyHistory([]);
+      } finally {
+        setIsLoadingInbodyStatus(false);
+      }
+    };
+
+    loadInbodyStatus();
+  }, [user?.userId]);
+
+  const inbodyGenerationStatus = useMemo(() => {
+    if (isLoadingInbodyStatus) {
+      return {
+        canGenerate: false,
+        tone: "pending" as const,
+        message: "Checking your latest InBody scan...",
+      };
+    }
+
+    if (!latestInbody) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message:
+          "No InBody scan found. Please complete an InBody measurement before generating a workout plan.",
+      };
+    }
+
+    if (!isInbodyComplete(latestInbody)) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message:
+          "Your latest InBody data is incomplete. Please update weight, height, body fat, and muscle mass.",
+      };
+    }
+
+    const inbodyAgeDays = getInbodyAgeInDays(latestInbody.measurementDate);
+    if (inbodyAgeDays > MAX_INBODY_VALID_DAYS) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message: `Your InBody scan is ${inbodyAgeDays} days old. Please update it (max ${MAX_INBODY_VALID_DAYS} days).`,
+      };
+    }
+
+    const previousMeasurement = inbodyHistory[1];
+    if (
+      previousMeasurement &&
+      areInbodyMeasurementsUnchanged(latestInbody, previousMeasurement)
+    ) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message:
+          "Your latest InBody values are unchanged compared to the previous scan. Please update InBody before generating a new plan.",
+      };
+    }
+
+    return {
+      canGenerate: true,
+      tone: "ready" as const,
+      message: `InBody is up to date (${inbodyAgeDays} day${inbodyAgeDays === 1 ? "" : "s"} old).`,
+    };
+  }, [isLoadingInbodyStatus, latestInbody, inbodyHistory]);
+
   const toggleCall = async () => {
     if (callActive) {
       vapi.stop();
     } else {
+      if (!inbodyGenerationStatus.canGenerate) {
+        showToast(inbodyGenerationStatus.message, "error", 7000);
+        return;
+      }
+
       if ((user?.tokenBalance ?? 0) < 50) {
         showToast("You need at least 50 tokens to generate a program", "error");
         return;
@@ -96,14 +254,8 @@ function GenerateProgramContent() {
   return (
     <div className="min-h-[calc(100vh-6rem)] bg-slate-50 relative pb-24">
       {/* Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      />
-      <div className="fixed inset-0 z-0 pointer-events-none bg-white/80 backdrop-blur-md" />
+      <div className="fixed inset-0 z-0 pointer-events-none home-login-bg" />
+      <div className="fixed inset-0 z-0 pointer-events-none home-login-overlay" />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 pt-8">
         {/* Header */}
@@ -121,6 +273,64 @@ function GenerateProgramContent() {
           </div>
         </div>
 
+        {/* InBody Validation Status */}
+        <Card
+          className={`mb-6 p-4 border-l-4 ${
+            inbodyGenerationStatus.canGenerate
+              ? "border-green-500 bg-green-50"
+              : inbodyGenerationStatus.tone === "pending"
+                ? "border-blue-500 bg-blue-50"
+                : "border-amber-500 bg-amber-50"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p
+                className={`font-semibold flex items-center gap-2 ${
+                  inbodyGenerationStatus.canGenerate
+                    ? "text-green-900"
+                    : inbodyGenerationStatus.tone === "pending"
+                      ? "text-blue-900"
+                      : "text-amber-900"
+                }`}
+              >
+                {inbodyGenerationStatus.canGenerate ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                InBody Validation
+              </p>
+              <p
+                className={`text-sm ${
+                  inbodyGenerationStatus.canGenerate
+                    ? "text-green-700"
+                    : inbodyGenerationStatus.tone === "pending"
+                      ? "text-blue-700"
+                      : "text-amber-700"
+                }`}
+              >
+                {inbodyGenerationStatus.message}
+              </p>
+              {latestInbody && (
+                <p className="text-xs text-slate-600">
+                  Latest scan date: {new Date(latestInbody.measurementDate).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+
+            {!inbodyGenerationStatus.canGenerate &&
+              inbodyGenerationStatus.tone === "blocked" && (
+                <Link
+                  href="/inbody"
+                  className="shrink-0 inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                >
+                  Update InBody
+                </Link>
+              )}
+          </div>
+        </Card>
+
         {/* Main Card */}
         <Card className="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-100">
           <div className="p-6 md:p-8">
@@ -136,9 +346,11 @@ function GenerateProgramContent() {
 
                 <div
                   onClick={toggleCall}
-                  className={`relative cursor-pointer transition-all duration-300 border-2 rounded-2xl h-64 flex flex-col items-center justify-center gap-4 ${callActive
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-slate-200 border-dashed bg-slate-50 hover:bg-slate-100"
+                  className={`relative cursor-pointer transition-all duration-300 border-2 rounded-2xl h-64 flex flex-col items-center justify-center gap-4 ${!inbodyGenerationStatus.canGenerate
+                    ? "border-amber-300 bg-amber-50/80"
+                    : callActive
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-slate-200 border-dashed bg-slate-50 hover:bg-slate-100"
                     }`}
                 >
                   {/* Pulse Animation */}
@@ -163,10 +375,14 @@ function GenerateProgramContent() {
 
                   <div className="text-center z-10">
                     <h4 className="font-bold text-slate-900 text-lg">
-                      {connecting ? "Connecting..." : callActive ? "Listening..." : "Tap to Speak"}
+                      {connecting ? "Connecting..." : !inbodyGenerationStatus.canGenerate ? "InBody Update Required" : callActive ? "Listening..." : "Tap to Speak"}
                     </h4>
                     <p className="text-slate-400 text-xs mt-1">
-                      {callActive ? "Tap to stop" : "Start a voice conversation"}
+                      {!inbodyGenerationStatus.canGenerate
+                        ? "Complete valid InBody data first"
+                        : callActive
+                          ? "Tap to stop"
+                          : "Start a voice conversation"}
                     </p>
                   </div>
                 </div>
