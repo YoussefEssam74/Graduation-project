@@ -1,3 +1,5 @@
+import AppLogo from '@/components/ui/AppLogo';
+
 export default function AuthLayout({
   children,
 }: {
@@ -13,12 +15,9 @@ export default function AuthLayout({
       <div className="w-full max-w-[400px] rounded-[20px] bg-white p-10 shadow-xl">
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
-            {/* Logo placeholder - add your logo image here */}
-            <div className="h-16 w-16 rounded-full bg-[#0b4fd4] flex items-center justify-center text-white text-2xl font-bold">
-              IF
-            </div>
+            <AppLogo showText={false} />
           </div>
-          <h1 className="text-3xl font-bold text-[#0b4fd4]">IntelliFit</h1>
+          <h1 className="text-3xl font-bold text-[#0b4fd4]">PulseGym</h1>
           <p className="text-sm text-gray-600 mt-1">Smart Gym Management System</p>
         </div>
         {children}

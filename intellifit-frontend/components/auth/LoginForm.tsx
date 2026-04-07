@@ -16,7 +16,7 @@ const MOCK_USERS = [
 
 export default function LoginForm() {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
+  const { setAuth, resetMemberAccessMode } = useAuthStore();
   const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.Member);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -68,8 +68,14 @@ export default function LoginForm() {
         [UserRole.Reception]: '/reception',
         [UserRole.Admin]: '/admin',
       };
+
+      if (selectedRole === UserRole.Member) {
+        resetMemberAccessMode();
+      }
       
-      router.push(roleRoutes[selectedRole]);
+      router.push(
+        selectedRole === UserRole.Member ? '/member/access-choice' : roleRoutes[selectedRole]
+      );
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error('Login error:', err);

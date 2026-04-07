@@ -24,6 +24,11 @@ export interface User {
   role: UserRole;
 }
 
+export enum MemberAccessMode {
+  FullPlan = 'full-plan',
+  EquipmentOnly = 'equipment-only',
+}
+
 // Exercise Types
 export enum DifficultyLevel {
   Beginner = 'Beginner',

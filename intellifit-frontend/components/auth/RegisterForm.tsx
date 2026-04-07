@@ -10,7 +10,7 @@ import { useAuthStore } from '@/hooks/useAuth';
 
 export default function RegisterForm() {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
+  const { setAuth, resetMemberAccessMode } = useAuthStore();
   const [step, setStep] = useState<'role' | 'credentials'>('role');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [formData, setFormData] = useState({
@@ -85,8 +85,14 @@ export default function RegisterForm() {
         [UserRole.Reception]: '/reception',
         [UserRole.Admin]: '/admin',
       };
+
+      if (selectedRole === UserRole.Member) {
+        resetMemberAccessMode();
+      }
       
-      router.push(roleRoutes[selectedRole]);
+      router.push(
+        selectedRole === UserRole.Member ? '/member/access-choice' : roleRoutes[selectedRole]
+      );
     } catch (err) {
       setError('An error occurred. Please try again.');
       console.error('Registration error:', err);

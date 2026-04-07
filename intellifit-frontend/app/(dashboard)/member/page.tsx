@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { useAuthStore } from '@/hooks/useAuth';
-import { MemberStats, ActivityItem } from '@/types';
+import { ActivityItem, MemberAccessMode, MemberStats } from '@/types';
 
 // Mock data for demonstration - will be replaced with real API calls
 const MOCK_STATS: MemberStats = {
@@ -66,10 +66,11 @@ const MOCK_ACTIVITIES: ActivityItem[] = [
 
 export default function MemberDashboard() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, memberAccessMode } = useAuthStore();
   const [stats] = useState<MemberStats>(MOCK_STATS);
   const [activities] = useState<ActivityItem[]>(MOCK_ACTIVITIES);
   const [isLoading, setIsLoading] = useState(true);
+  const isEquipmentOnly = memberAccessMode === MemberAccessMode.EquipmentOnly;
 
   useEffect(() => {
     // Simulate API call
@@ -128,13 +129,15 @@ export default function MemberDashboard() {
           color="lime"
           subtitle={`Muscle: ${stats.muscleMass}kg`}
         />
-        <StatsCard
-          title="Active Plans"
-          value={stats.activeWorkoutPlans + stats.activeNutritionPlans}
-          icon={Target}
-          color="yellow"
-          subtitle={`${stats.activeWorkoutPlans} Workout, ${stats.activeNutritionPlans} Nutrition`}
-        />
+        {!isEquipmentOnly && (
+          <StatsCard
+            title="Active Plans"
+            value={stats.activeWorkoutPlans + stats.activeNutritionPlans}
+            icon={Target}
+            color="yellow"
+            subtitle={`${stats.activeWorkoutPlans} Workout, ${stats.activeNutritionPlans} Nutrition`}
+          />
+        )}
         <StatsCard
           title="Completed"
           value={stats.completedWorkouts}
@@ -152,24 +155,28 @@ export default function MemberDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button
-              onClick={() => router.push('/member/workouts')}
-              className="flex flex-col items-center p-4 rounded-lg border-2 border-gray-200 hover:border-[#0b4fd4] hover:bg-blue-50 transition-all"
-            >
-              <Dumbbell className="h-8 w-8 text-[#0b4fd4] mb-2" />
-              <span className="text-sm font-medium text-gray-900">
-                Workout Plans
-              </span>
-            </button>
-            <button
-              onClick={() => router.push('/member/nutrition')}
-              className="flex flex-col items-center p-4 rounded-lg border-2 border-gray-200 hover:border-[#a3e221] hover:bg-lime-50 transition-all"
-            >
-              <Apple className="h-8 w-8 text-[#a3e221] mb-2" />
-              <span className="text-sm font-medium text-gray-900">
-                Nutrition
-              </span>
-            </button>
+            {!isEquipmentOnly && (
+              <button
+                onClick={() => router.push('/member/workouts')}
+                className="flex flex-col items-center p-4 rounded-lg border-2 border-gray-200 hover:border-[#0b4fd4] hover:bg-blue-50 transition-all"
+              >
+                <Dumbbell className="h-8 w-8 text-[#0b4fd4] mb-2" />
+                <span className="text-sm font-medium text-gray-900">
+                  Workout Plans
+                </span>
+              </button>
+            )}
+            {!isEquipmentOnly && (
+              <button
+                onClick={() => router.push('/member/nutrition')}
+                className="flex flex-col items-center p-4 rounded-lg border-2 border-gray-200 hover:border-[#0b4fd4] hover:bg-blue-50 transition-all"
+              >
+                <Apple className="h-8 w-8 text-[#0b4fd4] mb-2" />
+                <span className="text-sm font-medium text-gray-900">
+                  Nutrition
+                </span>
+              </button>
+            )}
             <button
               onClick={() => router.push('/member/ai-coach')}
               className="flex flex-col items-center p-4 rounded-lg border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 transition-all"
@@ -185,7 +192,7 @@ export default function MemberDashboard() {
             >
               <Calendar className="h-8 w-8 text-orange-500 mb-2" />
               <span className="text-sm font-medium text-gray-900">
-                Bookings
+                Equipment Bookings
               </span>
             </button>
           </div>

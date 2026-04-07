@@ -17,8 +17,9 @@ import {
   Brain
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UserRole } from '@/types';
+import { MemberAccessMode, UserRole } from '@/types';
 import { useAuthStore } from '@/hooks/useAuth';
+import AppLogo from '@/components/ui/AppLogo';
 
 interface NavItem {
   label: string;
@@ -50,22 +51,32 @@ const navItems: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, memberAccessMode } = useAuthStore();
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  const filteredNavItems = navItems.filter(item => 
-    user?.role && item.roles.includes(user.role)
-  );
+  const filteredNavItems = navItems.filter((item) => {
+    if (!user?.role || !item.roles.includes(user.role)) {
+      return false;
+    }
+
+    const isMemberPlanLink = item.href === '/member/workouts' || item.href === '/member/nutrition';
+
+    if (user.role === UserRole.Member && memberAccessMode === MemberAccessMode.EquipmentOnly && isMemberPlanLink) {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <aside className="flex h-screen w-64 flex-col bg-white shadow-lg">
       {/* Logo */}
       <div className="flex h-16 items-center justify-center border-b px-6">
-        <h1 className="text-2xl font-bold text-primary-blue">IntelliFit</h1>
+        <AppLogo textClassName="text-2xl text-[#0b4fd4]" />
       </div>
 
       {/* Navigation */}
