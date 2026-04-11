@@ -1,0 +1,177 @@
+{
+  "push": {
+    "exercises": [
+      {
+        "name": "Wall Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Knee Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Wide Incline Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Incline Diamond Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Low Elevation Decline Push-Up",
+        "spec": "1x10"
+      }
+    ],
+    "ramp": "40%x10,60%x6,80%x3 on main compound before working sets"
+  },
+  "pull": {
+    "exercises": [
+      {
+        "name": "Two-Arm Dead Hang (10-30s)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Scapular Pull-Up (short holds)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Bent-Knee Inverted Row",
+        "spec": "1x10"
+      },
+      {
+        "name": "Incline Wide Row",
+        "spec": "1x10"
+      },
+      {
+        "name": "High-Angle Ring Row",
+        "spec": "1x10"
+      }
+    ],
+    "ramp": "40%x10,65%x5 on main pull before working sets"
+  },
+  "legs": {
+    "exercises": [
+      {
+        "name": "Assisted Squat (hands on chair)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Single-Leg Box Squat (high box)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Assisted Shrimp Squat",
+        "spec": "1x10"
+      },
+      {
+        "name": "Elevated Dragon Squat",
+        "spec": "1x10"
+      },
+      {
+        "name": "Partial Range Skater Squat",
+        "spec": "1x10"
+      }
+    ],
+    "ramp": "40%x10,60%x6,78%x3 on squat/DL before working sets"
+  },
+  "upper": {
+    "exercises": [
+      {
+        "name": "Wall Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Knee Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Wide Incline Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Incline Diamond Push-Up",
+        "spec": "1x10"
+      },
+      {
+        "name": "Low Elevation Decline Push-Up",
+        "spec": "1x10"
+      }
+    ],
+    "ramp": "40%x10,65%x5 on main compound before working sets"
+  },
+  "lower": {
+    "exercises": [
+      {
+        "name": "Assisted Squat (hands on chair)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Single-Leg Box Squat (high box)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Assisted Shrimp Squat",
+        "spec": "1x10"
+      },
+      {
+        "name": "Elevated Dragon Squat",
+        "spec": "1x10"
+      },
+      {
+        "name": "Partial Range Skater Squat",
+        "spec": "1x10"
+      }
+    ],
+    "ramp": "40%x10,60%x6,80%x3 on main lower compound"
+  },
+  "full_body": {
+    "exercises": [
+      {
+        "name": "Kneeling Plank",
+        "spec": "1x10"
+      },
+      {
+        "name": "Modified Side Plank (bottom knee bent)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Kneeling Thread the Needle",
+        "spec": "1x10"
+      },
+      {
+        "name": "Tucked Hollow Hold (knees bent)",
+        "spec": "1x10"
+      },
+      {
+        "name": "Small-Amplitude Hollow Rocks (knees bent)",
+        "spec": "1x10"
+      }
+    ],
+    "ramp": "50%x8 on first compound of each movement pattern"
+  },
+  "arms": {
+    "exercises": [
+      {
+        "name": "Brachialis SMR",
+        "spec": "30s hold"
+      },
+      {
+        "name": "Standing Biceps Stretch",
+        "spec": "30s hold"
+      },
+      {
+        "name": "Seated Biceps",
+        "spec": "30s hold"
+      },
+      {
+        "name": "Tricep Side Stretch",
+        "spec": "30s hold"
+      },
+      {
+        "name": "Triceps Stretch",
+        "spec": "30s hold"
+      }
+    ],
+    "ramp": "50%x12 on first compound before working sets"
+  }
+}

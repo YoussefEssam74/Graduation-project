@@ -33,6 +33,7 @@ import {
   inbodyApi,
   bookingsApi,
   type InBodyMeasurementDto,
+  type CreateInBodyMeasurementDto,
   type BookingDto,
 } from "@/lib/api";
 import {
@@ -115,6 +116,7 @@ export default function InBodyPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isManualEntryModalOpen, setIsManualEntryModalOpen] = useState(false);
   const [availableSlots] = useState(generateAvailableSlots());
   const [selectedDate, setSelectedDate] = useState<
     (typeof availableSlots)[0] | null
@@ -124,6 +126,22 @@ export default function InBodyPage() {
     null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingManualEntry, setIsSavingManualEntry] = useState(false);
+
+  const initialManualForm = {
+    weight: "",
+    height: "",
+    bodyFatPercentage: "",
+    muscleMass: "",
+    bodyWaterPercentage: "",
+    protein: "",
+    minerals: "",
+    visceralFat: "",
+    bmr: "",
+    metabolicAge: "",
+    notes: "",
+  };
+  const [manualForm, setManualForm] = useState(initialManualForm);
 
   // Real data
   const [isLoading, setIsLoading] = useState(true);
@@ -183,6 +201,102 @@ export default function InBodyPage() {
     setSelectedDate(null);
     setSelectedTime(null);
     setIsScheduleModalOpen(true);
+  };
+
+  const handleOpenManualEntryModal = () => {
+    setManualForm(initialManualForm);
+    setIsManualEntryModalOpen(true);
+  };
+
+  const handleManualFieldChange = (
+    field: keyof typeof initialManualForm,
+    value: string,
+  ) => {
+    setManualForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const parseOptionalNumber = (value: string): number | undefined => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const handleSaveManualEntry = async () => {
+    if (!user?.userId) return;
+
+    const weight = parseOptionalNumber(manualForm.weight);
+    const height = parseOptionalNumber(manualForm.height);
+    const bodyFat = parseOptionalNumber(manualForm.bodyFatPercentage);
+    const muscleMass = parseOptionalNumber(manualForm.muscleMass);
+
+    if (!weight || weight <= 0) {
+      showToast("Please enter a valid weight", "error");
+      return;
+    }
+
+    if (!height || height <= 0) {
+      showToast("Please enter a valid height", "error");
+      return;
+    }
+
+    if (!bodyFat || bodyFat <= 0) {
+      showToast("Please enter a valid body fat percentage", "error");
+      return;
+    }
+
+    if (!muscleMass || muscleMass <= 0) {
+      showToast("Please enter a valid muscle mass", "error");
+      return;
+    }
+
+    const metabolicAgeValue = parseOptionalNumber(manualForm.metabolicAge);
+
+    const payload: CreateInBodyMeasurementDto = {
+      userId: user.userId,
+      weight,
+      height,
+      bodyFatPercentage: bodyFat,
+      muscleMass,
+      bodyWaterPercentage: parseOptionalNumber(manualForm.bodyWaterPercentage),
+      protein: parseOptionalNumber(manualForm.protein),
+      minerals: parseOptionalNumber(manualForm.minerals),
+      visceralFat: parseOptionalNumber(manualForm.visceralFat),
+      bmr: parseOptionalNumber(manualForm.bmr),
+      metabolicAge:
+        metabolicAgeValue !== undefined
+          ? Math.round(metabolicAgeValue)
+          : undefined,
+      notes: manualForm.notes.trim() || undefined,
+      measurementDate: new Date().toISOString(),
+    };
+
+    setIsSavingManualEntry(true);
+    try {
+      const response = await inbodyApi.createMeasurement(payload);
+
+      if (response.success && response.data) {
+        const updatedMeasurements = [...measurements, response.data].sort(
+          (a, b) =>
+            new Date(b.measurementDate).getTime() -
+            new Date(a.measurementDate).getTime(),
+        );
+
+        setMeasurements(updatedMeasurements);
+        setLatest(updatedMeasurements[0]);
+        setIsManualEntryModalOpen(false);
+        setManualForm(initialManualForm);
+        showToast("InBody data saved successfully!", "success");
+      } else {
+        showToast(response.message || "Failed to save InBody data", "error");
+      }
+    } catch (error) {
+      console.error("Failed to save InBody data:", error);
+      showToast("Failed to save InBody data", "error");
+    } finally {
+      setIsSavingManualEntry(false);
+    }
   };
 
   const parseTimeString = (
@@ -345,6 +459,13 @@ export default function InBodyPage() {
             >
               <Download className="h-3.5 w-3.5" />
               Export Report
+            </Button>
+            <Button
+              onClick={handleOpenManualEntryModal}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 rounded-xl gap-2 shadow-md shadow-emerald-200"
+            >
+              <PlusCircle className="h-3.5 w-3.5" />
+              Enter My Data
             </Button>
             <Button
               onClick={handleOpenScheduleModal}
@@ -795,6 +916,228 @@ export default function InBodyPage() {
             </Card>
           </div>
         )}
+
+        {/* Schedule Modal */}
+        <Dialog
+          open={isManualEntryModalOpen}
+          onOpenChange={setIsManualEntryModalOpen}
+        >
+          <DialogContent className="bg-white rounded-[24px] border-0 max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold">
+                Enter InBody Data
+              </DialogTitle>
+              <DialogDescription>
+                Add your latest body composition measurements.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="inbody-weight" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Weight (kg) *
+                  </label>
+                  <input
+                    id="inbody-weight"
+                    type="number"
+                    step="0.1"
+                    value={manualForm.weight}
+                    onChange={(e) =>
+                      handleManualFieldChange("weight", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 75"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="inbody-height" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Height (cm) *
+                  </label>
+                  <input
+                    id="inbody-height"
+                    type="number"
+                    step="0.1"
+                    value={manualForm.height}
+                    onChange={(e) =>
+                      handleManualFieldChange("height", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 178"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="inbody-fat" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Body Fat % *
+                  </label>
+                  <input
+                    id="inbody-fat"
+                    type="number"
+                    step="0.1"
+                    value={manualForm.bodyFatPercentage}
+                    onChange={(e) =>
+                      handleManualFieldChange("bodyFatPercentage", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 18"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="inbody-muscle" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Muscle Mass (kg) *
+                  </label>
+                  <input
+                    id="inbody-muscle"
+                    type="number"
+                    step="0.1"
+                    value={manualForm.muscleMass}
+                    onChange={(e) =>
+                      handleManualFieldChange("muscleMass", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 34"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="inbody-water" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Body Water %
+                  </label>
+                  <input
+                    id="inbody-water"
+                    type="number"
+                    step="0.1"
+                    value={manualForm.bodyWaterPercentage}
+                    onChange={(e) =>
+                      handleManualFieldChange("bodyWaterPercentage", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 56"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="inbody-bmr" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    BMR (kcal)
+                  </label>
+                  <input
+                    id="inbody-bmr"
+                    type="number"
+                    step="1"
+                    value={manualForm.bmr}
+                    onChange={(e) =>
+                      handleManualFieldChange("bmr", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 1700"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="inbody-age" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Metabolic Age
+                  </label>
+                  <input
+                    id="inbody-age"
+                    type="number"
+                    step="1"
+                    value={manualForm.metabolicAge}
+                    onChange={(e) =>
+                      handleManualFieldChange("metabolicAge", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 28"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="inbody-protein" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Protein (kg)
+                  </label>
+                  <input
+                    id="inbody-protein"
+                    type="number"
+                    step="0.1"
+                    value={manualForm.protein}
+                    onChange={(e) =>
+                      handleManualFieldChange("protein", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="optional"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="inbody-minerals" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Minerals (kg)
+                  </label>
+                  <input
+                    id="inbody-minerals"
+                    type="number"
+                    step="0.1"
+                    value={manualForm.minerals}
+                    onChange={(e) =>
+                      handleManualFieldChange("minerals", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="optional"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="inbody-visceral" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                    Visceral Fat
+                  </label>
+                  <input
+                    id="inbody-visceral"
+                    type="number"
+                    step="1"
+                    value={manualForm.visceralFat}
+                    onChange={(e) =>
+                      handleManualFieldChange("visceralFat", e.target.value)
+                    }
+                    className="w-full h-10 rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="optional"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="inbody-notes" className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                  Notes
+                </label>
+                <textarea
+                  id="inbody-notes"
+                  rows={3}
+                  value={manualForm.notes}
+                  onChange={(e) => handleManualFieldChange("notes", e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  placeholder="Optional notes about your condition, hydration, or measurements"
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                onClick={() => setIsManualEntryModalOpen(false)}
+                disabled={isSavingManualEntry}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveManualEntry}
+                disabled={isSavingManualEntry}
+                className="bg-emerald-600 hover:bg-emerald-700 font-bold rounded-xl"
+              >
+                {isSavingManualEntry ? "Saving..." : "Save My InBody Data"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Schedule Modal */}
         <Dialog

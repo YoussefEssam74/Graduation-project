@@ -58,6 +58,9 @@ namespace Graduation_Project
             builder.Services.AddScoped<IWorkoutAIService, WorkoutAIService>();
             builder.Services.AddScoped<IWorkoutFeedbackService, WorkoutFeedbackService>();
 
+            // Exercise RAG service (Gap 2 + Gap 3: exercise step-by-step instructions + keyword search)
+            builder.Services.AddScoped<ServiceAbstraction.Services.IExerciseRagService, Service.Services.ExerciseRagService>();
+
             // Add Workout Plan Generator Service (Python FastAPI integration)
             builder.Services.AddHttpClient<ServiceAbstraction.Services.IWorkoutGeneratorService, Service.Services.WorkoutGeneratorService>(client =>
             {

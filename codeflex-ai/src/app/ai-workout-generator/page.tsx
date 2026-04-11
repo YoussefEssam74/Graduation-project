@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -31,6 +31,7 @@ import {
   ClipboardList,
   ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 import {
   generateAIWorkoutPlan,
   checkMLServiceHealth,
@@ -98,6 +99,8 @@ function ExerciseDetailModal({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close exercise details"
+            title="Close"
             className="p-2 hover:bg-white/20 rounded-full transition-colors"
           >
             <X className="w-6 h-6" />
@@ -219,6 +222,9 @@ function ExerciseDetailModal({
                   <input
                     type="text"
                     value={editedExercise.reps || ""}
+                    aria-label="Edit reps"
+                    title="Repetitions"
+                    placeholder="e.g., 8-12"
                     onChange={(e) =>
                       setEditedExercise({
                         ...editedExercise,
@@ -242,6 +248,9 @@ function ExerciseDetailModal({
                     <input
                       type="number"
                       value={editedExercise.weightKg || ""}
+                      aria-label="Edit weight in kilograms"
+                      title="Weight in kg"
+                      placeholder="e.g., 40"
                       onChange={(e) =>
                         setEditedExercise({
                           ...editedExercise,
@@ -265,6 +274,9 @@ function ExerciseDetailModal({
                   <input
                     type="text"
                     value={editedExercise.rest || ""}
+                    aria-label="Edit rest duration"
+                    title="Rest duration"
+                    placeholder="e.g., 60s"
                     onChange={(e) =>
                       setEditedExercise({
                         ...editedExercise,
@@ -422,6 +434,57 @@ function ExerciseDetailModal({
   );
 }
 
+const MAX_INBODY_VALID_DAYS = 30;
+
+const getInbodyAgeInDays = (measurementDate: string): number => {
+  const ageMs = Date.now() - new Date(measurementDate).getTime();
+  return Math.max(0, Math.floor(ageMs / (1000 * 60 * 60 * 24)));
+};
+
+const isPositiveMetric = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value > 0;
+
+const isInbodyComplete = (measurement: InBodyMeasurementDto | null): boolean => {
+  if (!measurement) return false;
+
+  return (
+    isPositiveMetric(measurement.weight) &&
+    isPositiveMetric(measurement.height) &&
+    isPositiveMetric(measurement.bodyFatPercentage) &&
+    isPositiveMetric(measurement.muscleMass)
+  );
+};
+
+const areInbodyMeasurementsUnchanged = (
+  latest: InBodyMeasurementDto,
+  previous: InBodyMeasurementDto,
+): boolean => {
+  const comparableKeys: Array<keyof InBodyMeasurementDto> = [
+    "weight",
+    "height",
+    "bodyFatPercentage",
+    "muscleMass",
+    "bmi",
+    "bmr",
+  ];
+
+  const keysWithValues = comparableKeys.filter(
+    (key) =>
+      latest[key] !== undefined &&
+      latest[key] !== null &&
+      previous[key] !== undefined &&
+      previous[key] !== null,
+  );
+
+  if (keysWithValues.length === 0) {
+    return false;
+  }
+
+  return keysWithValues.every(
+    (key) => Math.abs(Number(latest[key]) - Number(previous[key])) < 0.0001,
+  );
+};
+
 function AIWorkoutGeneratorContent() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -465,7 +528,13 @@ function AIWorkoutGeneratorContent() {
   const [muscleScan, setMuscleScan] = useState<MuscleScanResultDto | null>(
     null,
   );
-  const [inbodyData, setInbodyData] = useState<InBodyMeasurementDto | null>(null);
+  const [inbodyData, setInbodyData] = useState<InBodyMeasurementDto | null>(
+    null,
+  );
+  const [inbodyHistory, setInbodyHistory] = useState<InBodyMeasurementDto[]>(
+    [],
+  );
+  const [isLoadingInbodyStatus, setIsLoadingInbodyStatus] = useState(false);
   const [mlServiceHealthy, setMlServiceHealthy] = useState<boolean | null>(
     null,
   );
@@ -511,21 +580,31 @@ function AIWorkoutGeneratorContent() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load User Context
+  // Load InBody status for generation constraints
   useEffect(() => {
-    if (user && includeUserContext) {
+    if (!user?.userId) return;
+    loadInbodyStatus();
+  }, [user?.userId]);
+
+  // Load optional AI context (strength + scan)
+  useEffect(() => {
+    if (!user?.userId) return;
+
+    if (includeUserContext) {
       loadUserContext();
+    } else {
+      setStrengthProfile(null);
+      setMuscleScan(null);
     }
-  }, [user, includeUserContext]);
+  }, [user?.userId, includeUserContext]);
 
   const loadUserContext = async () => {
     if (!user) return;
 
     try {
-      const [strengthRes, scanRes, inbodyRes] = await Promise.all([
+      const [strengthRes, scanRes] = await Promise.all([
         getUserStrengthProfile(user.userId),
         getLatestMuscleScan(user.userId),
-        inbodyApi.getLatestMeasurement(user.userId),
       ]);
 
       if (strengthRes.success && strengthRes.data) {
@@ -535,14 +614,96 @@ function AIWorkoutGeneratorContent() {
       if (scanRes.success && scanRes.data) {
         setMuscleScan(scanRes.data);
       }
-
-      if (inbodyRes.success && inbodyRes.data) {
-        setInbodyData(inbodyRes.data);
-      }
     } catch (error) {
       console.error("Failed to load user context:", error);
     }
   };
+
+  const loadInbodyStatus = async () => {
+    if (!user?.userId) return;
+
+    setIsLoadingInbodyStatus(true);
+
+    try {
+      const inbodyRes = await inbodyApi.getUserMeasurements(user.userId);
+
+      if (inbodyRes.success && inbodyRes.data && inbodyRes.data.length > 0) {
+        const sortedMeasurements = [...inbodyRes.data].sort(
+          (a, b) =>
+            new Date(b.measurementDate).getTime() -
+            new Date(a.measurementDate).getTime(),
+        );
+
+        setInbodyHistory(sortedMeasurements);
+        setInbodyData(sortedMeasurements[0]);
+      } else {
+        setInbodyHistory([]);
+        setInbodyData(null);
+      }
+    } catch (error) {
+      console.error("Failed to load InBody measurements:", error);
+      setInbodyHistory([]);
+      setInbodyData(null);
+    } finally {
+      setIsLoadingInbodyStatus(false);
+    }
+  };
+
+  const inbodyGenerationStatus = useMemo(() => {
+    if (isLoadingInbodyStatus) {
+      return {
+        canGenerate: false,
+        tone: "pending" as const,
+        message: "Checking your latest InBody scan...",
+      };
+    }
+
+    if (!inbodyData) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message:
+          "No InBody scan found. Please complete an InBody measurement before generating a workout plan.",
+      };
+    }
+
+    if (!isInbodyComplete(inbodyData)) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message:
+          "Your latest InBody data is incomplete. Please update weight, height, body fat, and muscle mass.",
+      };
+    }
+
+    const inbodyAgeDays = getInbodyAgeInDays(inbodyData.measurementDate);
+    if (inbodyAgeDays > MAX_INBODY_VALID_DAYS) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message: `Your InBody scan is ${inbodyAgeDays} days old. Please update it (max ${MAX_INBODY_VALID_DAYS} days).`,
+      };
+    }
+
+    const previousMeasurement = inbodyHistory[1];
+    if (
+      previousMeasurement &&
+      areInbodyMeasurementsUnchanged(inbodyData, previousMeasurement)
+    ) {
+      return {
+        canGenerate: false,
+        tone: "blocked" as const,
+        message:
+          "Your latest InBody values are unchanged compared to the previous scan. Please update InBody before generating a new plan.",
+      };
+    }
+
+    return {
+      canGenerate: true,
+      tone: "ready" as const,
+      message: `InBody is up to date (${inbodyAgeDays} day${inbodyAgeDays === 1 ? "" : "s"} old).`,
+    };
+  }, [isLoadingInbodyStatus, inbodyData, inbodyHistory]);
 
   const handleGeneratePlan = async () => {
     if (!user) {
@@ -567,6 +728,11 @@ function AIWorkoutGeneratorContent() {
         "You need at least 50 tokens to generate an AI workout plan",
         "error",
       );
+      return;
+    }
+
+    if (!inbodyGenerationStatus.canGenerate) {
+      showToast(inbodyGenerationStatus.message, "error", 7000);
       return;
     }
 
@@ -950,6 +1116,59 @@ function AIWorkoutGeneratorContent() {
           </Card>
         )}
 
+        {/* InBody Constraint Status */}
+        <Card
+          className={`p-4 border-l-4 ${
+            inbodyGenerationStatus.canGenerate
+              ? "border-green-500 bg-green-50"
+              : inbodyGenerationStatus.tone === "pending"
+                ? "border-blue-500 bg-blue-50"
+                : "border-amber-500 bg-amber-50"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p
+                className={`font-medium ${
+                  inbodyGenerationStatus.canGenerate
+                    ? "text-green-900"
+                    : inbodyGenerationStatus.tone === "pending"
+                      ? "text-blue-900"
+                      : "text-amber-900"
+                }`}
+              >
+                InBody Validation
+              </p>
+              <p
+                className={`text-sm ${
+                  inbodyGenerationStatus.canGenerate
+                    ? "text-green-700"
+                    : inbodyGenerationStatus.tone === "pending"
+                      ? "text-blue-700"
+                      : "text-amber-700"
+                }`}
+              >
+                {inbodyGenerationStatus.message}
+              </p>
+              {inbodyData && (
+                <p className="text-xs text-slate-600">
+                  Latest scan date: {new Date(inbodyData.measurementDate).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+
+            {!inbodyGenerationStatus.canGenerate &&
+              inbodyGenerationStatus.tone === "blocked" && (
+                <Link
+                  href="/inbody"
+                  className="shrink-0 inline-flex items-center rounded-lg bg-white px-3 py-2 text-xs font-semibold text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                >
+                  Update InBody
+                </Link>
+              )}
+          </div>
+        </Card>
+
         {/* User Context Preview */}
         {includeUserContext && (strengthProfile || muscleScan) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1028,6 +1247,8 @@ function AIWorkoutGeneratorContent() {
                 <select
                   value={goal}
                   onChange={(e) => setGoal(e.target.value as any)}
+                  aria-label="Primary goal"
+                  title="Primary goal"
                   className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="Muscle">Build Muscle</option>
@@ -1078,6 +1299,8 @@ function AIWorkoutGeneratorContent() {
                   max="6"
                   value={daysPerWeek}
                   onChange={(e) => setDaysPerWeek(Number(e.target.value))}
+                  aria-label="Days per week"
+                  title="Days per week"
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-slate-500">
@@ -1150,7 +1373,10 @@ function AIWorkoutGeneratorContent() {
               <Button
                 onClick={handleGeneratePlan}
                 disabled={
-                  isGenerating || !mlServiceHealthy || equipment.length === 0
+                  isGenerating ||
+                  !mlServiceHealthy ||
+                  equipment.length === 0 ||
+                  !inbodyGenerationStatus.canGenerate
                 }
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-6 text-lg font-semibold"
               >
@@ -1158,6 +1384,11 @@ function AIWorkoutGeneratorContent() {
                   <>
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
                     Generating Your Plan...
+                  </>
+                ) : !inbodyGenerationStatus.canGenerate ? (
+                  <>
+                    <AlertCircle className="w-5 h-5 mr-2" />
+                    Update InBody to Generate
                   </>
                 ) : (
                   <>

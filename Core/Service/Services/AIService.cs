@@ -1,6 +1,7 @@
 using IntelliFit.ServiceAbstraction;
 using Shared.DTOs;
 using Shared.DTOs.Meal;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -194,27 +195,56 @@ public class AIService : IAIService
         }
     }
 
-    public async Task<string> ChatWithAIAsync(string userMessage, int userId)
+    public async Task<string> ChatWithAIAsync(
+        string userMessage,
+        int userId,
+        string? userContext = null,
+        IEnumerable<(string role, string content)>? conversationHistory = null)
     {
         try
         {
             _logger.LogInformation("AI chat request from user {UserId} using Groq", userId);
 
-            var systemPrompt = @"You are an expert AI fitness coach for IntelliFit gym. 
-Provide helpful, accurate, and motivating fitness advice.
-Keep responses concise (2-3 paragraphs).
-Be supportive and encouraging.";
+            // Build a rich system prompt that injects the user's real data
+            var systemPrompt = new StringBuilder();
+            systemPrompt.AppendLine("You are an expert AI fitness coach for IntelliFit gym.");
+            systemPrompt.AppendLine("Your job is to help members with workout guidance, exercise technique, nutrition questions, and general fitness advice.");
+            systemPrompt.AppendLine("Be concise (2-3 paragraphs), supportive, and use the member's actual data when answering.");
+            systemPrompt.AppendLine("If the member asks about their workout plan or nutrition plan, refer to the data provided below.");
+            systemPrompt.AppendLine("Do NOT fabricate plan details — only reference what is in the context.");
+
+            if (!string.IsNullOrWhiteSpace(userContext))
+            {
+                systemPrompt.AppendLine();
+                systemPrompt.AppendLine("--- MEMBER DATA ---");
+                systemPrompt.AppendLine(userContext);
+                systemPrompt.AppendLine("--- END MEMBER DATA ---");
+            }
 
             var messages = new List<ChatMessage>
             {
-                new SystemChatMessage(systemPrompt),
-                new UserChatMessage(userMessage)
+                new SystemChatMessage(systemPrompt.ToString())
             };
+
+            // Inject prior conversation turns (oldest first, up to last 10 pairs)
+            if (conversationHistory != null)
+            {
+                foreach (var (role, content) in conversationHistory)
+                {
+                    if (role == "user")
+                        messages.Add(new UserChatMessage(content));
+                    else
+                        messages.Add(new AssistantChatMessage(content));
+                }
+            }
+
+            // Append the current user message
+            messages.Add(new UserChatMessage(userMessage));
 
             var chatCompletion = await _chatClient.CompleteChatAsync(messages, new ChatCompletionOptions
             {
                 Temperature = 0.8f,
-                MaxOutputTokenCount = 500
+                MaxOutputTokenCount = 600
             });
 
             return chatCompletion.Value.Content[0].Text;

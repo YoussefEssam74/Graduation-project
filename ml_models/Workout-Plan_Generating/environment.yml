@@ -1,0 +1,38 @@
+# Use: conda env create -f environment.yml
+# This pins the env to D drive; nothing goes to C:\Users\...
+name: workout_ml
+# env will be placed at D:\Youssef\Programs\miniconda3\envs\workout_ml
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    # ── PyTorch CUDA 12.4 (RTX 4050 / driver ≥ 525) ──────────────────────────
+    - --index-url https://download.pytorch.org/whl/cu124
+    - torch==2.5.1+cu124
+    - torchvision==0.20.1+cu124
+    - torchaudio==2.5.1+cu124
+    # ── Reset index-url for the rest of packages ──────────────────────────────
+    - --extra-index-url https://pypi.org/simple
+    # ── Quantization (Windows CUDA wheels since 0.43.0) ───────────────────────
+    - bitsandbytes>=0.43.0
+    # ── Hugging Face stack ────────────────────────────────────────────────────
+    - transformers==4.57.3
+    - peft==0.18.1
+    - datasets>=2.14.0
+    - accelerate>=0.24.0
+    - trl>=0.9.0
+    # ── Training utilities ────────────────────────────────────────────────────
+    - tensorboard>=2.14.0
+    - tqdm>=4.66.0
+    - pandas>=2.0.0
+    - numpy>=1.24.0
+    - sentencepiece>=0.1.99
+    - protobuf>=3.20.0
+    # ── API server ────────────────────────────────────────────────────────────
+    - fastapi==0.115.5
+    - uvicorn[standard]==0.32.1
+    - pydantic==2.10.3
+    - asyncpg==0.29.0

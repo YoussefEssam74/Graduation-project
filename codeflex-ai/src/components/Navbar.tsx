@@ -12,7 +12,7 @@ import {
   ShieldIcon,
   LogOutIcon,
   DumbbellIcon,
-  UserCogIcon
+  UserCogIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,10 +22,10 @@ import { Button } from "./ui/button";
 // Map backend role strings to frontend UserRole enum
 const normalizeRole = (role: string): UserRole => {
   const roleMap: Record<string, UserRole> = {
-    'Member': UserRole.Member,
-    'Coach': UserRole.Coach,
-    'Receptionist': UserRole.Receptionist,
-    'Admin': UserRole.Admin,
+    Member: UserRole.Member,
+    Coach: UserRole.Coach,
+    Receptionist: UserRole.Receptionist,
+    Admin: UserRole.Admin,
   };
   return roleMap[role] || UserRole.Member;
 };
@@ -58,7 +58,11 @@ export default function Navbar() {
   ];
 
   const getReceptionNav = () => [
-    { href: "/reception-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
+    {
+      href: "/reception-dashboard",
+      icon: LayoutDashboardIcon,
+      label: "Dashboard",
+    },
     { href: "/reception-members", icon: Users2Icon, label: "Members" },
     { href: "/reception-bookings", icon: CalendarIcon, label: "Bookings" },
     { href: "/reception-checkin", icon: ActivityIcon, label: "Check-In" },
@@ -127,10 +131,20 @@ export default function Navbar() {
     }
   };
 
+  const publicNavItems = [
+    { href: "/#features", label: "Features" },
+    { href: "/#results", label: "Results" },
+    { href: "/#pricing", label: "Pricing" },
+    { href: "/#stories", label: "Stories" },
+  ];
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 py-3 shadow-sm">
       <div className="container mx-auto flex items-center justify-between">
-        <Link href={isAuthenticated ? getDashboardUrl() : "/"} className="flex items-center gap-2">
+        <Link
+          href={isAuthenticated ? getDashboardUrl() : "/"}
+          className="flex items-center gap-2"
+        >
           <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg shadow-blue-500/20">
             <Ticket className="w-5 h-5 text-white" />
           </div>
@@ -139,45 +153,63 @@ export default function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-5">
-          {!isAuthenticated ? (
-            <>
-              <Button asChild variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50">
+        {!isAuthenticated ? (
+          <>
+            <nav className="hidden md:flex items-center gap-8">
+              {publicNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-3">
+              <Button
+                asChild
+                variant="outline"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50"
+              >
                 <Link href="/login">Sign In</Link>
               </Button>
-              <Button asChild className="bg-primary shadow-lg shadow-blue-500/30">
+              <Button
+                asChild
+                className="bg-primary shadow-lg shadow-blue-500/30"
+              >
                 <Link href="/signup">Sign Up</Link>
               </Button>
-            </>
-          ) : (
-            <>
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-primary transition-colors"
-                  >
-                    <Icon size={16} />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-
-              {normalizeRole(user?.role || '') === UserRole.Member && (
-                <Button
-                  asChild
-                  variant="outline"
-                  className="ml-2 border-primary/50 text-primary hover:bg-primary hover:text-white shadow-sm"
+            </div>
+          </>
+        ) : (
+          <nav className="flex items-center gap-5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-primary transition-colors"
                 >
-                  <Link href="/generate-program">Generate Program</Link>
-                </Button>
-              )}
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
 
-            </>
-          )}
-        </nav>
+            {normalizeRole(user?.role || "") === UserRole.Member && (
+              <Button
+                asChild
+                variant="outline"
+                className="ml-2 border-primary/50 text-primary hover:bg-primary hover:text-white shadow-sm"
+              >
+                <Link href="/generate-program">Generate Program</Link>
+              </Button>
+            )}
+          </nav>
+        )}
       </div>
     </header>
   );

@@ -50,6 +50,23 @@ namespace Presentation.Controllers
                 return BadRequest(ModelState);
             }
 
+            // Members can only submit measurements for their own account.
+            if (IsMember)
+            {
+                try
+                {
+                    var authenticatedUserId = GetUserIdFromToken();
+                    if (createDto.UserId != authenticatedUserId)
+                    {
+                        return Forbid();
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    return Unauthorized(new { message = ex.Message });
+                }
+            }
+
             try
             {
                 var measurement = await _serviceManager.InBodyService.CreateMeasurementAsync(createDto);
