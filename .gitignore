@@ -10,6 +10,7 @@ ml_models/**/checkpoint*/
 ml_models/**/__pycache__/
 
 # Sensitive configuration files - NEVER commit these
+appsettings.json
 appsettings.Development.json
 appsettings.Production.json
 appsettings.*.local.json
