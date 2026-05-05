@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link"; // Added Link import
+import { CoinsIcon } from "lucide-react";
 
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -28,7 +29,7 @@ const geistMono = Geist_Mono({
 });
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
-  const { isRedirecting, isAuthenticated } = useAuth();
+  const { isRedirecting, isAuthenticated, user } = useAuth();
   const pathname = usePathname();
 
   if (isRedirecting) {
@@ -77,7 +78,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             <span className="font-bold text-lg text-slate-900 dark:text-white">
               Pulse<span className="text-blue-600">Gym</span>
             </span>
-            {/* Mobile Menu Button would go here */}
+            {user?.role === "Member" && (
+              <Link
+                href="/tokens"
+                className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg px-3 py-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+              >
+                <CoinsIcon size={14} className="text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                  {user.tokenBalance ?? 0}
+                </span>
+              </Link>
+            )}
           </header>
 
           {/* Page Content */}

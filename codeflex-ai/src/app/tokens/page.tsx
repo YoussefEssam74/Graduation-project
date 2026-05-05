@@ -33,7 +33,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { tokenTransactionsApi, type TokenTransactionDto } from "@/lib/api";
+import { tokenTransactionsApi, paymentApi, type TokenTransactionDto } from "@/lib/api";
+import type { PaymentDto } from "@/lib/api/payment";
+import { EGP_PER_TOKEN } from "@/constants";
 
 export default function TokensPage() {
   const { showToast } = useToast();
@@ -44,6 +46,9 @@ export default function TokensPage() {
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(true);
   const [tokensEarnedThisMonth, setTokensEarnedThisMonth] = useState(0);
   const [tokensSpentThisMonth, setTokensSpentThisMonth] = useState(0);
+  const [activeTab, setActiveTab] = useState<"wallet" | "history">("wallet");
+  const [payments, setPayments] = useState<PaymentDto[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
 
   const { user, adjustTokens, refreshUser } = useAuth();
   const tokenBalance = user?.tokenBalance ?? 0;
@@ -257,6 +262,91 @@ export default function TokensPage() {
           </Button>
         </div>
 
+        {/* Tab Switcher */}
+        <div className="flex gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-1 w-fit">
+          <button
+            onClick={() => setActiveTab("wallet")}
+            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+              activeTab === "wallet"
+                ? "bg-blue-600 text-white shadow"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            }`}
+          >
+            Token Wallet
+          </button>
+          <button
+            onClick={async () => {
+              setActiveTab("history");
+              if (!payments.length && user?.userId) {
+                setPaymentsLoading(true);
+                try {
+                  const res = await paymentApi.getUserPayments(user.userId);
+                  if (res.success && res.data) setPayments(res.data);
+                } catch {}
+                finally { setPaymentsLoading(false); }
+              }
+            }}
+            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+              activeTab === "history"
+                ? "bg-blue-600 text-white shadow"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            }`}
+          >
+            Payment History
+          </button>
+        </div>
+
+        {activeTab === "history" ? (
+          <div className="bg-white dark:bg-slate-800 rounded-[24px] border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/50">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Payment History</h3>
+            </div>
+            {paymentsLoading ? (
+              <div className="py-16 flex justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+              </div>
+            ) : payments.length === 0 ? (
+              <div className="py-16 text-center text-slate-500 dark:text-slate-400">No payment records found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                    <tr>
+                      <th className="px-6 py-4">Date</th>
+                      <th className="px-6 py-4">Method</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Amount (EGP)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {payments.map((p) => (
+                      <tr key={p.paymentId} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-medium">
+                          {new Date(p.paymentDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </td>
+                        <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{p.paymentMethod}</td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                            p.statusText?.toLowerCase() === "completed"
+                              ? "bg-green-50 text-green-700 ring-green-600/20"
+                              : p.statusText?.toLowerCase() === "pending"
+                              ? "bg-yellow-50 text-yellow-700 ring-yellow-600/20"
+                              : "bg-red-50 text-red-700 ring-red-600/20"
+                          }`}>{p.statusText ?? "—"}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right font-black text-slate-900 dark:text-white">{p.amount.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {activeTab === "wallet" && (
+          <>
+
         {/* Top Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -273,7 +363,7 @@ export default function TokensPage() {
                     <span className="text-6xl font-black text-slate-900 tracking-tight">{tokenBalance}</span>
                     <span className="text-xl font-bold text-blue-500">Tokens</span>
                   </div>
-                  <p className="text-slate-400 text-sm mt-2 font-medium">≈ ${(tokenBalance / 10).toFixed(2)} USD value</p>
+                  <p className="text-slate-400 text-sm mt-2 font-medium">≈ {(tokenBalance * EGP_PER_TOKEN).toFixed(2)} EGP</p>
                 </div>
                 <div className="bg-green-100 text-green-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1">
                   <TrendingUp className="h-4 w-4" />
@@ -548,7 +638,6 @@ export default function TokensPage() {
           </div>
 
         </div>
-      </div>
 
       {/* Legacy Purchase Dialog (Hidden UI, Functional) */}
       <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
@@ -613,6 +702,11 @@ export default function TokensPage() {
 
         </DialogContent>
       </Dialog>
+
+          </>
+        )}
+
+      </div>
     </div>
   );
 }

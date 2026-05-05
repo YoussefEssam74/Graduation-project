@@ -377,7 +377,9 @@ function RelatedExercisesModal({
                 {exercise.exerciseName}
               </span>
               {exercise.muscleGroup && (
-                <span className="ml-1 text-blue-500">· {exercise.muscleGroup}</span>
+                <span className="ml-1 text-blue-500">
+                  · {exercise.muscleGroup}
+                </span>
               )}
             </p>
           </div>
@@ -926,12 +928,24 @@ function ProgramsContent() {
                                 </div>
                                 {plan.assignedCoachName && (
                                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                                    <svg className="h-3 w-3 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    <svg
+                                      className="h-3 w-3 text-amber-500 flex-shrink-0"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                      />
                                     </svg>
                                     Assigned to Coach {plan.assignedCoachName}
                                     {plan.approvalNotes && (
-                                      <span className="ml-1 text-slate-400 dark:text-slate-500 italic">&ldquo;{plan.approvalNotes}&rdquo;</span>
+                                      <span className="ml-1 text-slate-400 dark:text-slate-500 italic">
+                                        &ldquo;{plan.approvalNotes}&rdquo;
+                                      </span>
                                     )}
                                   </p>
                                 )}
@@ -940,13 +954,33 @@ function ProgramsContent() {
                             <div className="flex items-center gap-2">
                               {plan.status === "UnderReview" && (
                                 <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full flex-shrink-0 flex items-center gap-1">
-                                  <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" /></svg>
+                                  <svg
+                                    className="h-2.5 w-2.5"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
                                   Under Review
                                 </span>
                               )}
                               {plan.status === "Approved" && (
                                 <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 rounded-full flex-shrink-0 flex items-center gap-1">
-                                  <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                  <svg
+                                    className="h-2.5 w-2.5"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
                                   Approved
                                 </span>
                               )}
@@ -1068,7 +1102,9 @@ function ProgramsContent() {
                                           className="flex items-center hover:bg-blue-50/50 dark:hover:bg-blue-500/5 transition-colors group"
                                         >
                                           <button
-                                            onClick={() => setSelectedExercise(ex)}
+                                            onClick={() =>
+                                              setSelectedExercise(ex)
+                                            }
                                             className="flex-1 flex items-center justify-between px-5 py-3 text-left"
                                           >
                                             <div className="flex items-center gap-3">
@@ -1106,7 +1142,10 @@ function ProgramsContent() {
                                             </div>
                                           </button>
                                           <button
-                                            onClick={(e) => { e.stopPropagation(); setRelatedExercise(ex); }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setRelatedExercise(ex);
+                                            }}
                                             title="Show similar exercises"
                                             className="mr-3 p-1.5 rounded-lg text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-blue-500 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-500/10 transition-all flex-shrink-0"
                                           >
@@ -1206,20 +1245,35 @@ function ProgramsContent() {
             {activeTab === "nutrition" &&
               (activeNutritionPlan ? (
                 <Card className="p-6 border border-slate-100 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-800 rounded-2xl">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-green-50 dark:bg-green-500/10 rounded-2xl">
-                      <Utensils className="h-6 w-6 text-green-500" />
+                  <div className="flex items-center justify-between gap-3 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-green-50 dark:bg-green-500/10 rounded-2xl">
+                        <Utensils className="h-6 w-6 text-green-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                          {activeNutritionPlan.planName || "Nutrition Plan"}
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          {activeNutritionPlan.startDate
+                            ? `Since ${new Date(activeNutritionPlan.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                            : "Daily macro targets"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                        Nutrition Plan
-                      </h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Daily macro targets
-                      </p>
-                    </div>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold px-2.5 py-1 rounded-full",
+                        activeNutritionPlan.isActive
+                          ? "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400"
+                          : "bg-slate-100 text-slate-500 dark:bg-slate-600/50 dark:text-slate-400",
+                      )}
+                    >
+                      {activeNutritionPlan.statusText ||
+                        (activeNutritionPlan.isActive ? "Active" : "Inactive")}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                     <MacroCard
                       label="Calories"
                       value={activeNutritionPlan.dailyCalories || 0}
@@ -1245,6 +1299,13 @@ function ProgramsContent() {
                       color="purple"
                     />
                   </div>
+                  <Link href="/nutrition">
+                    <Button className="w-full gap-2" variant="outline">
+                      <Utensils className="h-4 w-4" />
+                      View Full Nutrition Plan
+                      <ArrowRight className="h-4 w-4 ml-auto" />
+                    </Button>
+                  </Link>
                 </Card>
               ) : (
                 <EmptyState
@@ -1253,8 +1314,8 @@ function ProgramsContent() {
                   }
                   title="No Nutrition Plan"
                   description="Get a customized nutrition plan"
-                  actionLabel="Generate with AI"
-                  actionHref="/generate-program"
+                  actionLabel="Create Nutrition Plan"
+                  actionHref="/nutrition"
                 />
               ))}
           </div>

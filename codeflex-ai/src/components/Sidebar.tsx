@@ -51,9 +51,9 @@ export default function Sidebar() {
     const items = [
       { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
       { href: "/programs", icon: DumbbellIcon, label: "My Program" },
+      { href: "/nutrition", icon: UtensilsIcon, label: "Nutrition" },
       { href: "/bookings", icon: CalendarIcon, label: "Calendar" },
       { href: "/community", icon: UsersIcon, label: "Community" },
-      { href: "/tokens", icon: CoinsIcon, label: "Tokens" },
       { href: "/inbody", icon: ActivityIcon, label: "Analytics" },
       { href: "/achievements", icon: TrophyIcon, label: "Achievements" },
     ];
@@ -65,7 +65,7 @@ export default function Sidebar() {
         icon: BrainIcon,
         label: "AI Workout",
       });
-      items.splice(5, 0, {
+      items.splice(6, 0, {
         href: "/ai-coach",
         icon: BrainIcon,
         label: "AI Chat",
@@ -74,7 +74,7 @@ export default function Sidebar() {
 
     // Coach booking — only for plans that include coach
     if (hasCoachAccess) {
-      items.splice(hasAiAccess ? 4 : 2, 0, {
+      items.splice(hasAiAccess ? 5 : 2, 0, {
         href: "/book-coach",
         icon: UserIcon,
         label: "Book Coach",
@@ -154,7 +154,7 @@ export default function Sidebar() {
     <div className="hidden lg:flex flex-col w-[240px] h-screen fixed left-0 top-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 z-50">
       {/* Logo Area */}
       <div className="p-6 pb-2">
-        <Link href={getDashboardUrl()} className="flex items-center gap-3 mb-8">
+        <Link href={getDashboardUrl()} className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
             <Ticket className="w-6 h-6 text-white" />
           </div>
@@ -162,6 +162,24 @@ export default function Sidebar() {
             Pulse<span className="text-blue-600">Gym</span>
           </span>
         </Link>
+        {/* Token Balance Badge — Members only */}
+        {activeRole === UserRole.Member && (
+          <Link
+            href="/tokens"
+            className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl px-3 py-2 mb-4 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors group"
+          >
+            <CoinsIcon
+              size={16}
+              className="text-blue-600 dark:text-blue-400 flex-shrink-0"
+            />
+            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+              {user?.tokenBalance ?? 0}
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+              Tokens
+            </span>
+          </Link>
+        )}
       </div>
 
       {/* Navigation */}

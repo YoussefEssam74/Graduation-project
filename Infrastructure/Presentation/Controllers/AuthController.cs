@@ -172,5 +172,59 @@ namespace Presentation.Controllers
         }
 
         #endregion
+
+        #region OTP Change Password
+
+        /// <summary>
+        /// Send a one-time password (OTP) to the user's email for change-password verification
+        /// </summary>
+        [Authorize]
+        [HttpPost("send-change-password-otp")]
+        public async Task<ActionResult> SendChangePasswordOtp()
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var emailClaim = User.FindFirst(ClaimTypes.Email)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { error = "Invalid user token" });
+                if (string.IsNullOrEmpty(emailClaim))
+                    return BadRequest(new { error = "Email claim not found in token" });
+
+                await _serviceManager.AuthService.SendChangePasswordOtpAsync(userId, emailClaim);
+                return Ok(new { message = "OTP sent to your email" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Verify the OTP supplied by the user for change-password flow
+        /// </summary>
+        [Authorize]
+        [HttpPost("verify-change-password-otp")]
+        public async Task<ActionResult> VerifyChangePasswordOtp([FromBody] VerifyOtpDto dto)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { error = "Invalid user token" });
+
+                var valid = await _serviceManager.AuthService.VerifyChangePasswordOtpAsync(userId, dto.Otp);
+                if (!valid)
+                    return BadRequest(new { error = "Invalid or expired OTP" });
+
+                return Ok(new { message = "OTP verified" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        #endregion
     }
 }

@@ -5,6 +5,10 @@ using ServiceAbstraction.Services;
 using Shared.DTOs.Auth;
 using Shared.DTOs.User;
 using BCrypt.Net;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Mail;
 
 namespace Service.Services
 {
@@ -12,11 +16,15 @@ namespace Service.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
+        private readonly IMemoryCache _cache;
+        private readonly IConfiguration _configuration;
 
-        public AuthService(IUnitOfWork unitOfWork, ITokenService tokenService)
+        public AuthService(IUnitOfWork unitOfWork, ITokenService tokenService, IMemoryCache cache, IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
+            _cache = cache;
+            _configuration = configuration;
         }
 
         // Ensure DateTime values persisted to PostgreSQL with timestamptz are UTC
@@ -58,7 +66,7 @@ namespace Service.Services
 
             return new AuthResponseDto
             {
-                User = MapToUserDto(user),
+                User = await MapToUserDtoAsync(user),
                 Token = token,
                 ExpiresAt = DateTime.UtcNow.AddDays(7)
             };
@@ -108,7 +116,7 @@ namespace Service.Services
 
             return new AuthResponseDto
             {
-                User = MapToUserDto(user),
+                User = await MapToUserDtoAsync(user),
                 Token = token,
                 ExpiresAt = DateTime.UtcNow.AddDays(7)
             };
@@ -178,7 +186,7 @@ namespace Service.Services
 
             return new AuthResponseDto
             {
-                User = MapToUserDto(user),
+                User = await MapToUserDtoAsync(user),
                 Token = token,
                 ExpiresAt = DateTime.UtcNow.AddDays(7)
             };
@@ -242,11 +250,16 @@ namespace Service.Services
             _unitOfWork.Repository<User>().Update(user);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToUserDto(user);
+            return await MapToUserDtoAsync(user);
         }
 
-        private UserDto MapToUserDto(User user)
+        private async Task<UserDto> MapToUserDtoAsync(User user)
         {
+            bool hasActiveSub = await _unitOfWork.Repository<UserSubscription>()
+                .AnyAsync(s => s.UserId == user.UserId &&
+                               s.Status == SubscriptionStatus.Active &&
+                               s.EndDate > DateTime.UtcNow);
+
             return new UserDto
             {
                 UserId = user.UserId,
@@ -259,6 +272,7 @@ namespace Service.Services
                 ProfileImageUrl = user.ProfileImageUrl,
                 Address = user.Address,
                 TokenBalance = user.TokenBalance,
+                HasActiveSubscription = hasActiveSub,
                 IsActive = user.IsActive,
                 EmailVerified = user.EmailVerified,
                 MustChangePassword = user.MustChangePassword,
@@ -266,6 +280,44 @@ namespace Service.Services
                 LastLoginAt = user.LastLoginAt,
                 CreatedAt = user.CreatedAt
             };
+        }
+
+        public async Task SendChangePasswordOtpAsync(int userId, string email)
+        {
+            var otp = new Random().Next(100000, 999999).ToString();
+            _cache.Set($"pwd_otp_{userId}", otp, TimeSpan.FromMinutes(10));
+
+            var smtpHost = _configuration["Email:SmtpHost"] ?? "";
+            var smtpPort = int.TryParse(_configuration["Email:SmtpPort"], out var p) ? p : 587;
+            var smtpUser = _configuration["Email:SmtpUser"] ?? "";
+            var smtpPass = _configuration["Email:SmtpPass"] ?? "";
+            var fromAddress = _configuration["Email:FromAddress"] ?? smtpUser;
+            var fromName = _configuration["Email:FromName"] ?? "PulseGym";
+
+            using var client = new SmtpClient(smtpHost, smtpPort)
+            {
+                Credentials = new NetworkCredential(smtpUser, smtpPass),
+                EnableSsl = true
+            };
+            var message = new MailMessage
+            {
+                From = new MailAddress(fromAddress, fromName),
+                Subject = "PulseGym — Change Password OTP",
+                Body = $"Your one-time password (OTP) for changing your account password is:\n\n{otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.",
+                IsBodyHtml = false
+            };
+            message.To.Add(email);
+            await client.SendMailAsync(message);
+        }
+
+        public Task<bool> VerifyChangePasswordOtpAsync(int userId, string otp)
+        {
+            if (_cache.TryGetValue($"pwd_otp_{userId}", out string? stored) && stored == otp)
+            {
+                _cache.Remove($"pwd_otp_{userId}");
+                return Task.FromResult(true);
+            }
+            return Task.FromResult(false);
         }
     }
 }

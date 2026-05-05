@@ -28,6 +28,7 @@ export interface User {
   lastLoginAt?: string;
   createdAt: string;
   mustChangePassword?: boolean; // True if user must change password on first login
+  hasActiveSubscription?: boolean; // True if user has an active subscription
   isFirstLogin?: boolean; // True if user hasn't completed first login setup
 }
 

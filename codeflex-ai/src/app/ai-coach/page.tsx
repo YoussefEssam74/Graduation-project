@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { aiApi, AIChatLogDto, AIChatSessionDto } from "@/lib/api";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import { UserRole } from "@/types/gym";
 
 // Message type for display
@@ -204,8 +205,8 @@ function AICoachContent() {
   return (
     <div className="h-[calc(100vh-6rem)] relative overflow-hidden flex flex-col md:flex-row">
       {/* Sidebar - Chat Sessions */}
-      <div className="hidden md:flex w-72 bg-white border-r border-slate-200 flex-col z-10 h-full">
-        <div className="p-4 border-b border-slate-100">
+      <div className="hidden md:flex w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-col z-10 h-full">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-700">
           <Button
             onClick={startNewChat}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2"
@@ -215,7 +216,7 @@ function AICoachContent() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-2">
+          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 px-2">
             Chat History
           </h3>
 
@@ -231,14 +232,14 @@ function AICoachContent() {
                   onClick={() => loadSessionMessages(session.sessionId)}
                   className={`p-3 rounded-xl cursor-pointer transition-colors ${
                     currentSessionId === session.sessionId
-                      ? "bg-blue-50 border border-blue-200"
-                      : "hover:bg-slate-50"
+                      ? "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-700"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <History className="h-4 w-4 text-slate-400" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-700 text-sm truncate">
+                      <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm truncate">
                         {session.title || "Chat Session"}
                       </p>
                       <p className="text-[10px] text-slate-400">
@@ -256,13 +257,13 @@ function AICoachContent() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative z-10 min-h-0 overflow-hidden">
         {/* Chat Header */}
-        <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between flex-shrink-0">
+        <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center shadow-lg">
               <Brain className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="font-bold text-slate-900">AI Fitness Coach</h2>
+              <h2 className="font-bold text-slate-900 dark:text-white">AI Fitness Coach</h2>
               <p className="text-xs text-green-600 font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                 Online • 1 token per message
@@ -292,10 +293,10 @@ function AICoachContent() {
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <Brain className="h-8 w-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
                 Start a Conversation
               </h3>
-              <p className="text-slate-500 max-w-md">
+              <p className="text-slate-500 dark:text-slate-400 max-w-md">
                 Ask me anything about workouts, nutrition, recovery, or your
                 fitness goals. I&apos;m here to help you on your fitness
                 journey!
@@ -325,7 +326,7 @@ function AICoachContent() {
                 <div
                   className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed ${
                     msg.role === "ai"
-                      ? "bg-white text-slate-700 rounded-tl-none shadow-sm"
+                      ? "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-tl-none shadow-sm"
                       : "bg-blue-600 text-white rounded-tr-none"
                   }`}
                 >
@@ -347,20 +348,11 @@ function AICoachContent() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center">
                 <Brain className="h-4 w-4 text-white" />
               </div>
-              <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm">
+              <div className="bg-white dark:bg-slate-700 p-4 rounded-2xl rounded-tl-none shadow-sm">
                 <div className="flex gap-1">
-                  <span
-                    className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
-                    style={{ animationDelay: "0ms" }}
-                  ></span>
-                  <span
-                    className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
-                    style={{ animationDelay: "150ms" }}
-                  ></span>
-                  <span
-                    className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"
-                    style={{ animationDelay: "300ms" }}
-                  ></span>
+                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]"></span>
+                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]"></span>
+                  <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:300ms]"></span>
                 </div>
               </div>
             </div>
@@ -371,7 +363,7 @@ function AICoachContent() {
         </div>
 
         {/* Input Area */}
-        <div className="bg-white border-t border-slate-200 p-4 flex-shrink-0">
+        <div className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 flex-shrink-0">
           <div className="flex gap-2 max-w-4xl mx-auto">
             <Input
               value={input}
@@ -380,7 +372,7 @@ function AICoachContent() {
                 e.key === "Enter" && !e.shiftKey && handleSend()
               }
               placeholder="Ask about workouts, nutrition, or your fitness goals..."
-              className="flex-1 h-12 rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+              className="flex-1 h-12 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-700 dark:text-white dark:placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500"
               disabled={isSending}
             />
             <Button
@@ -408,7 +400,9 @@ function AICoachContent() {
 export default function AICoachPage() {
   return (
     <ProtectedRoute allowedRoles={[UserRole.Member]}>
-      <AICoachContent />
+      <SubscriptionGate>
+        <AICoachContent />
+      </SubscriptionGate>
     </ProtectedRoute>
   );
 }

@@ -12,5 +12,7 @@ namespace ServiceAbstraction.Services
         Task<bool> VerifyPasswordAsync(string email, string password);
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
         Task<UserDto> CompleteFirstLoginSetupAsync(int userId);
+        Task SendChangePasswordOtpAsync(int userId, string email);
+        Task<bool> VerifyChangePasswordOtpAsync(int userId, string otp);
     }
 }

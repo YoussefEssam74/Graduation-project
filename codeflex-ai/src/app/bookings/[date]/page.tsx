@@ -29,7 +29,7 @@ import Link from "next/link";
 export default function BookingDatePage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const { showToast } = useToast();
     const [bookings, setBookings] = useState<BookingDto[]>([]);
     const [loading, setLoading] = useState(true);
@@ -79,6 +79,7 @@ export default function BookingDatePage() {
             if (response.success) {
                 showToast("Booking cancelled successfully. Tokens refunded.", "success");
                 setBookings(prev => prev.filter(b => b.bookingId !== bookingId));
+                await refreshUser();
             } else {
                 showToast(response.message || "Failed to cancel booking", "error");
             }

@@ -128,4 +128,23 @@ export const authApi = {
   logout() {
     removeAuthToken();
   },
+
+  /**
+   * Send OTP to email for password change verification
+   */
+  async sendChangePasswordOtp(): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>('/auth/send-change-password-otp', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Verify OTP for password change
+   */
+  async verifyChangePasswordOtp(otp: string): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>('/auth/verify-change-password-otp', {
+      method: 'POST',
+      body: JSON.stringify({ otp }),
+    });
+  },
 };

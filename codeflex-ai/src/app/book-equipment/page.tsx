@@ -30,6 +30,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
 import { equipmentApi, bookingsApi, type EquipmentDto } from "@/lib/api";
@@ -91,11 +92,21 @@ function BookEquipmentContent() {
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
     const [isBooking, setIsBooking] = useState(false);
+    // Sequential booking state
+    const [lastBookingEndTime, setLastBookingEndTime] = useState("");
+    const [lastBookingDate, setLastBookingDate] = useState("");
+    const [selectedRestTime, setSelectedRestTime] = useState(5);
 
     // Coach session blocking state
     const [isCheckingCoachSession, setIsCheckingCoachSession] = useState(false);
     const [hasCoachSession, setHasCoachSession] = useState(false);
     const [coachSessionMessage, setCoachSessionMessage] = useState("");
+
+    // User equipment bookings: equipmentId -> bookingId (for Cancel button)
+    const [userEquipmentBookings, setUserEquipmentBookings] = useState<Map<number, number>>(new Map());
+    // Time ranges for in-use equipment: equipmentId -> {start, end}
+    const [equipmentBookingTimes, setEquipmentBookingTimes] = useState<Map<number, { start: string; end: string }>>(new Map());
+    const [isCancellingEquipment, setIsCancellingEquipment] = useState<number | null>(null);
 
     // Duration options
     const durationOptions = [
@@ -103,6 +114,13 @@ function BookEquipmentContent() {
         { value: 45, label: "45 minutes" },
         { value: 60, label: "1 hour" },
         { value: 90, label: "1.5 hours" },
+    ];
+
+    // Rest time options between sequential equipment bookings
+    const restOptions = [
+        { value: 3, label: "3 min" },
+        { value: 5, label: "5 min" },
+        { value: 10, label: "10 min" },
     ];
 
     // Fetch equipment
@@ -132,6 +150,35 @@ function BookEquipmentContent() {
 
         fetchEquipment();
     }, [showToast]);
+
+    // Fetch user's active equipment bookings (for Cancel button + time range display)
+    useEffect(() => {
+        if (!user?.userId) return;
+        const fetchUserEquipmentBookings = async () => {
+            try {
+                const response = await bookingsApi.getUserBookings(user.userId);
+                if (response.success && response.data) {
+                    const now = new Date();
+                    const bookingMap = new Map<number, number>();
+                    const timeMap = new Map<number, { start: string; end: string }>();
+                    response.data.forEach(b => {
+                        if (b.equipmentId && b.status !== 2 && new Date(b.endTime) > now) {
+                            bookingMap.set(b.equipmentId, b.bookingId);
+                            timeMap.set(b.equipmentId, {
+                                start: new Date(b.startTime).toTimeString().slice(0, 5),
+                                end: new Date(b.endTime).toTimeString().slice(0, 5),
+                            });
+                        }
+                    });
+                    setUserEquipmentBookings(bookingMap);
+                    setEquipmentBookingTimes(timeMap);
+                }
+            } catch (error) {
+                console.error("Failed to fetch user equipment bookings:", error);
+            }
+        };
+        fetchUserEquipmentBookings();
+    }, [user?.userId]);
 
     // Filter equipment
     const filteredEquipment = equipment.filter(eq => {
@@ -177,6 +224,28 @@ function BookEquipmentContent() {
             checkCoachSessionForTimeSlot(bookingDate, startTime, endTime);
         }
     }, [bookingDate, startTime, endTime, bookingModalOpen]);
+
+    // Auto-compute endTime whenever startTime or selectedDuration changes
+    useEffect(() => {
+        if (startTime) {
+            const [h, m] = startTime.split(":").map(Number);
+            const totalMins = h * 60 + m + selectedDuration;
+            const endH = Math.floor(totalMins / 60) % 24;
+            const endM = totalMins % 60;
+            setEndTime(`${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`);
+        }
+    }, [startTime, selectedDuration]);
+
+    // When rest time changes and there's a previous booking, recompute start time
+    useEffect(() => {
+        if (lastBookingEndTime && bookingModalOpen) {
+            const [h, m] = lastBookingEndTime.split(":").map(Number);
+            const totalMins = h * 60 + m + selectedRestTime;
+            const startH = Math.floor(totalMins / 60) % 24;
+            const startM = totalMins % 60;
+            setStartTime(`${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}`);
+        }
+    }, [lastBookingEndTime, selectedRestTime, bookingModalOpen]);
 
     const handleBookEquipment = async () => {
         if (!selectedEquipment || !user?.userId) return;
@@ -226,6 +295,16 @@ function BookEquipmentContent() {
             });
 
             if (response.success) {
+                // Store end time for next sequential booking
+                setLastBookingEndTime(endTime);
+                setLastBookingDate(bookingDate);
+
+                // Track booking for cancel button and time range display
+                if (response.data?.bookingId) {
+                    setUserEquipmentBookings(prev => new Map(prev).set(selectedEquipment.equipmentId, response.data!.bookingId));
+                    setEquipmentBookingTimes(prev => new Map(prev).set(selectedEquipment.equipmentId, { start: startTime, end: endTime }));
+                }
+
                 deductTokens(cost);
                 if (refreshUser) await refreshUser();
 
@@ -254,11 +333,43 @@ function BookEquipmentContent() {
         }
     };
 
-    const getStatusBadge = (status: number) => {
+    const handleCancelEquipmentBooking = async (equipmentId: number) => {
+        const bookingId = userEquipmentBookings.get(equipmentId);
+        if (!bookingId) return;
+        setIsCancellingEquipment(equipmentId);
+        try {
+            const response = await bookingsApi.cancelBooking(bookingId, "Cancelled by user from equipment page");
+            if (response.success) {
+                showToast("Booking cancelled. Tokens refunded.", "success");
+                setUserEquipmentBookings(prev => { const m = new Map(prev); m.delete(equipmentId); return m; });
+                setEquipmentBookingTimes(prev => { const m = new Map(prev); m.delete(equipmentId); return m; });
+                setEquipment(prev => prev.map(eq => eq.equipmentId === equipmentId ? { ...eq, status: 0 } : eq));
+                setLastBookingEndTime("");
+                setLastBookingDate("");
+                if (refreshUser) await refreshUser();
+            } else {
+                showToast(response.message || "Failed to cancel booking", "error");
+            }
+        } catch {
+            showToast("Failed to cancel booking", "error");
+        } finally {
+            setIsCancellingEquipment(null);
+        }
+    };
+
+    const to12h = (time: string) => {
+        const [h, m] = time.split(":").map(Number);
+        const ampm = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+    };
+
+    const getStatusBadge = (status: number, timeRange?: { start: string; end: string }) => {
         const statusStr = mapEquipmentStatus(status);
+        const inUseText = timeRange ? `In Use: ${to12h(timeRange.start)}–${to12h(timeRange.end)}` : "In Use";
         const badges = {
             available: { text: "Available", color: "bg-green-500", textColor: "text-white" },
-            in_use: { text: "In Use", color: "bg-amber-500", textColor: "text-white" },
+            in_use: { text: inUseText, color: "bg-amber-500", textColor: "text-white" },
             maintenance: { text: "Maintenance", color: "bg-red-500", textColor: "text-white" },
         };
         const badge = badges[statusStr];
@@ -372,15 +483,16 @@ function BookEquipmentContent() {
                                 >
                                     {/* Equipment Image */}
                                     <div className="relative h-48 bg-slate-100 overflow-hidden">
-                                        <div
-                                            className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500"
-                                            style={{ backgroundImage: `url('${eq.imageUrl}')` }}
+                                        <img
+                                            src={eq.imageUrl}
+                                            alt={eq.name}
+                                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                                         {/* Status Badge */}
                                         <div className="absolute top-3 right-3 z-10">
-                                            {getStatusBadge(eq.status)}
+                                            {getStatusBadge(eq.status, equipmentBookingTimes.get(eq.equipmentId))}
                                         </div>
 
                                         {/* Category Tag */}
@@ -422,41 +534,58 @@ function BookEquipmentContent() {
                                                 <Clock className="h-4 w-4" />
                                                 <span>30-90 min slots</span>
                                             </div>
-                                            <Button
-                                                onClick={() => {
-                                                    setSelectedEquipment(eq);
-                                                    setBookingModalOpen(true);
-                                                    // Set default start time to next hour, clamped to business hours (6 AM - 9 PM)
-                                                    const now = new Date();
-                                                    const nextHour = new Date(now.getTime());
-                                                    nextHour.setHours(now.getHours() + 1, 0, 0, 0);
-                                                    const OPEN_HOUR = 6;
-                                                    const LAST_START_HOUR = 21; // last slot 9 PM, ends 10 PM
-                                                    if (nextHour.getHours() < OPEN_HOUR) {
-                                                        nextHour.setHours(OPEN_HOUR, 0, 0, 0);
-                                                    } else if (nextHour.getHours() > LAST_START_HOUR) {
-                                                        nextHour.setDate(nextHour.getDate() + 1);
-                                                        nextHour.setHours(OPEN_HOUR, 0, 0, 0);
-                                                    }
-                                                    const startTimeStr = nextHour.toTimeString().slice(0, 5);
-                                                    setStartTime(startTimeStr);
-                                                    // Update date if it rolled over to next day
-                                                    const updatedDate = nextHour.toISOString().split('T')[0];
-                                                    setBookingDate(updatedDate);
-                                                    // Set default end time to 1 hour after start
-                                                    const endHour = new Date(nextHour.getTime());
-                                                    endHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-                                                    const endTimeStr = endHour.toTimeString().slice(0, 5);
-                                                    setEndTime(endTimeStr);
-                                                }}
-                                                disabled={status !== "available"}
-                                                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${status === "available"
-                                                    ? "bg-primary text-white hover:bg-primary/90 shadow-sm hover:shadow-md"
-                                                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                                    }`}
-                                            >
-                                                {status === "available" ? "Book Now" : "Unavailable"}
-                                            </Button>
+                                            {userEquipmentBookings.has(eq.equipmentId) ? (
+                                                <Button
+                                                    onClick={() => handleCancelEquipmentBooking(eq.equipmentId)}
+                                                    disabled={isCancellingEquipment === eq.equipmentId}
+                                                    className="px-4 py-2 text-sm font-bold rounded-lg bg-red-500 text-white hover:bg-red-600 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {isCancellingEquipment === eq.equipmentId
+                                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                                        : "Cancel Booking"}
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    onClick={() => {
+                                                        setSelectedEquipment(eq);
+                                                        setSelectedDuration(60);
+                                                        setSelectedRestTime(5);
+                                                        setBookingModalOpen(true);
+                                                        if (lastBookingEndTime) {
+                                                            // Chain from previous booking: start = last end + rest time
+                                                            const [h, m] = lastBookingEndTime.split(":").map(Number);
+                                                            const totalMins = h * 60 + m + 5;
+                                                            const startH = Math.floor(totalMins / 60) % 24;
+                                                            const startM = totalMins % 60;
+                                                            setStartTime(`${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}`);
+                                                            setBookingDate(lastBookingDate);
+                                                        } else {
+                                                            // First booking: default to next hour, clamped to business hours
+                                                            const now = new Date();
+                                                            const nextHour = new Date(now.getTime());
+                                                            nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+                                                            const OPEN_HOUR = 6;
+                                                            const LAST_START_HOUR = 21;
+                                                            if (nextHour.getHours() < OPEN_HOUR) {
+                                                                nextHour.setHours(OPEN_HOUR, 0, 0, 0);
+                                                            } else if (nextHour.getHours() > LAST_START_HOUR) {
+                                                                nextHour.setDate(nextHour.getDate() + 1);
+                                                                nextHour.setHours(OPEN_HOUR, 0, 0, 0);
+                                                            }
+                                                            setStartTime(nextHour.toTimeString().slice(0, 5));
+                                                            setBookingDate(nextHour.toISOString().split('T')[0]);
+                                                        }
+                                                        // endTime is auto-computed by the duration useEffect
+                                                    }}
+                                                    disabled={status !== "available"}
+                                                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${status === "available"
+                                                        ? "bg-primary text-white hover:bg-primary/90 shadow-sm hover:shadow-md"
+                                                        : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                        }`}
+                                                >
+                                                    {status === "available" ? "Book Now" : "Unavailable"}
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </Card>
@@ -468,7 +597,7 @@ function BookEquipmentContent() {
 
             {/* Booking Modal */}
             <Dialog open={bookingModalOpen} onOpenChange={setBookingModalOpen}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Dumbbell className="h-5 w-5 text-primary" />
@@ -477,17 +606,42 @@ function BookEquipmentContent() {
                     </DialogHeader>
 
                     {selectedEquipment && (
-                        <div className="space-y-6">
+                        <div className="space-y-3">
                             {/* Equipment Image */}
-                            <div
-                                className="h-40 rounded-xl bg-cover bg-center"
-                                style={{ backgroundImage: `url('${selectedEquipment.imageUrl}')` }}
-                            />
+                            <div className="h-28 rounded-xl overflow-hidden">
+                                <img
+                                    src={selectedEquipment.imageUrl}
+                                    alt={selectedEquipment.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
 
                             {/* Date and Time Selection */}
-                            <div className="space-y-4">
+                            <div className="space-y-2">
+                                {/* Sequential booking: rest time picker */}
+                                {lastBookingEndTime && (
+                                    <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                                        <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
+                                            ⏱ Continuing from your previous booking (ended at {to12h(lastBookingEndTime)})
+                                        </p>
+                                        <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                            Rest Time Between Equipment
+                                        </label>
+                                        <select
+                                            title="Rest time between equipment bookings"
+                                            value={selectedRestTime}
+                                            onChange={(e) => setSelectedRestTime(Number(e.target.value))}
+                                            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                                        >
+                                            {restOptions.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                         Booking Date
                                     </label>
                                     <Input
@@ -499,29 +653,39 @@ function BookEquipmentContent() {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                                             Start Time
                                         </label>
-                                        <Input
-                                            type="time"
-                                            value={startTime}
-                                            onChange={(e) => setStartTime(e.target.value)}
-                                            className="w-full"
-                                        />
+                                        {lastBookingEndTime ? (
+                                            <div className="h-10 rounded-md border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
+                                                {to12h(startTime)}
+                                            </div>
+                                        ) : (
+                                            <Input
+                                                type="time"
+                                                value={startTime}
+                                                onChange={(e) => setStartTime(e.target.value)}
+                                                className="w-full"
+                                            />
+                                        )}
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                            End Time
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                            Duration
                                         </label>
-                                        <Input
-                                            type="time"
-                                            value={endTime}
-                                            onChange={(e) => setEndTime(e.target.value)}
-                                            className="w-full"
-                                        />
+                                        <select
+                                            title="Booking duration"
+                                            value={selectedDuration}
+                                            onChange={(e) => setSelectedDuration(Number(e.target.value))}
+                                            className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                                        >
+                                            {durationOptions.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -554,23 +718,23 @@ function BookEquipmentContent() {
                             )}
 
                             {/* Summary */}
-                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-slate-500">Equipment</span>
-                                    <span className="font-medium">{selectedEquipment.name}</span>
+                            <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-slate-500 dark:text-slate-400 text-sm">Equipment</span>
+                                    <span className="font-medium dark:text-white text-sm">{selectedEquipment.name}</span>
                                 </div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-slate-500">Date</span>
-                                    <span className="font-medium">{bookingDate || "Not selected"}</span>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-slate-500 dark:text-slate-400 text-sm">Date</span>
+                                    <span className="font-medium dark:text-white text-sm">{bookingDate || "Not selected"}</span>
                                 </div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-slate-500">Time</span>
-                                    <span className="font-medium">{startTime && endTime ? `${startTime} - ${endTime}` : "Not selected"}</span>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-slate-500 dark:text-slate-400 text-sm">Time</span>
+                                    <span className="font-medium dark:text-white text-sm">{startTime && endTime ? `${startTime} - ${endTime}` : "Not selected"}</span>
                                 </div>
-                                <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                                    <span className="text-slate-500">Total Cost</span>
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-600">
+                                    <span className="text-slate-500 dark:text-slate-400">Total Cost</span>
                                     <div className="flex items-center gap-1">
-                                        <span className="text-xl font-bold text-slate-900">{selectedEquipment.tokensCost}</span>
+                                        <span className="text-xl font-bold text-slate-900 dark:text-white">{selectedEquipment.tokensCost}</span>
                                         <Ticket className="h-4 w-4 text-primary" />
                                     </div>
                                 </div>
@@ -619,7 +783,9 @@ function BookEquipmentContent() {
 export default function BookEquipmentPage() {
     return (
         <ProtectedRoute allowedRoles={[UserRole.Member]}>
-            <BookEquipmentContent />
+            <SubscriptionGate>
+                <BookEquipmentContent />
+            </SubscriptionGate>
         </ProtectedRoute>
     );
 }

@@ -2,6 +2,7 @@
 FastAPI service with direct database access for frontend integration
 Optimized for performance - frontend calls directly, retrieves user context via RAG
 """
+import csv as _csv
 import asyncio
 import json
 import time
@@ -320,9 +321,31 @@ def build_prompt_with_context(req: DirectWorkoutRequest, context: Dict[str, Any]
     adjusted_goal, body_explanation = _infer_goal_from_inbody(
         context, req.goal)
 
+    # ── Step 1.5: Derive exact structure from dataset patterns ──
+    try:
+        template = WORKOUT_GOAL_TEMPLATES.get(
+            adjusted_goal, WORKOUT_GOAL_TEMPLATES.get("Build Muscle", {}))
+        dataset_technique = template.get("technique", "Straight Sets")
+        dataset_sets = template.get("sets", 4)
+        dataset_reps = template.get("rep_range", "8-12")
+        dataset_rest = template.get("rest", "90s")
+    except NameError:
+        dataset_technique, dataset_sets, dataset_reps, dataset_rest = "Straight Sets", 4, "8-12", "90s"
+
+    # Determine split structure
+    split_structure = "Full Body"
+    if req.days_per_week == 4:
+        split_structure = "Upper/Lower Split (e.g., Upper, Lower, Rest, Upper, Lower)"
+    elif req.days_per_week == 5:
+        split_structure = "Push/Pull/Legs/Upper/Lower Split"
+    elif req.days_per_week == 6:
+        split_structure = "Push/Pull/Legs twice a week"
+
     prompt_parts = [
-        f"Generate a {req.days_per_week}-day workout plan for a {req.fitness_level.lower()} level person",
-        f"with the goal of {adjusted_goal.lower()}."
+        f"Act as an expert fitness coach. Generate a {req.days_per_week}-day workout plan for a {req.fitness_level.lower()} level person",
+        f"with the goal of {adjusted_goal.lower()}.",
+        f"Strict Structure Constraint: Use a {split_structure} based on proven workout dataset templates.",
+        f"Strict Set/Rep Constraint: Use {dataset_technique} technique with {dataset_sets} sets of {dataset_reps} reps and {dataset_rest} rest based on dataset goals.",
     ]
 
     # Add body composition insight
@@ -388,8 +411,10 @@ def build_prompt_with_context(req: DirectWorkoutRequest, context: Dict[str, Any]
 # Exercise Metadata Database (Images + Descriptions)
 # ============================================================
 
-EXERCISE_METADATA = {
-    # Chest
+# ── EXERCISE_METADATA is now populated lazily from unique_exercises.csv ──
+# The dict below is kept as a last-resort fallback for name-based lookups.
+# Real data comes from EXERCISE_DB_BY_NAME (populated at startup).
+EXERCISE_METADATA_FALLBACK: Dict[str, Dict[str, str]] = {
     "Bench Press": {"description": "Lie on flat bench, lower barbell to chest, press up explosively. King of upper body exercises.", "image": "/api/exercise-images/bench-press.jpg"},
     "Incline Dumbbell Press": {"description": "Press dumbbells on incline bench (30-45°) to target upper chest. Control the descent.", "image": "/api/exercise-images/incline-dumbbell-press.jpg"},
     "Cable Flyes": {"description": "Stand between cable towers, bring handles together in arc motion. Stretch and squeeze.", "image": "/api/exercise-images/cable-flyes.jpg"},
@@ -446,17 +471,52 @@ EXERCISE_METADATA = {
 }
 
 
+def _slugify(name: str) -> str:
+    """Convert exercise name to a URL-safe image slug."""
+    return re.sub(r'[^a-z0-9]+', '-', name.lower().strip()).strip('-')
+
+
 def enrich_exercise_with_metadata(exercise: dict) -> dict:
-    """Add image URL and description to exercise if available in database"""
+    """
+    Enrich an exercise dict with image_url, description, and video_url.
+    Lookup order:
+      1. EXERCISE_DB_BY_NAME (from unique_exercises.csv — full instructions)
+      2. EXERCISE_METADATA_FALLBACK (legacy hardcoded dict)
+      3. Procedural fallback
+    """
     name = exercise.get("name", "")
-    if name in EXERCISE_METADATA:
-        metadata = EXERCISE_METADATA[name]
+    name_lower = name.lower().strip()
+
+    # ── Primary: unique_exercises.csv data ──
+    db_entry = EXERCISE_DB_BY_NAME.get(name_lower)
+    if not db_entry:
+        # Fuzzy fallback — try partial name match
+        for db_key, db_val in EXERCISE_DB_BY_NAME.items():
+            if (name_lower in db_key or db_key in name_lower) and len(min(name_lower, db_key, key=len)) > 4:
+                db_entry = db_val
+                break
+
+    if db_entry:
+        exercise["image_url"] = db_entry.get(
+            "video_url", "/api/exercise-images/default-exercise.jpg")
+        exercise["description"] = db_entry.get(
+            "instructions", f"Perform {name} with proper form and controlled tempo.")[:300]
+        if not exercise.get("target_muscles") and db_entry.get("targetMuscles"):
+            exercise["target_muscles"] = db_entry["targetMuscles"][:3]
+        if not exercise.get("equipment") and db_entry.get("equipments"):
+            exercise["equipment"] = db_entry["equipments"][0] if db_entry["equipments"] else "Bodyweight"
+        return exercise
+
+    # ── Secondary: legacy hardcoded metadata ──
+    if name in EXERCISE_METADATA_FALLBACK:
+        metadata = EXERCISE_METADATA_FALLBACK[name]
         exercise["image_url"] = metadata["image"]
         exercise["description"] = metadata["description"]
-    else:
-        # Fallback for unknown exercises
-        exercise["image_url"] = "/api/exercise-images/default-exercise.jpg"
-        exercise["description"] = f"Perform {name} with proper form and controlled tempo."
+        return exercise
+
+    # ── Tertiary: procedural fallback ──
+    exercise["image_url"] = f"/api/exercise-images/{_slugify(name)}.jpg"
+    exercise["description"] = f"Perform {name} with proper form and controlled tempo."
     return exercise
 
 
@@ -854,69 +914,220 @@ def extract_workout_from_model_output(text: str, req_days: int = 4, req_goal: st
     return plan
 
 
-# ── Load exercise database (IntelliFit AI-Ready CSV — much better data quality) ──
-EXERCISE_CSV_PATH = os.path.join(
-    SCRIPT_DIR, "data", "IntelliFit_AI_Ready_8000_Exercises.csv")
+# ============================================================
+# Dataset Loaders — unique_exercises.csv, workout_dataset.csv,
+# calisthenics-exercises-training-data.csv
+# ============================================================
+
+
+DATASET_DIR = os.path.join(SCRIPT_DIR, "Dataset")
+
+# ── 1. unique_exercises.csv → primary exercise pool ──────────────────────────
+# Columns: exercise_name, target_muscle, secondary_muscles, equipment,
+#          mechanics, force_type, difficulty, instructions, video_url, source
+
 EXERCISE_DB: List[Dict[str, Any]] = []
+
+# Movement-pattern inference for unique_exercises.csv
+# The CSV has mechanics (Compound/Isolation) and force_type (Push/Pull) but no
+# explicit movement_pattern column, so we derive one deterministically.
+_MECHANICS_FORCE_TO_PATTERN: Dict[str, str] = {
+    "compound_push": "horizontal_push",
+    "compound_pull": "horizontal_pull",
+    "isolation_push": "elbow_extension",
+    "isolation_pull": "elbow_flexion",
+    "compound_push (bilateral)": "horizontal_push",
+}
+_MUSCLE_TO_PATTERN: Dict[str, str] = {
+    "quads": "squat",
+    "hamstrings": "hip_hinge",
+    "glutes": "hip_hinge",
+    "calves": "calf",
+    "abs": "core_flexion",
+    "shoulders": "vertical_push",
+    "chest": "horizontal_push",
+    "back": "horizontal_pull",
+    "lats": "vertical_pull",
+    "biceps": "elbow_flexion",
+    "triceps": "elbow_extension",
+    "forearms": "elbow_flexion",
+}
+_GOAL_REP_SCHEMES: Dict[str, Dict[str, Any]] = {
+    "Strength":   {"min_reps": 3,  "max_reps": 6,  "rest_seconds": 180, "sets": 5},
+    "Power":      {"min_reps": 1,  "max_reps": 5,  "rest_seconds": 240, "sets": 3},
+    "Muscle":     {"min_reps": 8,  "max_reps": 12, "rest_seconds": 90,  "sets": 4},
+    "WeightLoss": {"min_reps": 12, "max_reps": 15, "rest_seconds": 60,  "sets": 3},
+    "Endurance":  {"min_reps": 15, "max_reps": 20, "rest_seconds": 45,  "sets": 3},
+}
+
+
+def _derive_movement_pattern(mechanics: str, force_type: str, target_muscle: str) -> str:
+    """Derive a movement_pattern string from unique_exercises.csv columns."""
+    m = mechanics.strip().lower()
+    f = force_type.strip().lower()
+    t = target_muscle.strip().lower()
+
+    # Check combined key first
+    key = f"{m}_{f}"
+    if key in _MECHANICS_FORCE_TO_PATTERN:
+        return _MECHANICS_FORCE_TO_PATTERN[key]
+
+    # Muscle-specific overrides (legs, core, etc.)
+    for muscle_kw, pattern in _MUSCLE_TO_PATTERN.items():
+        if muscle_kw in t:
+            return pattern
+
+    # Generic fallback using just force
+    if "push" in f:
+        return "horizontal_push"
+    if "pull" in f:
+        return "horizontal_pull"
+    return "general"
+
+
+_UNIQUE_EXERCISES_CSV = os.path.join(DATASET_DIR, "unique_exercises.csv")
 try:
-    import csv as _csv
-    with open(EXERCISE_CSV_PATH, "r", encoding="utf-8") as _f:
+    with open(_UNIQUE_EXERCISES_CSV, "r", encoding="utf-8") as _f:
         reader = _csv.DictReader(_f)
         for row in reader:
-            # Normalise CSV fields to the list-based format the rest of the code expects
-            exercise = {
-                "name": row.get("name", "").strip(),
-                "targetMuscles": [row["targetMuscles"].strip()] if row.get("targetMuscles", "").strip() else [],
-                "bodyParts": [row["bodyParts"].strip()] if row.get("bodyParts", "").strip() else [],
-                "equipments": [row["equipments"].strip()] if row.get("equipments", "").strip() else ["body weight"],
-                "secondaryMuscles": [m.strip() for m in row.get("secondaryMuscles", "").split("|") if m.strip()],
-                "instructions": row.get("instructions", ""),
-                "movement_pattern": row.get("movement_pattern", "general").strip(),
-                "difficulty_level": {"beginner": 1, "intermediate": 2, "advanced": 3}.get(
-                    row.get("difficulty_level", "intermediate").strip().lower(), 2),
-                "exercise_type": row.get("exercise_type", "compound").strip(),
-                "rep_ranges_by_goal": {
-                    "Strength": {"min_reps": 3, "max_reps": 6, "rest_seconds": 180, "sets": 4},
-                    "Power": {"min_reps": 1, "max_reps": 5, "rest_seconds": 240, "sets": 3},
-                    "Muscle": {
-                        "min_reps": int(row.get("recommended_rep_min", 8)),
-                        "max_reps": int(row.get("recommended_rep_max", 12)),
-                        "rest_seconds": int(row.get("rest_seconds", 90)),
-                        "sets": 3,
-                    },
-                    "WeightLoss": {"min_reps": 12, "max_reps": 15, "rest_seconds": 60, "sets": 3},
-                    "Endurance": {"min_reps": 15, "max_reps": 20, "rest_seconds": 45, "sets": 3},
-                },
-                "goal_suitability": {},  # will be inferred from exercise_type
-                "unilateral": row.get("unilateral", "False").strip().lower() == "true",
-            }
-            # Infer goal suitability from exercise type
-            if exercise["exercise_type"] == "compound":
-                exercise["goal_suitability"] = {
-                    "Strength": 8, "Muscle": 8, "WeightLoss": 7, "Endurance": 5, "Power": 8}
+            mechanics = row.get("mechanics", "").strip()
+            force_type = row.get("force_type", "").strip()
+            target_muscle = row.get("target_muscle", "").strip()
+            difficulty = row.get("difficulty", "Intermediate").strip().lower()
+            difficulty_level = {
+                "beginner": 1, "intermediate": 2, "advanced": 3}.get(difficulty, 2)
+            exercise_type = "compound" if mechanics.lower() == "compound" else "isolation"
+
+            # Secondary muscles: stored as comma-separated string
+            secondary_raw = row.get("secondary_muscles", "")
+            secondary_muscles = [m.strip()
+                                 for m in secondary_raw.split(",") if m.strip()]
+
+            movement_pattern = _derive_movement_pattern(
+                mechanics, force_type, target_muscle)
+
+            # Goal suitability: compounds are better for Strength/Muscle
+            if exercise_type == "compound":
+                goal_suit = {"Strength": 8, "Muscle": 8,
+                             "WeightLoss": 7, "Endurance": 6, "Power": 8}
             else:
-                exercise["goal_suitability"] = {
-                    "Strength": 5, "Muscle": 7, "WeightLoss": 6, "Endurance": 6, "Power": 4}
-            EXERCISE_DB.append(exercise)
-    print(
-        f"✅ Loaded {len(EXERCISE_DB)} exercises from IntelliFit CSV database")
+                goal_suit = {"Strength": 4, "Muscle": 7,
+                             "WeightLoss": 6, "Endurance": 7, "Power": 3}
+
+            ex = {
+                "name":             row.get("exercise_name", "").strip(),
+                "targetMuscles":    [target_muscle] if target_muscle else [],
+                # fallback
+                "bodyParts":        [target_muscle] if target_muscle else [],
+                "equipments":       [row.get("equipment", "Bodyweight").strip() or "Bodyweight"],
+                "secondaryMuscles": secondary_muscles,
+                "instructions":     row.get("instructions", ""),
+                "video_url":        row.get("video_url", ""),
+                "movement_pattern": movement_pattern,
+                "difficulty_level": difficulty_level,
+                "exercise_type":    exercise_type,
+                "goal_suitability": goal_suit,
+                "rep_ranges_by_goal": {g: dict(v) for g, v in _GOAL_REP_SCHEMES.items()},
+                "unilateral":       False,
+            }
+            if ex["name"]:
+                EXERCISE_DB.append(ex)
+    print(f"✅ Loaded {len(EXERCISE_DB)} exercises from unique_exercises.csv")
 except Exception as _e:
-    print(f"⚠️ Could not load exercise CSV: {_e}")
-    # Fallback: try old JSON
-    _json_path = os.path.join(
-        SCRIPT_DIR, "data", "exercises_comprehensive_real.json")
-    try:
-        with open(_json_path, "r", encoding="utf-8") as _f:
-            EXERCISE_DB = json.load(_f)
-        print(
-            f"✅ Fallback: Loaded {len(EXERCISE_DB)} exercises from JSON database")
-    except Exception as _e2:
-        print(f"⚠️ Could not load any exercise DB: {_e2}")
+    print(f"❌ Failed to load unique_exercises.csv: {_e}")
+    print(f"   Expected path: {_UNIQUE_EXERCISES_CSV}")
+
+# ── 2. calisthenics-exercises-training-data.csv → warmup & cardio pool ───────
+# Columns: id, name, category, primary_muscles, description,
+#          progression_1, progression_2, progression_3
+
+CALISTHENICS_DB: List[Dict[str, Any]] = []
+CALISTHENICS_BY_CATEGORY: Dict[str, List[Dict]] = {}
+_CALISTHENICS_CSV = os.path.join(
+    DATASET_DIR, "calisthenics-exercises-training-data.csv")
+try:
+    with open(_CALISTHENICS_CSV, "r", encoding="utf-8") as _f:
+        reader = _csv.DictReader(_f)
+        for row in reader:
+            cat = row.get("category", "core").strip().lower()
+            # Parse primary_muscles — stored as "[muscle1, muscle2]" string
+            muscles_raw = row.get("primary_muscles", "")
+            muscles = [m.strip().strip('[').strip(']').strip('"')
+                       for m in re.split(r'[,\[\]]', muscles_raw) if m.strip()]
+            entry = {
+                "name":            row.get("name", "").strip(),
+                "category":        cat,
+                "primary_muscles": muscles,
+                "description":     row.get("description", ""),
+                "progressions": [
+                    row.get("progression_1", ""),
+                    row.get("progression_2", ""),
+                    row.get("progression_3", ""),
+                ],
+            }
+            if entry["name"]:
+                CALISTHENICS_DB.append(entry)
+                CALISTHENICS_BY_CATEGORY.setdefault(cat, []).append(entry)
+    print(f"✅ Loaded {len(CALISTHENICS_DB)} calisthenics entries "
+          f"({len(CALISTHENICS_BY_CATEGORY)} categories) from calisthenics CSV")
+except Exception as _e:
+    print(f"❌ Failed to load calisthenics CSV: {_e}")
+
+# ── 3. workout_dataset.csv → goal-specific rep/set scheme overrides ───────────
+# Columns: title, main_goal, workout_type, training_level, program_duration,
+#          days_per_week, ..., pdf_text
+# We parse pdf_text to extract ramped-set notation and rep ranges per goal.
+
+WORKOUT_GOAL_TEMPLATES: Dict[str, Dict[str, Any]] = {
+    # Defaults — overridden by parsed dataset values where available
+    "Build Muscle":        {"sets": 4, "rep_range": "8-12",  "rest": "90s",  "technique": "Progressive Overload"},
+    "Lose Fat":            {"sets": 3, "rep_range": "12-15", "rest": "60s",  "technique": "Superset"},
+    "Increase Strength":   {"sets": 5, "rep_range": "3-6",   "rest": "180s", "technique": "Ramped Sets"},
+    "Improve Conditioning": {"sets": 3, "rep_range": "15-20", "rest": "30s",  "technique": "Circuit"},
+    "Gain Weight":         {"sets": 4, "rep_range": "6-10",  "rest": "120s", "technique": "Progressive Overload"},
+    "General Fitness":     {"sets": 3, "rep_range": "10-15", "rest": "60s",  "technique": "Straight Sets"},
+}
+_WORKOUT_DATASET_CSV = os.path.join(DATASET_DIR, "workout_dataset.csv")
+try:
+    with open(_WORKOUT_DATASET_CSV, "r", encoding="utf-8-sig") as _f:
+        reader = _csv.DictReader(_f)
+        _goal_rep_count: Dict[str, int] = {}
+        for row in reader:
+            goal = row.get("main_goal", "").strip()
+            if not goal:
+                continue
+            pdf_text = row.get("pdf_text", "")
+            # Detect ramped set programs (e.g. "5 5" pattern with Ramped keyword)
+            is_ramped = "Ramped" in pdf_text or "ramped" in pdf_text
+            # Extract rep numbers from pdf_text for heuristic detection
+            rep_pattern_match = re.search(
+                r'\b(\d+)\s*[-–]\s*(\d+)\b', pdf_text)
+            if rep_pattern_match and goal not in _goal_rep_count:
+                min_r = int(rep_pattern_match.group(1))
+                max_r = int(rep_pattern_match.group(2))
+                if 1 < min_r < max_r < 30:
+                    technique = "Ramped Sets" if is_ramped else "Straight Sets"
+                    rest_s = "180s" if max_r <= 6 else (
+                        "90s" if max_r <= 12 else "60s")
+                    WORKOUT_GOAL_TEMPLATES[goal] = {
+                        "sets":      5 if is_ramped else 3,
+                        "rep_range": f"{min_r}-{max_r}",
+                        "rest":      rest_s,
+                        "technique": technique,
+                    }
+                    _goal_rep_count[goal] = 1
+    print(
+        f"✅ Workout dataset loaded — {len(WORKOUT_GOAL_TEMPLATES)} goal templates active")
+except Exception as _e:
+    print(
+        f"⚠️ Could not load workout_dataset.csv: {_e} — using built-in templates")
 
 # Organise DB by movement pattern & muscle for fast lookup
 DB_BY_PATTERN: Dict[str, List[Dict]] = {}
 DB_BY_MUSCLE: Dict[str, List[Dict]] = {}
-DB_BY_NAME: Dict[str, Dict] = {}   # name → exercise (for fast validation)
+DB_BY_NAME: Dict[str, Dict] = {}        # name → exercise (for fast validation)
+# also used by enrich_exercise_with_metadata
+EXERCISE_DB_BY_NAME: Dict[str, Dict] = {}
 for _ex in EXERCISE_DB:
     _pat = _ex.get("movement_pattern", "other")
     DB_BY_PATTERN.setdefault(_pat, []).append(_ex)
@@ -925,6 +1136,7 @@ for _ex in EXERCISE_DB:
     _nm = _ex.get("name", "").lower().strip()
     if _nm:
         DB_BY_NAME[_nm] = _ex
+        EXERCISE_DB_BY_NAME[_nm] = _ex
 
 
 def _pick_exercises_for_focus(focus_areas: List[str], goal: str, level: str,
@@ -1927,6 +2139,125 @@ def filter_exercises_for_injuries(plan: Dict[str, Any], injuries: List[str]) -> 
 
 
 # ============================================================
+# Warmup & Cardio Generation (backed by calisthenics dataset)
+# ============================================================
+
+# Map fitness goals to calisthenics cardio categories
+_GOAL_TO_CARDIO_CATEGORY: Dict[str, str] = {
+    "WeightLoss":  "explosive",
+    "Endurance":   "explosive",
+    "Muscle":      "mobility",
+    "Strength":    "mobility",
+    "Power":       "explosive",
+    "General":     "core",
+}
+
+# Warmup category priorities: all plans use mobility + a focused category
+_WARMUP_CATEGORY_ORDER = ["mobility", "core", "push", "pull", "legs"]
+
+# Injury → unsafe calisthenics categories to exclude from warmup/cardio
+_INJURY_UNSAFE_CALISTHENICS_CATS: Dict[str, set] = {
+    "Knee":       {"explosive", "legs"},
+    "Ankle":      {"explosive", "legs"},
+    "Hip":        {"explosive", "legs"},
+    "Shoulder":   {"push", "skill"},
+    "Elbow":      {"push", "pull", "skill"},
+    "Wrist":      {"push", "skill"},
+    "Lower Back": {"explosive", "skill"},
+    "Upper Back": {"skill"},
+}
+
+
+def generate_warmup_and_cardio(
+    goal: str,
+    fitness_level: str,
+    injuries: Optional[List[str]] = None,
+    n_warmup: int = 3,
+    n_cardio: int = 1,
+) -> Dict[str, Any]:
+    """
+    Select warm-up exercises and an optional cardio finisher from the
+    calisthenics dataset.  Selections are:
+      - Injury-safe (excluded categories per injury map)
+      - Level-appropriate (beginner gets progression_1 cues, advanced gets progression_3)
+      - Goal-aligned (cardio category chosen by goal)
+
+    Returns a dict with keys `warmup` (list) and `cardio` (list).
+    """
+    import random as _rand
+
+    injuries = injuries or []
+
+    # Build excluded category set from injuries
+    excluded_cats: set = set()
+    for inj in injuries:
+        excluded_cats.update(_INJURY_UNSAFE_CALISTHENICS_CATS.get(inj, set()))
+
+    # Determine appropriate progression index from fitness level
+    level_lower = fitness_level.lower()
+    prog_idx = 0 if "beginner" in level_lower else (
+        2 if "advanced" in level_lower else 1)
+
+    # ── Warm-up selection ──
+    warmup_exercises: List[Dict[str, Any]] = []
+    for cat in _WARMUP_CATEGORY_ORDER:
+        if cat in excluded_cats:
+            continue
+        pool = [e for e in CALISTHENICS_BY_CATEGORY.get(cat, [])]
+        _rand.shuffle(pool)
+        for entry in pool:
+            if len(warmup_exercises) >= n_warmup:
+                break
+            progression = entry["progressions"][prog_idx] if entry["progressions"] else entry["name"]
+            warmup_exercises.append({
+                "name":            entry["name"],
+                "category":        cat,
+                "sets":            "2",
+                "reps":            "10-12",
+                "rest":            "30s",
+                "target_muscles":  entry["primary_muscles"][:3],
+                "description":     entry["description"],
+                "progression_cue": progression,
+                "notes":           "Warm-up: perform with controlled tempo",
+            })
+        if len(warmup_exercises) >= n_warmup:
+            break
+
+    # ── Cardio / finisher selection ──
+    cardio_exercises: List[Dict[str, Any]] = []
+    goal_key = goal if goal in _GOAL_TO_CARDIO_CATEGORY else "General"
+    pref_cat = _GOAL_TO_CARDIO_CATEGORY[goal_key]
+
+    # Try preferred category first, then fall back to any non-excluded
+    cardio_candidates = [e for e in CALISTHENICS_BY_CATEGORY.get(pref_cat, [])
+                         if pref_cat not in excluded_cats]
+    if not cardio_candidates:
+        cardio_candidates = [
+            e for cat, entries in CALISTHENICS_BY_CATEGORY.items()
+            if cat not in excluded_cats
+            for e in entries
+        ]
+    _rand.shuffle(cardio_candidates)
+    for entry in cardio_candidates[:n_cardio]:
+        progression = entry["progressions"][prog_idx] if entry["progressions"] else entry["name"]
+        duration = "10-15 min" if goal_key in {
+            "WeightLoss", "Endurance"} else "5-8 min"
+        cardio_exercises.append({
+            "name":            entry["name"],
+            "category":        entry["category"],
+            "sets":            "1",
+            "reps":            duration,
+            "rest":            "none",
+            "target_muscles":  entry["primary_muscles"][:3],
+            "description":     entry["description"],
+            "progression_cue": progression,
+            "notes":           "Cardio/finisher: maintain consistent pace",
+        })
+
+    return {"warmup": warmup_exercises, "cardio": cardio_exercises}
+
+
+# ============================================================
 # API Endpoints
 # ============================================================
 
@@ -1966,7 +2297,7 @@ async def generate_direct(req: DirectWorkoutRequest) -> DirectWorkoutResponse:
 
         if not is_valid or plan is None:
             print(
-                f"⚠️ ML model failed to generate valid workout plan. Error: {error}")
+                f"\u26a0\ufe0f ML model failed to generate valid workout plan. Error: {error}")
             return DirectWorkoutResponse(
                 plan=None,
                 is_valid_json=False,
@@ -1976,14 +2307,99 @@ async def generate_direct(req: DirectWorkoutRequest) -> DirectWorkoutResponse:
                 error=error or "AI model failed to generate a valid workout plan"
             )
 
-        # 5. Injury Post-Processing Filter
-        # The small model can't reliably avoid exercises for injured areas,
+        # 5a. InjuryRulesEngine — movement-pattern aware pre-filter (Layer 0)
+        # This is a SEPARATE safety pass from the keyword blacklist below.
+        # It operates on clinical movement patterns (squat, hip_hinge, etc.)
+        # rather than exercise names, catching exercises the keyword list misses.
+        if req.injuries:
+            try:
+                from injury_rules_engine import InjuryRulesEngine, InjuryInput, InjuryRegion, InjuryType, Severity, DurationCategory
+                _engine = InjuryRulesEngine()
+
+                # Build InjuryInput objects with conservative defaults for simple string injuries
+                _INJURY_REGION_MAP = {
+                    "Lower Back": InjuryRegion.LOWER_BACK,
+                    "Shoulder": InjuryRegion.SHOULDER,
+                    "Knee": InjuryRegion.KNEE,
+                    "Wrist": InjuryRegion.WRIST,
+                    "Elbow": InjuryRegion.ELBOW,
+                    "Hip": InjuryRegion.HIP,
+                    "Ankle": InjuryRegion.ANKLE,
+                    "Neck": InjuryRegion.NECK,
+                    "Upper Back": InjuryRegion.UPPER_BACK,
+                }
+                injury_inputs = []
+                for inj_str in req.injuries:
+                    region = _INJURY_REGION_MAP.get(inj_str)
+                    if region:
+                        injury_inputs.append(InjuryInput(
+                            injury_region=region,
+                            injury_type=InjuryType.PAIN,
+                            severity=Severity.MODERATE,          # conservative default
+                            duration_category=DurationCategory.CHRONIC,
+                            pain_now=4,
+                            pain_with_daily_activity=False,
+                            range_of_motion_limited=True,
+                            doctor_cleared=False,
+                            currently_in_physio=False,
+                            movements_that_hurt=[],
+                            recent_trauma=False,
+                            unexplained_swelling=False,
+                            major_weakness=False,
+                            systemic_symptoms=False,
+                            worsening=False,
+                        ))
+
+                if injury_inputs:
+                    injury_decision = _engine.evaluate(injury_inputs)
+                    print(f"\u2705 InjuryRulesEngine decision: "
+                          f"contraindicated={injury_decision.contraindicated_patterns}, "
+                          f"restricted={injury_decision.restricted_patterns}")
+
+                    # Add coaching notes to plan
+                    if injury_decision.coaching_notes:
+                        plan["injury_coaching_notes"] = injury_decision.coaching_notes
+                    if injury_decision.requires_clearance:
+                        plan["medical_clearance_required"] = True
+                        plan["clearance_reasons"] = injury_decision.clearance_reasons
+
+                    # Filter each day's exercises by movement pattern
+                    for _day in plan.get("days", []):
+                        _day["exercises"] = _engine.filter_exercises(
+                            _day.get("exercises", []), injury_decision
+                        )
+                    print(f"\u2705 InjuryRulesEngine movement-pattern filter applied")
+
+            except ImportError:
+                print(
+                    "\u26a0\ufe0f injury_rules_engine not importable — skipping Layer-0 filter")
+            except Exception as _ie:
+                print(
+                    f"\u26a0\ufe0f InjuryRulesEngine error (non-fatal): {_ie}")
+
+        # 5b. Injury Post-Processing Filter — exercise name keyword blacklist (Layer 1)
+        # The small model can\'t reliably avoid exercises for injured areas,
         # so we deterministically filter and replace them here.
         if req.injuries:
-            print(f"🛡️ Applying injury filter for: {req.injuries}")
+            print(
+                f"\U0001f6e1\ufe0f Applying injury keyword filter for: {req.injuries}")
             plan = filter_exercises_for_injuries(plan, req.injuries)
 
-        print(f"✅ Plan generated successfully in {latency_ms}ms")
+        # 6. Attach warmup & cardio to every training day (from calisthenics dataset)
+        if CALISTHENICS_DB:
+            wc = generate_warmup_and_cardio(
+                goal=req.goal,
+                fitness_level=req.fitness_level,
+                injuries=req.injuries,
+                n_warmup=3,
+                n_cardio=1 if req.goal in {"WeightLoss", "Endurance"} else 0,
+            )
+            for day in plan.get("days", []):
+                day["warmup"] = wc["warmup"]
+                if wc["cardio"]:
+                    day["cardio"] = wc["cardio"]
+
+        print(f"\u2705 Plan generated successfully in {latency_ms}ms")
 
         return DirectWorkoutResponse(
             plan=plan,

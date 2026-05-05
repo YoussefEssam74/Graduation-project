@@ -23,6 +23,7 @@ import {
   Zap,
   Award,
   BarChart3,
+  Loader2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,16 +129,15 @@ function ProgressContent() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="min-h-screen">
+      <div className="max-w-5xl mx-auto px-6 py-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -393,6 +393,7 @@ function ProgressContent() {
           </Link>
         </div>
       </Card>
+      </div>
     </div>
   );
 }

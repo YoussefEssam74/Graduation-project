@@ -22,6 +22,8 @@ interface SubscriptionContextType {
   hasAiAccess: boolean;
   /** User can book coaches and get coach plan reviews */
   hasCoachAccess: boolean;
+  /** True when user has any active subscription */
+  hasActiveSubscription: boolean;
   /** Check if user has a specific feature by keyword (case-insensitive) */
   hasFeature: (keyword: string) => boolean;
   /** Refresh subscription data from server */
@@ -86,6 +88,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // All active subscriptions can book equipment
   const hasEquipmentAccess = subscription?.status === "Active";
+  const hasActiveSubscription = subscription?.status === "Active";
 
   // AI access: features containing "ai" keyword
   const hasAiAccess =
@@ -111,6 +114,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         hasEquipmentAccess,
         hasAiAccess,
         hasCoachAccess,
+        hasActiveSubscription,
         hasFeature,
         refreshSubscription: fetchSubscription,
       }}

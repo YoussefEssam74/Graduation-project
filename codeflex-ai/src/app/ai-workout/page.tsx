@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import {
   workoutGeneratorApi,
   type WorkoutPlan,
@@ -94,7 +95,8 @@ export default function AIWorkoutGeneratorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+    <SubscriptionGate>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -292,6 +294,7 @@ export default function AIWorkoutGeneratorPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </SubscriptionGate>
   );
 }

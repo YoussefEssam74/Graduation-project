@@ -80,7 +80,7 @@ namespace Service
             _exerciseRagService = exerciseRagService;
 
             // Initialize lazy services
-            _lazyAuthService = new Lazy<IAuthService>(() => new AuthService(_unitOfWork, _tokenService));
+            _lazyAuthService = new Lazy<IAuthService>(() => new AuthService(_unitOfWork, _tokenService, _memoryCache, _configuration));
             _lazyUserService = new Lazy<IUserService>(() => new UserService(_unitOfWork));
             _lazyTokenTransactionService = new Lazy<ITokenTransactionService>(() => new TokenTransactionService(_unitOfWork, _mapper));
             _lazyEquipmentTimeSlotService = new Lazy<IEquipmentTimeSlotService>(() =>

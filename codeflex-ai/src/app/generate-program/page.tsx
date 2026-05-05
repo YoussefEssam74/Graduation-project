@@ -9,6 +9,7 @@ import { Mic, ArrowRight, Square, Bot, Sparkles, Loader2, Ticket, AlertCircle, C
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import { UserRole } from "@/types/gym";
 import Link from "next/link";
 import { inbodyApi, type InBodyMeasurementDto } from "@/lib/api/inbody";
@@ -459,7 +460,9 @@ function GenerateProgramContent() {
 export default function GenerateProgramPage() {
   return (
     <ProtectedRoute allowedRoles={[UserRole.Member]}>
-      <GenerateProgramContent />
+      <SubscriptionGate>
+        <GenerateProgramContent />
+      </SubscriptionGate>
     </ProtectedRoute>
   );
 }

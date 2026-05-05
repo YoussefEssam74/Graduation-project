@@ -1,0 +1,22 @@
+nutrition_sft — Post-generation cleaning report
+MAX_DAY_KCAL=6000  MIN_DAY_KCAL=500  DEVIATION_THRESHOLD=20%
+
+============================================================
+File    : nutrition_sft_train.csv
+Before  : 12,868 rows
+After   : 12,867 rows
+Dropped : 1 rows  (0.0%)
+
+  By priority:
+    P2:oil_corruption                             1
+
+  Sample dropped rows:
+  [P2:oil_corruption] P2:oil_corruption — day total 6036 kcal > 6000
+
+============================================================
+File    : nutrition_sft_eval.csv
+Before  : 1,430 rows
+After   : 1,430 rows
+Dropped : 0 rows  (0.0%)
+
+  By priority:

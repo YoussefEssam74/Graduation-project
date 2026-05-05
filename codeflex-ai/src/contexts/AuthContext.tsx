@@ -88,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profileImageUrl: userData.profileImageUrl,
         address: userData.address,
         tokenBalance: userData.tokenBalance,
+        hasActiveSubscription: userData.hasActiveSubscription,
         isActive: userData.isActive,
         emailVerified: userData.emailVerified,
         lastLoginAt: userData.lastLoginAt,
@@ -178,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profileImageUrl: userData.profileImageUrl,
         address: userData.address,
         tokenBalance: userData.tokenBalance,
+        hasActiveSubscription: userData.hasActiveSubscription,
         isActive: userData.isActive,
         emailVerified: userData.emailVerified,
         lastLoginAt: userData.lastLoginAt,
@@ -250,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...user!,
         mustChangePassword: userData.mustChangePassword,
         isFirstLogin: userData.isFirstLogin,
+        hasActiveSubscription: userData.hasActiveSubscription,
       };
 
       setUser(updatedUser);

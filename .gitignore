@@ -3,6 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Large ML files - too big for GitHub (>100MB)
+*.zip
+ml_models/**/*.csv
+ml_models/**/checkpoint*/
+ml_models/**/__pycache__/
+
 # Sensitive configuration files - NEVER commit these
 appsettings.Development.json
 appsettings.Production.json

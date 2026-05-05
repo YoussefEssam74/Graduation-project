@@ -585,20 +585,13 @@ namespace Service.Services
             // Refund Tokens if applicable
             if (booking.TokensCost > 0 && booking.Status != BookingStatus.Cancelled)
             {
-                var user = await _unitOfWork.Repository<User>().GetByIdAsync(booking.UserId);
-                if (user != null)
+                // CreateTransactionAsync handles the balance update internally — do NOT also update directly
+                await _tokenTransactionService.CreateTransactionAsync(booking.UserId, new CreateTokenTransactionDto
                 {
-                    user.TokenBalance += booking.TokensCost;
-                    _unitOfWork.Repository<User>().Update(user);
-
-                    // Create refund transaction
-                    await _tokenTransactionService.CreateTransactionAsync(booking.UserId, new CreateTokenTransactionDto
-                    {
-                        Amount = booking.TokensCost,
-                        TransactionType = "Refund",
-                        Description = $"Booking cancelled: {cancellationReason}"
-                    });
-                }
+                    Amount = booking.TokensCost,
+                    TransactionType = "Refund",
+                    Description = $"Booking cancelled: {cancellationReason}"
+                });
             }
 
             // Cancel equipment time slots

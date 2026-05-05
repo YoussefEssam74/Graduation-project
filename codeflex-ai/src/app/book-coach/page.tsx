@@ -30,6 +30,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import SubscriptionGate from "@/components/SubscriptionGate";
 import { UserRole } from "@/types/gym";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -480,7 +481,9 @@ function BookCoachContent() {
 export default function BookCoachPage() {
   return (
     <ProtectedRoute allowedRoles={[UserRole.Member]}>
-      <BookCoachContent />
+      <SubscriptionGate>
+        <BookCoachContent />
+      </SubscriptionGate>
     </ProtectedRoute>
   );
 }

@@ -108,4 +108,8 @@ export const paymentsApi = {
       method: "POST",
     });
   },
+
+  async getMemberPayments(userId: number): Promise<ApiResponse<PaymentDto[]>> {
+    return await apiFetch<PaymentDto[]>(`/payment?userId=${userId}`);
+  },
 };

@@ -42,15 +42,21 @@ import { UserRole } from "@/types/gym";
 import { Switch } from "@/components/ui/switch"; // Assuming you have this, or use standard checkbox
 
 function ProfileContent() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("personal");
   const [isSaving, setIsSaving] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [subscription, setSubscription] =
     useState<UserSubscriptionDetailsDto | null>(null);
   const [subLoading, setSubLoading] = useState(false);
+  const [passwordStep, setPasswordStep] = useState<1 | 2 | 3>(1);
+  const [otpCode, setOtpCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -101,15 +107,22 @@ function ProfileContent() {
     }
   }, [user?.userId]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user?.userId) return;
+    if (!file) return;
+    setPendingFile(file);
+    setPreviewImage(URL.createObjectURL(file));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
+  const handleConfirmUpload = async () => {
+    if (!pendingFile || !user?.userId) return;
     setUploadingImage(true);
     try {
-      const response = await usersApi.uploadProfileImage(user.userId, file);
+      const response = await usersApi.uploadProfileImage(user.userId, pendingFile);
       if (response.success && response.data) {
         setProfileImage(response.data.profileImageUrl);
+        if (refreshUser) await refreshUser();
         showToast("Profile image updated!", "success");
       } else {
         showToast(response.message || "Failed to upload image", "error");
@@ -118,37 +131,81 @@ function ProfileContent() {
       showToast("Error uploading image", "error");
     } finally {
       setUploadingImage(false);
+      setPreviewImage(null);
+      setPendingFile(null);
     }
   };
 
-  const handleChangePassword = async () => {
-    if (!passwordData.currentPassword || !passwordData.newPassword) {
-      showToast("Please fill in all password fields", "error");
+  const handleVerifyCurrentPassword = async () => {
+    if (!passwordData.currentPassword) {
+      showToast("Please enter your current password", "error");
       return;
     }
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      showToast("New passwords do not match", "error");
-      return;
+    setChangingPassword(true);
+    try {
+      // Verify by attempting a test — just send OTP, current password is checked server-side on final step
+      const response = await authApi.sendChangePasswordOtp();
+      if (response.success) {
+        showToast("OTP sent to your email", "success");
+        setPasswordStep(2);
+      } else {
+        showToast(response.message || "Failed to send OTP", "error");
+      }
+    } catch {
+      showToast("Error sending OTP", "error");
+    } finally {
+      setChangingPassword(false);
     }
-    if (passwordData.newPassword.length < 6) {
-      showToast("Password must be at least 6 characters", "error");
-      return;
-    }
+  };
 
+  const handleVerifyOtp = async () => {
+    if (!otpCode) {
+      showToast("Please enter the OTP code", "error");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const response = await authApi.verifyChangePasswordOtp(otpCode);
+      if (response.success) {
+        showToast("OTP verified. Set your new password.", "success");
+        setPasswordStep(3);
+      } else {
+        showToast(response.message || "Invalid OTP", "error");
+      }
+    } catch {
+      showToast("Error verifying OTP", "error");
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const handleSetNewPassword = async () => {
+    if (!newPassword) {
+      showToast("Please enter a new password", "error");
+      return;
+    }
+    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      showToast("Password must be 8+ chars with uppercase, number, and special character", "error");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      showToast("Passwords do not match", "error");
+      return;
+    }
     setChangingPassword(true);
     try {
       const response = await authApi.changePassword({
         currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-        confirmPassword: passwordData.confirmPassword,
+        newPassword,
+        confirmPassword: confirmNewPassword,
       });
       if (response.success) {
         showToast("Password changed successfully!", "success");
-        setPasswordData({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
+        setPasswordStep(1);
+        setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        setOtpCode("");
+        setNewPassword("");
+        setConfirmNewPassword("");
       } else {
         showToast(response.message || "Failed to change password", "error");
       }
@@ -208,7 +265,7 @@ function ProfileContent() {
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
                 className="hidden"
-                onChange={handleImageUpload}
+                onChange={handleImageSelect}
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -576,75 +633,126 @@ function ProfileContent() {
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">
                 Security & Password
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                    Current Password
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={passwordData.currentPassword}
-                    onChange={(e) =>
-                      setPasswordData({
-                        ...passwordData,
-                        currentPassword: e.target.value,
-                      })
-                    }
-                    className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-white h-11 rounded-xl"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                    New Password
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="Min. 6 characters"
-                    value={passwordData.newPassword}
-                    onChange={(e) =>
-                      setPasswordData({
-                        ...passwordData,
-                        newPassword: e.target.value,
-                      })
-                    }
-                    className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-white h-11 rounded-xl"
-                  />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                    Confirm New Password
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="Re-enter new password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordData({
-                        ...passwordData,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                    className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-white h-11 rounded-xl"
-                  />
-                </div>
+
+              {/* Step indicators */}
+              <div className="flex items-center gap-2 mb-8">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${passwordStep >= step ? "bg-slate-900 dark:bg-slate-300 text-white dark:text-slate-900" : "bg-slate-100 dark:bg-slate-700 text-slate-400"}`}>
+                      {passwordStep > step ? <CheckCircle className="h-4 w-4" /> : step}
+                    </div>
+                    {step < 3 && <div className={`h-0.5 w-8 ${passwordStep > step ? "bg-slate-900 dark:bg-slate-300" : "bg-slate-200 dark:bg-slate-700"}`} />}
+                  </div>
+                ))}
+                <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
+                  {passwordStep === 1 ? "Verify current password" : passwordStep === 2 ? "Enter OTP from email" : "Set new password"}
+                </span>
               </div>
-              <div className="mt-6 flex justify-end">
-                <Button
-                  onClick={handleChangePassword}
-                  disabled={changingPassword}
-                  className="bg-slate-900 dark:bg-slate-700 text-white font-bold rounded-xl px-6 h-11 hover:bg-slate-800 dark:hover:bg-slate-600"
-                >
-                  {changingPassword ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />{" "}
-                      Updating...
-                    </>
-                  ) : (
-                    "Update Password"
-                  )}
-                </Button>
-              </div>
+
+              {passwordStep === 1 && (
+                <div className="space-y-4 max-w-sm">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      Current Password
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                      className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-white h-11 rounded-xl"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleVerifyCurrentPassword}
+                    disabled={changingPassword}
+                    className="bg-slate-900 dark:bg-slate-700 text-white font-bold rounded-xl px-6 h-11 hover:bg-slate-800 dark:hover:bg-slate-600"
+                  >
+                    {changingPassword ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Sending OTP...</> : "Continue"}
+                  </Button>
+                </div>
+              )}
+
+              {passwordStep === 2 && (
+                <div className="space-y-4 max-w-sm">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">An OTP has been sent to your email address. Enter it below.</p>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      OTP Code
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-white h-11 rounded-xl tracking-widest text-center text-lg"
+                      maxLength={6}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => { setPasswordStep(1); setOtpCode(""); }}
+                      className="rounded-xl h-11"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handleVerifyOtp}
+                      disabled={changingPassword}
+                      className="bg-slate-900 dark:bg-slate-700 text-white font-bold rounded-xl px-6 h-11 hover:bg-slate-800 dark:hover:bg-slate-600"
+                    >
+                      {changingPassword ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Verifying...</> : "Verify OTP"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {passwordStep === 3 && (
+                <div className="space-y-4 max-w-sm">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      New Password
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="Min. 8 characters"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-white h-11 rounded-xl"
+                    />
+                    <p className="text-xs text-slate-400">Must contain uppercase, number, and special character</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      Confirm New Password
+                    </label>
+                    <Input
+                      type="password"
+                      placeholder="Re-enter new password"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 dark:text-white h-11 rounded-xl"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => { setPasswordStep(2); setNewPassword(""); setConfirmNewPassword(""); }}
+                      className="rounded-xl h-11"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handleSetNewPassword}
+                      disabled={changingPassword}
+                      className="bg-slate-900 dark:bg-slate-700 text-white font-bold rounded-xl px-6 h-11 hover:bg-slate-800 dark:hover:bg-slate-600"
+                    >
+                      {changingPassword ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Updating...</> : "Update Password"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-700 bg-red-50/50 dark:bg-red-900/10 -m-6 -mt-0 p-6">
                 <div className="flex items-center justify-between">
@@ -702,6 +810,36 @@ function ProfileContent() {
           )}
         </div>
       </div>
+
+      {/* Profile Picture Preview Dialog */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center gap-5">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Preview Profile Picture</h3>
+            <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-blue-100 dark:border-blue-900 shadow-lg">
+              <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center">Does this look good? Confirm to upload.</p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => { setPreviewImage(null); setPendingFile(null); }}
+                disabled={uploadingImage}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmUpload}
+                disabled={uploadingImage}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -122,55 +122,55 @@ function WorkoutHistoryContent() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-6rem)]">
+      <div className="flex items-center justify-center py-32">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-6rem)] bg-slate-50 p-4 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto px-6 py-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-slate-900 mb-2">Workout History</h1>
-          <p className="text-slate-500">Track your progress and review past workouts</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Workout History</h1>
+          <p className="text-slate-500 dark:text-slate-400">Track your progress and review past workouts</p>
         </div>
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card className="p-6 bg-white border-0 shadow-sm">
+          <Card className="p-6 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
                 <Dumbbell className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-900">{totalWorkouts}</p>
-                <p className="text-sm text-slate-500">Total Workouts</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{totalWorkouts}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Total Workouts</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6 bg-white border-0 shadow-sm">
+          <Card className="p-6 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
                 <Clock className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-900">{totalDuration}</p>
-                <p className="text-sm text-slate-500">Total Minutes</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{totalDuration}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Total Minutes</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6 bg-white border-0 shadow-sm">
+          <Card className="p-6 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
                 <Flame className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-900">{totalCalories}</p>
-                <p className="text-sm text-slate-500">Calories Burned</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{totalCalories}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Calories Burned</p>
               </div>
             </div>
           </Card>
@@ -184,7 +184,7 @@ function WorkoutHistoryContent() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search workouts..."
-              className="pl-10 h-11 border-slate-200 rounded-xl"
+              className="pl-10 h-11 border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-400 rounded-xl"
             />
           </div>
           <div className="flex gap-2">
@@ -204,10 +204,10 @@ function WorkoutHistoryContent() {
 
         {/* Workout List */}
         {filteredLogs.length === 0 ? (
-          <Card className="p-12 text-center bg-white border-0 shadow-sm">
-            <Dumbbell className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-900 mb-2">No Workouts Found</h3>
-            <p className="text-slate-500">
+          <Card className="p-12 text-center bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <Dumbbell className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No Workouts Found</h3>
+            <p className="text-slate-500 dark:text-slate-400">
               {searchTerm ? "Try a different search term" : "Start logging your workouts to track progress"}
             </p>
           </Card>
@@ -216,17 +216,17 @@ function WorkoutHistoryContent() {
             {filteredLogs.map((log) => (
               <Card
                 key={log.logId}
-                className="p-6 bg-white border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                className="p-6 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => handleViewDetails(log)}
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex gap-4">
-                    <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
                       <Dumbbell className="h-7 w-7 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-900">{log.planName || "Custom Workout"}</h3>
-                      <p className="text-sm text-slate-500">
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">{log.planName || "Custom Workout"}</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         {new Date(log.workoutDate).toLocaleDateString("en-US", {
                           weekday: "long",
                           month: "short",
@@ -237,15 +237,15 @@ function WorkoutHistoryContent() {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1 text-slate-600 text-sm">
+                    <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300 text-sm">
                       <Clock className="h-4 w-4" />
                       <span>{log.durationMinutes || 0}m</span>
                     </div>
-                    <div className="flex items-center gap-1 text-slate-600 text-sm">
+                    <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300 text-sm">
                       <Flame className="h-4 w-4" />
                       <span>{log.caloriesBurned || 0} kcal</span>
                     </div>
-                    <div className="flex items-center gap-1 text-slate-600 text-sm">
+                    <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300 text-sm">
                       <Target className="h-4 w-4" />
                       <span>{log.exercises?.length || 0} exercises</span>
                     </div>
@@ -253,7 +253,7 @@ function WorkoutHistoryContent() {
                 </div>
 
                 {log.notes && (
-                  <p className="mt-4 text-sm text-slate-500 italic border-t border-slate-100 pt-4">
+                  <p className="mt-4 text-sm text-slate-500 dark:text-slate-400 italic border-t border-slate-100 dark:border-slate-700 pt-4">
                     &quot;{log.notes}&quot;
                   </p>
                 )}
@@ -286,28 +286,28 @@ function WorkoutHistoryContent() {
             <div className="space-y-6 mt-4">
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                   <Clock className="h-5 w-5 mx-auto mb-1 text-blue-600" />
-                  <div className="text-lg font-bold">{selectedLog.durationMinutes || 0}</div>
-                  <div className="text-xs text-slate-500">minutes</div>
+                  <div className="text-lg font-bold dark:text-white">{selectedLog.durationMinutes || 0}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">minutes</div>
                 </div>
-                <div className="text-center p-3 bg-orange-50 rounded-lg">
+                <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
                   <Flame className="h-5 w-5 mx-auto mb-1 text-orange-600" />
-                  <div className="text-lg font-bold">{selectedLog.caloriesBurned || 0}</div>
-                  <div className="text-xs text-slate-500">calories</div>
+                  <div className="text-lg font-bold dark:text-white">{selectedLog.caloriesBurned || 0}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">calories</div>
                 </div>
-                <div className="text-center p-3 bg-green-50 rounded-lg">
+                <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
                   <Target className="h-5 w-5 mx-auto mb-1 text-green-600" />
-                  <div className="text-lg font-bold">{selectedLog.exercises?.length || 0}</div>
-                  <div className="text-xs text-slate-500">exercises</div>
+                  <div className="text-lg font-bold dark:text-white">{selectedLog.exercises?.length || 0}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">exercises</div>
                 </div>
               </div>
 
               {/* Notes */}
               {selectedLog.notes && (
-                <div className="p-4 bg-slate-50 rounded-lg">
-                  <h4 className="font-medium mb-2">Notes</h4>
-                  <p className="text-sm text-slate-600">{selectedLog.notes}</p>
+                <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                  <h4 className="font-medium dark:text-white mb-2">Notes</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">{selectedLog.notes}</p>
                 </div>
               )}
 
@@ -317,12 +317,12 @@ function WorkoutHistoryContent() {
                   <h4 className="font-medium mb-3">Exercises</h4>
                   <div className="space-y-3">
                     {selectedLog.exercises.map((exercise, idx) => (
-                      <div key={idx} className="p-4 border border-slate-200 rounded-lg">
-                        <h5 className="font-medium mb-2">{exercise.exerciseName}</h5>
+                      <div key={idx} className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <h5 className="font-medium dark:text-white mb-2">{exercise.exerciseName}</h5>
                         {exercise.sets && exercise.sets.length > 0 && (
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="text-slate-500">
+                              <tr className="text-slate-500 dark:text-slate-400">
                                 <th className="text-left py-1">Set</th>
                                 <th className="text-right py-1">Weight</th>
                                 <th className="text-right py-1">Reps</th>

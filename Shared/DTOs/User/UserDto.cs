@@ -12,6 +12,7 @@ namespace Shared.DTOs.User
         public string? ProfileImageUrl { get; set; }
         public string? Address { get; set; }
         public int TokenBalance { get; set; }
+        public bool HasActiveSubscription { get; set; }
         public bool IsActive { get; set; }
         public bool EmailVerified { get; set; }
         public bool MustChangePassword { get; set; }

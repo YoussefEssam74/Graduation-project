@@ -13,6 +13,7 @@ import {
   Target,
 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { Progress } from "@/components/ui/progress";
 import { UserRole } from "@/types/gym";
 
 function AchievementsContent() {
@@ -60,26 +61,15 @@ function AchievementsContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center">
+      <div className="flex items-center justify-center py-32">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-6rem)] bg-slate-50 dark:bg-slate-900 relative p-4 lg:p-8">
-      {/* Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-lg opacity-10 dark:opacity-5 transform scale-105"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2940&auto=format&fit=crop')"
-          }}
-        />
-        <div className="absolute inset-0 bg-slate-50/90 dark:bg-slate-900/90"></div>
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto">
+    <div className="min-h-screen">
+      <div className="max-w-6xl mx-auto px-6 py-4">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Your Achievements</h1>
@@ -205,12 +195,7 @@ function AchievementsContent() {
                             <span>{milestone.currentProgress} / {milestone.milestoneTarget || '?'}</span>
                             <span>{progress}%</span>
                           </div>
-                          <div className="w-full h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-600 rounded-full transition-all"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
+                          <Progress value={progress} className="h-2" />
                         </div>
                       </div>
                     );
