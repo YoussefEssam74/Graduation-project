@@ -1,0 +1,74 @@
+# ============================================================================
+# IntelliFit .NET 8 Backend — Multi-Stage Docker Build for Render (Free Tier)
+# ============================================================================
+# Build:   docker build -f Dockerfile.backend -t intellifit-api .
+# Run:     docker run -p 10000:10000 --env-file .env intellifit-api
+# Deploy:  Push to GitHub → Render auto-builds from this Dockerfile
+# ============================================================================
+
+# ── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy solution and all .csproj files first for layer caching
+COPY Graduation-Project.sln ./
+COPY Graduation-Project/Graduation-Project.csproj               Graduation-Project/
+COPY Core/DomainLayer/DomainLayer.csproj                         Core/DomainLayer/
+COPY Core/Service/Service.csproj                                 Core/Service/
+COPY Core/ServiceAbstraction/ServiceAbstraction.csproj           Core/ServiceAbstraction/
+COPY Infrastructure/Presistence/Presistence.csproj               Infrastructure/Presistence/
+COPY Infrastructure/Presentation/Presentation.csproj             Infrastructure/Presentation/
+COPY Shared/Shared.csproj                                        Shared/
+
+# Generate a minimal appsettings.json (secrets come from env vars at runtime).
+# This file is gitignored, so it won't exist in the cloned repo.
+RUN echo '{ \
+  "Logging": { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } }, \
+  "AllowedHosts": "*", \
+  "ConnectionStrings": { "DefaultConnection": "" }, \
+  "Jwt": { "Key": "", "Issuer": "IntelliFit", "Audience": "IntelliFitUsers", "ExpirationDays": 7, "ClockSkewMinutes": 0 }, \
+  "Groq": { "ApiKey": "" }, \
+  "MLService": { "BaseUrl": "", "TimeoutSeconds": 300 }, \
+  "WorkoutGeneratorAPI": { "BaseUrl": "", "TimeoutSeconds": 300 }, \
+  "EmbeddingService": { "BaseUrl": "" }, \
+  "ExerciseData": { "StrengthJsonPath": "" }, \
+  "Security": { "RequireHttps": false, "AllowedOrigins": [] }, \
+  "Email": { "SmtpHost": "", "SmtpPort": 587, "SmtpUser": "", "SmtpPass": "", "FromAddress": "", "FromName": "PulseGym" } \
+}' > Graduation-Project/appsettings.json
+
+# Restore dependencies (cached unless .csproj files change)
+RUN dotnet restore Graduation-Project/Graduation-Project.csproj
+
+# Copy all source code
+COPY Core/           Core/
+COPY Infrastructure/ Infrastructure/
+COPY Shared/         Shared/
+COPY Graduation-Project/ Graduation-Project/
+
+# Ensure the generated appsettings.json survives the COPY overlay
+# (COPY Graduation-Project/ overwrites the directory, but appsettings.json
+# doesn't exist in the repo, so the COPY won't create one — safe.)
+
+# Publish release build
+RUN dotnet publish Graduation-Project/Graduation-Project.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# ── Stage 2: Runtime ───────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS runtime
+WORKDIR /app
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/publish .
+
+# Render injects PORT env var; we bind ASP.NET to it at runtime.
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+EXPOSE 10000
+
+# Shell form so $PORT is expanded at runtime (Render sets PORT=10000)
+ENTRYPOINT ["sh", "-c", "dotnet Graduation-Project.dll --urls=http://+:${PORT:-10000}"]

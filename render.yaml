@@ -1,0 +1,37 @@
+# ============================================================================
+# render.yaml — Infrastructure as Code for Render
+# ============================================================================
+# This file lets Render auto-discover your service configuration.
+# Deploy: Push to GitHub → Render Dashboard → New → Blueprint → Connect repo
+# ============================================================================
+
+services:
+  - type: web
+    name: intellifit-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.backend
+    region: frankfurt         # Closest to Egypt
+    plan: free
+    healthCheckPath: /swagger/index.html
+    envVars:
+      # ── Database (Neon PostgreSQL) ──
+      - key: ConnectionStrings__DefaultConnection
+        sync: false          # Set manually in Render dashboard
+      # ── JWT ──
+      - key: Jwt__Key
+        generateValue: true  # Render auto-generates a random value
+      - key: Jwt__Issuer
+        value: IntelliFit
+      - key: Jwt__Audience
+        value: IntelliFitUsers
+      # ── AI Services (Hugging Face Spaces) ──
+      - key: MLService__BaseUrl
+        sync: false          # Set after deploying HF Spaces
+      - key: WorkoutGeneratorAPI__BaseUrl
+        sync: false          # Set after deploying HF Spaces
+      # ── Groq (for AI Coach Chat) ──
+      - key: Groq__ApiKey
+        sync: false
+      # ── ASP.NET ──
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production

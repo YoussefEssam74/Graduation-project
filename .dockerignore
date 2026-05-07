@@ -1,0 +1,48 @@
+# ── .dockerignore ──
+# Exclude everything the .NET backend Docker build doesn't need
+
+# Git
+.git
+.github
+.gitignore
+
+# IDE
+.vs/
+.vscode/
+.gemini/
+.playwright-mcp/
+
+# Frontend (deployed separately on Vercel)
+codeflex-ai/
+node_modules/
+package.json
+package-lock.json
+
+# ML models (deployed separately on Hugging Face)
+ml_models/
+scripts/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Assets & documentation
+Assets/
+Documentation/
+PostmanCollections/
+Pages desgins/
+
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# Large files
+*.zip
+*.csv
+*.safetensors
+*.pptx
+
+# Dev scripts
+START_ALL_SERVICES.bat

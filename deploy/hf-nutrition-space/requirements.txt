@@ -1,0 +1,8 @@
+torch>=2.0.0
+transformers>=4.37.0
+peft>=0.8.0
+accelerate>=0.25.0
+huggingface_hub>=0.20.0
+json-repair>=0.30.0
+gradio>=4.44.0
+spaces>=0.30.0
