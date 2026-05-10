@@ -3,6 +3,7 @@ namespace Shared.DTOs.Meal
     public class MealDto
     {
         public int MealId { get; set; }
+        public int NutritionPlanId { get; set; }
         public string Name { get; set; } = null!;
         public string? Description { get; set; }
         public string? ImageUrl { get; set; }

@@ -13,6 +13,7 @@ export interface RegisterRequest {
   dateOfBirth?: string;
   gender?: number; // 0 = Male, 1 = Female
   role: string; // Member, Coach, Receptionist, Admin
+  invitationCode?: string;
 }
 
 export interface ChangePasswordRequest {
@@ -32,6 +33,7 @@ export interface UserDto {
   profileImageUrl?: string;
   address?: string;
   tokenBalance: number;
+  hasActiveSubscription?: boolean;
   isActive: boolean;
   emailVerified: boolean;
   lastLoginAt?: string;
@@ -146,5 +148,47 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ otp }),
     });
+  },
+
+  /**
+   * Forgot password step 1 — send OTP to this email address
+   */
+  async sendForgotPasswordOtp(email: string): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>('/auth/forgot-password/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+      skipAuth: true,
+    });
+  },
+
+  /**
+   * Forgot password step 2 — verify OTP and set new password
+   */
+  async confirmForgotPassword(
+    email: string,
+    otp: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>('/auth/forgot-password/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp, newPassword, confirmPassword }),
+      skipAuth: true,
+    });
+  },
+
+  /**
+   * Sign in (or sign up) with a Google ID token issued by the frontend.
+   */
+  async googleLogin(idToken: string): Promise<ApiResponse<AuthResponse>> {
+    const response = await apiFetch<AuthResponse>('/auth/google-login', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+      skipAuth: true,
+    });
+    if (response.success && response.data?.token) {
+      setAuthToken(response.data.token);
+    }
+    return response;
   },
 };

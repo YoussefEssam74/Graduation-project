@@ -6,13 +6,16 @@ import {
   LayoutDashboardIcon,
   CalendarIcon,
   ActivityIcon,
-  CoinsIcon,
   BrainIcon,
   Users2Icon,
   ShieldIcon,
   LogOutIcon,
   DumbbellIcon,
   UserCogIcon,
+  CoinsIcon,
+  TrophyIcon,
+  ClipboardListIcon,
+  MessageSquareIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,11 +44,13 @@ export default function Navbar() {
   // Role-based navigation items
   const getMemberNav = () => [
     { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
+    { href: "/programs", icon: ClipboardListIcon, label: "Plans" },
     { href: "/book-coach", icon: UserCogIcon, label: "Book Coach" },
     { href: "/bookings", icon: CalendarIcon, label: "Bookings" },
+    { href: "/achievements", icon: TrophyIcon, label: "Achievements" },
     { href: "/inbody", icon: ActivityIcon, label: "InBody" },
     { href: "/ai-coach", icon: BrainIcon, label: "AI Coach" },
-    { href: "/tokens", icon: CoinsIcon, label: "Tokens" },
+    { href: "/chat", icon: MessageSquareIcon, label: "Chat" },
     { href: "/profile", icon: UserIcon, label: "Profile" },
   ];
 
@@ -198,6 +203,16 @@ export default function Navbar() {
                 </Link>
               );
             })}
+
+            {normalizeRole(user?.role || "") === UserRole.Member && (
+              <Link
+                href="/tokens"
+                className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-primary/20 transition-colors"
+              >
+                <CoinsIcon size={15} />
+                <span>{user?.tokenBalance ?? 0}</span>
+              </Link>
+            )}
 
             {normalizeRole(user?.role || "") === UserRole.Member && (
               <Button

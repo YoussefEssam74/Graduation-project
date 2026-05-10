@@ -31,6 +31,8 @@ namespace ServiceAbstraction
         public IAuditLogService AuditLogService { get; }
         public IReceptionService ReceptionService { get; }
         public IReceptionPaymentService ReceptionPaymentService { get; }
+        public IAchievementsService AchievementsService { get; }
+        public IInvitationService InvitationService { get; }
 
     }
 }

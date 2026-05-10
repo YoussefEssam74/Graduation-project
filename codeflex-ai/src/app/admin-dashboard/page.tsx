@@ -121,7 +121,7 @@ function AdminDashboardContent() {
             </div>
             <TrendingUp className="h-5 w-5 text-green-600" />
           </div>
-          <div className="text-2xl font-bold mb-1">${mockStats.monthlyRevenue.toLocaleString()}</div>
+          <div className="text-2xl font-bold mb-1">{mockStats.monthlyRevenue.toLocaleString()} EGP</div>
           <div className="text-sm text-green-700 font-medium">Monthly Revenue</div>
           <div className="text-xs text-green-600 mt-1">+8.5% from last month</div>
         </Card>
@@ -299,7 +299,7 @@ function AdminDashboardContent() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-green-600">${coach.revenue}</div>
+                  <div className="text-lg font-bold text-green-600">{coach.revenue} EGP</div>
                   <div className="text-xs text-muted-foreground">this month</div>
                 </div>
               </div>
@@ -351,7 +351,7 @@ function AdminDashboardContent() {
           {revenueData.map((data) => (
             <div key={data.month} className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
               <div className="text-sm font-medium text-muted-foreground mb-2">{data.month}</div>
-              <div className="text-3xl font-bold text-green-600 mb-1">${(data.revenue / 1000).toFixed(1)}k</div>
+              <div className="text-3xl font-bold text-green-600 mb-1">{(data.revenue / 1000).toFixed(1)}k EGP</div>
               <div className="text-xs text-muted-foreground">{data.members} members</div>
             </div>
           ))}

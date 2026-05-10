@@ -467,7 +467,7 @@ export default function HomePage() {
                   </p>
 
                   <div className="mt-5 flex items-end gap-1">
-                    <span className="text-4xl font-bold">${plan.price}</span>
+                    <span className="text-4xl font-bold">{plan.price} EGP</span>
                     <span
                       className={`text-sm pb-1 ${plan.isPopular ? "text-slate-400" : "text-slate-500"}`}
                     >

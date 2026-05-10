@@ -570,6 +570,62 @@ namespace Presistence.Migrations
                     b.ToTable("activity_feeds", (string)null);
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.ActivityFeedComment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActivityId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ActivityFeedComments");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.ActivityFeedLike", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActivityId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ActivityFeedLikes");
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.AiChatLog", b =>
                 {
                     b.Property<int>("ChatId")
@@ -1398,6 +1454,59 @@ namespace Presistence.Migrations
                     b.ToTable("ingredients", (string)null);
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.Invitation", b =>
+                {
+                    b.Property<int>("InvitationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("InvitationId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("GuestVisitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("SubscriptionPlanId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UsedByUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("InvitationId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("SubscriptionPlanId");
+
+                    b.HasIndex("UsedByUserId");
+
+                    b.HasIndex("IsUsed", "ExpiresAt");
+
+                    b.ToTable("invitations", (string)null);
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.Meal", b =>
                 {
                     b.Property<int>("MealId")
@@ -1897,6 +2006,9 @@ namespace Presistence.Migrations
                     b.Property<string>("Features")
                         .HasColumnType("text");
 
+                    b.Property<int>("InvitationsAllowed")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1904,6 +2016,9 @@ namespace Presistence.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<int?>("MaxBookingsPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxFreezeDays")
                         .HasColumnType("integer");
 
                     b.Property<string>("PlanName")
@@ -2450,6 +2565,12 @@ namespace Presistence.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("FreezeEndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FreezeStartDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("PaymentId")
                         .HasColumnType("integer");
 
@@ -2987,6 +3108,44 @@ namespace Presistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("IntelliFit.Domain.Models.ActivityFeedComment", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.ActivityFeed", "Activity")
+                        .WithMany()
+                        .HasForeignKey("ActivityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.ActivityFeedLike", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.ActivityFeed", "Activity")
+                        .WithMany()
+                        .HasForeignKey("ActivityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Activity");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("IntelliFit.Domain.Models.AiChatLog", b =>
                 {
                     b.HasOne("IntelliFit.Domain.Models.User", "User")
@@ -3234,6 +3393,31 @@ namespace Presistence.Migrations
                     b.Navigation("MeasuredByUser");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.Invitation", b =>
+                {
+                    b.HasOne("IntelliFit.Domain.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IntelliFit.Domain.Models.SubscriptionPlan", "SubscriptionPlan")
+                        .WithMany()
+                        .HasForeignKey("SubscriptionPlanId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("IntelliFit.Domain.Models.User", "UsedBy")
+                        .WithMany()
+                        .HasForeignKey("UsedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("SubscriptionPlan");
+
+                    b.Navigation("UsedBy");
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.Meal", b =>

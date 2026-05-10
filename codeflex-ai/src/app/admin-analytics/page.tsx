@@ -20,7 +20,7 @@ function AdminAnalyticsContent() {
   const stats = [
     {
       label: "Total Revenue",
-      value: "$156,450",
+      value: "156,450 EGP",
       change: "+12.5%",
       trend: "up",
       color: "text-green-500",
@@ -152,7 +152,7 @@ function AdminAnalyticsContent() {
               <div key={item.month}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold">{item.month}</span>
-                  <span className="text-sm font-bold text-green-600">${item.revenue.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-green-600">{item.revenue.toLocaleString()} EGP</span>
                 </div>
                 <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                   <div

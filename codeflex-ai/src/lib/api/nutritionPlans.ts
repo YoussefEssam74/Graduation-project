@@ -1,6 +1,16 @@
 import { apiFetch, type ApiResponse } from './client';
 
 // Updated to match backend DTO structure
+export interface PlanMealItem {
+  mealId: number;
+  name: string;
+  mealType: string;
+  calories: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
+}
+
 export interface NutritionPlanDto {
   planId: number;
   memberId: number;
@@ -20,6 +30,8 @@ export interface NutritionPlanDto {
   statusText: string;
   isActive: boolean;
   createdAt: string;
+  dietaryRestrictions?: string[];
+  meals?: PlanMealItem[];
 }
 
 export interface GenerateNutritionPlanDto {

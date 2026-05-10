@@ -14,6 +14,8 @@ namespace IntelliFit.Domain.Models
         public int? PaymentId { get; set; }
         public bool AutoRenew { get; set; } = false;
         public bool RenewalReminderSent { get; set; } = false;
+        public DateTime? FreezeStartDate { get; set; }
+        public DateTime? FreezeEndDate { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public virtual User User { get; set; } = null!;

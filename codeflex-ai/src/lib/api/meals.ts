@@ -2,6 +2,7 @@ import { apiFetch, type ApiResponse } from './client';
 
 export interface MealDto {
   mealId: number;
+  nutritionPlanId?: number;
   name: string;
   description?: string;
   imageUrl?: string;

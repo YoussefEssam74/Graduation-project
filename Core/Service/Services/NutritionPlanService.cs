@@ -1,6 +1,7 @@
 using DomainLayer.Contracts;
 using IntelliFit.Domain.Models;
 using ServiceAbstraction.Services;
+using Shared.DTOs.Meal;
 using Shared.DTOs.NutritionPlan;
 
 namespace Service.Services
@@ -34,6 +35,8 @@ namespace Service.Services
                     }
                 }
 
+                var planMeals = await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId);
+
                 result.Add(new NutritionPlanDto
                 {
                     PlanId = plan.PlanId,
@@ -53,7 +56,18 @@ namespace Service.Services
                     Status = plan.Status == "Active" ? 1 : plan.Status == "Completed" ? 2 : 0,
                     StatusText = plan.Status,
                     IsActive = plan.IsActive,
-                    CreatedAt = plan.CreatedAt
+                    CreatedAt = plan.CreatedAt,
+                    DietaryRestrictions = plan.DietaryRestrictions,
+                    Meals = planMeals.Select(m => new PlanMealDto
+                    {
+                        MealId = m.MealId,
+                        Name = m.Name,
+                        MealType = m.MealType,
+                        Calories = m.Calories,
+                        ProteinGrams = m.ProteinGrams,
+                        CarbsGrams = m.CarbsGrams,
+                        FatGrams = m.FatsGrams
+                    }).ToList()
                 });
             }
 
@@ -78,6 +92,8 @@ namespace Service.Services
                 }
             }
 
+            var detailMeals = await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId);
+
             return new NutritionPlanDto
             {
                 PlanId = plan.PlanId,
@@ -97,7 +113,18 @@ namespace Service.Services
                 Status = plan.Status == "Active" ? 1 : plan.Status == "Completed" ? 2 : 0,
                 StatusText = plan.Status,
                 IsActive = plan.IsActive,
-                CreatedAt = plan.CreatedAt
+                CreatedAt = plan.CreatedAt,
+                DietaryRestrictions = plan.DietaryRestrictions,
+                Meals = detailMeals.Select(m => new PlanMealDto
+                {
+                    MealId = m.MealId,
+                    Name = m.Name,
+                    MealType = m.MealType,
+                    Calories = m.Calories,
+                    ProteinGrams = m.ProteinGrams,
+                    CarbsGrams = m.CarbsGrams,
+                    FatGrams = m.FatsGrams
+                }).ToList()
             };
         }
 
@@ -120,6 +147,10 @@ namespace Service.Services
                 FatsGrams = generateDto.FatGrams ?? 65,
                 GeneratedByCoachId = generateDto.CreatedByCoachId,
                 AiPrompt = $"Goal: {generateDto.FitnessGoal}, Restrictions: {generateDto.DietaryRestrictions}",
+                DietaryRestrictions = string.IsNullOrWhiteSpace(generateDto.DietaryRestrictions)
+                    ? null
+                    : generateDto.DietaryRestrictions.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim()).Where(s => s.Length > 0).ToArray(),
                 Status = "Active",
                 IsActive = true,
                 StartDate = generateDto.StartDate,

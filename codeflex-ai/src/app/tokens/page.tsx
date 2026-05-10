@@ -479,9 +479,9 @@ export default function TokensPage() {
                     <span className={`text-sm font-bold ${pkg.isElite ? "text-slate-400" : "text-slate-400"}`}>Tokens</span>
                   </div>
                   <div className={`text-xl font-bold mt-1 ${pkg.isElite ? "text-white" : "text-slate-900"}`}>
-                    ${pkg.price}
+                    {pkg.price} EGP
                     {pkg.originalPrice && (
-                      <span className="text-sm font-medium text-green-500 line-through ml-2">${pkg.originalPrice}</span>
+                      <span className="text-sm font-medium text-green-500 line-through ml-2">{pkg.originalPrice} EGP</span>
                     )}
                   </div>
                 </div>
@@ -670,7 +670,7 @@ export default function TokensPage() {
                 )}
                 <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
                   <span className="text-lg font-bold text-slate-900">Total Price</span>
-                  <span className="text-3xl font-black text-blue-600">${selectedPackage.price}</span>
+                  <span className="text-3xl font-black text-blue-600">{selectedPackage.price} EGP</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mt-6">

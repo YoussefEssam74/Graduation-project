@@ -102,6 +102,7 @@ namespace Service.Services
             return new MealDto
             {
                 MealId = meal.MealId,
+                NutritionPlanId = meal.NutritionPlanId,
                 Name = meal.Name,
                 Description = null, // Not in entity
                 ImageUrl = null, // Not in entity

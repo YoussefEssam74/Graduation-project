@@ -12,6 +12,9 @@ import {
     CheckCircle,
     Loader2,
     X,
+    CalendarDays,
+    ChevronDown,
+    ChevronUp,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,8 +37,17 @@ import SubscriptionGate from "@/components/SubscriptionGate";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
 import { equipmentApi, bookingsApi, type EquipmentDto } from "@/lib/api";
+import { apiFetch } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
+
+interface BookedSlot {
+    bookingId: number;
+    startTime: string;
+    endTime: string;
+    isCoachSession: boolean;
+    bookedByUserName?: string;
+}
 
 interface EquipmentWithDetails extends EquipmentDto {
     category: string;
@@ -106,7 +118,12 @@ function BookEquipmentContent() {
     const [userEquipmentBookings, setUserEquipmentBookings] = useState<Map<number, number>>(new Map());
     // Time ranges for in-use equipment: equipmentId -> {start, end}
     const [equipmentBookingTimes, setEquipmentBookingTimes] = useState<Map<number, { start: string; end: string }>>(new Map());
-    const [isCancellingEquipment, setIsCancellingEquipment] = useState<number | null>(null);
+
+    // Availability grid state
+    const [showingAvailabilityId, setShowingAvailabilityId] = useState<number | null>(null);
+    const [availabilityData, setAvailabilityData] = useState<Map<number, BookedSlot[]>>(new Map());
+    const [availabilityDate, setAvailabilityDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [loadingAvailability, setLoadingAvailability] = useState(false);
 
     // Duration options
     const durationOptions = [
@@ -333,6 +350,60 @@ function BookEquipmentContent() {
         }
     };
 
+    const fetchEquipmentAvailability = async (equipmentId: number, date: string) => {
+        setLoadingAvailability(true);
+        try {
+            const response = await apiFetch<{
+                equipmentId: number;
+                startDate: string;
+                endDate: string;
+                bookedSlots: BookedSlot[];
+            }>(`/equipment-availability/${equipmentId}/booked?startDate=${date}T00:00:00&endDate=${date}T23:59:59`);
+            const slots: BookedSlot[] = response.data?.bookedSlots ?? [];
+            setAvailabilityData(prev => new Map(prev).set(equipmentId, slots));
+        } catch (err) {
+            console.error("Failed to load availability:", err);
+        } finally {
+            setLoadingAvailability(false);
+        }
+    };
+
+    const toggleAvailability = (equipmentId: number) => {
+        if (showingAvailabilityId === equipmentId) {
+            setShowingAvailabilityId(null);
+        } else {
+            setShowingAvailabilityId(equipmentId);
+            if (!availabilityData.has(equipmentId)) {
+                fetchEquipmentAvailability(equipmentId, availabilityDate);
+            }
+        }
+    };
+
+    const handleDateChange = (equipmentId: number, date: string) => {
+        setAvailabilityDate(date);
+        fetchEquipmentAvailability(equipmentId, date);
+    };
+
+    const isSlotBooked = (slots: BookedSlot[], hour: number, date: string): boolean => {
+        const slotStart = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00Z`);
+        const slotEnd = new Date(`${date}T${String(hour + 1).padStart(2, "0")}:00:00Z`);
+        return slots.some(slot => {
+            const s = new Date(slot.startTime);
+            const e = new Date(slot.endTime);
+            return s < slotEnd && e > slotStart;
+        });
+    };
+
+    const handleSlotClick = (eq: EquipmentWithDetails, hour: number) => {
+        const hStr = String(hour).padStart(2, "0");
+        setSelectedEquipment(eq);
+        setBookingDate(availabilityDate);
+        setStartTime(`${hStr}:00`);
+        setSelectedDuration(60);
+        setLastBookingEndTime("");
+        setBookingModalOpen(true);
+    };
+
     const handleCancelEquipmentBooking = async (equipmentId: number) => {
         const bookingId = userEquipmentBookings.get(equipmentId);
         if (!bookingId) return;
@@ -534,6 +605,19 @@ function BookEquipmentContent() {
                                                 <Clock className="h-4 w-4" />
                                                 <span>30-90 min slots</span>
                                             </div>
+                                            <div className="flex items-center gap-2">
+                                                {/* View Availability toggle */}
+                                                <button
+                                                    onClick={() => toggleAvailability(eq.equipmentId)}
+                                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors"
+                                                >
+                                                    <CalendarDays className="h-3.5 w-3.5" />
+                                                    Slots
+                                                    {showingAvailabilityId === eq.equipmentId
+                                                        ? <ChevronUp className="h-3 w-3" />
+                                                        : <ChevronDown className="h-3 w-3" />}
+                                                </button>
+
                                             {userEquipmentBookings.has(eq.equipmentId) ? (
                                                 <Button
                                                     onClick={() => handleCancelEquipmentBooking(eq.equipmentId)}
@@ -586,7 +670,72 @@ function BookEquipmentContent() {
                                                     {status === "available" ? "Book Now" : "Unavailable"}
                                                 </Button>
                                             )}
+                                            </div>
                                         </div>
+
+                                        {/* Availability Grid */}
+                                        {showingAvailabilityId === eq.equipmentId && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Today&apos;s Availability</span>
+                                                    <input
+                                                        type="date"
+                                                        value={availabilityDate}
+                                                        title="Select date to view availability"
+                                                        min={new Date().toISOString().split('T')[0]}
+                                                        onChange={(e) => handleDateChange(eq.equipmentId, e.target.value)}
+                                                        className="text-xs border border-slate-200 rounded px-2 py-0.5 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                                                    />
+                                                </div>
+                                                {loadingAvailability ? (
+                                                    <div className="flex justify-center py-3">
+                                                        <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {/* Legend */}
+                                                        <div className="flex gap-3 mb-2">
+                                                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                                <span className="w-3 h-3 rounded-sm bg-green-400 inline-block" />Available
+                                                            </div>
+                                                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                                <span className="w-3 h-3 rounded-sm bg-red-400 inline-block" />Booked
+                                                            </div>
+                                                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                                <span className="w-3 h-3 rounded-sm bg-slate-200 inline-block" />Past
+                                                            </div>
+                                                        </div>
+                                                        {/* Hour grid */}
+                                                        <div className="grid grid-cols-8 gap-1">
+                                                            {Array.from({ length: 16 }, (_, i) => i + 6).map(hour => {
+                                                                const slots = availabilityData.get(eq.equipmentId) ?? [];
+                                                                const booked = isSlotBooked(slots, hour, availabilityDate);
+                                                                const slotDt = new Date(`${availabilityDate}T${String(hour).padStart(2, "0")}:00:00`);
+                                                                const past = slotDt < new Date();
+                                                                const label = hour < 12 ? `${hour}a` : hour === 12 ? "12p" : `${hour - 12}p`;
+                                                                const colorClass = past
+                                                                    ? "bg-slate-100 text-slate-300 dark:bg-slate-700 dark:text-slate-600 cursor-not-allowed"
+                                                                    : booked
+                                                                        ? "bg-red-100 text-red-500 dark:bg-red-900/30 dark:text-red-400 cursor-not-allowed"
+                                                                        : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 cursor-pointer";
+                                                                return (
+                                                                    <button
+                                                                        key={hour}
+                                                                        disabled={past || booked || status !== "available"}
+                                                                        onClick={() => !past && !booked && status === "available" && handleSlotClick(eq, hour)}
+                                                                        title={past ? "Past" : booked ? "Booked" : `Book ${label}`}
+                                                                        className={`flex items-center justify-center h-7 rounded text-xs font-medium transition-colors ${colorClass}`}
+                                                                    >
+                                                                        {label}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <p className="text-xs text-slate-400 mt-1.5">Click a green slot to pre-fill booking form</p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </Card>
                             );

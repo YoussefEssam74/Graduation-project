@@ -310,11 +310,13 @@ export interface UserAIPlanExercise {
   workoutPlanExerciseId: number;
   exerciseId: number;
   exerciseName: string;
+  name?: string;           // alias used in some views
   dayNumber: number;
   orderInDay: number;
   sets?: number;
   reps?: number;
   restSeconds?: number;
+  duration?: string;       // alias used in some views
   notes?: string;
   equipmentId?: number;
   equipmentRequired?: string;
@@ -323,7 +325,9 @@ export interface UserAIPlanExercise {
 
 export interface UserAIPlanDay {
   dayNumber: number;
+  day?: number;            // alias used in some views
   dayName?: string;
+  focus?: string;          // alias used in some views
   exercises: UserAIPlanExercise[];
 }
 

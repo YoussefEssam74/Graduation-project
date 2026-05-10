@@ -94,6 +94,31 @@ namespace Presentation.Controllers
 
         #endregion
 
+        #region Google OAuth
+
+        /// <summary>
+        /// Sign in (or sign up) with a Google ID token issued by the frontend.
+        /// </summary>
+        [HttpPost("google-login")]
+        public async Task<ActionResult<AuthResponseDto>> GoogleLogin([FromBody] GoogleLoginRequestDto dto)
+        {
+            try
+            {
+                var result = await _serviceManager.AuthService.GoogleLoginAsync(dto.IdToken);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
+            }
+        }
+
+        #endregion
+
         #region Change Password
 
         /// <summary>
@@ -169,6 +194,65 @@ namespace Presentation.Controllers
         {
             var result = await _serviceManager.AuthService.EmailExistsAsync(email);
             return Ok(result);
+        }
+
+        #endregion
+
+        #region Forgot Password (OTP-verified, unauthenticated)
+
+        /// <summary>
+        /// Step 1 — Send a reset OTP to the email registered against the given phone number.
+        /// Always returns 200 to prevent phone-number enumeration.
+        /// </summary>
+        [HttpPost("forgot-password/send-otp")]
+        public async Task<ActionResult> ForgotPasswordSendOtp([FromBody] ForgotPasswordSendOtpDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.Email))
+                    return BadRequest(new { error = "Email is required" });
+
+                await _serviceManager.AuthService.SendForgotPasswordOtpAsync(dto.Email);
+
+                return Ok(new { message = "If an account with that email exists, an OTP has been sent to it." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Step 2 — Verify the OTP and set the new password.
+        /// </summary>
+        [HttpPost("forgot-password/confirm")]
+        public async Task<ActionResult> ForgotPasswordConfirm([FromBody] ForgotPasswordDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.Email))
+                    return BadRequest(new { error = "Email is required" });
+
+                if (string.IsNullOrWhiteSpace(dto.Otp))
+                    return BadRequest(new { error = "OTP is required" });
+
+                if (string.IsNullOrWhiteSpace(dto.NewPassword))
+                    return BadRequest(new { error = "New password is required" });
+
+                if (dto.NewPassword != dto.ConfirmPassword)
+                    return BadRequest(new { error = "Passwords do not match" });
+
+                var success = await _serviceManager.AuthService.ConfirmForgotPasswordAsync(dto.Email, dto.Otp, dto.NewPassword);
+
+                if (!success)
+                    return BadRequest(new { error = "Invalid or expired OTP. Please request a new one." });
+
+                return Ok(new { message = "Password has been reset successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         #endregion

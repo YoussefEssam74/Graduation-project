@@ -22,5 +22,10 @@ namespace Shared.DTOs.Auth
         public DateTime? DateOfBirth { get; set; }
 
         public int? Gender { get; set; }
+
+        /// <summary>
+        /// Optional invitation code provided during signup.
+        /// </summary>
+        public string? InvitationCode { get; set; }
     }
 }

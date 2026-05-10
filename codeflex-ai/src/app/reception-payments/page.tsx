@@ -161,7 +161,7 @@ function ReceptionPaymentsContent() {
     }
 
     alert(
-      `Payment of $${amount} processed successfully for ${selectedMember.name} via ${paymentMethod}`
+      `Payment of ${amount} EGP processed successfully for ${selectedMember.name} via ${paymentMethod}`
     );
 
     // Reset form
@@ -194,7 +194,7 @@ function ReceptionPaymentsContent() {
         <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-3xl font-bold text-primary">${todayRevenue}</div>
+              <div className="text-3xl font-bold text-primary">{todayRevenue} EGP</div>
               <div className="text-sm text-muted-foreground mt-1">Today's Revenue</div>
             </div>
             <div className="p-3 bg-green-500/10 rounded-full">
@@ -218,7 +218,7 @@ function ReceptionPaymentsContent() {
         <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-3xl font-bold text-yellow-500">${totalPending}</div>
+              <div className="text-3xl font-bold text-yellow-500">{totalPending} EGP</div>
               <div className="text-sm text-muted-foreground mt-1">Pending Payments</div>
             </div>
             <div className="p-3 bg-yellow-500/10 rounded-full">
@@ -302,7 +302,7 @@ function ReceptionPaymentsContent() {
                     <div className="font-semibold">{selectedMember.membershipType}</div>
                     {selectedMember.currentBalance < 0 && (
                       <div className="text-red-500 font-semibold mt-1">
-                        Balance: ${selectedMember.currentBalance}
+                        Balance: {selectedMember.currentBalance} EGP
                       </div>
                     )}
                   </div>
@@ -328,7 +328,7 @@ function ReceptionPaymentsContent() {
 
             {/* Amount */}
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($) *</Label>
+              <Label htmlFor="amount">Amount (EGP) *</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -397,7 +397,7 @@ function ReceptionPaymentsContent() {
               disabled={!selectedMember || !amount}
             >
               <CheckCircle className="h-5 w-5" />
-              Process Payment ${amount || "0"}
+              Process Payment {amount || "0"} EGP
             </Button>
           </div>
         </Card>
@@ -431,7 +431,7 @@ function ReceptionPaymentsContent() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-bold text-primary">${payment.amount}</span>
+                  <span className="font-bold text-primary">{payment.amount} EGP</span>
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
                       payment.status === "Overdue"
@@ -489,7 +489,7 @@ function ReceptionPaymentsContent() {
                   <td className="p-4 font-mono text-sm">#{transaction.id.toString().padStart(6, "0")}</td>
                   <td className="p-4 font-semibold">{transaction.memberName}</td>
                   <td className="p-4 text-sm">{transaction.type}</td>
-                  <td className="p-4 font-bold text-green-500">${transaction.amount}</td>
+                  <td className="p-4 font-bold text-green-500">{transaction.amount} EGP</td>
                   <td className="p-4 text-sm">{transaction.method}</td>
                   <td className="p-4 text-sm">
                     {new Date(transaction.date).toLocaleDateString()} {transaction.time}

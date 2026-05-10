@@ -5,6 +5,7 @@ using ServiceAbstraction.Services;
 using Shared.DTOs.Auth;
 using Shared.DTOs.User;
 using BCrypt.Net;
+using Google.Apis.Auth;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using System.Net;
@@ -82,6 +83,22 @@ namespace Service.Services
                 throw new InvalidOperationException("Email already exists");
             }
 
+            // Validate invitation code if provided
+            Invitation? invitation = null;
+            if (!string.IsNullOrWhiteSpace(registerDto.InvitationCode))
+            {
+                var code = registerDto.InvitationCode.Trim().ToUpper();
+                invitation = await _unitOfWork.Repository<Invitation>()
+                    .FirstOrDefaultAsync(i => i.Code == code);
+
+                if (invitation == null)
+                    throw new InvalidOperationException("Invitation code not found");
+                if (invitation.IsUsed)
+                    throw new InvalidOperationException("Invitation code has already been used");
+                if (invitation.ExpiresAt < DateTime.UtcNow)
+                    throw new InvalidOperationException("Invitation code has expired");
+            }
+
             // Public signup always creates Member role (security requirement)
             var user = new User
             {
@@ -111,6 +128,16 @@ namespace Service.Services
             };
             await _unitOfWork.Repository<MemberProfile>().AddAsync(memberProfile);
             await _unitOfWork.SaveChangesAsync();
+
+            // Redeem invitation code if provided
+            if (invitation != null)
+            {
+                invitation.IsUsed = true;
+                invitation.UsedByUserId = user.UserId;
+                invitation.UsedAt = DateTime.UtcNow;
+                _unitOfWork.Repository<Invitation>().Update(invitation);
+                await _unitOfWork.SaveChangesAsync();
+            }
 
             var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, user.Role.ToString());
 
@@ -234,6 +261,71 @@ namespace Service.Services
         }
 
         /// <summary>
+        /// Step 1: Look up account by email and send a 6-digit OTP to that email.
+        /// Always returns without revealing whether the email exists (enumeration prevention).
+        /// </summary>
+        public async Task SendForgotPasswordOtpAsync(string email)
+        {
+            var user = await _unitOfWork.Repository<User>()
+                .FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+
+            if (user == null)
+                return; // Silent – don't reveal whether the email is registered
+
+            var otp = new Random().Next(100000, 999999).ToString();
+            _cache.Set($"forgot_pwd_otp_{user.UserId}", otp, TimeSpan.FromMinutes(10));
+
+            var smtpHost = _configuration["Email:SmtpHost"] ?? "";
+            var smtpPort = int.TryParse(_configuration["Email:SmtpPort"], out var p) ? p : 587;
+            var smtpUser = _configuration["Email:SmtpUser"] ?? "";
+            var smtpPass = _configuration["Email:SmtpPass"] ?? "";
+            var fromAddress = _configuration["Email:FromAddress"] ?? smtpUser;
+            var fromName = _configuration["Email:FromName"] ?? "PulseGym";
+
+            using var client = new SmtpClient(smtpHost, smtpPort)
+            {
+                Credentials = new NetworkCredential(smtpUser, smtpPass),
+                EnableSsl = true
+            };
+            var message = new MailMessage
+            {
+                From = new MailAddress(fromAddress, fromName),
+                Subject = "PulseGym — Password Reset OTP",
+                Body = $"Your one-time password (OTP) to reset your PulseGym account password is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.",
+                IsBodyHtml = false
+            };
+            message.To.Add(user.Email);
+            await client.SendMailAsync(message);
+        }
+
+        /// <summary>
+        /// Step 2: Verify the OTP sent to the user's email, then set the new password.
+        /// </summary>
+        public async Task<bool> ConfirmForgotPasswordAsync(string email, string otp, string newPassword)
+        {
+            var user = await _unitOfWork.Repository<User>()
+                .FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+
+            if (user == null)
+                return false;
+
+            var cacheKey = $"forgot_pwd_otp_{user.UserId}";
+            if (!_cache.TryGetValue(cacheKey, out string? stored) || stored != otp)
+                return false;
+
+            _cache.Remove(cacheKey);
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.MustChangePassword = false;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<User>().Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
+        /// <summary>
         /// Complete first login setup (marks IsFirstLogin as false)
         /// </summary>
         public async Task<UserDto> CompleteFirstLoginSetupAsync(int userId)
@@ -318,6 +410,78 @@ namespace Service.Services
                 return Task.FromResult(true);
             }
             return Task.FromResult(false);
+        }
+
+        /// <summary>
+        /// Verify a Google ID token, then find-or-create a Member user and return a JWT.
+        /// </summary>
+        public async Task<AuthResponseDto> GoogleLoginAsync(string idToken)
+        {
+            var clientId = _configuration["Google:ClientId"]
+                ?? throw new InvalidOperationException("Google ClientId is not configured.");
+
+            GoogleJsonWebSignature.Payload payload;
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { clientId }
+                };
+                payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+            }
+            catch (InvalidJwtException)
+            {
+                throw new UnauthorizedAccessException("Invalid Google token.");
+            }
+
+            var user = await _unitOfWork.Repository<User>()
+                .FirstOrDefaultAsync(u => u.Email == payload.Email);
+
+            if (user == null)
+            {
+                // Create a new Member account for first-time Google sign-in
+                user = new User
+                {
+                    Email = payload.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()),
+                    Name = payload.Name ?? payload.Email,
+                    Role = UserRole.Member,
+                    IsActive = true,
+                    EmailVerified = true,
+                    MustChangePassword = false,
+                    IsFirstLogin = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<User>().AddAsync(user);
+                await _unitOfWork.SaveChangesAsync();
+
+                var memberProfile = new MemberProfile
+                {
+                    UserId = user.UserId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<MemberProfile>().AddAsync(memberProfile);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            if (!user.IsActive)
+                throw new UnauthorizedAccessException("Account is inactive.");
+
+            user.LastLoginAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.Repository<User>().Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            var token = _tokenService.GenerateJwtToken(user.UserId, user.Email, user.Role.ToString());
+
+            return new AuthResponseDto
+            {
+                User = await MapToUserDtoAsync(user),
+                Token = token,
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            };
         }
     }
 }

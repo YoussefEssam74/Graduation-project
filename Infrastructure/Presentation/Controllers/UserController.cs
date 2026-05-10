@@ -179,7 +179,8 @@ namespace Presentation.Controllers
                 }
 
                 // Update user profile image URL
-                var imageUrl = $"/uploads/profiles/{fileName}";
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                var imageUrl = $"{baseUrl}/uploads/profiles/{fileName}";
                 var updateDto = new UpdateProfileDto { ProfileImageUrl = imageUrl };
                 var updatedUser = await _serviceManager.UserService.UpdateProfileAsync(id, updateDto);
 

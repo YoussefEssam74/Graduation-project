@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Dumbbell,
   Calendar,
@@ -19,8 +19,12 @@ import {
   Search,
   AlertTriangle,
   Loader2,
-  Clock, // Added Clock here
-  Plus, // Added Plus here
+  Clock,
+  Plus,
+  Share2,
+  Copy,
+  Check,
+  QrCode,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +43,8 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { ChatDialog } from "@/components/Chat/ChatDialog";
+import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
+import { invitationsApi, type MemberInvitationQuota, type InvitationDto } from "@/lib/api/invitations";
 
 function DashboardContent() {
   const { user, refreshUser } = useAuth();
@@ -58,6 +64,15 @@ function DashboardContent() {
     upcomingSession: string | null;
   } | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Invite a Friend state
+  const [inviteQuota, setInviteQuota] = useState<MemberInvitationQuota | null>(null);
+  const [memberInvitations, setMemberInvitations] = useState<InvitationDto[]>([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [generatingInvite, setGeneratingInvite] = useState(false);
+  const [activeInviteCode, setActiveInviteCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -224,6 +239,54 @@ function DashboardContent() {
 
     fetchCoachInfo();
   }, [user?.userId]);
+
+  // Fetch invite quota for the member
+  useEffect(() => {
+    const fetchInviteData = async () => {
+      if (!user?.userId) return;
+      try {
+        const [quotaRes, invitesRes] = await Promise.all([
+          invitationsApi.getMemberQuota(),
+          invitationsApi.getMemberInvitations(),
+        ]);
+        if (quotaRes.success && quotaRes.data) setInviteQuota(quotaRes.data);
+        if (invitesRes.success && invitesRes.data) setMemberInvitations(invitesRes.data);
+      } catch (err) {
+        // Quota not available (no subscription) — silently ignore
+      }
+    };
+    fetchInviteData();
+  }, [user?.userId]);
+
+  // Handle generating an invite for a friend
+  const handleGenerateInvite = async () => {
+    setGeneratingInvite(true);
+    try {
+      const res = await invitationsApi.createMemberInvitation();
+      if (res.success && res.data) {
+        setActiveInviteCode(res.data.code);
+        // Refresh quota
+        const quotaRes = await invitationsApi.getMemberQuota();
+        if (quotaRes.success && quotaRes.data) setInviteQuota(quotaRes.data);
+        const invitesRes = await invitationsApi.getMemberInvitations();
+        if (invitesRes.success && invitesRes.data) setMemberInvitations(invitesRes.data);
+      } else {
+        showToast(res.message || "Failed to generate invitation", "error");
+      }
+    } catch (err) {
+      showToast("Failed to generate invitation", "error");
+    } finally {
+      setGeneratingInvite(false);
+    }
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(
+      `${window.location.origin}/invite/${code}`
+    );
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  };
 
   // Handle cancel booking
   const handleCancelBooking = async (
@@ -764,6 +827,56 @@ function DashboardContent() {
                 </Card>
               </div>
             )}
+
+            {/* Invite a Friend Card */}
+            {inviteQuota && inviteQuota.invitationsAllowed > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <Share2 className="h-5 w-5 text-green-500" />
+                  Invite a Friend
+                </h3>
+                <Card className="p-6 border-0 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] bg-gradient-to-br from-green-50 via-white to-emerald-50 rounded-[20px]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-500 mb-1">
+                        {inviteQuota.subscriptionPlanName} plan
+                      </p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-2xl font-bold text-slate-900">
+                          {inviteQuota.invitationsRemaining}
+                        </span>
+                        <span className="text-slate-500">
+                          / {inviteQuota.invitationsAllowed} invitations left
+                        </span>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="w-48 h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-green-500 rounded-full transition-all"
+                          style={{
+                            width: `${Math.round(((inviteQuota.invitationsAllowed - inviteQuota.invitationsUsed) / inviteQuota.invitationsAllowed) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setShowInviteModal(true);
+                        // If they have a recent unused invite, show it; else they generate one
+                        const unused = memberInvitations.find((i) => !i.isUsed && new Date(i.expiresAt) > new Date());
+                        if (unused) setActiveInviteCode(unused.code);
+                        else setActiveInviteCode(null);
+                      }}
+                      disabled={inviteQuota.invitationsRemaining === 0}
+                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-xl px-5 py-3 shadow-lg shadow-green-500/20 transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      Invite Friend
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Schedule (Span 1) */}
@@ -916,6 +1029,129 @@ function DashboardContent() {
               </Link>
             </div>
           </Card>
+        )}
+
+        {/* Invite Friend QR Modal */}
+        {showInviteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <Card className="w-full max-w-md p-6 rounded-[24px] shadow-2xl border-0 bg-white">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-green-500" />
+                  Invite a Friend
+                </h2>
+                <button
+                  onClick={() => { setShowInviteModal(false); setActiveInviteCode(null); }}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  title="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {!activeInviteCode ? (
+                <div className="text-center py-6">
+                  <p className="text-slate-500 mb-6 text-sm">
+                    Generate a unique QR code that your friend can scan to sign up with your invitation.
+                  </p>
+                  <Button
+                    onClick={handleGenerateInvite}
+                    disabled={generatingInvite}
+                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl shadow-lg shadow-green-500/20"
+                  >
+                    {generatingInvite ? (
+                      <><Loader2 className="h-4 w-4 animate-spin mr-2" />Generating...</>
+                    ) : (
+                      <><Plus className="h-4 w-4 mr-2" />Generate Invite Code</>
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <p className="text-slate-500 text-sm mb-4">
+                    Share this QR code or link with your friend. When they scan it at the gym entrance, they'll be registered as your guest!
+                  </p>
+                  <div className="flex justify-center mb-4">
+                    <div className="p-4 bg-white rounded-2xl shadow-inner border border-slate-100">
+                      <QRCodeSVG
+                        value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${activeInviteCode}`}
+                        size={200}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    </div>
+                  </div>
+                  {/* Hidden canvas used for exporting QR as PNG */}
+                  <div className="hidden">
+                    <QRCodeCanvas
+                      ref={qrCanvasRef}
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${activeInviteCode}`}
+                      size={400}
+                      level="M"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-3 mb-3">
+                    <code className="flex-1 text-xs font-mono text-slate-600 truncate">
+                      {typeof window !== "undefined" ? `${window.location.origin}/invite/${activeInviteCode}` : `/invite/${activeInviteCode}`}
+                    </code>
+                    <button
+                      onClick={() => handleCopyCode(activeInviteCode)}
+                      className="text-slate-400 hover:text-green-600 transition-colors flex-shrink-0"
+                      title="Copy link"
+                    >
+                      {codeCopied ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const canvas = qrCanvasRef.current;
+                      if (!canvas) return;
+                      canvas.toBlob(async (blob) => {
+                        if (!blob) return;
+                        const file = new File([blob], "gym-guest-pass.png", { type: "image/png" });
+                        // Try sharing as image file (mobile/desktop with file share support)
+                        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                          await navigator.share({
+                            title: "You're invited to the gym!",
+                            text: "Show this QR code to the receptionist when you arrive.",
+                            files: [file],
+                          });
+                        } else if (navigator.share) {
+                          // Fallback: share the URL if file sharing not supported
+                          await navigator.share({
+                            title: "You're invited to the gym!",
+                            text: "Tap the link to get your guest pass QR code.",
+                            url: `${window.location.origin}/invite/${activeInviteCode}`,
+                          });
+                        } else {
+                          // Last fallback: download the QR image
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "gym-guest-pass.png";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }
+                      });
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors mb-3"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Share QR Code
+                  </button>
+                  <p className="text-xs text-slate-400">
+                    This invitation expires in 30 days · Valid for one guest visit
+                  </p>
+                </div>
+              )}
+            </Card>
+          </div>
         )}
 
         {/* Chat Dialog */}

@@ -93,6 +93,28 @@ namespace Presentation.Controllers
         }
 
         /// <summary>
+        /// Change user's active subscription to a new plan
+        /// </summary>
+        [HttpPut("change-plan")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<bool>>> ChangePlan([FromBody] ChangePlanDto changePlanDto)
+        {
+            try
+            {
+                await _serviceManager.SubscriptionService.ChangePlanAsync(changePlanDto);
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Plan changed successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to change plan", new List<string> { ex.Message }));
+            }
+        }
+
+        /// <summary>
         /// Check if user has active subscription
         /// </summary>
         [HttpGet("user/{userId}/active")]
@@ -127,6 +149,74 @@ namespace Presentation.Controllers
             catch (Exception ex)
             {
                 return BadRequest(ApiResponse<UserSubscriptionDetailsDto>.ErrorResponse("Failed to retrieve subscription details", new List<string> { ex.Message }));
+            }
+        }
+
+        /// <summary>
+        /// Freeze a subscription for a specified number of days
+        /// </summary>
+        [HttpPut("{id}/freeze")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<bool>>> FreezeSubscription(int id, [FromBody] FreezeSubscriptionDto dto)
+        {
+            try
+            {
+                await _serviceManager.SubscriptionService.FreezeSubscriptionAsync(id, dto.FreezeDays, dto.StartDate);
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Subscription frozen successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to freeze subscription", new List<string> { ex.Message }));
+            }
+        }
+
+        /// <summary>
+        /// Unfreeze a subscription
+        /// </summary>
+        [HttpPut("{id}/unfreeze")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<bool>>> UnfreezeSubscription(int id)
+        {
+            try
+            {
+                await _serviceManager.SubscriptionService.UnfreezeSubscriptionAsync(id);
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Subscription unfrozen successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<bool>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to unfreeze subscription", new List<string> { ex.Message }));
+            }
+        }
+        #endregion
+
+        #region Frozen
+        /// <summary>
+        /// Get all currently frozen subscriptions (receptionist view)
+        /// </summary>
+        [HttpGet("frozen")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<IEnumerable<UserSubscriptionDetailsDto>>>> GetFrozenSubscriptions()
+        {
+            try
+            {
+                var frozen = await _serviceManager.SubscriptionService.GetFrozenSubscriptionsAsync();
+                return Ok(ApiResponse<IEnumerable<UserSubscriptionDetailsDto>>.SuccessResponse(frozen));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<IEnumerable<UserSubscriptionDetailsDto>>.ErrorResponse("Failed to get frozen subscriptions", new List<string> { ex.Message }));
             }
         }
         #endregion

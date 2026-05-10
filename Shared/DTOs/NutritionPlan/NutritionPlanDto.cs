@@ -20,5 +20,18 @@ namespace Shared.DTOs.NutritionPlan
         public string StatusText { get; set; } = null!;
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string[]? DietaryRestrictions { get; set; }
+        public List<PlanMealDto> Meals { get; set; } = new List<PlanMealDto>();
+    }
+
+    public class PlanMealDto
+    {
+        public int MealId { get; set; }
+        public string Name { get; set; } = null!;
+        public string MealType { get; set; } = null!;
+        public int Calories { get; set; }
+        public int ProteinGrams { get; set; }
+        public int CarbsGrams { get; set; }
+        public int FatGrams { get; set; }
     }
 }

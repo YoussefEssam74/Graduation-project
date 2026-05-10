@@ -14,5 +14,8 @@ namespace ServiceAbstraction.Services
         Task<UserDto> CompleteFirstLoginSetupAsync(int userId);
         Task SendChangePasswordOtpAsync(int userId, string email);
         Task<bool> VerifyChangePasswordOtpAsync(int userId, string otp);
+        Task SendForgotPasswordOtpAsync(string email);
+        Task<bool> ConfirmForgotPasswordAsync(string email, string otp, string newPassword);
+        Task<AuthResponseDto> GoogleLoginAsync(string idToken);
     }
 }

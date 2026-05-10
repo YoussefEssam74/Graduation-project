@@ -10,8 +10,10 @@ namespace IntelliFit.Domain.Models
         public decimal Price { get; set; }
         public int DurationDays { get; set; }
         public int TokensIncluded { get; set; } = 0;
+        public int InvitationsAllowed { get; set; } = 0;
         public string? Features { get; set; }
         public int? MaxBookingsPerDay { get; set; }
+        public int MaxFreezeDays { get; set; } = 14;
         public bool IsPopular { get; set; } = false;
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -14,6 +14,10 @@ import {
   DollarSign,
   Activity,
   RefreshCw,
+  Ticket,
+  Copy,
+  X,
+  CheckCheck,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +27,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
 import { bookingsApi, type BookingDto } from "@/lib/api";
+import { subscriptionApi, type UserSubscriptionDetailsDto } from "@/lib/api/subscription";
+import { invitationsApi, type InvitationDto } from "@/lib/api/invitations";
 import { useToast } from "@/components/ui/toast";
 
 // Map booking status from number to string
@@ -43,8 +49,17 @@ function ReceptionDashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Invitation states
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteExpiry, setInviteExpiry] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [invitations, setInvitations] = useState<InvitationDto[]>([]);
+  const [invitationsLoading, setInvitationsLoading] = useState(false);
+  
   // Real data states
   const [todaysBookings, setTodaysBookings] = useState<BookingDto[]>([]);
+  const [frozenSubscriptions, setFrozenSubscriptions] = useState<UserSubscriptionDetailsDto[]>([]);
   const [stats, setStats] = useState({
     checkedInToday: 0,
     activeMembers: 0,
@@ -89,6 +104,11 @@ function ReceptionDashboardContent() {
           });
         }
       }
+      // Fetch frozen subscriptions for receptionist view
+      const frozenRes = await subscriptionApi.getFrozenSubscriptions();
+      if (frozenRes.success && frozenRes.data) {
+        setFrozenSubscriptions(frozenRes.data);
+      }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
       showToast("Failed to load dashboard data", "error");
@@ -99,6 +119,7 @@ function ReceptionDashboardContent() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchInvitations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -151,6 +172,44 @@ function ReceptionDashboardContent() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const fetchInvitations = async () => {
+    setInvitationsLoading(true);
+    try {
+      const res = await invitationsApi.getMyInvitations();
+      if (res.success && res.data) setInvitations(res.data);
+    } catch {
+      // silent
+    } finally {
+      setInvitationsLoading(false);
+    }
+  };
+
+  const handleCreateInvitation = async () => {
+    if (!inviteExpiry) {
+      showToast("Please select an expiry date", "error");
+      return;
+    }
+    setInviteLoading(true);
+    try {
+      const res = await invitationsApi.create({ expiresAt: new Date(inviteExpiry).toISOString() });
+      if (res.success && res.data) {
+        setCreatedCode(res.data.code);
+        fetchInvitations();
+      } else {
+        showToast(res.message || "Failed to create invitation", "error");
+      }
+    } catch {
+      showToast("Failed to create invitation", "error");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    showToast("Code copied to clipboard", "success");
   };
 
   const quickActions = [
@@ -402,6 +461,208 @@ function ReceptionDashboardContent() {
           <p className="text-sm mt-2">This feature will notify you of expiring memberships</p>
         </div>
       </Card>
+
+      {/* Frozen Subscriptions */}
+      <Card className="p-6 border border-border">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Activity className="h-6 w-6 text-blue-500" />
+            Frozen Subscriptions
+          </h3>
+          <span className="px-3 py-1 text-xs font-bold bg-blue-100 text-blue-600 rounded-full">
+            {frozenSubscriptions.length} Frozen
+          </span>
+        </div>
+
+        {frozenSubscriptions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No subscriptions are currently frozen</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {frozenSubscriptions.map((sub) => (
+              <div
+                key={sub.subscriptionId}
+                className="flex items-center justify-between p-4 border border-border rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
+                    <Users className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Member #{sub.userId}</h4>
+                    <p className="text-sm text-muted-foreground">{sub.planName}</p>
+                  </div>
+                </div>
+                <div className="text-right space-y-1">
+                  <span className="px-2 py-0.5 text-xs font-bold bg-blue-100 text-blue-700 rounded-full block">
+                    Frozen
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    {sub.freezeStartDate ? new Date(sub.freezeStartDate).toLocaleDateString() : "—"}
+                    {" → "}
+                    {sub.freezeEndDate ? new Date(sub.freezeEndDate).toLocaleDateString() : "—"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Invitations Section */}
+      <Card className="p-6 border border-border">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Ticket className="h-6 w-6 text-primary" />
+            Invitation Codes
+          </h3>
+          <Button
+            className="gap-2"
+            onClick={() => { setShowInviteModal(true); setCreatedCode(null); setInviteExpiry(""); }}
+          >
+            <Ticket className="h-4 w-4" />
+            Create Invitation
+          </Button>
+        </div>
+
+        {invitationsLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin h-6 w-6 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : invitations.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No invitations created yet
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {invitations.map((inv) => (
+              <div key={inv.invitationId} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Ticket className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-bold tracking-widest">{inv.code}</span>
+                      <button
+                        title="Copy code"
+                        onClick={() => handleCopyCode(inv.code)}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Expires: {new Date(inv.expiresAt).toLocaleDateString()}
+                      {inv.usedByName && ` · Used by ${inv.usedByName}`}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    inv.isUsed
+                      ? "bg-slate-100 text-slate-500"
+                      : new Date(inv.expiresAt) < new Date()
+                      ? "bg-red-100 text-red-600"
+                      : "bg-green-100 text-green-700"
+                  }`}
+                >
+                  {inv.isUsed ? "Used" : new Date(inv.expiresAt) < new Date() ? "Expired" : "Active"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Create Invitation Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="w-full max-w-md p-6 border border-border bg-background shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Ticket className="h-5 w-5 text-primary" />
+                Create Invitation
+              </h3>
+              <button
+                title="Close"
+                onClick={() => setShowInviteModal(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {createdCode ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">Invitation created successfully!</p>
+                <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <span className="flex-1 font-mono text-lg font-bold tracking-widest text-center">{createdCode}</span>
+                  <button
+                    title="Copy code"
+                    onClick={() => handleCopyCode(createdCode)}
+                    className="p-2 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors text-primary"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Share this code with the new member to use during registration.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => { setCreatedCode(null); setInviteExpiry(""); }}
+                  >
+                    Create Another
+                  </Button>
+                  <Button
+                    className="flex-1 gap-2"
+                    onClick={() => setShowInviteModal(false)}
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    Done
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-semibold text-foreground">Expiry Date</label>
+                  <Input
+                    type="date"
+                    value={inviteExpiry}
+                    onChange={(e) => setInviteExpiry(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="h-10"
+                  />
+                  <p className="text-xs text-muted-foreground">The invitation code will expire on this date.</p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowInviteModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 gap-2"
+                    onClick={handleCreateInvitation}
+                    disabled={inviteLoading || !inviteExpiry}
+                  >
+                    {inviteLoading ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    ) : (
+                      <Ticket className="h-4 w-4" />
+                    )}
+                    Generate Code
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -201,7 +201,7 @@ function AdminCoachesContent() {
               <div className="flex items-center gap-2 text-sm">
                 <DollarSign className="h-4 w-4 text-green-500" />
                 <span className="text-muted-foreground">Earnings:</span>
-                <span className="font-semibold">${coach.monthlyEarnings}</span>
+                <span className="font-semibold">{coach.monthlyEarnings} EGP</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Clock className="h-4 w-4 text-orange-500" />

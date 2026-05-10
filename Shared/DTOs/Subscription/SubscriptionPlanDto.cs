@@ -10,6 +10,7 @@ namespace Shared.DTOs.Subscription
         public int TokensIncluded { get; set; }
         public string? Features { get; set; }
         public int? MaxBookingsPerDay { get; set; }
+        public int MaxFreezeDays { get; set; }
         public bool IsPopular { get; set; }
         public bool IsActive { get; set; }
     }

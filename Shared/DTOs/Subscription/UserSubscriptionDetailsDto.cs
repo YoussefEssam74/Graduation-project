@@ -13,7 +13,12 @@ namespace Shared.DTOs.Subscription
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public int DaysRemaining { get; set; }
+        public int? MaxBookingsPerDay { get; set; }
         public string Status { get; set; } = null!;
         public bool AutoRenew { get; set; }
+        public bool IsFrozen { get; set; }
+        public DateTime? FreezeStartDate { get; set; }
+        public DateTime? FreezeEndDate { get; set; }
+        public int MaxFreezeDays { get; set; }
     }
 }

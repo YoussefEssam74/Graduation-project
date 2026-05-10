@@ -13,7 +13,7 @@ interface AuthContextType {
   isLoading: boolean;
   isRedirecting: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => Promise<void>;
+  register: (email: string, password: string, name: string, role: string, phone?: string, gender?: number, invitationCode?: string) => Promise<void>;
   logout: () => void;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   // modify token balance by a signed integer (positive to add, negative to deduct)
@@ -28,6 +28,10 @@ interface AuthContextType {
   completeFirstLoginSetup: () => Promise<void>;
   // Admin: Create user with role
   adminCreateUser: (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => Promise<void>;
+  // Google OAuth sign-in / sign-up
+  googleLogin: (idToken: string) => Promise<void>;
+  // Update specific user fields in state and localStorage (e.g., after profile image upload)
+  updateUserFields: (fields: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -135,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, name: string, role: string, phone?: string, gender?: number) => {
+  const register = async (email: string, password: string, name: string, role: string, phone?: string, gender?: number, invitationCode?: string) => {
     try {
       console.log('Registering with:', { email, name, phone, gender, role });
       const response = await authApi.register({
@@ -144,7 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name,
         phone,
         gender,
-        role
+        role,
+        invitationCode
       });
 
       console.log('Registration response:', response);
@@ -188,9 +193,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isFirstLogin: userData.isFirstLogin,
       };
 
-      // Redirect based on role
+      // Redirect based on role — new members go to choose-plan
       const roleRoutes: Record<UserRole, string> = {
-        [UserRole.Member]: "/dashboard",
+        [UserRole.Member]: "/choose-plan",
         [UserRole.Coach]: "/coach-dashboard",
         [UserRole.Receptionist]: "/reception-dashboard",
         [UserRole.Admin]: "/admin-dashboard",
@@ -304,6 +309,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const googleLogin = async (idToken: string) => {
+    try {
+      const response = await authApi.googleLogin(idToken);
+
+      if (!response?.success || !response.data) {
+        throw new Error(response?.message || "Google sign-in failed");
+      }
+
+      const { user: userData, token: authToken } = response.data;
+
+      const roleMap: Record<string, UserRole> = {
+        'Member': UserRole.Member,
+        'Coach': UserRole.Coach,
+        'Receptionist': UserRole.Receptionist,
+        'Admin': UserRole.Admin,
+      };
+
+      const mappedRole = roleMap[userData.role] || UserRole.Member;
+
+      const userObj: User = {
+        userId: userData.userId,
+        email: userData.email,
+        name: userData.name,
+        phone: userData.phone,
+        dateOfBirth: userData.dateOfBirth,
+        gender: userData.gender,
+        role: userData.role,
+        profileImageUrl: userData.profileImageUrl,
+        address: userData.address,
+        tokenBalance: userData.tokenBalance,
+        hasActiveSubscription: userData.hasActiveSubscription,
+        isActive: userData.isActive,
+        emailVerified: userData.emailVerified,
+        lastLoginAt: userData.lastLoginAt,
+        createdAt: userData.createdAt,
+        mustChangePassword: userData.mustChangePassword,
+        isFirstLogin: userData.isFirstLogin,
+      };
+
+      setUser(userObj);
+      setToken(authToken);
+      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("auth_token", authToken);
+
+      setIsRedirecting(true);
+
+      const roleRoutes: Record<UserRole, string> = {
+        [UserRole.Member]: "/dashboard",
+        [UserRole.Coach]: "/coach-dashboard",
+        [UserRole.Receptionist]: "/reception-dashboard",
+        [UserRole.Admin]: "/admin-dashboard",
+      };
+
+      // New members without a subscription go to plan selection
+      const destination =
+        mappedRole === UserRole.Member && !userData.hasActiveSubscription
+          ? "/choose-plan"
+          : roleRoutes[mappedRole];
+
+      window.location.href = destination;
+    } catch (error) {
+      console.error("Google login error:", error);
+      setIsRedirecting(false);
+      throw error;
+    }
+  };
+
   const adjustTokens = (amount: number) => {
     setUser((prev) => {
       if (!prev) return prev;
@@ -316,6 +388,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deductTokens = (amount: number = 1) => {
     adjustTokens(-Math.abs(amount));
+  };
+
+  const updateUserFields = (fields: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...fields };
+      if (typeof window !== 'undefined') localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const refreshUser = async () => {
@@ -377,6 +458,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         adjustTokens,
         deductTokens,
         refreshUser,
+        updateUserFields,
         isLoading,
         isRedirecting,
         login,
@@ -386,6 +468,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         changePassword,
         completeFirstLoginSetup,
         adminCreateUser,
+        googleLogin,
       }}
     >
       {children}

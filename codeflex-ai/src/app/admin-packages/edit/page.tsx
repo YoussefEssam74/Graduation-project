@@ -103,7 +103,7 @@ function EditPackageContent() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Monthly Pricing ($)</label>
+                    <label className="text-sm font-medium mb-2 block">Monthly Pricing (EGP)</label>
                     <Input
                       type="number"
                       value={monthlyPrice}
@@ -112,7 +112,7 @@ function EditPackageContent() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Annual Pricing ($)</label>
+                    <label className="text-sm font-medium mb-2 block">Annual Pricing (EGP)</label>
                     <Input
                       type="number"
                       value={annualPrice}

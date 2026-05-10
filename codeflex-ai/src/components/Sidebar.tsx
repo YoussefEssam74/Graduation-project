@@ -42,7 +42,7 @@ const normalizeRole = (role: string): UserRole => {
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
-  const { hasAiAccess, hasCoachAccess } = useSubscription();
+  const { hasAiAccess, hasCoachAccess, hasFeature } = useSubscription();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
@@ -51,7 +51,6 @@ export default function Sidebar() {
     const items = [
       { href: "/dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
       { href: "/programs", icon: DumbbellIcon, label: "My Program" },
-      { href: "/nutrition", icon: UtensilsIcon, label: "Nutrition" },
       { href: "/bookings", icon: CalendarIcon, label: "Calendar" },
       { href: "/community", icon: UsersIcon, label: "Community" },
       { href: "/inbody", icon: ActivityIcon, label: "Analytics" },
@@ -65,16 +64,25 @@ export default function Sidebar() {
         icon: BrainIcon,
         label: "AI Workout",
       });
-      items.splice(6, 0, {
+      items.splice(5, 0, {
         href: "/ai-coach",
         icon: BrainIcon,
         label: "AI Chat",
       });
     }
 
+    // AI Nutrition Plan — only for plans that include nutrition
+    if (hasFeature("nutrition")) {
+      items.splice(hasAiAccess ? 3 : 2, 0, {
+        href: "/nutrition",
+        icon: UtensilsIcon,
+        label: "Nutrition",
+      });
+    }
+
     // Coach booking — only for plans that include coach
     if (hasCoachAccess) {
-      items.splice(hasAiAccess ? 5 : 2, 0, {
+      items.splice(hasAiAccess ? 4 : 2, 0, {
         href: "/book-coach",
         icon: UserIcon,
         label: "Book Coach",
@@ -168,10 +176,7 @@ export default function Sidebar() {
             href="/tokens"
             className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl px-3 py-2 mb-4 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors group"
           >
-            <CoinsIcon
-              size={16}
-              className="text-blue-600 dark:text-blue-400 flex-shrink-0"
-            />
+            <CoinsIcon size={16} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
               {user?.tokenBalance ?? 0}
             </span>

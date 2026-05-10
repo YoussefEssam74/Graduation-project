@@ -8,6 +8,7 @@ export interface SubscriptionPlanDto {
   price: number;
   features?: string;
   tokensIncluded: number;
+  invitationsAllowed: number;
   maxBookingsPerDay?: number;
   isPopular: boolean;
   isActive: boolean;
@@ -16,6 +17,12 @@ export interface SubscriptionPlanDto {
 export interface CreateSubscriptionDto {
   userId: number;
   planId: number;
+  paymentId: number;
+}
+
+export interface ChangePlanDto {
+  userId: number;
+  newPlanId: number;
   paymentId: number;
 }
 
@@ -28,11 +35,16 @@ export interface UserSubscriptionDetailsDto {
   features?: string;
   price: number;
   tokensIncluded: number;
+  maxBookingsPerDay?: number;
   startDate: string;
   endDate: string;
   daysRemaining: number;
   status: string;
   autoRenew: boolean;
+  isFrozen: boolean;
+  freezeStartDate?: string;
+  freezeEndDate?: string;
+  maxFreezeDays: number;
 }
 
 export const subscriptionApi = {
@@ -83,5 +95,38 @@ export const subscriptionApi = {
     userId: number,
   ): Promise<ApiResponse<UserSubscriptionDetailsDto>> {
     return apiFetch<UserSubscriptionDetailsDto>(`/subscription/user/${userId}`);
+  },
+
+  /**
+   * Change user's active subscription plan
+   */
+  async changePlan(data: ChangePlanDto): Promise<ApiResponse<boolean>> {
+    return apiFetch<boolean>("/subscription/change-plan", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async freezeSubscription(
+    subscriptionId: number,
+    freezeDays: number,
+    startDate: string,
+  ): Promise<ApiResponse<boolean>> {
+    return apiFetch<boolean>(`/subscription/${subscriptionId}/freeze`, {
+      method: "PUT",
+      body: JSON.stringify({ freezeDays, startDate }),
+    });
+  },
+
+  async unfreezeSubscription(
+    subscriptionId: number,
+  ): Promise<ApiResponse<boolean>> {
+    return apiFetch<boolean>(`/subscription/${subscriptionId}/unfreeze`, {
+      method: "PUT",
+    });
+  },
+
+  async getFrozenSubscriptions(): Promise<ApiResponse<UserSubscriptionDetailsDto[]>> {
+    return apiFetch<UserSubscriptionDetailsDto[]>("/subscription/frozen");
   },
 };

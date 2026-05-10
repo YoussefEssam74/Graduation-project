@@ -70,6 +70,8 @@ namespace IntelliFit.Infrastructure.Persistence
 
         // Engagement
         public DbSet<ActivityFeed> ActivityFeeds { get; set; }
+        public DbSet<ActivityFeedLike> ActivityFeedLikes { get; set; }
+        public DbSet<ActivityFeedComment> ActivityFeedComments { get; set; }
         public DbSet<ProgressMilestone> ProgressMilestones { get; set; }
         public DbSet<UserMilestone> UserMilestones { get; set; }
         public DbSet<Achievement> Achievements { get; set; }  // NEW: Achievement definitions
@@ -80,6 +82,9 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<CoachReview> CoachReviews { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+
+        // Invitations
+        public DbSet<Invitation> Invitations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -140,6 +145,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<ChatMessage>().ToTable("chat_messages");
             modelBuilder.Entity<CoachReview>().ToTable("coach_reviews");
             modelBuilder.Entity<AuditLog>().ToTable("audit_logs");
+            modelBuilder.Entity<Invitation>().ToTable("invitations");
 
             // User Configuration (single table with Role column)
             modelBuilder.Entity<User>(entity =>
@@ -1068,6 +1074,32 @@ namespace IntelliFit.Infrastructure.Persistence
             // Global Query Filters for soft delete (when implemented)
             // Uncomment when ready to implement soft delete globally:
             // modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
+
+            // Invitation Configuration
+            modelBuilder.Entity<Invitation>(entity =>
+            {
+                entity.HasKey(e => e.InvitationId);
+                entity.HasIndex(e => e.Code).IsUnique();
+                entity.HasIndex(e => e.CreatedByUserId);
+                entity.HasIndex(e => new { e.IsUsed, e.ExpiresAt });
+
+                entity.Property(e => e.Code).HasMaxLength(32).IsRequired();
+
+                entity.HasOne(e => e.CreatedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.UsedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.UsedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.SubscriptionPlan)
+                    .WithMany()
+                    .HasForeignKey(e => e.SubscriptionPlanId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
         }
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Activity,
   TrendingUp,
@@ -13,6 +13,7 @@ import {
   Download,
   PlusCircle,
   ArrowRight,
+  ScanLine,
   Droplets,
   Bone,
   Flame,
@@ -128,6 +129,14 @@ export default function InBodyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingManualEntry, setIsSavingManualEntry] = useState(false);
 
+  // OCR state
+  const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
+  const [isOcrRunning, setIsOcrRunning] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrStatus, setOcrStatus] = useState("");
+  const [ocrPreviewUrl, setOcrPreviewUrl] = useState<string | null>(null);
+  const ocrInputRef = useRef<HTMLInputElement>(null);
+
   const initialManualForm = {
     weight: "",
     height: "",
@@ -206,6 +215,118 @@ export default function InBodyPage() {
   const handleOpenManualEntryModal = () => {
     setManualForm(initialManualForm);
     setIsManualEntryModalOpen(true);
+  };
+
+  const parseInBodyText = (text: string): Partial<typeof initialManualForm> => {
+    const extract = (patterns: RegExp[]): string | undefined => {
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match?.[1]) return match[1].trim();
+      }
+      return undefined;
+    };
+
+    return {
+      weight: extract([
+        /Weight\s*[:|]?\s*(\d+\.?\d*)\s*kg/i,
+        /(?:^|\n)Weight\s+(\d+\.?\d*)/mi,
+        /체중\s*[:|]?\s*(\d+\.?\d*)/i,
+      ]),
+      bodyFatPercentage: extract([
+        /(?:Body Fat|PBF|BFP|Percent Body Fat|Body Fat Percentage)\s*[:|%]?\s*(\d+\.?\d*)/i,
+        /Fat\s+Percentage\s*[:|]?\s*(\d+\.?\d*)/i,
+      ]),
+      muscleMass: extract([
+        /(?:Skeletal Muscle Mass|SMM|Muscle Mass)\s*[:|]?\s*(\d+\.?\d*)\s*kg/i,
+        /Muscle\s+Mass\s*[:|]?\s*(\d+\.?\d*)/i,
+      ]),
+      bodyWaterPercentage: extract([
+        /(?:Total Body Water|TBW|Body Water)\s*[:|]?\s*(\d+\.?\d*)/i,
+      ]),
+      bmr: extract([
+        /(?:Basal Metabolic Rate|BMR)\s*[:|]?\s*(\d+\.?\d*)/i,
+      ]),
+      visceralFat: extract([
+        /(?:Visceral Fat Level|VFL|Visceral Fat)\s*[:|]?\s*(\d+\.?\d*)/i,
+      ]),
+      protein: extract([
+        /Protein\s*[:|]?\s*(\d+\.?\d*)\s*kg/i,
+      ]),
+      minerals: extract([
+        /(?:Minerals|Inorganic Salts|Mineral)\s*[:|]?\s*(\d+\.?\d*)\s*kg/i,
+      ]),
+      metabolicAge: extract([
+        /(?:Metabolic Age|Meta Age)\s*[:|]?\s*(\d+)/i,
+      ]),
+    };
+  };
+
+  const handleScanReceipt = () => {
+    ocrInputRef.current?.click();
+  };
+
+  const handleOcrFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setOcrPreviewUrl(previewUrl);
+    setOcrProgress(0);
+    setOcrStatus("Initializing OCR engine...");
+    setIsOcrRunning(true);
+    setIsOcrModalOpen(true);
+    e.target.value = "";
+
+    try {
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker("eng", 1, {
+        logger: (m: { status: string; progress: number }) => {
+          setOcrStatus(m.status);
+          if (m.status === "recognizing text") {
+            setOcrProgress(Math.round(m.progress * 100));
+          }
+        },
+      });
+
+      const {
+        data: { text },
+      } = await worker.recognize(file);
+      await worker.terminate();
+
+      const parsed = parseInBodyText(text);
+      const filledCount = Object.values(parsed).filter(Boolean).length;
+
+      setManualForm((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          Object.entries(parsed).filter(([, v]) => v !== undefined),
+        ),
+      }));
+
+      setIsOcrModalOpen(false);
+      setIsManualEntryModalOpen(true);
+      URL.revokeObjectURL(previewUrl);
+      setOcrPreviewUrl(null);
+
+      if (filledCount > 0) {
+        showToast(
+          `Scanned ${filledCount} field${filledCount > 1 ? "s" : ""}. Review and correct before saving.`,
+          "success",
+        );
+      } else {
+        showToast(
+          "No InBody fields detected. Please fill in manually.",
+          "error",
+        );
+      }
+    } catch {
+      setOcrStatus("Scan failed.");
+      showToast("Failed to scan image", "error");
+    } finally {
+      setIsOcrRunning(false);
+    }
   };
 
   const handleManualFieldChange = (
@@ -459,6 +580,23 @@ export default function InBodyPage() {
             >
               <Download className="h-3.5 w-3.5" />
               Export Report
+            </Button>
+            {/* Hidden file input for OCR */}
+            <input
+              ref={ocrInputRef}
+              type="file"
+              accept="image/*"
+              aria-label="Upload InBody receipt image for OCR scan"
+              className="hidden"
+              onChange={handleOcrFileChange}
+            />
+            <Button
+              onClick={handleScanReceipt}
+              variant="outline"
+              className="bg-violet-50 hover:bg-violet-100 dark:bg-violet-900/30 dark:hover:bg-violet-900/50 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300 font-bold text-xs h-9 rounded-xl gap-2 shadow-sm"
+            >
+              <ScanLine className="h-3.5 w-3.5" />
+              Scan Receipt
             </Button>
             <Button
               onClick={handleOpenManualEntryModal}
@@ -917,7 +1055,74 @@ export default function InBodyPage() {
           </div>
         )}
 
-        {/* Schedule Modal */}
+        {/* OCR Progress Modal */}
+        <Dialog
+          open={isOcrModalOpen}
+          onOpenChange={(open) => {
+            if (!isOcrRunning) setIsOcrModalOpen(open);
+          }}
+        >
+          <DialogContent className="bg-white rounded-[24px] border-0 max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                <ScanLine className="h-5 w-5 text-violet-600" />
+                Scanning InBody Receipt
+              </DialogTitle>
+              <DialogDescription>
+                Extracting measurements from your image...
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              {ocrPreviewUrl && (
+                <div className="w-full h-48 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={ocrPreviewUrl}
+                    alt="InBody receipt preview"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-slate-500 capitalize">
+                    {ocrStatus || "Processing..."}
+                  </span>
+                  <span className="text-xs font-bold text-violet-600">
+                    {ocrProgress}%
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-violet-500 rounded-full transition-all duration-300"
+                    style={{ width: `${ocrProgress}%` }}
+                  />
+                </div>
+              </div>
+
+              {isOcrRunning && (
+                <p className="text-[10px] text-slate-400 text-center">
+                  This may take a few seconds. Please wait...
+                </p>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                onClick={() => setIsOcrModalOpen(false)}
+                disabled={isOcrRunning}
+                className="text-slate-500 font-bold text-xs"
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Manual Entry Modal */}
         <Dialog
           open={isManualEntryModalOpen}
           onOpenChange={setIsManualEntryModalOpen}

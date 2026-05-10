@@ -38,14 +38,14 @@ namespace Service.Services
                 throw new KeyNotFoundException($"User with ID {userId} not found");
             }
 
-            user.Name = updateDto.Name;
-            user.Phone = updateDto.Phone;
-            user.DateOfBirth = updateDto.DateOfBirth;
-            user.Gender = updateDto.Gender.HasValue ? (GenderType)updateDto.Gender.Value : null;
-            user.ProfileImageUrl = updateDto.ProfileImageUrl;
-            user.Address = updateDto.Address;
-            user.EmergencyContactName = updateDto.EmergencyContactName;
-            user.EmergencyContactPhone = updateDto.EmergencyContactPhone;
+            if (updateDto.Name != null) user.Name = updateDto.Name;
+            if (updateDto.Phone != null) user.Phone = updateDto.Phone;
+            if (updateDto.DateOfBirth != null) user.DateOfBirth = updateDto.DateOfBirth;
+            if (updateDto.Gender.HasValue) user.Gender = (GenderType)updateDto.Gender.Value;
+            if (updateDto.ProfileImageUrl != null) user.ProfileImageUrl = updateDto.ProfileImageUrl;
+            if (updateDto.Address != null) user.Address = updateDto.Address;
+            if (updateDto.EmergencyContactName != null) user.EmergencyContactName = updateDto.EmergencyContactName;
+            if (updateDto.EmergencyContactPhone != null) user.EmergencyContactPhone = updateDto.EmergencyContactPhone;
             user.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.Repository<User>().Update(user);

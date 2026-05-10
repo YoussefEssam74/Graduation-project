@@ -89,7 +89,7 @@ function AdminPackagesContent() {
   const stats = [
     {
       label: "Total Revenue",
-      value: "$12,450",
+      value: "12,450 EGP",
       change: "+12.4%",
     },
     {
@@ -204,7 +204,7 @@ function AdminPackagesContent() {
 
               <div className="space-y-1">
                 <div className="text-4xl font-bold">
-                  ${pkg.price}
+                  {pkg.price} EGP
                   <span className="text-base font-normal text-muted-foreground">
                     /{pkg.duration}
                   </span>
@@ -259,7 +259,7 @@ function AdminPackagesContent() {
                 className="grid grid-cols-4 gap-2 items-center py-3 border-b border-border last:border-b-0"
               >
                 <div className="text-sm font-medium">{item.member}</div>
-                <div className="text-sm font-semibold">${item.amount.toFixed(2)}</div>
+                <div className="text-sm font-semibold">{item.amount.toFixed(2)} EGP</div>
                 <div>
                   <span className={`text-xs font-bold px-2 py-1 rounded ${item.statusColor}`}>
                     {item.status}

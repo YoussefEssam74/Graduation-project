@@ -55,6 +55,8 @@ namespace Service
         private readonly Lazy<IAuditLogService> _lazyAuditLogService;
         private readonly Lazy<IReceptionService> _lazyReceptionService;
         private readonly Lazy<IReceptionPaymentService> _lazyReceptionPaymentService;
+        private readonly Lazy<IAchievementsService> _lazyAchievementsService;
+        private readonly Lazy<IInvitationService> _lazyInvitationService;
 
         public ServiceManager(
             IUnitOfWork unitOfWork,
@@ -114,6 +116,8 @@ namespace Service
             _lazyAuditLogService = new Lazy<IAuditLogService>(() => new AuditLogService(_unitOfWork, _mapper));
             _lazyReceptionService = new Lazy<IReceptionService>(() => new ReceptionService(_unitOfWork, _mapper));
             _lazyReceptionPaymentService = new Lazy<IReceptionPaymentService>(() => new ReceptionPaymentService(_unitOfWork, _mapper));
+            _lazyAchievementsService = new Lazy<IAchievementsService>(() => new AchievementsService(_unitOfWork));
+            _lazyInvitationService = new Lazy<IInvitationService>(() => new InvitationService(_unitOfWork));
         }
 
         // BookingService needs TokenTransactionService and EquipmentTimeSlotService - initialize with factory getter
@@ -151,6 +155,8 @@ namespace Service
         public IAuditLogService AuditLogService => _lazyAuditLogService.Value;
         public IReceptionService ReceptionService => _lazyReceptionService.Value;
         public IReceptionPaymentService ReceptionPaymentService => _lazyReceptionPaymentService.Value;
+        public IAchievementsService AchievementsService => _lazyAchievementsService.Value;
+        public IInvitationService InvitationService => _lazyInvitationService.Value;
     }
 }
 

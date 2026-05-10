@@ -10,10 +10,21 @@ export interface ActivityFeedDto {
   category: string;
   relatedEntityId?: number;
   createdAt: string;
+  likesCount: number;
+  commentsCount: number;
+  isLikedByCurrentUser: boolean;
+}
+
+export interface ActivityFeedCommentDto {
+  id: number;
+  activityId: number;
+  userId: number;
+  userName?: string;
+  comment: string;
+  createdAt: string;
 }
 
 export interface CreateActivityFeedDto {
-  userId: number;
   activityType: string;
   title: string;
   description: string;
@@ -22,9 +33,6 @@ export interface CreateActivityFeedDto {
 }
 
 export const activityFeedApi = {
-  /**
-   * Create activity
-   */
   async createActivity(data: CreateActivityFeedDto): Promise<ApiResponse<ActivityFeedDto>> {
     return apiFetch<ActivityFeedDto>('/activity-feed', {
       method: 'POST',
@@ -32,26 +40,34 @@ export const activityFeedApi = {
     });
   },
 
-  /**
-   * Get user's activities
-   */
   async getUserActivities(userId: number, limit: number = 50): Promise<ApiResponse<ActivityFeedDto[]>> {
     return apiFetch<ActivityFeedDto[]>(`/activity-feed/user/${userId}?limit=${limit}`);
   },
 
-  /**
-   * Get recent activities (all users - for social feed)
-   */
   async getRecentActivities(limit: number = 100): Promise<ApiResponse<ActivityFeedDto[]>> {
     return apiFetch<ActivityFeedDto[]>(`/activity-feed/recent?limit=${limit}`);
   },
 
-  /**
-   * Delete activity
-   */
   async deleteActivity(id: number): Promise<ApiResponse<void>> {
-    return apiFetch<void>(`/activity-feed/${id}`, {
-      method: 'DELETE',
+    return apiFetch<void>(`/activity-feed/${id}`, { method: 'DELETE' });
+  },
+
+  async likeActivity(id: number): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/activity-feed/${id}/like`, { method: 'POST' });
+  },
+
+  async unlikeActivity(id: number): Promise<ApiResponse<void>> {
+    return apiFetch<void>(`/activity-feed/${id}/like`, { method: 'DELETE' });
+  },
+
+  async addComment(id: number, comment: string): Promise<ApiResponse<ActivityFeedCommentDto>> {
+    return apiFetch<ActivityFeedCommentDto>(`/activity-feed/${id}/comment`, {
+      method: 'POST',
+      body: JSON.stringify({ comment }),
     });
+  },
+
+  async getComments(id: number): Promise<ApiResponse<ActivityFeedCommentDto[]>> {
+    return apiFetch<ActivityFeedCommentDto[]>(`/activity-feed/${id}/comments`);
   },
 };

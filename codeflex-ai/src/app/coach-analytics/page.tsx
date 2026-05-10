@@ -125,7 +125,7 @@ function CoachAnalyticsContent() {
               </span>
             </div>
             <div>
-              <div className="text-2xl font-bold">${analyticsData.totalEarnings.current}</div>
+              <div className="text-2xl font-bold">{analyticsData.totalEarnings.current} EGP</div>
               <div className="text-xs text-muted-foreground">Total Earnings</div>
             </div>
           </div>
@@ -316,7 +316,7 @@ function CoachAnalyticsContent() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-green-500">${client.revenue}</div>
+                  <div className="font-bold text-green-500">{client.revenue} EGP</div>
                   <div className="flex items-center gap-1 text-sm">
                     <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
                     <span>{client.rating}</span>
