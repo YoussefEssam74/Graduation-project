@@ -37,6 +37,15 @@ namespace Service.Services
 
                 var planMeals = await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId);
 
+                // Fall back to ai_program_generations.GeneratedPlan when AiPlanJson is not on the plan itself
+                var aiPlanJson = plan.AiPlanJson;
+                if (string.IsNullOrEmpty(aiPlanJson))
+                {
+                    var generations = await _unitOfWork.Repository<AiProgramGeneration>()
+                        .FindAsync(g => g.NutritionPlanId == plan.PlanId && g.GeneratedPlan != null);
+                    aiPlanJson = generations.OrderByDescending(g => g.CreatedAt).FirstOrDefault()?.GeneratedPlan;
+                }
+
                 result.Add(new NutritionPlanDto
                 {
                     PlanId = plan.PlanId,
@@ -58,7 +67,7 @@ namespace Service.Services
                     IsActive = plan.IsActive,
                     CreatedAt = plan.CreatedAt,
                     DietaryRestrictions = plan.DietaryRestrictions,
-                    AiPlanJson = plan.AiPlanJson,
+                    AiPlanJson = aiPlanJson,
                     Meals = planMeals.Select(m => new PlanMealDto
                     {
                         MealId = m.MealId,
@@ -95,6 +104,15 @@ namespace Service.Services
 
             var detailMeals = await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId);
 
+            // Fall back to ai_program_generations.GeneratedPlan when AiPlanJson is not on the plan itself
+            var detailAiPlanJson = plan.AiPlanJson;
+            if (string.IsNullOrEmpty(detailAiPlanJson))
+            {
+                var generations = await _unitOfWork.Repository<AiProgramGeneration>()
+                    .FindAsync(g => g.NutritionPlanId == plan.PlanId && g.GeneratedPlan != null);
+                detailAiPlanJson = generations.OrderByDescending(g => g.CreatedAt).FirstOrDefault()?.GeneratedPlan;
+            }
+
             return new NutritionPlanDto
             {
                 PlanId = plan.PlanId,
@@ -116,7 +134,7 @@ namespace Service.Services
                 IsActive = plan.IsActive,
                 CreatedAt = plan.CreatedAt,
                 DietaryRestrictions = plan.DietaryRestrictions,
-                AiPlanJson = plan.AiPlanJson,
+                AiPlanJson = detailAiPlanJson,
                 Meals = detailMeals.Select(m => new PlanMealDto
                 {
                     MealId = m.MealId,
@@ -164,6 +182,23 @@ namespace Service.Services
 
             await _unitOfWork.Repository<NutritionPlan>().AddAsync(plan);
             await _unitOfWork.SaveChangesAsync();
+
+            // Log this AI generation in the audit table
+            if (!string.IsNullOrEmpty(generateDto.AiPlanJson))
+            {
+                var generation = new AiProgramGeneration
+                {
+                    UserId = generateDto.MemberId,
+                    ProgramType = "Nutrition",
+                    NutritionPlanId = plan.PlanId,
+                    InputPrompt = plan.AiPrompt ?? $"Goal: {generateDto.FitnessGoal}",
+                    GeneratedPlan = generateDto.AiPlanJson,
+                    AiModel = "nutrition-ai",
+                    CreatedAt = DateTime.UtcNow,
+                };
+                await _unitOfWork.Repository<AiProgramGeneration>().AddAsync(generation);
+                await _unitOfWork.SaveChangesAsync();
+            }
 
             return (await GetPlanDetailsAsync(plan.PlanId))!;
         }
