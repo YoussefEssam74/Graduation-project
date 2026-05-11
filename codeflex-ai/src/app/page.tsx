@@ -50,6 +50,7 @@ const FALLBACK_PLANS: SubscriptionPlanDto[] = [
     tokensIncluded: 120,
     isPopular: false,
     isActive: true,
+    invitationsAllowed: 0,
     description: "Best for getting started with gym access and app tracking.",
   },
   {
@@ -60,6 +61,7 @@ const FALLBACK_PLANS: SubscriptionPlanDto[] = [
     tokensIncluded: 450,
     isPopular: true,
     isActive: true,
+    invitationsAllowed: 2,
     description:
       "Most popular plan with AI coach features and priority booking.",
   },
@@ -71,6 +73,7 @@ const FALLBACK_PLANS: SubscriptionPlanDto[] = [
     tokensIncluded: 900,
     isPopular: false,
     isActive: true,
+    invitationsAllowed: 5,
     description:
       "Premium support, maximum tokens, and complete analytics access.",
   },

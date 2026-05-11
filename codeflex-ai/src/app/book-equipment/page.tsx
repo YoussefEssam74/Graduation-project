@@ -118,6 +118,7 @@ function BookEquipmentContent() {
     const [userEquipmentBookings, setUserEquipmentBookings] = useState<Map<number, number>>(new Map());
     // Time ranges for in-use equipment: equipmentId -> {start, end}
     const [equipmentBookingTimes, setEquipmentBookingTimes] = useState<Map<number, { start: string; end: string }>>(new Map());
+    const [isCancellingEquipment, setIsCancellingEquipment] = useState<number | null>(null);
 
     // Availability grid state
     const [showingAvailabilityId, setShowingAvailabilityId] = useState<number | null>(null);
