@@ -21,6 +21,7 @@ namespace Shared.DTOs.NutritionPlan
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public string[]? DietaryRestrictions { get; set; }
+        public string? AiPlanJson { get; set; }
         public List<PlanMealDto> Meals { get; set; } = new List<PlanMealDto>();
     }
 

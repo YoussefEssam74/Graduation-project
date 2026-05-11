@@ -15,6 +15,7 @@ namespace IntelliFit.Domain.Models
         public string[]? DietaryRestrictions { get; set; }
         public int? GeneratedByCoachId { get; set; }
         public string? AiPrompt { get; set; }
+        public string? AiPlanJson { get; set; }
         public string Status { get; set; } = "Draft"; public string? ApprovalNotes { get; set; }
         public int? ApprovedByCoachId { get; set; }
         public DateTime? ApprovedAt { get; set; }

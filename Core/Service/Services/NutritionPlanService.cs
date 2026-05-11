@@ -58,6 +58,7 @@ namespace Service.Services
                     IsActive = plan.IsActive,
                     CreatedAt = plan.CreatedAt,
                     DietaryRestrictions = plan.DietaryRestrictions,
+                    AiPlanJson = plan.AiPlanJson,
                     Meals = planMeals.Select(m => new PlanMealDto
                     {
                         MealId = m.MealId,
@@ -115,6 +116,7 @@ namespace Service.Services
                 IsActive = plan.IsActive,
                 CreatedAt = plan.CreatedAt,
                 DietaryRestrictions = plan.DietaryRestrictions,
+                AiPlanJson = plan.AiPlanJson,
                 Meals = detailMeals.Select(m => new PlanMealDto
                 {
                     MealId = m.MealId,
@@ -147,6 +149,7 @@ namespace Service.Services
                 FatsGrams = generateDto.FatGrams ?? 65,
                 GeneratedByCoachId = generateDto.CreatedByCoachId,
                 AiPrompt = $"Goal: {generateDto.FitnessGoal}, Restrictions: {generateDto.DietaryRestrictions}",
+                AiPlanJson = generateDto.AiPlanJson,
                 DietaryRestrictions = string.IsNullOrWhiteSpace(generateDto.DietaryRestrictions)
                     ? null
                     : generateDto.DietaryRestrictions.Split(',', System.StringSplitOptions.RemoveEmptyEntries)

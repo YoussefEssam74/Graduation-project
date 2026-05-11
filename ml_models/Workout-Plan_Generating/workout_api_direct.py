@@ -1593,6 +1593,81 @@ async def generate_workout_plan_direct(
 
             print(f"   ✅ Day now has {len(day['exercises'])} exercises")
 
+    # ── Step 4: Add completely missing days (model truncated before generating them) ──
+    # flan-t5-small caps at ~512 output tokens, so it typically only generates
+    # Day 1 + partial Day 2 before truncating.  Step 3 above only FILLS exercises
+    # into EXISTING days; this step CREATES the missing days from scratch using
+    # the exercise database.
+    _DAY_FOCUS_TEMPLATES: Dict[int, List[tuple]] = {
+        3: [
+            (1, "Day 1: Full Body",   ["chest", "back", "legs"]),
+            (2, "Day 2: Upper Body",  ["chest", "shoulders", "back", "biceps", "triceps"]),
+            (3, "Day 3: Lower Body",  ["quads", "hamstrings", "glutes", "calves"]),
+        ],
+        4: [
+            (1, "Day 1: Push",        ["chest", "shoulders", "triceps"]),
+            (2, "Day 2: Pull",        ["back", "biceps", "rear delts"]),
+            (3, "Day 3: Legs",        ["quads", "hamstrings", "glutes"]),
+            (4, "Day 4: Upper Mix",   ["chest", "back", "shoulders"]),
+        ],
+        5: [
+            (1, "Day 1: Push",        ["chest", "shoulders", "triceps"]),
+            (2, "Day 2: Pull",        ["back", "biceps", "rear delts"]),
+            (3, "Day 3: Legs",        ["quads", "hamstrings", "glutes"]),
+            (4, "Day 4: Upper",       ["chest", "back", "shoulders", "biceps", "triceps"]),
+            (5, "Day 5: Core & Abs",  ["core"]),
+        ],
+        6: [
+            (1, "Day 1: Push A",      ["chest", "shoulders", "triceps"]),
+            (2, "Day 2: Pull A",      ["back", "biceps"]),
+            (3, "Day 3: Legs",        ["quads", "hamstrings", "glutes"]),
+            (4, "Day 4: Push B",      ["chest", "shoulders", "triceps"]),
+            (5, "Day 5: Pull B",      ["back", "biceps", "rear delts"]),
+            (6, "Day 6: Upper Mix",   ["chest", "back", "shoulders"]),
+        ],
+        7: [
+            (1, "Day 1: Push",        ["chest", "shoulders", "triceps"]),
+            (2, "Day 2: Pull",        ["back", "biceps"]),
+            (3, "Day 3: Legs",        ["quads", "hamstrings", "glutes"]),
+            (4, "Day 4: Rest/Core",   ["core"]),
+            (5, "Day 5: Push B",      ["chest", "shoulders", "triceps"]),
+            (6, "Day 6: Pull B",      ["back", "biceps", "rear delts"]),
+            (7, "Day 7: Full Body",   ["chest", "back", "legs"]),
+        ],
+    }
+
+    existing_day_numbers = {d.get("day_number", 0) for d in plan.get("days", [])}
+    if len(plan.get("days", [])) < req_days:
+        templates = _DAY_FOCUS_TEMPLATES.get(
+            req_days,
+            [(i + 1, f"Day {i + 1}: Full Body", ["chest", "back", "legs"]) for i in range(req_days)]
+        )
+        missing = req_days - len(plan.get("days", []))
+        print(f"   ⚡ Model only produced {len(plan.get('days', []))} days — adding {missing} more from DB")
+
+        for (day_num, day_name, focus_areas) in templates:
+            if day_num not in existing_day_numbers:
+                db_exercises = _pick_exercises_for_focus(
+                    focus_areas, req_goal, req_level, n=5,
+                    exclude=all_used_names, equipment=req_equipment
+                )
+                for ex in db_exercises:
+                    ex = enrich_exercise_with_metadata(ex)
+                    all_used_names.add(ex.get("name", "").lower())
+
+                plan["days"].append({
+                    "day_number":                day_num,
+                    "day_name":                  day_name,
+                    "focus_areas":               focus_areas,
+                    "focus":                     ", ".join(focus_areas),
+                    "estimated_duration_minutes": 45,
+                    "exercises":                 db_exercises,
+                })
+                print(f"   ✅ Added {day_name} with {len(db_exercises)} exercises")
+
+        # Restore chronological order after appending
+        plan["days"].sort(key=lambda d: d.get("day_number", 0))
+
     total_exercises = sum(len(d.get("exercises", []))
                           for d in plan.get("days", []))
     print(

@@ -43,6 +43,7 @@ Stage-2 (opt)   : DPO on preference pairs
 import copy
 import json
 import os
+import re
 import random
 import sys
 from collections import defaultdict
@@ -88,6 +89,9 @@ ADVICE_FILE = (
 EXERCISE_INFO_FILE = (
     SCRIPT_DIR / "data" / "exercise_info_v6.jsonl"
 )  # built by build_exercise_db_v6.py
+WORKOUT_DATASET_FILE = (
+    SCRIPT_DIR / "Dataset" / "workout_dataset.csv"
+)  # real M&S workout programs — the "brain" for grounded plan generation
 
 MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
 MAX_SEQ_LENGTH = 2048
@@ -144,6 +148,21 @@ set_seed(SEED)
 FITNESS_LEVELS = ["Beginner", "Intermediate", "Advanced"]
 FITNESS_GOALS = ["Strength", "Muscle", "WeightLoss", "Endurance", "General"]
 GENDERS = ["male", "female"]
+
+# ── Mapping from workout_dataset.csv categories → internal taxonomy ──────────
+CSV_GOAL_MAP: Dict[str, str] = {
+    "Build Muscle": "Muscle",
+    "Increase Strength": "Strength",
+    "Lose Fat": "WeightLoss",
+    "Increase Endurance": "Endurance",
+    "General Fitness": "General",
+    "Sports Performance": "General",  # closest internal category
+}
+CSV_LEVEL_MAP: Dict[str, str] = {
+    "Beginner": "Beginner",
+    "Intermediate": "Intermediate",
+    "Advanced": "Advanced",
+}
 
 BODY_FAT_CATEGORIES = {
     "lean": (5, 14),
@@ -2003,10 +2022,12 @@ class WorkoutGeneratorV6:
         self,
         exercises: List[Dict],
         warmup_lib_path: Optional[Path] = None,
+        csv_plans_path: Optional[Path] = None,
     ):
         self.exercises = exercises
         self._load_warmup_library(warmup_lib_path)
         self._organize()
+        self._load_csv_plans(csv_plans_path)
 
     def _load_warmup_library(self, path: Optional[Path]) -> None:
         """
@@ -2063,6 +2084,158 @@ class WorkoutGeneratorV6:
         print(f"  Patterns : {len(self.by_pattern)}")
         print(f"  Muscles  : {len(self.by_muscle)}")
         print(f"  Equipment: {len(self.equipment_set)}")
+
+    # ------------------------------------------------------------------
+    # CSV DATASET LOADER  (the "brain" for grounded plan generation)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _clean_exercise_name(name: str) -> str:
+        """
+        Strip leading numbering prefixes from exercise names scraped from
+        Muscle & Strength, e.g. '1. Squat', '2a. Lunge', 'A1. Pull-up'.
+        Also collapses extra internal whitespace.
+        """
+        name = name.strip()
+        name = re.sub(r"^[\dA-Za-z]{1,2}\.\s*", "", name)
+        name = re.sub(r"\s+", " ", name).strip()
+        return name
+
+    def _load_csv_plans(self, path: Optional[Path]) -> None:
+        """
+        Load and pre-process real workout programs from workout_dataset.csv.
+
+        Columns kept   : main_goal, workout_type, training_level,
+                         program_duration, days_per_week, time_per_workout,
+                         target_gender, equipment, workout_days
+        Columns dropped: title         — causes brand-name hallucination
+                         pdf_text      — messy duplicate of workout_days
+                         description   — marketing text → generic hallucination
+                         recommended_supps — 44 % null; out-of-scope noise
+        Exercise fields: name, sets, reps kept; rest enriched from JSON DB;
+                         notes/tempo/rpe dropped (0–1 % populated in CSV)
+        """
+        self.csv_plans: List[Dict] = []
+        if path is None or not path.exists():
+            if path:
+                print(
+                    f"  [WARN] {path.name} not found — "
+                    "CSV-grounded examples disabled."
+                )
+            else:
+                print("  [INFO] No CSV path provided — CSV examples disabled.")
+            return
+
+        try:
+            import pandas as pd
+        except ImportError:
+            print("  [WARN] pandas not installed — CSV examples disabled.")
+            return
+
+        KEEP_COLS = [
+            "main_goal",
+            "workout_type",
+            "training_level",
+            "program_duration",
+            "days_per_week",
+            "time_per_workout",
+            "target_gender",
+            "equipment",
+            "workout_days",
+        ]
+        df = pd.read_csv(path, usecols=KEEP_COLS)
+        # Require structured exercise data
+        df = df.dropna(subset=["workout_days"])
+
+        skipped = 0
+        for _, row in df.iterrows():
+            # ── Parse workout_days JSON ────────────────────────────────
+            try:
+                wd = json.loads(row["workout_days"])
+            except (json.JSONDecodeError, TypeError):
+                skipped += 1
+                continue
+
+            # ── Parse equipment ───────────────────────────────────────
+            try:
+                equip_list = json.loads(str(row["equipment"]))
+                equip_list = [
+                    e.lower().strip() for e in equip_list if str(e).strip()
+                ]
+            except Exception:
+                equip_list = ["body only"]
+            if not equip_list:
+                equip_list = ["body only"]
+            if "body only" not in equip_list and "bodyweight" not in equip_list:
+                equip_list.append("body only")
+
+            # ── Map goal / level ──────────────────────────────────────
+            goal = CSV_GOAL_MAP.get(str(row["main_goal"]).strip(), "General")
+            level = CSV_LEVEL_MAP.get(
+                str(row["training_level"]).strip(), "Intermediate"
+            )
+
+            # ── Extract clean workout days ────────────────────────────
+            clean_days = []
+            for day in wd:
+                label = str(day.get("day_label", "")).strip()
+                exercises = []
+                for ex in day.get("exercises", []):
+                    name = self._clean_exercise_name(str(ex.get("name", "")))
+                    sets = str(ex.get("sets", "")).strip()
+                    reps = str(ex.get("reps", "")).strip()
+                    rest = str(ex.get("rest", "")).strip()
+                    # Only keep exercises that have at minimum name + sets + reps
+                    if name and sets and reps:
+                        exercises.append(
+                            {
+                                "name": name,
+                                "sets": sets,
+                                "reps": reps,
+                                "rest": rest,
+                            }
+                        )
+                if exercises:
+                    clean_days.append({"label": label, "exercises": exercises})
+
+            if not clean_days:
+                skipped += 1
+                continue
+
+            # ── Parse program duration ────────────────────────────────
+            dur_str = str(row.get("program_duration", "8 weeks")).strip()
+            try:
+                dur_weeks = int(dur_str.split()[0])
+            except (ValueError, IndexError):
+                dur_weeks = 8
+
+            # ── Gender preference ─────────────────────────────────────
+            gender_str = str(row.get("target_gender", "Male & Female")).strip()
+            if gender_str == "Female":
+                gender_pref: Optional[str] = "female"
+            elif gender_str == "Male":
+                gender_pref = "male"
+            else:
+                gender_pref = None  # any
+
+            self.csv_plans.append(
+                {
+                    "goal": goal,
+                    "workout_type": str(row["workout_type"]).strip(),
+                    "level": level,
+                    "days_per_week": int(row["days_per_week"]),
+                    "duration_weeks": dur_weeks,
+                    "time_per_workout": str(row.get("time_per_workout", "")).strip(),
+                    "gender_pref": gender_pref,
+                    "equipment": equip_list,
+                    "days": clean_days,
+                }
+            )
+
+        print(
+            f"  CSV plans loaded : {len(self.csv_plans)} programs "
+            f"({skipped} skipped) from {path.name}"
+        )
 
     def _severity_label(self, sev: int) -> str:
         for (lo, hi), label in SEVERITY_MAP.items():
@@ -2873,6 +3046,232 @@ class WorkoutGeneratorV6:
 
         return "\n".join(lines)
 
+    def _format_csv_plan(self, ctx: Dict, plan: Dict) -> str:
+        """
+        Format a real CSV-sourced workout program as the compact assistant
+        response.
+
+        Exercise names, sets and reps come directly from workout_dataset.csv
+        (real M&S programs).  Rest times and exercise metadata (mechanic, SFR)
+        are enriched from exercises_final_v6.json when a matching entry exists;
+        goal-specific defaults are used otherwise.
+
+        The output format is intentionally identical to _format_compact_plan so
+        the model learns a single, consistent response schema.
+        """
+        goal = ctx["goal"]
+        level = ctx["level"]
+        days_count = ctx["days"]
+        injuries = ctx.get("injuries", [])
+        feedback = ctx.get("feedback")
+        week_ctx = ctx.get("week_ctx", {})
+        inbody = ctx.get("inbody")
+
+        rpe_range = RPE_BY_GOAL.get(goal, (6, 8))
+        week_num = week_ctx.get("week", 1)
+        total_weeks = plan.get("duration_weeks", 8)
+        phase = week_ctx.get("phase", "Accumulation")
+        is_deload = week_ctx.get("is_deload", False)
+        rir = week_ctx.get("rir", 2)
+
+        # Goal-specific rest-time defaults (used when CSV row has no rest value
+        # and exercises_final_v6.json has no matching entry)
+        GOAL_REST = {
+            "Strength": 180,
+            "Muscle": 90,
+            "WeightLoss": 45,
+            "Endurance": 30,
+            "General": 60,
+        }
+        default_rest = GOAL_REST.get(goal, 60)
+
+        # Build a fast name→exercise lookup for metadata enrichment
+        ex_lookup: Dict[str, Dict] = {
+            ex["name"].lower(): ex for ex in self.exercises
+        }
+
+        plan_name = plan.get("workout_type", "Plan")
+        lines: List[str] = []
+
+        # ── PLAN header ───────────────────────────────────────────────
+        lines.append(
+            f"PLAN:{days_count}d {plan_name}|{goal}|{level}|"
+            f"{total_weeks}w|W{week_num}/{total_weeks}({phase})"
+        )
+
+        # ── INBODY section ────────────────────────────────────────────
+        if inbody:
+            if "bmi" in inbody:
+                lines.append(
+                    f"INBODY:BMI={inbody['bmi']}({inbody['bmi_cat']})|"
+                    f"BMR={inbody['bmr']}kcal|TDEE={inbody['tdee']}kcal|"
+                    f"BF={inbody['bf_pct']}%({inbody['bf_cat']})|"
+                    f"MM={inbody['mm_kg']}kg({inbody['mm_cat']})|"
+                    f"VFL={inbody.get('visceral_fat_level', 'N/A')}"
+                )
+            else:
+                lines.append(
+                    f"INBODY:BF={inbody['bf_pct']}%({inbody['bf_cat']})|"
+                    f"MM={inbody['mm_kg']}kg({inbody['mm_cat']})"
+                )
+            inbody_notes = self._get_inbody_notes(inbody, goal)
+            if inbody_notes != "standard_programming_applies":
+                lines.append(f"INBODY_NOTES:{inbody_notes}")
+
+        # ── CARDIO section ────────────────────────────────────────────
+        cardio = self._get_cardio_prescription(ctx)
+        if cardio:
+            lines.append(f"CARDIO:{cardio}")
+
+        # ── INJ section ───────────────────────────────────────────────
+        if injuries:
+            inj_notes = []
+            for inj in injuries:
+                rules = INJURY_RULES.get(inj["part"], {})
+                if inj["severity"] >= 7:
+                    note = rules.get("severe_note", f"avoid {inj['part']} exercises")
+                elif inj["severity"] >= 4:
+                    note = rules.get(
+                        "moderate_note", f"modify {inj['part']} exercises"
+                    )
+                else:
+                    note = rules.get("mild_note", f"monitor {inj['part']}")
+                inj_notes.append(
+                    f"{inj['part']}({inj['label']},{inj['severity']}/10):{note}"
+                )
+            lines.append(f"INJ:{';'.join(inj_notes)}")
+
+        # ── FB section ────────────────────────────────────────────────
+        if feedback:
+            lines.append(
+                f"FB:{feedback['difficulty']} pref,rating {feedback['rating']},"
+                f"{feedback['sessions']} sessions"
+            )
+
+        # ── SCHED section ─────────────────────────────────────────────
+        schedules = REST_DAY_SCHEDULES.get(days_count, REST_DAY_SCHEDULES[4])
+        schedule = random.choice(schedules)
+        lines.append(f"SCHED:{','.join(schedule)}")
+
+        # ── Training days from CSV ────────────────────────────────────
+        plan_days = plan["days"]
+        # On deload weeks, cut each day to roughly half the exercises
+        if is_deload:
+            plan_days = [
+                {
+                    "label": d["label"],
+                    "exercises": d["exercises"][: max(3, len(d["exercises"]) // 2)],
+                }
+                for d in plan_days
+            ]
+
+        for i, day in enumerate(plan_days, 1):
+            label = day["label"]
+            # Strip day-of-week prefix so the split name is concise
+            # e.g. "Monday - Chest & Triceps" → "Chest & Triceps"
+            split_name = re.sub(
+                r"^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)"
+                r"\s*[-–:]\s*",
+                "",
+                label,
+                flags=re.IGNORECASE,
+            ).strip() or label
+
+            dur = (
+                random.randint(25, 40)
+                if is_deload
+                else random.randint(40, 70)
+            )
+            lines.append("---")
+            lines.append(f"D{i}:{split_name}|{dur}min")
+
+            # Warm-up — derive day type from the split name
+            warmup_str = self._get_warmup_for_day(split_name, [], injuries)
+            lines.append(f"WARMUP:{warmup_str}")
+
+            # ── Working sets ──────────────────────────────────────────
+            for j, ex in enumerate(day["exercises"], 1):
+                name = ex["name"]
+                sets = ex["sets"]
+                reps = ex["reps"]
+
+                # Enrich with metadata from exercises_final_v6.json
+                matched = ex_lookup.get(name.lower())
+
+                # Rest: CSV value > JSON DB > goal default
+                rest = default_rest
+                if ex.get("rest"):
+                    try:
+                        rest = int(re.sub(r"[^\d]", "", ex["rest"]))
+                    except (ValueError, TypeError):
+                        pass
+                elif matched:
+                    rr = matched.get("rep_ranges_by_goal", {}).get(goal, {})
+                    rest = rr.get("rest_seconds", default_rest)
+
+                # Mechanic (C=compound, I=isolation)
+                mech = "C"
+                if matched:
+                    mech = (
+                        "C"
+                        if matched.get("mechanic", "").lower() == "compound"
+                        else "I"
+                    )
+
+                # SFR ratio
+                sfr = matched.get("sfr_ratio", 1.0) if matched else 1.0
+
+                # Equipment label
+                equip_str = (
+                    matched.get("equipment", "varies") if matched else "varies"
+                )
+
+                rpe = random.randint(*rpe_range)
+                ex_rir = rir if mech == "C" else max(0, rir - 1)
+
+                if is_deload:
+                    rpe = max(4, rpe - 2)
+                    ex_rir = max(3, ex_rir + 2)
+
+                # Feedback-driven set adjustment on first / last exercise
+                if feedback and sets.isdigit():
+                    s = int(sets)
+                    if feedback["difficulty"] == "harder" and j == 1:
+                        sets = str(min(s + 1, 6))
+                    elif feedback["difficulty"] == "easier" and j == 1:
+                        sets = str(max(s - 1, 2))
+
+                # Injury marker
+                inj_marker = ""
+                if matched and injuries:
+                    ex_muscles = set(matched.get("primaryMuscles", []))
+                    for inj in injuries:
+                        related = INJURY_RULES.get(inj["part"], {}).get(
+                            "related_muscles", set()
+                        )
+                        if ex_muscles & related:
+                            if inj["severity"] >= 7:
+                                inj_marker = "|*MODIFIED"
+                            elif inj["severity"] >= 4:
+                                inj_marker = "|*LIGHT"
+                            else:
+                                inj_marker = "|*MONITOR"
+                            break
+
+                lines.append(
+                    f"{j}.{name}|{sets}x{reps}|{rest}s|{mech}|"
+                    f"RPE{rpe}/RIR{ex_rir}|SFR{sfr:.1f}|{equip_str}{inj_marker}"
+                )
+
+        # ── Progressive overload ──────────────────────────────────────
+        lines.append("---")
+        prog = PROGRESSIVE_OVERLOAD.get(goal, PROGRESSIVE_OVERLOAD["General"])
+        lines.append(f"PROG:{prog['method']}|{prog['protocol']}")
+        lines.append(f"WEEKLY:{prog['weekly']}")
+        lines.append(f"DELOAD:{prog['deload']}")
+
+        return "\n".join(lines)
+
     # ------------------------------------------------------------------
     # EXERCISE DB LOOKUP (for expert programs)
     # ------------------------------------------------------------------
@@ -2936,6 +3335,55 @@ class WorkoutGeneratorV6:
             "user": self._build_user_message(ctx),
             "assistant": self._format_compact_plan(ctx, split, day_exercises),
         }
+
+    def generate_csv_example(self) -> Dict:
+        """
+        Generate a training example grounded in a REAL workout program from
+        workout_dataset.csv.
+
+        The exercise selection (which exercises, sets, reps) comes directly
+        from the scraped M&S program data — giving the model a realistic
+        picture of how actual programs are structured.  The user profile
+        (InBody, injuries, session feedback, week context) is randomised so
+        each template produces many distinct training pairs, preventing
+        overfitting to any single program.
+
+        Falls back to generate_example() if the CSV was not loaded.
+        """
+        if not self.csv_plans:
+            return self.generate_example()
+
+        plan = random.choice(self.csv_plans)
+        goal = plan["goal"]
+        level = plan["level"]
+        days_count = plan["days_per_week"]
+
+        # Build user context, then override the goal/level/days from the CSV
+        # row so the prompt stays grounded in the real program's intent.
+        ctx = self._random_user_context()
+        ctx["goal"] = goal
+        ctx["level"] = level
+        ctx["days"] = days_count
+        ctx["week_ctx"] = self._get_week_context(level)
+
+        # Optionally restrict equipment to a sub-set for diversity
+        equip = list(plan["equipment"])
+        if len(equip) > 5 and random.random() < 0.4:
+            k = random.randint(max(2, len(equip) // 2), len(equip))
+            equip = random.sample(equip, k)
+        if "body only" not in equip:
+            equip.append("body only")
+        ctx["equipment"] = equip
+
+        # Honour the CSV gender preference ~50 % of the time
+        if plan.get("gender_pref") and random.random() < 0.5:
+            if ctx.get("inbody"):
+                ctx["inbody"]["gender"] = plan["gender_pref"]
+
+        user_msg = self._build_user_message(ctx)
+        assistant_msg = self._format_csv_plan(ctx, plan)
+
+        return {"user": user_msg, "assistant": assistant_msg}
 
     def generate_injury_example(self) -> Dict:
         """Plan with mandatory injury modification."""
@@ -3496,37 +3944,41 @@ class WorkoutGeneratorV6:
         """
         Generate the full SFT training dataset.
 
-        Distribution (v6):
-          35%  Expert programs          (high-quality reference plans)
-          27%  Regular plans            (diverse random contexts)
-          10%  Injury-specific plans    (safety handling)
-          15%  Session feedback         (learn from user reviews)
-          13%  Coach reviews            (learn from expert corrections)
+        Distribution (v6 CSV-grounded):
+          40%  CSV-grounded plans     (real M&S exercise selection = the brain)
+          20%  Expert programs        (evidence-based periodised programs)
+          10%  Regular plans          (synthetic diversity / edge cases)
+          15%  Injury-specific plans  (safety handling)
+          15%  Session feedback       (learn from user reviews)
+
+        Coach-review examples have been replaced by CSV-grounded examples:
+        real exercise selection is a stronger training signal than generated
+        corrections and eliminates a significant source of hallucination.
         """
-        n_expert = int(n * 0.35)
-        n_regular = int(n * 0.27)
-        n_injury = int(n * 0.10)
-        n_feedback = int(n * 0.15)
-        n_coach = n - n_expert - n_regular - n_injury - n_feedback
+        n_csv = int(n * 0.40)
+        n_expert = int(n * 0.20)
+        n_regular = int(n * 0.10)
+        n_injury = int(n * 0.15)
+        n_feedback = n - n_csv - n_expert - n_regular - n_injury
 
         print(f"\nGenerating {n} training examples:")
-        print(f"  {n_regular:5d}  regular plans")
-        print(f"  {n_expert:5d}  expert programs")
+        print(f"  {n_csv:5d}  CSV-grounded plans   (real M&S programs)")
+        print(f"  {n_expert:5d}  expert programs      (periodised)")
+        print(f"  {n_regular:5d}  regular plans        (synthetic diversity)")
         print(f"  {n_injury:5d}  injury-specific plans")
         print(f"  {n_feedback:5d}  session feedback examples")
-        print(f"  {n_coach:5d}  coach review examples")
 
         data: List[Dict] = []
-        for _ in tqdm(range(n_regular), desc="Regular"):
-            data.append(self.generate_example())
+        for _ in tqdm(range(n_csv), desc="CSV-grounded"):
+            data.append(self.generate_csv_example())
         for _ in tqdm(range(n_expert), desc="Expert"):
             data.append(self.generate_expert_example())
+        for _ in tqdm(range(n_regular), desc="Regular"):
+            data.append(self.generate_example())
         for _ in tqdm(range(n_injury), desc="Injury"):
             data.append(self.generate_injury_example())
         for _ in tqdm(range(n_feedback), desc="Feedback"):
             data.append(self.generate_session_feedback_example())
-        for _ in tqdm(range(n_coach), desc="Coach"):
-            data.append(self.generate_coach_review_example())
 
         random.shuffle(data)
         return data
@@ -3664,7 +4116,11 @@ def main():
             "  warm-up exercises from the CSV datasets.\n"
             "  The built-in warm-up library will be used for now.\n"
         )
-    generator = WorkoutGeneratorV6(exercises, warmup_lib_path=WARMUP_LIB_FILE)
+    generator = WorkoutGeneratorV6(
+        exercises,
+        warmup_lib_path=WARMUP_LIB_FILE,
+        csv_plans_path=WORKOUT_DATASET_FILE,
+    )
 
     # ── SFT data ──
     if TRAINING_DATA_FILE.exists():

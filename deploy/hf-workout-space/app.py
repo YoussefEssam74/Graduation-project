@@ -27,8 +27,12 @@ from datetime import datetime
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+import random as _rand
 import torch
 import gradio as gr
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from peft import PeftModel
 from huggingface_hub import snapshot_download
@@ -139,6 +143,202 @@ for _ex in EXERCISE_DB:
         EXERCISE_DB_BY_NAME[_nm] = _ex
     for _m in _ex.get("targetMuscles", []):
         DB_BY_MUSCLE.setdefault(_m.lower(), []).append(_ex)
+
+
+# ── Exercise-picker (ported from workout_api_direct.py) ───────────────────────
+def _pick_exercises_for_focus(focus_areas: List[str], goal: str, level: str,
+                              n: int = 5, exclude: set = None,
+                              equipment: List[str] = None) -> List[Dict[str, Any]]:
+    """Return *n* exercises from EXERCISE_DB matching the given focus areas."""
+    exclude = exclude or set()
+    goal_key = goal if goal in ["Strength", "Muscle", "WeightLoss", "Endurance", "Power"] else "Muscle"
+
+    FOCUS_KEYWORDS: Dict[str, List[str]] = {
+        "chest":      ["chest", "pectoral"],
+        "shoulders":  ["shoulder", "delt"],
+        "triceps":    ["tricep"],
+        "back":       ["back", "lat", "rhomboid", "trap"],
+        "biceps":     ["bicep"],
+        "quads":      ["quad"],
+        "hamstrings": ["hamstring"],
+        "glutes":     ["glute"],
+        "core":       ["abs", "abdomin", "oblique", "core", "waist"],
+        "calves":     ["calf", "calves", "soleus", "gastrocnemius"],
+        "rear delts": ["rear delt", "posterior delt", "upper back"],
+        "legs":       ["quad", "hamstring", "glute", "calf", "upper legs", "lower legs"],
+        "lats":       ["lat"],
+    }
+
+    PUSH_FOCUSES = {"chest", "shoulders", "triceps", "front delts"}
+    PULL_FOCUSES = {"back", "biceps", "rear delts", "lats"}
+    LEG_FOCUSES  = {"quads", "hamstrings", "glutes", "calves", "legs"}
+    focus_set = {f.lower() for f in focus_areas}
+
+    LEG_MUSCLES  = {"glutes", "quads", "hamstrings", "calves", "adductors", "abductors"}
+    PUSH_MUSCLES = {"pectorals", "delts", "triceps", "serratus anterior"}
+    PULL_MUSCLES = {"lats", "traps", "upper back", "biceps", "forearms"}
+
+    excluded_patterns: set = set()
+    excluded_body_parts: set = set()
+    excluded_target_muscles: set = set()
+
+    if focus_set & PULL_FOCUSES and not (focus_set & PUSH_FOCUSES) and not (focus_set & LEG_FOCUSES):
+        excluded_patterns = {"push", "elbow_extension", "horizontal_push", "vertical_push",
+                             "squat", "lunge", "hinge", "plyometric"}
+        excluded_body_parts = {"upper legs", "lower legs"}
+        excluded_target_muscles = LEG_MUSCLES
+    elif focus_set & PUSH_FOCUSES and not (focus_set & PULL_FOCUSES) and not (focus_set & LEG_FOCUSES):
+        excluded_patterns = {"pull", "elbow_flexion", "horizontal_pull", "vertical_pull",
+                             "squat", "lunge", "hinge", "plyometric"}
+        excluded_body_parts = {"upper legs", "lower legs"}
+        excluded_target_muscles = LEG_MUSCLES
+    elif focus_set & LEG_FOCUSES and not (focus_set & (PUSH_FOCUSES | PULL_FOCUSES)):
+        excluded_patterns = {"horizontal_push", "vertical_push", "horizontal_pull",
+                             "vertical_pull", "elbow_extension", "elbow_flexion"}
+        excluded_target_muscles = PUSH_MUSCLES | PULL_MUSCLES
+
+    user_equipment: set = set()
+    if equipment:
+        for eq in equipment:
+            eq_low = eq.lower().strip()
+            user_equipment.add(eq_low)
+            if "dumbbell" in eq_low:        user_equipment.add("dumbbell")
+            if "barbell" in eq_low:         user_equipment.add("barbell")
+            if "cable" in eq_low:           user_equipment.add("cable")
+            if "machine" in eq_low:         user_equipment.update({"machine", "leverage machine", "smith machine"})
+    user_equipment.add("body weight")
+
+    candidates: List[Dict] = []
+    for focus in focus_areas:
+        keywords = FOCUS_KEYWORDS.get(focus.lower(), [focus.lower()])
+        for ex in EXERCISE_DB:
+            target_muscles = ex.get("targetMuscles", [])
+            real_muscles = [m for m in target_muscles if m and m.strip()]
+            if not real_muscles:
+                continue
+            body_parts = ex.get("bodyParts", [])
+            if any(bp.lower() in ("full body", "other", "cardio") for bp in body_parts):
+                continue
+            ex_pattern = ex.get("movement_pattern", "").lower()
+            if excluded_patterns and any(excl in ex_pattern for excl in excluded_patterns):
+                continue
+            if excluded_body_parts and any(bp.lower() in excluded_body_parts for bp in body_parts):
+                continue
+            if excluded_target_muscles and any(m.lower().strip() in excluded_target_muscles for m in real_muscles):
+                continue
+            combined_text = " ".join([
+                " ".join(real_muscles),
+                " ".join(body_parts),
+                ex_pattern,
+            ]).lower()
+            if any(kw in combined_text for kw in keywords):
+                candidates.append(ex)
+
+    def _base_name(n: str) -> str:
+        n = n.lower().strip()
+        n = re.sub(r'\s*v\.?\s*\d+\s*$', '', n)
+        n = re.sub(r'\s*\(.*?\)\s*$', '', n)
+        return n.strip()
+
+    seen: set = set()
+    unique: List[Dict] = []
+    for ex in candidates:
+        base = _base_name(ex["name"])
+        if base not in seen and ex["name"].lower() not in exclude:
+            seen.add(base)
+            unique.append(ex)
+
+    if level.lower() == "beginner":
+        filtered = [ex for ex in unique if ex.get("difficulty_level", 3) <= 2]
+        unique = filtered if filtered else unique
+
+    if user_equipment:
+        equip_match, equip_other = [], []
+        for ex in unique:
+            ex_equips = [e.lower() for e in ex.get("equipments", ["body weight"])]
+            has_match = any(
+                ueq in ex_eq or ex_eq in ueq
+                for ex_eq in ex_equips for ueq in user_equipment
+            )
+            (equip_match if has_match else equip_other).append(ex)
+        unique = equip_match + equip_other
+
+    def _score(ex):
+        goal_score    = ex.get("goal_suitability", {}).get(goal_key, 5)
+        compound_bonus = 3 if ex.get("exercise_type") == "compound" else 0
+        equip_bonus = 0
+        if user_equipment:
+            ex_equips = [e.lower() for e in ex.get("equipments", ["body weight"])]
+            if any(ueq in ex_eq or ex_eq in ueq
+                   for ex_eq in ex_equips for ueq in user_equipment if ueq != "body weight"):
+                equip_bonus = 2
+        return goal_score + compound_bonus + equip_bonus
+
+    unique.sort(key=_score, reverse=True)
+    pool = unique[:max(n * 3, 15)]
+    if len(pool) > n:
+        top, rest = pool[:2], pool[2:]
+        _rand.shuffle(rest)
+        pool = top + rest
+
+    selected = pool[:n]
+    formatted: List[Dict[str, Any]] = []
+    for ex in selected:
+        rep_config = ex.get("rep_ranges_by_goal", {}).get(goal_key, {
+            "min_reps": 8, "max_reps": 12, "rest_seconds": 90, "sets": 3
+        })
+        formatted.append({
+            "name":             ex["name"].title(),
+            "sets":             str(rep_config.get("sets", 3)),
+            "reps":             f"{rep_config['min_reps']}-{rep_config['max_reps']}",
+            "rest":             f"{rep_config['rest_seconds']} sec",
+            "target_muscles":   ex.get("targetMuscles", [])[:3],
+            "equipment":        ex.get("equipments", ["body weight"])[0] if ex.get("equipments") else "body weight",
+            "movement_pattern": ex.get("movement_pattern", "other"),
+            "exercise_type":    ex.get("exercise_type", "isolation"),
+            "notes":            "Selected from exercise database",
+        })
+    return formatted
+
+
+# ── Day-focus templates (used when model truncates) ───────────────────────────
+DAY_FOCUS_TEMPLATES: Dict[int, List[tuple]] = {
+    3: [
+        (1, "Day 1: Full Body",  ["chest", "back", "legs"]),
+        (2, "Day 2: Upper Body", ["chest", "shoulders", "back", "biceps", "triceps"]),
+        (3, "Day 3: Lower Body", ["quads", "hamstrings", "glutes", "calves"]),
+    ],
+    4: [
+        (1, "Day 1: Push",       ["chest", "shoulders", "triceps"]),
+        (2, "Day 2: Pull",       ["back", "biceps", "rear delts"]),
+        (3, "Day 3: Legs",       ["quads", "hamstrings", "glutes"]),
+        (4, "Day 4: Upper Mix",  ["chest", "back", "shoulders"]),
+    ],
+    5: [
+        (1, "Day 1: Push",       ["chest", "shoulders", "triceps"]),
+        (2, "Day 2: Pull",       ["back", "biceps", "rear delts"]),
+        (3, "Day 3: Legs",       ["quads", "hamstrings", "glutes"]),
+        (4, "Day 4: Upper",      ["chest", "back", "shoulders", "biceps", "triceps"]),
+        (5, "Day 5: Core & Abs", ["core"]),
+    ],
+    6: [
+        (1, "Day 1: Push A",     ["chest", "shoulders", "triceps"]),
+        (2, "Day 2: Pull A",     ["back", "biceps"]),
+        (3, "Day 3: Legs",       ["quads", "hamstrings", "glutes"]),
+        (4, "Day 4: Push B",     ["chest", "shoulders", "triceps"]),
+        (5, "Day 5: Pull B",     ["back", "biceps", "rear delts"]),
+        (6, "Day 6: Upper Mix",  ["chest", "back", "shoulders"]),
+    ],
+    7: [
+        (1, "Day 1: Push",       ["chest", "shoulders", "triceps"]),
+        (2, "Day 2: Pull",       ["back", "biceps"]),
+        (3, "Day 3: Legs",       ["quads", "hamstrings", "glutes"]),
+        (4, "Day 4: Rest/Core",  ["core"]),
+        (5, "Day 5: Push B",     ["chest", "shoulders", "triceps"]),
+        (6, "Day 6: Pull B",     ["back", "biceps", "rear delts"]),
+        (7, "Day 7: Full Body",  ["chest", "back", "legs"]),
+    ],
+}
 
 WORKOUT_GOAL_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "Build Muscle":  {"sets": 4, "rep_range": "8-12",  "rest": "90s",  "technique": "Progressive Overload"},
@@ -353,33 +553,91 @@ def run_model(prompt: str, max_len: int = 1024) -> str:
     return tokenizer.decode(out[0], skip_special_tokens=True)
 
 
-# ── Gradio predict function ───────────────────────────────────────────────────
+# ── Core generation pipeline (called by both Gradio UI and /generate) ────────
+def _generate_plan(req_days: int, req_goal: str, req_level: str,
+                   req_equipment: List[str], prompt: str) -> Dict[str, Any]:
+    """Run model + parse + fill underpopulated days + create missing days."""
+    raw = run_model(prompt)
+    log.info(f"Model output ({len(raw)} chars): {raw[:200]}")
+
+    plan = extract_workout_from_model_output(
+        raw,
+        req_days=req_days,
+        req_goal=req_goal,
+        req_level=req_level,
+        req_equipment=req_equipment,
+    )
+
+    all_used_names: set = set()
+    for day in plan.get("days", []):
+        for ex in day.get("exercises", []):
+            all_used_names.add(ex.get("name", "").lower())
+
+    # ── Step A: Fill underpopulated days (< 4 exercises) ──────────────────────
+    for day in plan.get("days", []):
+        if len(day.get("exercises", [])) < 4:
+            needed = 5 - len(day["exercises"])
+            db_exs = _pick_exercises_for_focus(
+                day.get("focus_areas", ["chest"]),
+                req_goal, req_level, n=needed,
+                exclude=all_used_names, equipment=req_equipment,
+            )
+            for ex in db_exs:
+                ex = enrich_exercise_with_metadata(ex)
+                day["exercises"].append(ex)
+                all_used_names.add(ex.get("name", "").lower())
+
+    # ── Step B: Create completely missing days (model truncated early) ─────────
+    existing_day_numbers = {d.get("day_number", 0) for d in plan.get("days", [])}
+    if len(plan.get("days", [])) < req_days:
+        templates = DAY_FOCUS_TEMPLATES.get(
+            req_days,
+            [(i + 1, f"Day {i + 1}: Full Body", ["chest", "back", "legs"]) for i in range(req_days)],
+        )
+        missing_count = req_days - len(plan.get("days", []))
+        log.info(f"Model produced {len(plan.get('days', []))} days — adding {missing_count} more from DB")
+
+        for (day_num, day_name, focus_areas) in templates:
+            if day_num not in existing_day_numbers:
+                db_exs = _pick_exercises_for_focus(
+                    focus_areas, req_goal, req_level, n=5,
+                    exclude=all_used_names, equipment=req_equipment,
+                )
+                for ex in db_exs:
+                    ex = enrich_exercise_with_metadata(ex)
+                    all_used_names.add(ex.get("name", "").lower())
+                plan["days"].append({
+                    "day_number":                day_num,
+                    "day_name":                  day_name,
+                    "focus_areas":               focus_areas,
+                    "focus":                     ", ".join(focus_areas),
+                    "estimated_duration_minutes": 45,
+                    "exercises":                 db_exs,
+                })
+                log.info(f"  + Added {day_name} with {len(db_exs)} exercises")
+
+        plan["days"].sort(key=lambda d: d.get("day_number", 0))
+
+    return plan
+
+
+# ── Gradio predict function (kept for UI compatibility) ───────────────────────
 def predict(request_json: str) -> str:
-    """
-    Input:  JSON string matching C# MLWorkoutRequest
-    Output: JSON string matching C# MLWorkoutResponse
-    Called by C# as: POST /api/predict  {"data": [request_json]}
-    """
     t0 = time.time()
     try:
         req = json.loads(request_json)
+        req_days      = req.get("days_per_week", 4)
+        req_goal      = req.get("goal", "Muscle")
+        req_level     = req.get("fitness_level", "Intermediate")
+        req_equipment = req.get("equipment", [])
         prompt = build_prompt(req)
-        raw = run_model(prompt)
-        log.info(f"Model output ({len(raw)} chars): {raw[:200]}")
 
-        plan = extract_workout_from_model_output(
-            raw,
-            req_days=req.get("days_per_week", 4),
-            req_goal=req.get("goal", "Muscle"),
-            req_level=req.get("fitness_level", "Intermediate"),
-            req_equipment=req.get("equipment", []),
-        )
-        valid = bool(plan.get("days") and sum(len(d.get("exercises",[])) for d in plan["days"]) > 0)
+        plan  = _generate_plan(req_days, req_goal, req_level, req_equipment, prompt)
+        valid = bool(plan.get("days") and
+                     sum(len(d.get("exercises", [])) for d in plan["days"]) > 0)
 
         return json.dumps({
-            "plan": plan,
-            "isValidJson": valid,
-            "modelVersion": MODEL_VERSION,
+            "plan": plan, "isValidJson": valid, "modelVersion": MODEL_VERSION,
             "generationLatencyMs": int((time.time() - t0) * 1000),
             "promptUsed": prompt,
             "error": None if valid else "Model produced empty plan",
@@ -392,23 +650,107 @@ def predict(request_json: str) -> str:
             "promptUsed": "", "error": str(e),
         })
 
-def health(_: str = "") -> str:
+
+def _health_check_str(_: str = "") -> str:
     return json.dumps({"status": "healthy", "model": MODEL_VERSION, "device": DEVICE,
                        "exercises_loaded": len(EXERCISE_DB),
                        "timestamp": datetime.utcnow().isoformat()})
 
-# ── Gradio Interface ──────────────────────────────────────────────────────────
-with gr.Blocks(title="IntelliFit Workout AI") as demo:
+
+# ── Gradio Interface (mounted at /ui for manual testing) ──────────────────────
+with gr.Blocks(title="IntelliFit Workout AI") as _demo:
     gr.Markdown("# 🏋️ IntelliFit Workout Plan Generator")
-    gr.Markdown("**API endpoint**: POST `/api/predict` with `{\"data\": [request_json_string]}`")
+    gr.Markdown("**Main API**: POST `/generate` · `{prompt, max_length}` → `{success, plan, error}`")
     with gr.Row():
-        inp = gr.Textbox(label="Request JSON", lines=8,
-            placeholder='{"userId":1,"fitnessLevel":"Beginner","goal":"Muscle","daysPerWeek":4,"equipment":[],"injuries":[]}')
+        inp = gr.Textbox(
+            label="Request JSON", lines=8,
+            placeholder='{"days_per_week":4,"goal":"Muscle","fitness_level":"Intermediate","equipment":["dumbbell"],"injuries":[]}')
         out = gr.Textbox(label="Response JSON", lines=8)
-    gr.Button("Generate Plan", variant="primary").click(fn=predict, inputs=inp, outputs=out, api_name="predict")
+    gr.Button("Generate Plan", variant="primary").click(
+        fn=predict, inputs=inp, outputs=out, api_name="predict")
     with gr.Row():
         health_out = gr.Textbox(label="Health", lines=2)
-    gr.Button("Health Check").click(fn=health, inputs=gr.Textbox(visible=False, value=""),
-                                    outputs=health_out, api_name="health")
+    gr.Button("Health Check").click(
+        fn=_health_check_str, inputs=gr.Textbox(visible=False, value=""),
+        outputs=health_out, api_name="health")
 
-demo.launch()
+
+# ── FastAPI app  (exported as `app` for uvicorn app:app) ──────────────────────
+_fastapi = FastAPI(title="IntelliFit Workout Generator", version=MODEL_VERSION)
+_fastapi.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@_fastapi.post("/generate")
+async def generate_endpoint(request: Request) -> JSONResponse:
+    """
+    Called by the C# WorkoutGeneratorService.
+    Request:  {"prompt": "Generate a 4-day workout plan ...", "max_length": 1024, "coach_feedback": null}
+    Response: {"success": true, "plan": {...}, "error": null}
+    """
+    t0 = time.time()
+    try:
+        body         = await request.json()
+        prompt       = body.get("prompt", "")
+        max_length   = int(body.get("max_length", 1024))
+        # Parse structured fields from the prompt string:
+        # "Generate a 4-day workout plan for intermediate lifter, goal is Muscle, has access to dumbbell."
+        days_match  = re.search(r'Generate a (\d+)-day',         prompt, re.IGNORECASE)
+        level_match = re.search(r'for (\w+) lifter',             prompt, re.IGNORECASE)
+        goal_match  = re.search(r'goal is (\w+)',                prompt, re.IGNORECASE)
+        equip_match = re.search(r'has access to (.+?)(?:\.|$)',  prompt, re.IGNORECASE)
+
+        req_days      = int(days_match.group(1))                           if days_match  else 4
+        req_level     = level_match.group(1).title()                       if level_match else "Intermediate"
+        req_goal      = goal_match.group(1).title()                        if goal_match  else "Muscle"
+        req_equipment = [e.strip() for e in equip_match.group(1).split(",")] if equip_match else []
+
+        log.info(f"/generate: days={req_days} level={req_level} goal={req_goal} equip={req_equipment}")
+
+        plan  = _generate_plan(req_days, req_goal, req_level, req_equipment, prompt)
+        valid = bool(plan.get("days") and
+                     sum(len(d.get("exercises", [])) for d in plan["days"]) > 0)
+
+        if not valid:
+            return JSONResponse(
+                {"success": False, "plan": None, "error": "Model produced empty plan"},
+                status_code=500,
+            )
+
+        return JSONResponse({"success": True, "plan": plan, "error": None})
+
+    except Exception as e:
+        log.error(f"/generate error: {e}", exc_info=True)
+        return JSONResponse(
+            {"success": False, "plan": None, "error": str(e)},
+            status_code=500,
+        )
+
+
+@_fastapi.get("/health")
+def health_endpoint():
+    return {
+        "status": "healthy",
+        "model": MODEL_VERSION,
+        "device": DEVICE,
+        "exercises_loaded": len(EXERCISE_DB),
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@_fastapi.get("/")
+def root():
+    return {
+        "service": "IntelliFit Workout Generator",
+        "version": MODEL_VERSION,
+        "endpoints": ["/generate (POST)", "/health (GET)", "/ui (Gradio UI)"],
+    }
+
+
+# Mount Gradio UI at /ui — `app` is the combined FastAPI+Gradio app
+app = gr.mount_gradio_app(_fastapi, _demo, path="/ui")

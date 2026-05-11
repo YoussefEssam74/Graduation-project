@@ -115,7 +115,7 @@ ACTIVITY_FACTORS = {
     gpu="T4",                       # cheapest GPU; handles 4-bit Qwen2.5-3B
     image=image,
     volumes={MODEL_CACHE: volume},
-    timeout=300,                    # max seconds per request (3-day plan ~180s)
+    timeout=86400,                  # 24 h max — no effective limit
     scaledown_window=300,           # keep warm for 5 min after last request
     secrets=[modal.Secret.from_name("huggingface-secret")],
 )
@@ -268,7 +268,7 @@ class NutritionService:
             with torch.no_grad():
                 out_ids = model.generate(
                     **inputs,
-                    max_new_tokens=900,
+                    max_new_tokens=650,
                     do_sample=False,
                     repetition_penalty=1.1,
                     eos_token_id=tok.eos_token_id,

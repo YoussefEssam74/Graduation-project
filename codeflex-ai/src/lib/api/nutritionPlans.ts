@@ -31,6 +31,7 @@ export interface NutritionPlanDto {
   isActive: boolean;
   createdAt: string;
   dietaryRestrictions?: string[];
+  aiPlanJson?: string;
   meals?: PlanMealItem[];
 }
 
@@ -47,6 +48,7 @@ export interface GenerateNutritionPlanDto {
   fatGrams?: number;
   startDate?: string;
   endDate?: string;
+  aiPlanJson?: string;
 }
 
 export const nutritionPlansApi = {

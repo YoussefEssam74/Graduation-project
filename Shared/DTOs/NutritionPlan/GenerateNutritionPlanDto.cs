@@ -30,5 +30,7 @@ namespace Shared.DTOs.NutritionPlan
         public string? DietaryRestrictions { get; set; }
 
         public string? FitnessGoal { get; set; }
+
+        public string? AiPlanJson { get; set; }
     }
 }

@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
 import { nutritionPlansApi, mealsApi, type NutritionPlanDto, type MealDto } from "@/lib/api";
 import { NutritionMLService, type NutritionMLResponse } from "@/lib/api/nutritionMLService";
+import { inbodyApi, type InBodyMeasurementDto } from "@/lib/api/inbody";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ function StepIndicator({ currentStep, totalSteps }: { currentStep: number; total
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type ViewState = "loading" | "no-plan" | "wizard" | "plan";
+type ViewState = "loading" | "no-plan" | "no-inbody" | "wizard" | "plan";
 
 function NutritionContent() {
     const { user } = useAuth();
@@ -165,24 +166,36 @@ function NutritionContent() {
     const [fatGrams, setFatGrams] = useState(55);
     const [manualMacros, setManualMacros] = useState(false);
     const [planName, setPlanName] = useState("");
+    const [inbodyData, setInbodyData] = useState<InBodyMeasurementDto | null>(null);
 
     // ── Fetch Data ────────────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {
         if (!user?.userId) { setView("no-plan"); return; }
         try {
-            const [plansRes, mealsRes] = await Promise.all([
+            const [plansRes, mealsRes, inbodyRes] = await Promise.all([
                 nutritionPlansApi.getMemberPlans(user.userId),
                 mealsApi.getActiveMeals(),
+                inbodyApi.getLatestMeasurement(user.userId),
             ]);
+            const latestInbody = inbodyRes.success ? inbodyRes.data ?? null : null;
+            setInbodyData(latestInbody);
+
             if (plansRes.success && plansRes.data && plansRes.data.length > 0) {
                 const active = plansRes.data.find(p => p.isActive) ?? plansRes.data[0];
                 setActivePlan(active);
-                // Restore AI-generated plan from localStorage
-                const stored = NutritionMLService.getStoredPlan(user.userId);
-                if (stored) setAiPlan(stored.plan);
+                // Restore AI-generated plan from DB first, fallback to localStorage
+                if (active.aiPlanJson) {
+                    try { setAiPlan(JSON.parse(active.aiPlanJson)); } catch {
+                        const stored = NutritionMLService.getStoredPlan(user.userId);
+                        if (stored) setAiPlan(stored.plan);
+                    }
+                } else {
+                    const stored = NutritionMLService.getStoredPlan(user.userId);
+                    if (stored) setAiPlan(stored.plan);
+                }
                 setView("plan");
             } else {
-                setView("no-plan");
+                setView(latestInbody ? "no-plan" : "no-inbody");
             }
             if (mealsRes.success && mealsRes.data) {
                 setMeals(mealsRes.data);
@@ -253,8 +266,15 @@ function NutritionContent() {
             };
 
             const mlRequest = NutritionMLService.buildRequest(
-                { userId: user.userId },
-                null,
+                { userId: user.userId, gender: user.gender as number | undefined, dateOfBirth: user.dateOfBirth as string | undefined },
+                inbodyData ? {
+                    weight: inbodyData.weight,
+                    height: inbodyData.height,
+                    bodyFatPercentage: inbodyData.bodyFatPercentage,
+                    muscleMass: inbodyData.muscleMass,
+                    bmr: inbodyData.bmr,
+                    visceralFat: inbodyData.visceralFat,
+                } : null,
                 mlPrefs,
             );
 
@@ -285,6 +305,13 @@ function NutritionContent() {
 
             // ── Step 2: Save plan metadata to backend DB ──────────────────────
             setGeneratingStatus("Saving your plan...");
+
+            // Compute macros from AI plan if available (use day 0)
+            const day0 = generatedAiPlan?.days?.[0];
+            const effectiveProtein = day0 ? Math.round((day0.meals ?? []).reduce((s: number, m: { items?: { protein?: number }[] }) => s + (m.items ?? []).reduce((ss: number, it: { protein?: number }) => ss + (it.protein ?? 0), 0), 0)) : proteinGrams;
+            const effectiveCarbs   = day0 ? Math.round((day0.meals ?? []).reduce((s: number, m: { items?: { carbs?: number }[] }) => s + (m.items ?? []).reduce((ss: number, it: { carbs?: number }) => ss + (it.carbs ?? 0), 0), 0)) : carbsGrams;
+            const effectiveFat     = day0 ? Math.round((day0.meals ?? []).reduce((s: number, m: { items?: { fat?: number }[] }) => s + (m.items ?? []).reduce((ss: number, it: { fat?: number }) => ss + (it.fat ?? 0), 0), 0)) : fatGrams;
+
             const res = await nutritionPlansApi.generatePlan({
                 memberId: user.userId,
                 planName: planName.trim(),
@@ -292,10 +319,11 @@ function NutritionContent() {
                 fitnessGoal: goal,
                 dietaryRestrictions: restrictionsStr,
                 dailyCalories: effectiveCalories,
-                proteinGrams,
-                carbsGrams,
-                fatGrams,
+                proteinGrams: effectiveProtein,
+                carbsGrams: effectiveCarbs,
+                fatGrams: effectiveFat,
                 startDate: new Date().toISOString().split("T")[0],
+                aiPlanJson: JSON.stringify(generatedAiPlan),
             });
 
             if (res.success && res.data) {
@@ -326,6 +354,10 @@ function NutritionContent() {
 
 
     const startWizard = () => {
+        if (!inbodyData) {
+            showToast("Please complete an InBody scan before generating a nutrition plan.", "error");
+            return;
+        }
         setWizardStep(1);
         setGoal("");
         setActivityLevel("Moderately Active");
@@ -345,6 +377,38 @@ function NutritionContent() {
         return (
             <div className="flex items-center justify-center py-32">
                 <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+        );
+    }
+
+    // ─── No InBody ─────────────────────────────────────────────────────────────
+    if (view === "no-inbody") {
+        return (
+            <div className="min-h-screen">
+                <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                        <Info className="w-10 h-10 text-white" />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-3">InBody Scan Required</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mb-8 text-lg">
+                        To generate an accurate nutrition plan, we need your body composition data. Please complete an InBody scan at the gym reception first.
+                    </p>
+                    <div className="grid grid-cols-3 gap-4 mb-8">
+                        {[
+                            { icon: "⚖️", label: "Body weight & fat %" },
+                            { icon: "💪", label: "Muscle mass" },
+                            { icon: "🔥", label: "Basal metabolic rate" },
+                        ].map(item => (
+                            <div key={item.label} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <div className="text-2xl mb-2">{item.icon}</div>
+                                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{item.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">
+                        Once your InBody data is recorded, come back here to generate your personalized nutrition plan.
+                    </p>
+                </div>
             </div>
         );
     }
@@ -528,7 +592,7 @@ function NutritionContent() {
                         </div>
                     )}
 
-                    {/* ── Step 3: Calories + Macros + Generate ───────────────── */}
+                    {/* ── Step 3: Name + Generate ────────────────────────── */}
                     {wizardStep === 3 && (
                         <div className="space-y-6">
                             {/* Plan Name */}
@@ -542,91 +606,7 @@ function NutritionContent() {
                                 />
                             </div>
 
-                            {/* Calorie Target */}
-                            <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div>
-                                        <h3 className="font-bold text-slate-900 dark:text-white">Daily Calorie Target</h3>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Auto-calculated based on your goal &amp; activity</p>
-                                    </div>
-                                    <button
-                                        onClick={() => setManualCalories(!manualCalories)}
-                                        className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${manualCalories ? "bg-blue-600 text-white border-blue-600" : "border-slate-300 text-slate-600 dark:text-slate-400 dark:border-slate-600 hover:border-blue-400"}`}
-                                    >
-                                        {manualCalories ? "Auto" : "Manual"}
-                                    </button>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <button aria-label="Decrease calories" onClick={() => { setManualCalories(true); setCalorieTarget(c => Math.max(1200, c - 50)); }} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                                        <Minus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    </button>
-                                    <div className="flex-1 text-center">
-                                        <span className="text-3xl font-black text-blue-600">{calorieTarget.toLocaleString()}</span>
-                                        <span className="text-sm text-slate-500 ml-1">kcal/day</span>
-                                    </div>
-                                    <button aria-label="Increase calories" onClick={() => { setManualCalories(true); setCalorieTarget(c => Math.min(5000, c + 50)); }} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                                        <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    </button>
-                                </div>
-                                <input
-                                    aria-label="Calorie target slider"
-                                    type="range" min={1200} max={5000} step={50}
-                                    value={calorieTarget}
-                                    onChange={e => { setManualCalories(true); setCalorieTarget(Number(e.target.value)); }}
-                                    className="w-full mt-3 accent-blue-600"
-                                />
-                                <div className="flex justify-between text-xs text-slate-400 mt-1">
-                                    <span>1,200</span><span>5,000</span>
-                                </div>
-                            </div>
-
-                            {/* Macro Targets */}
-                            <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-slate-900 dark:text-white">Macro Targets</h3>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400">Protein, carbs and fat targets</p>
-                                    </div>
-                                    <button
-                                        onClick={() => { setManualMacros(!manualMacros); if (manualMacros) { const m = calculateMacros(goal, calorieTarget); setProteinGrams(m.protein); setCarbsGrams(m.carbs); setFatGrams(m.fat); }}}
-                                        className={`text-xs px-3 py-1.5 rounded-full border font-semibold transition-all ${manualMacros ? "bg-blue-600 text-white border-blue-600" : "border-slate-300 text-slate-600 dark:text-slate-400 dark:border-slate-600 hover:border-blue-400"}`}
-                                    >
-                                        {manualMacros ? "Auto" : "Manual"}
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[
-                                        { label: "Protein", value: proteinGrams, setter: setProteinGrams, color: "text-blue-600", bar: "bg-blue-500", cal: proteinGrams * 4 },
-                                        { label: "Carbs",   value: carbsGrams,   setter: setCarbsGrams,   color: "text-orange-600", bar: "bg-orange-500", cal: carbsGrams * 4 },
-                                        { label: "Fat",     value: fatGrams,     setter: setFatGrams,     color: "text-yellow-600", bar: "bg-yellow-500", cal: fatGrams * 9 },
-                                    ].map(macro => (
-                                        <div key={macro.label} className="text-center">
-                                            <div className={`text-2xl font-black ${macro.color}`}>{macro.value}g</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">{macro.label} · {macro.cal} kcal</div>
-                                            {manualMacros && (
-                                                <input
-                                                    aria-label={`${macro.label} grams slider`}
-                                                    type="range" min={0} max={500} step={5}
-                                                    value={macro.value}
-                                                    onChange={e => macro.setter(Number(e.target.value))}
-                                                    className="w-full accent-blue-600"
-                                                />
-                                            )}
-                                            <Progress value={Math.min(100, (macro.cal / calorieTarget) * 100)} className="h-1.5 mt-1" />
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="mt-3 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1"><Info className="w-3 h-3" /> Total from macros</span>
-                                        <span className={`font-bold ${Math.abs((proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9) - calorieTarget) < 100 ? "text-green-600" : "text-amber-600"}`}>
-                                            {(proteinGrams * 4 + carbsGrams * 4 + fatGrams * 9).toLocaleString()} kcal
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Review Summary */}
+                            {/* Plan Summary */}
                             <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
                                 <h3 className="font-bold text-blue-900 dark:text-blue-200 mb-3 text-sm">Plan Summary</h3>
                                 <div className="grid grid-cols-2 gap-y-2 text-sm">
@@ -640,8 +620,19 @@ function NutritionContent() {
                                         <span className="text-slate-600 dark:text-slate-400">Restrictions</span>
                                         <span className="font-semibold text-slate-900 dark:text-white">{restrictions.join(", ")}</span>
                                     </>}
-                                    <span className="text-slate-600 dark:text-slate-400">Daily Calories</span>
-                                    <span className="font-semibold text-green-700 dark:text-green-400">{calorieTarget.toLocaleString()} kcal</span>
+                                </div>
+                            </div>
+
+                            {/* AI info card */}
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                <div className="flex items-start gap-3">
+                                    <Sparkles className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-semibold text-emerald-800 dark:text-emerald-200 text-sm">AI Will Calculate Your Targets</p>
+                                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                                            Based on your InBody measurements, goal, and activity level, the AI will compute your optimal daily calories and macro targets automatically.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -657,7 +648,7 @@ function NutritionContent() {
                                     {isGenerating ? (
                                         <><Loader2 className="w-4 h-4 animate-spin" /> {generatingStatus}</>
                                     ) : (
-                                        <><Sparkles className="w-4 h-4" /> Generate Plan</>
+                                        <><Sparkles className="w-4 h-4" /> Generate My Plan</>
                                     )}
                                 </Button>
                             </div>
