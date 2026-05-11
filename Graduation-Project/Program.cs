@@ -237,10 +237,28 @@ namespace Graduation_Project
 
             var app = builder.Build();
 
-            // Fix users sequence on startup (one-time fix for seeded data)
+            // ── Startup: Run EF Core Migrations + Sequence Fix ──────────────────
             using (var scope = app.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<IntelliFitDbContext>();
+
+                // Auto-apply all pending EF Core migrations on startup.
+                // This ensures the Neon PostgreSQL schema is always up-to-date
+                // without any manual dotnet-ef commands in production.
+                try
+                {
+                    Console.WriteLine("⏳ Applying pending database migrations...");
+                    dbContext.Database.Migrate();
+                    Console.WriteLine("✓ Database migrations applied successfully.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Migration error: {ex.Message}");
+                    // Do not rethrow — a failed migration should surface in logs
+                    // but not crash the entire process on non-breaking schema changes.
+                }
+
+                // Fix users sequence on startup (one-time fix for seeded data)
                 try
                 {
                     dbContext.Database.ExecuteSqlRaw("SELECT setval(pg_get_serial_sequence('users','UserId'), COALESCE((SELECT MAX(\"UserId\") FROM users), 1));");
@@ -253,12 +271,16 @@ namespace Graduation_Project
             }
 
             // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            // Swagger is enabled in all environments for demo/graduation project purposes.
+            // In a strict production system you would gate this behind IsDevelopment() only.
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-            else
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "IntelliFit API v1");
+                c.RoutePrefix = "swagger";
+            });
+
+            if (!app.Environment.IsDevelopment())
             {
                 app.UseHttpsRedirection();
             }
