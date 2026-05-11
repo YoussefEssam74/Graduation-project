@@ -3,26 +3,34 @@ title: IntelliFit Workout AI
 emoji: 🏋️
 colorFrom: blue
 colorTo: green
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: "4.44.0"
+app_file: app.py
 pinned: false
+python_version: "3.10"
 ---
 
 # IntelliFit Workout Plan Generator
 
-FastAPI service running Flan-T5-Small + LoRA for personalized workout plan generation.
+Flan-T5-Small + LoRA adapter generating personalized workout plans.
 
-## API Endpoints
+## API Usage (called by the .NET backend)
 
-- `POST /predict` — Generate a workout plan
-- `GET /health` — Health check
-- `GET /` — Status
+```
+POST https://youssefeemad-workout-generator.hf.space/api/predict
+Content-Type: application/json
 
-## Environment Variables
+{"data": ["{\"userId\":1,\"fitnessLevel\":\"Beginner\",\"goal\":\"Muscle\",\"daysPerWeek\":4,\"equipment\":[],\"injuries\":[]}"]}
+```
 
-Set these as **Space Secrets**:
+Response:
+```json
+{"data": ["{\"plan\":{...},\"isValidJson\":true,\"modelVersion\":\"v3.0.0\"}"]}
+```
 
-| Variable | Description |
-|----------|-------------|
-| `HF_TOKEN` | Hugging Face access token (for private model repo) |
-| `MODEL_REPO` | HF repo ID for LoRA adapter |
+## Space Secrets Required
+
+| Secret | Value |
+|--------|-------|
+| `HF_TOKEN` | Your HF access token |
+| `MODEL_REPO` | `youssefeemad/intellifit-workout-v3` |

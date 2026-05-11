@@ -1,7 +1,8 @@
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
-pydantic==2.10.3
-torch==2.5.1+cpu
-transformers==4.46.3
-peft==0.14.0
-huggingface_hub>=0.20.0
+torch==2.2.2
+transformers==4.44.2
+peft==0.18.1
+gradio==4.44.0
+accelerate==0.33.0
+huggingface_hub>=0.25.0,<0.26.0
+starlette==0.27.0
+anyio==3.7.1

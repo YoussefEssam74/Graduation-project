@@ -70,6 +70,15 @@ namespace Graduation_Project
                 client.Timeout = TimeSpan.FromSeconds(timeout);
             });
 
+            // Add Nutrition AI Service (Qwen2.5-3B on Hugging Face Spaces)
+            builder.Services.AddHttpClient<ServiceAbstraction.Services.INutritionAIServiceClient, Service.Services.NutritionAIServiceClient>(client =>
+            {
+                var baseUrl = builder.Configuration["MLService:NutritionBaseUrl"] ?? "http://localhost:5301";
+                var timeout = int.Parse(builder.Configuration["MLService:TimeoutSeconds"] ?? "360");
+                client.BaseAddress = new Uri(baseUrl);
+                client.Timeout = TimeSpan.FromSeconds(timeout);
+            });
+
             // Add Equipment Time Slot Service (for background service and booking logic)
             builder.Services.AddScoped<ServiceAbstraction.Services.IEquipmentTimeSlotService, Service.Services.EquipmentTimeSlotService>();
 

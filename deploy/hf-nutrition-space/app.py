@@ -1,33 +1,41 @@
 """
-IntelliFit Nutrition Plan Generator — Hugging Face ZeroGPU Space
-=================================================================
-Gradio app wrapping the Qwen2.5-3B-Instruct + QLoRA nutrition model.
-Uses @spaces.GPU decorator for on-demand T4 GPU access (free ZeroGPU).
+IntelliFit Nutrition Plan Generator — Hugging Face Spaces (Gradio SDK, CPU)
+===========================================================================
+Adapted from: ml_models/Nutrition-Plan_Generating/serve_nutrition.py
 
-Environment Variables (set as HF Space Secrets):
-    HF_TOKEN        — Hugging Face access token
-    ADAPTER_REPO    — HF repo for QLoRA adapter (e.g., "YourUser/intellifit-nutrition-v1")
-    DATA_REPO       — HF dataset repo for JSON data files
+Changes for HF Spaces:
+  - Model loaded from HF Hub (ADAPTER_REPO secret) instead of local path
+  - Artifacts (food_db_halal.json, allergen_taxonomy.json, disease_rules.json)
+    loaded from HF Hub snapshot
+  - bitsandbytes / 4-bit quantization removed (CPU-only Space, use float32)
+  - device_map removed (no GPU)
+  - FastAPI replaced with Gradio wrapper (Gradio SDK requirement)
+  - All core logic preserved intact: TDEE, InBody, prompts, JSON extraction,
+    allergen injection, disease rules, calorie correction
 
-Endpoints exposed by Gradio:
-    POST /api/generate    — Generate a nutrition plan (JSON in → JSON out)
-    POST /api/health      — Health check
+Environment Secrets:
+  HF_TOKEN    — HF read token (to download private repos)
+  ADAPTER_REPO — e.g. youssefeemad/intellifit-nutrition-v1
 """
 
 import os
 import json
-import time
-import math
 import re
+import math
+import time
 import logging
+from datetime import datetime
 from typing import Optional
+from contextlib import asynccontextmanager
 
-import spaces  # HF ZeroGPU decorator
-import gradio as gr
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import gradio as gr
+from transformers import (
+    AutoModelForCausalLM, AutoTokenizer,
+    StoppingCriteria, StoppingCriteriaList,
+)
 from peft import PeftModel
-from huggingface_hub import snapshot_download, hf_hub_download
+from huggingface_hub import snapshot_download
 
 try:
     from json_repair import repair_json as _repair_json
@@ -35,17 +43,73 @@ try:
 except ImportError:
     _JSON_REPAIR_AVAILABLE = False
 
-# ── Configuration ────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-log = logging.getLogger("nutrition-api")
+log = logging.getLogger("nutrition-space")
 
-HF_TOKEN = os.environ.get("HF_TOKEN")
-ADAPTER_REPO = os.environ.get("ADAPTER_REPO", "YourUsername/intellifit-nutrition-v1")
-DATA_REPO = os.environ.get("DATA_REPO", "YourUsername/intellifit-nutrition-data")
-BASE_MODEL = "Qwen/Qwen2.5-3B-Instruct"
+# ── Config ─────────────────────────────────────────────────────────────────────
+HF_TOKEN     = os.environ.get("HF_TOKEN")
+ADAPTER_REPO = os.environ.get("ADAPTER_REPO", "youssefeemad/intellifit-nutrition-v1")
+BASE_MODEL   = "Qwen/Qwen2.5-3B-Instruct"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# ── Allergen keyword expansion ───────────────────────────────────────────────
-ALLERGEN_KEYWORDS: dict[str, list[str]] = {
+# ── Download adapter + artifacts from HF Hub ───────────────────────────────────
+log.info(f"Downloading adapter from {ADAPTER_REPO}...")
+ADAPTER_DIR = snapshot_download(repo_id=ADAPTER_REPO, token=HF_TOKEN, cache_dir="/tmp/models")
+log.info(f"Adapter dir: {ADAPTER_DIR}")
+
+# ── Load artifacts ─────────────────────────────────────────────────────────────
+_food_db: list = []
+_allergen: dict = {}
+_diseases: dict = {}
+
+FOOD_DB_PATH  = os.path.join(ADAPTER_DIR, "food_db_halal.json")
+ALLERGEN_PATH = os.path.join(ADAPTER_DIR, "allergen_taxonomy.json")
+DISEASE_PATH  = os.path.join(ADAPTER_DIR, "disease_rules.json")
+
+if os.path.exists(FOOD_DB_PATH):
+    with open(FOOD_DB_PATH, encoding="utf-8") as f:
+        _food_db = json.load(f)
+    log.info(f"Food DB: {len(_food_db):,} entries")
+else:
+    log.warning("food_db_halal.json not found in adapter repo")
+
+if os.path.exists(ALLERGEN_PATH):
+    with open(ALLERGEN_PATH, encoding="utf-8") as f:
+        _allergen = json.load(f)
+    log.info(f"Allergen taxonomy: {len(_allergen):,} entries")
+
+if os.path.exists(DISEASE_PATH):
+    with open(DISEASE_PATH, encoding="utf-8") as f:
+        _diseases = json.load(f)
+    log.info(f"Disease rules: {len(_diseases):,} diseases")
+
+# ── Load model (CPU — no quantization) ────────────────────────────────────────
+log.info("Loading model...")
+is_merged = not os.path.exists(os.path.join(ADAPTER_DIR, "adapter_config.json"))
+
+if is_merged:
+    log.info("Loading fully merged model...")
+    _model = AutoModelForCausalLM.from_pretrained(
+        ADAPTER_DIR, trust_remote_code=True, torch_dtype=torch.float32,
+    )
+else:
+    log.info("Loading base + SFT adapter...")
+    base = AutoModelForCausalLM.from_pretrained(
+        BASE_MODEL, trust_remote_code=True, torch_dtype=torch.float32,
+    )
+    _model = PeftModel.from_pretrained(base, ADAPTER_DIR)
+
+_tokenizer = AutoTokenizer.from_pretrained(ADAPTER_DIR, trust_remote_code=True)
+_tokenizer.pad_token = _tokenizer.eos_token
+_model = _model.to(DEVICE)
+_model.eval()
+log.info("Model ready.")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Logic (mirrors serve_nutrition.py)
+# ══════════════════════════════════════════════════════════════════════════════
+
+ALLERGEN_KEYWORDS: dict = {
     "gluten":    ["gluten", "wheat", "barley", "rye", "white bread", "pasta", "couscous", "semolina"],
     "dairy":     ["milk", "cheese", "butter", "cream", "yogurt", "lactose", "whey"],
     "nuts":      ["peanuts", "almonds", "cashews", "walnuts", "pistachios", "tree nuts", "hazelnuts"],
@@ -56,6 +120,16 @@ ALLERGEN_KEYWORDS: dict[str, list[str]] = {
     "sesame":    ["sesame", "tahini", "sesame oil", "sesame seeds"],
 }
 
+SYSTEM_PROMPT = (
+    "You are IntelliFit Nutrition Coach — an expert Egyptian sports nutritionist. "
+    "You create personalised 1-day halal nutrition plans (valid JSON, no markdown). "
+    "IMPORTANT: Always generate EXACTLY 1 day — only one day."
+    "The plan has EXACTLY 1 day with breakfast, lunch, dinner, and one snack. "
+    "Plans respect the user's health conditions, allergies, fitness goal, and InBody data. "
+    "Output ONLY valid JSON in the exact schema requested. "
+    "Use Egyptian food names whenever possible. All food is halal."
+)
+
 GOAL_MULTIPLIERS = {
     "weight_loss": 0.80, "maintenance": 1.0,
     "muscle_gain": 1.10, "body_recomposition": 0.95,
@@ -65,109 +139,85 @@ ACTIVITY_FACTORS = {
     "active": 1.725, "very_active": 1.9,
 }
 
-SYSTEM_PROMPT = (
-    "You are IntelliFit Nutrition Coach — an expert Egyptian sports nutritionist. "
-    "You create personalised 3-day halal nutrition plans (valid JSON, no markdown). "
-    "IMPORTANT: Always generate EXACTLY 3 days — never more, never fewer. "
-    "Each plan has EXACTLY 3 unique days, each with breakfast, lunch, dinner, and one snack. "
-    "Plans respect the user's health conditions, allergies, fitness goal, and InBody data. "
-    "Output ONLY valid JSON in the exact schema requested. "
-    "Use Egyptian food names whenever possible. All food is halal."
-)
 
-# ── Download Artifacts ───────────────────────────────────────────────────────
-log.info("Downloading QLoRA adapter...")
-adapter_dir = snapshot_download(repo_id=ADAPTER_REPO, token=HF_TOKEN)
-log.info(f"Adapter: {adapter_dir}")
+class JsonRootClosedCriteria(StoppingCriteria):
+    def __init__(self, tokenizer, prompt_len: int):
+        self._tok = tokenizer
+        self._prompt_len = prompt_len
+        self._scanned_len = 0
+        self._depth = 0
+        self._in_str = False
+        self._esc = False
+        self._started = False
 
-log.info("Downloading data files...")
-disease_path = hf_hub_download(
-    repo_id=DATA_REPO, filename="disease_rules.json",
-    repo_type="dataset", token=HF_TOKEN,
-)
-with open(disease_path, encoding="utf-8") as f:
-    diseases = json.load(f)
-log.info(f"Loaded {len(diseases)} disease rules")
+    def __call__(self, input_ids, scores, **kwargs) -> bool:
+        new_ids = input_ids[0][self._prompt_len:]
+        total_new = len(new_ids)
+        if total_new <= self._scanned_len:
+            return False
+        incremental_ids = new_ids[self._scanned_len:]
+        incremental_text = self._tok.decode(incremental_ids, skip_special_tokens=True)
+        self._scanned_len = total_new
+        for ch in incremental_text:
+            if self._esc:
+                self._esc = False
+                continue
+            if ch == "\\" and self._in_str:
+                self._esc = True
+                continue
+            if ch == '"':
+                self._in_str = not self._in_str
+                continue
+            if self._in_str:
+                continue
+            if ch == '{':
+                self._depth += 1
+                self._started = True
+            elif ch == '}':
+                self._depth -= 1
+                if self._started and self._depth == 0:
+                    return True
+        return False
 
-# ── Load Model (CPU first — ZeroGPU moves to GPU on @spaces.GPU call) ───────
-log.info("Loading tokenizer...")
-tokenizer = AutoTokenizer.from_pretrained(adapter_dir, trust_remote_code=True)
-tokenizer.pad_token = tokenizer.eos_token
 
-log.info("Loading base model...")
-base = AutoModelForCausalLM.from_pretrained(
-    BASE_MODEL,
-    torch_dtype=torch.float16,
-    trust_remote_code=True,
-)
-log.info("Loading LoRA adapter...")
-model = PeftModel.from_pretrained(base, adapter_dir)
-model.eval()
-log.info("Model ready (on CPU — will move to GPU on demand via ZeroGPU).")
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# HELPER FUNCTIONS (from serve_nutrition.py)
-# ══════════════════════════════════════════════════════════════════════════════
-
-def compute_tdee(gender: str, age: int, weight_kg: float, height_cm: float,
-                 activity_level: str, goal: str,
-                 inbody_bmr: Optional[float] = None) -> int:
-    """Mifflin-St Jeor BMR × activity × goal multiplier."""
+def compute_tdee(gender, age, weight_kg, height_cm, goal, activity_level, inbody=None) -> int:
     if gender == "male":
         bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
     else:
         bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
-
-    if inbody_bmr:
-        bmr = inbody_bmr
-
+    if inbody and inbody.get("bmr_kcal"):
+        bmr = inbody["bmr_kcal"]
     tdee = bmr * ACTIVITY_FACTORS.get(activity_level, 1.55)
     return int(tdee * GOAL_MULTIPLIERS.get(goal, 1.0))
 
 
-def build_inbody_flags(inbody: Optional[dict]) -> tuple:
-    """Analyse InBody data and return adjustments."""
+def build_inbody_flags(inbody: Optional[dict]):
+    if not inbody:
+        return "within normal ranges", 1.0, 25, 50, 25
     flags = []
     cal_adj = 1.0
-    protein_pct = 25
-    fat_pct = 25
-    carbs_pct = 50
-
-    if inbody:
-        bf = inbody.get("body_fat_percentage")
-        mm = inbody.get("muscle_mass_kg")
-        vf = inbody.get("visceral_fat_level")
-
-        if bf and bf > 30:
-            cal_adj = 0.80
-            fat_pct = 20
-            protein_pct = 35
-            carbs_pct = 45
-            flags.append(f"high body fat ({bf}%) → 20% deficit")
-        if mm and mm < 25:
-            protein_pct = max(protein_pct, 35)
-            fat_pct = 20
-            carbs_pct = 100 - protein_pct - fat_pct
-            flags.append(f"low muscle mass ({mm} kg) → elevated protein")
-        if vf and vf >= 10:
-            flags.append(f"high visceral fat (level {vf}) → low sodium, high fiber")
-
-    flag_str = "; ".join(flags) if flags else "within normal InBody ranges"
-    return flag_str, cal_adj, protein_pct, carbs_pct, fat_pct
+    protein_pct, fat_pct, carbs_pct = 25, 25, 50
+    if inbody.get("body_fat_percentage", 0) > 30:
+        cal_adj = 0.80
+        fat_pct, protein_pct, carbs_pct = 20, 35, 45
+        flags.append(f"high body fat ({inbody['body_fat_percentage']}%) → 20% deficit")
+    if inbody.get("muscle_mass_kg", 99) < 25:
+        protein_pct = max(protein_pct, 35)
+        fat_pct = 20
+        carbs_pct = 100 - protein_pct - fat_pct
+        flags.append(f"low muscle mass ({inbody['muscle_mass_kg']} kg) → elevated protein")
+    if inbody.get("visceral_fat_level", 0) >= 10:
+        flags.append(f"high visceral fat (level {inbody['visceral_fat_level']}) → low sodium, high fiber")
+    return "; ".join(flags) if flags else "within normal InBody ranges", cal_adj, protein_pct, carbs_pct, fat_pct
 
 
 def build_prompt(req: dict, daily_kcal: int, inbody_flags: str,
                  protein_pct: int, carbs_pct: int, fat_pct: int) -> str:
-    """Build the user prompt for the nutrition model."""
-    conditions = req.get("health_conditions", [])
-    allergies = req.get("allergies", [])
-    conditions_str = ", ".join(conditions) if conditions else "none"
-    allergy_str = ", ".join(allergies) if allergies else "none"
-
+    conditions_str = ", ".join(req.get("health_conditions", [])) or "none"
+    allergy_str = ", ".join(req.get("allergies", [])) or "none"
     disease_notes = []
-    for cond in conditions:
-        rule = diseases.get(cond.lower(), {})
+    for cond in req.get("health_conditions", []):
+        rule = _diseases.get(cond.lower(), {})
         if rule:
             rec = rule.get("recommended_foods", [])[:4]
             avoid = rule.get("foods_to_avoid", [])[:8]
@@ -175,10 +225,8 @@ def build_prompt(req: dict, daily_kcal: int, inbody_flags: str,
                 disease_notes.append(f"Recommended for {cond}: {', '.join(rec)}")
             if avoid:
                 disease_notes.append(f"MUST AVOID for {cond}: {', '.join(avoid)}")
-    disease_notes_str = " ".join(disease_notes) if disease_notes else ""
-
+    inbody = req.get("inbody", {})
     inbody_section = ""
-    inbody = req.get("inbody")
     if inbody:
         inbody_section = (
             f"InBody snapshot: body fat {inbody.get('body_fat_percentage')}%, "
@@ -187,91 +235,59 @@ def build_prompt(req: dict, daily_kcal: int, inbody_flags: str,
             f"BMR {inbody.get('bmr_kcal')} kcal. "
             f"InBody adjustments: {inbody_flags}. "
         )
-
     user_msg = (
-        f"Create a 3-day halal nutrition plan for a {req['age']}-year-old {req['gender']}, "
-        f"weight {req['weight_kg']} kg, height {req['height_cm']} cm. "
-        f"Goal: {req['goal'].replace('_', ' ')}, activity: {req.get('activity_level', 'moderate')}. "
-        f"Health conditions: {conditions_str}. "
-        f"Allergies: {allergy_str}. "
-        f"Cuisine preference: {req.get('cuisine_preference', 'egyptian')}. "
+        f"Create a 1-day halal nutrition plan for a {req.get('age')}-year-old {req.get('gender')}, "
+        f"weight {req.get('weight_kg')} kg, height {req.get('height_cm')} cm. "
+        f"Goal: {req.get('goal','maintenance').replace('_', ' ')}, activity: {req.get('activity_level','moderate')}. "
+        f"Health conditions: {conditions_str}. Allergies: {allergy_str}. "
+        f"Cuisine preference: {req.get('cuisine_preference','egyptian')}. "
         + inbody_section
         + f"Daily calorie target: {daily_kcal} kcal. "
         f"Macro targets — protein: {protein_pct}%, carbs: {carbs_pct}%, fat: {fat_pct}%. "
-        + (disease_notes_str + " " if disease_notes_str else "")
-        + "Return only a valid JSON 3-day nutrition plan with breakfast, lunch, dinner, and snack per day. "
-        "IMPORTANT: The plan must contain EXACTLY 3 days — stop after day 3."
+        + (" ".join(disease_notes) + " " if disease_notes else "")
+        + "Return only a valid JSON 1-day nutrition plan with breakfast, lunch, dinner, and snack. "
+        "IMPORTANT: The plan must contain EXACTLY 1 day — stop after day 1."
     )
     return user_msg
 
 
 def extract_json(text: str) -> dict:
-    """Extract first JSON object from model output, with truncation recovery."""
     text = re.sub(r"^```(?:json)?\s*", "", text.strip(), flags=re.MULTILINE)
-    text = re.sub(r"```\s*$", "", text.strip(), flags=re.MULTILINE)
-    text = text.strip()
-
+    text = re.sub(r"```\s*$", "", text.strip(), flags=re.MULTILINE).strip()
     start = text.find("{")
     if start == -1:
         raise ValueError("No JSON object found in model output.")
-
     try:
         return json.loads(text[start:])
     except json.JSONDecodeError:
         pass
-
-    # Walk to find matching closing brace
-    depth = 0
-    end = -1
+    depth, end = 0, -1
     for i, ch in enumerate(text[start:], start):
-        if ch == "{":
-            depth += 1
+        if ch == "{": depth += 1
         elif ch == "}":
             depth -= 1
             if depth == 0:
                 end = i
                 break
-
     if end != -1:
-        candidate = text[start:end + 1]
         try:
-            return json.loads(candidate)
+            return json.loads(text[start:end+1])
         except json.JSONDecodeError:
-            if _JSON_REPAIR_AVAILABLE:
-                try:
-                    repaired = _repair_json(candidate, return_objects=True)
-                    if isinstance(repaired, dict) and repaired:
-                        return repaired
-                except Exception:
-                    pass
-
-    # Truncated output recovery
+            pass
+    # Truncated — close open structures
     fragment = text[start:]
-    opens: list[str] = []
-    in_string = False
-    escape_next = False
+    opens = []
+    in_str = esc = False
     for ch in fragment:
-        if escape_next:
-            escape_next = False
-            continue
-        if ch == "\\" and in_string:
-            escape_next = True
-            continue
-        if ch == '"':
-            in_string = not in_string
-            continue
-        if in_string:
-            continue
-        if ch in "{[":
-            opens.append(ch)
-        elif ch in "}]":
-            if opens:
-                opens.pop()
-
+        if esc: esc = False; continue
+        if ch == "\\" and in_str: esc = True; continue
+        if ch == '"': in_str = not in_str; continue
+        if in_str: continue
+        if ch in "{[": opens.append(ch)
+        elif ch in "}]" and opens: opens.pop()
     closing = "".join("}" if o == "{" else "]" for o in reversed(opens))
-    repaired = fragment + closing
     try:
-        return json.loads(repaired)
+        return json.loads(fragment + closing)
     except json.JSONDecodeError:
         if _JSON_REPAIR_AVAILABLE:
             try:
@@ -284,165 +300,126 @@ def extract_json(text: str) -> dict:
 
 
 def correct_plan_calories(plan: dict) -> dict:
-    """Re-sum total_calories across meals for internal consistency."""
     for day in plan.get("days", []):
         meals = day.get("meals", {})
-        actual_total = sum(
+        actual = sum(
             meal.get("total_calories", meal.get("estimated_calories", 0))
             for meal in (meals.values() if isinstance(meals, dict) else meals)
         )
-        if actual_total > 0:
-            day["total_calories"] = actual_total
+        if actual > 0:
+            day["total_calories"] = actual
     return plan
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# GPU INFERENCE (ZeroGPU)
-# ══════════════════════════════════════════════════════════════════════════════
-
-@spaces.GPU(duration=120)
-def run_inference_gpu(messages_json: str) -> str:
-    """Run model inference on GPU. Called with @spaces.GPU decorator."""
-    messages = json.loads(messages_json)
-
-    prompt = tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True,
+def run_inference(req: dict) -> tuple:
+    daily_kcal = compute_tdee(
+        req.get("gender", "male"), req.get("age", 25),
+        req.get("weight_kg", 75), req.get("height_cm", 175),
+        req.get("goal", "maintenance"), req.get("activity_level", "moderate"),
+        req.get("inbody"),
     )
-    inputs = tokenizer(
-        prompt, return_tensors="pt", truncation=True, max_length=1536,
-    ).to(model.device)
+    inbody_flags, cal_adj, protein_pct, carbs_pct, fat_pct = build_inbody_flags(req.get("inbody"))
+    if req.get("inbody") and req.get("goal") == "body_recomposition":
+        daily_kcal = max(1200, int(daily_kcal * cal_adj))
 
+    user_msg = build_prompt(req, daily_kcal, inbody_flags, protein_pct, carbs_pct, fat_pct)
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": user_msg},
+    ]
+    prompt = _tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = _tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1536).to(DEVICE)
+
+    stopping_criteria = StoppingCriteriaList([
+        JsonRootClosedCriteria(_tokenizer, inputs["input_ids"].shape[1])
+    ])
     with torch.no_grad():
-        output_ids = model.generate(
+        output_ids = _model.generate(
             **inputs,
-            max_new_tokens=4500,
-            temperature=0.3,
-            top_p=0.9,
-            do_sample=True,
+            max_new_tokens=800,
+            do_sample=False,
             repetition_penalty=1.1,
-            eos_token_id=tokenizer.eos_token_id,
-            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=_tokenizer.eos_token_id,
+            pad_token_id=_tokenizer.eos_token_id,
+            stopping_criteria=stopping_criteria,
         )
-
     new_tokens = output_ids[0][inputs["input_ids"].shape[1]:]
-    generated = tokenizer.decode(new_tokens, skip_special_tokens=True)
-    return generated
+    generated = _tokenizer.decode(new_tokens, skip_special_tokens=True)
+    plan = extract_json(generated)
+    plan = correct_plan_calories(plan)
+
+    # Post-processing
+    if isinstance(plan.get("days"), list):
+        plan["days"] = plan["days"][:1]
+    if not isinstance(plan.get("foods_to_avoid"), list):
+        plan["foods_to_avoid"] = []
+    avoid_lower = {x.lower() for x in plan["foods_to_avoid"]}
+    for allergy in req.get("allergies", []):
+        for kw in ALLERGEN_KEYWORDS.get(allergy.lower(), [allergy]):
+            if kw.lower() not in avoid_lower:
+                plan["foods_to_avoid"].append(kw)
+                avoid_lower.add(kw.lower())
+    for cond in req.get("health_conditions", []):
+        rule = _diseases.get(cond.lower(), {})
+        for item in rule.get("foods_to_avoid", []):
+            if item.lower() not in avoid_lower:
+                plan["foods_to_avoid"].append(item)
+                avoid_lower.add(item.lower())
+
+    plan["_daily_calories"] = daily_kcal
+    return plan, daily_kcal
 
 
-def generate_plan(request_json: str) -> str:
+# ── Gradio predict function ─────────────────────────────────────────────────────
+def predict(request_json: str) -> str:
     """
-    Main entrypoint: takes a JSON string request, returns a JSON string response.
-    This is the function exposed via Gradio's API.
+    Input:  JSON string matching C# NutritionRequest (from WorkoutGeneratorAPI)
+    Output: JSON string with plan, daily_calories, generation_ms
+    Called by C# as: POST /api/predict  {"data": [request_json_string]}
     """
     t0 = time.time()
     try:
         req = json.loads(request_json)
-
-        # Compute TDEE
-        inbody = req.get("inbody")
-        inbody_bmr = inbody.get("bmr_kcal") if inbody else None
-        daily_kcal = compute_tdee(
-            req["gender"], req["age"], req["weight_kg"], req["height_cm"],
-            req.get("activity_level", "moderate"), req["goal"], inbody_bmr,
-        )
-
-        # InBody adjustments
-        inbody_flags, cal_adj, protein_pct, carbs_pct, fat_pct = build_inbody_flags(inbody)
-        if inbody and req["goal"] == "body_recomposition":
-            daily_kcal = int(daily_kcal * cal_adj)
-        daily_kcal = max(1200, daily_kcal)
-
-        # Build prompt
-        user_msg = build_prompt(req, daily_kcal, inbody_flags, protein_pct, carbs_pct, fat_pct)
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_msg},
-        ]
-
-        # Run GPU inference
-        generated = run_inference_gpu(json.dumps(messages))
-
-        # Parse & post-process
-        plan = extract_json(generated)
-        plan = correct_plan_calories(plan)
-
-        # Trim to 3 days
-        if isinstance(plan.get("days"), list):
-            plan["days"] = plan["days"][:3]
-
-        # Inject allergen foods_to_avoid
-        if not isinstance(plan.get("foods_to_avoid"), list):
-            plan["foods_to_avoid"] = []
-        existing_avoid_lower = {x.lower() for x in plan["foods_to_avoid"]}
-
-        for allergy in req.get("allergies", []):
-            keywords = ALLERGEN_KEYWORDS.get(allergy.lower(), [allergy])
-            for kw in keywords:
-                if kw.lower() not in existing_avoid_lower:
-                    plan["foods_to_avoid"].append(kw)
-                    existing_avoid_lower.add(kw.lower())
-
-        # Inject disease-specific foods_to_avoid
-        for cond in req.get("health_conditions", []):
-            rule = diseases.get(cond.lower(), {})
-            for item in rule.get("foods_to_avoid", []):
-                if item.lower() not in existing_avoid_lower:
-                    plan["foods_to_avoid"].append(item)
-                    existing_avoid_lower.add(item.lower())
-
-        elapsed_ms = int((time.time() - t0) * 1000)
-
+        plan, daily_kcal = run_inference(req)
         return json.dumps({
-            "status": "ok",
-            "member_id": req.get("member_id"),
+            "member_id":      req.get("member_id"),
+            "generated_at":   datetime.utcnow().isoformat() + "Z",
             "daily_calories": daily_kcal,
-            "plan": plan,
-            "generation_ms": elapsed_ms,
+            "plan":           plan,
+            "generation_ms":  int((time.time() - t0) * 1000),
+            "error":          None,
         })
-
     except Exception as e:
-        elapsed_ms = int((time.time() - t0) * 1000)
-        log.error(f"Inference error: {e}")
+        log.error(f"predict() error: {e}", exc_info=True)
         return json.dumps({
-            "status": "error",
+            "member_id": None, "generated_at": datetime.utcnow().isoformat() + "Z",
+            "daily_calories": 0, "plan": None,
+            "generation_ms": int((time.time() - t0) * 1000),
             "error": str(e),
-            "generation_ms": elapsed_ms,
         })
 
 
-def health_check(dummy: str = "") -> str:
-    """Simple health check."""
+def health(_: str = "") -> str:
     return json.dumps({
-        "status": "ok",
-        "model": "qwen2.5-3b-nutrition-v1",
-        "disease_rules": len(diseases),
+        "status": "healthy", "model": "qwen2.5-3b-nutrition-v1", "device": DEVICE,
+        "food_db_size": len(_food_db), "disease_rules": len(_diseases),
+        "timestamp": datetime.utcnow().isoformat(),
     })
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# GRADIO INTERFACE (required for ZeroGPU)
-# ══════════════════════════════════════════════════════════════════════════════
-
+# ── Gradio Interface ────────────────────────────────────────────────────────────
 with gr.Blocks(title="IntelliFit Nutrition AI") as demo:
     gr.Markdown("# 🥗 IntelliFit Nutrition Plan Generator")
-    gr.Markdown(
-        "Generate personalized 3-day halal nutrition plans. "
-        "Send a JSON request to the `/api/generate` endpoint."
-    )
-
-    with gr.Tab("Generate Plan"):
-        input_box = gr.Textbox(
-            label="Request JSON",
-            lines=15,
-            placeholder='{"gender":"male","age":25,"weight_kg":80,"height_cm":175,"goal":"muscle_gain","activity_level":"moderate","health_conditions":[],"allergies":[],"cuisine_preference":"egyptian"}',
-        )
-        output_box = gr.Textbox(label="Response JSON", lines=20)
-        generate_btn = gr.Button("Generate Plan", variant="primary")
-        generate_btn.click(fn=generate_plan, inputs=input_box, outputs=output_box, api_name="generate")
-
-    with gr.Tab("Health Check"):
-        health_output = gr.Textbox(label="Health Status", lines=5)
-        health_btn = gr.Button("Check Health")
-        health_btn.click(fn=health_check, inputs=gr.Textbox(visible=False, value=""), outputs=health_output, api_name="health")
+    gr.Markdown("**API endpoint**: POST `/api/predict` with `{\"data\": [request_json_string]}`")
+    with gr.Row():
+        inp = gr.Textbox(label="Request JSON", lines=12,
+            placeholder='{"member_id":"1","gender":"male","age":25,"weight_kg":80,"height_cm":175,"goal":"muscle_gain","activity_level":"moderate","health_conditions":[],"allergies":[],"cuisine_preference":"egyptian"}')
+        out = gr.Textbox(label="Response JSON", lines=12)
+    gr.Button("Generate Nutrition Plan", variant="primary").click(
+        fn=predict, inputs=inp, outputs=out, api_name="predict")
+    with gr.Row():
+        health_out = gr.Textbox(label="Health", lines=3)
+    gr.Button("Health Check").click(fn=health, inputs=gr.Textbox(visible=False, value=""),
+                                    outputs=health_out, api_name="health")
 
 demo.launch()

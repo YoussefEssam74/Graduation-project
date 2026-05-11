@@ -11,7 +11,7 @@ REM ============================================================================
 setlocal
 
 REM ── Configuration (CHANGE THESE) ──────────────────────────────────────────
-set HF_USER=YourHuggingFaceUsername
+set HF_USER=youssefeemad
 set WORKOUT_REPO=%HF_USER%/intellifit-workout-v3
 set NUTRITION_REPO=%HF_USER%/intellifit-nutrition-v1
 set NUTRITION_DATA_REPO=%HF_USER%/intellifit-nutrition-data
@@ -29,9 +29,9 @@ echo [1/3] Uploading Workout LoRA adapter to %WORKOUT_REPO%...
 echo       Source: ml_models\Workout-Plan_Generating\models\workout-generator-v3
 echo.
 
-huggingface-cli upload %WORKOUT_REPO% ^
+python -m huggingface_hub.commands.huggingface_cli upload %WORKOUT_REPO% ^
     "%PROJECT_ROOT%\ml_models\Workout-Plan_Generating\models\workout-generator-v3" ^
-    --repo-type model --private
+    --repo-type model
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to upload workout model. Check your HF token and repo name.

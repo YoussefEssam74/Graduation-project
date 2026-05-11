@@ -1,15 +1,19 @@
 /**
- * Nutrition ML Service — Frontend calls FastAPI directly for optimal performance.
- * RAG pattern: ML server uses InBody data + user profile to generate personalized meal plans.
- * Step 1: Frontend → FastAPI (port 5301) — generate plan
- * Step 2: Frontend → C# backend (port 5025) — save metadata (fire-and-forget)
+ * Nutrition ML Service
+ * ─────────────────────────────────────────────────────────────
+ * Flow:  Frontend → C# Backend (localhost:5025)
+ *              → NutritionAIServiceClient (SSE queue)
+ *              → HF Space (https://youssefeemad-nutrition-generator.hf.space)
+ *              → Qwen2.5-3B model
+ *
+ * The frontend NEVER calls HF directly. All AI calls go through
+ * the C# backend so JWT auth, logging, and error handling are centralised.
  */
 
-const ML_API_BASE_URL =
-  process.env.NEXT_PUBLIC_ML_API_URL || "http://localhost:5301";
+import { apiFetch } from "./client";
 
 // ============================================================
-// Request / Response Types
+// Types — must match the HF Space output schema
 // ============================================================
 
 export interface NutritionMLFoodItem {
@@ -61,7 +65,7 @@ export interface NutritionMLRequest {
   allergies: string[];
   dietary_preferences: string[];
   inbody?: {
-    body_fat_pct: number;
+    body_fat_percentage: number;
     muscle_mass_kg: number;
     bmr_kcal: number;
     visceral_fat_level: number;
@@ -96,83 +100,91 @@ export class NutritionMLService {
 
   /** Goal display label → ML API value */
   static readonly GOAL_MAP: Record<string, string> = {
-    "Weight Loss": "weight_loss",
-    "Muscle Gain": "muscle_gain",
-    Maintain: "maintenance",
+    "Weight Loss":        "weight_loss",
+    "Muscle Gain":        "muscle_gain",
+    Maintain:             "maintenance",
     "Body Recomposition": "body_recomposition",
   };
 
   /** Activity display label → ML API value */
   static readonly ACTIVITY_MAP: Record<string, string> = {
-    Sedentary: "sedentary",
-    "Lightly Active": "light",
-    "Moderately Active": "moderate",
-    "Very Active": "active",
+    Sedentary:          "sedentary",
+    "Lightly Active":   "light",
+    "Moderately Active":"moderate",
+    "Very Active":      "active",
     "Extremely Active": "very_active",
   };
 
   /**
-   * Generate nutrition plan via ML API (FastAPI on port 5301).
-   * No timeout — LLM generation can take 10-15 minutes; let it finish.
+   * Generate a nutrition plan via the C# backend → HF Space pipeline.
+   *
+   * The C# NutritionAIController calls the HF Space using the Gradio queue
+   * SSE protocol and returns a flat response:
+   *   { success, daily_calories, days:[...], foods_to_avoid:[...] }
    */
   static async generatePlan(
     request: NutritionMLRequest,
     onProgress?: (status: string) => void,
   ): Promise<NutritionMLResponse> {
-    try {
-      if (onProgress) onProgress("Connecting to AI model...");
+    if (onProgress) onProgress("Connecting to HF Space AI model...");
 
-      const response = await fetch(`${ML_API_BASE_URL}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-      });
+    // Use apiFetch — handles JWT auth header and response unwrapping automatically
+    // POST http://localhost:5025/api/nutrition-ai/generate
+    // → C# backend → https://youssefeemad-nutrition-generator.hf.space/queue/join
+    const res = await apiFetch<{
+      success: boolean;
+      daily_calories: number;
+      days: NutritionMLPlanDay[];
+      foods_to_avoid: string[];
+      generation_ms: number;
+      generated_at: string;
+    }>("/nutrition-ai/generate", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
 
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(`ML API error: ${response.status} — ${text}`);
-      }
-
-      if (onProgress) onProgress("Processing AI response...");
-
-      // Server returns: { daily_calories, plan: { days, foods_to_avoid }, ... }
-      // Normalize into the flat NutritionMLResponse shape the frontend expects.
-      const raw = await response.json();
-      const innerPlan = raw.plan ?? raw;
-      const result: NutritionMLResponse = {
-        days: innerPlan.days ?? [],
-        foods_to_avoid: innerPlan.foods_to_avoid ?? [],
-        _daily_calories: raw.daily_calories ?? raw._daily_calories ?? 0,
-      };
-      return result;
-    } catch (error: any) {
+    if (!res.success || !res.data) {
       throw new Error(
-        error.message || "Failed to generate nutrition plan from ML service",
+        res.message ||
+          "Nutrition AI failed — the HF Space may still be loading. Please try again in 1 minute.",
       );
     }
+
+    if (onProgress) onProgress("Processing AI meal plan...");
+
+    const payload = res.data;
+
+    // apiFetch unwraps { success, data } — but our controller returns the data
+    // at the top level without a nested 'data' field, so apiFetch puts the whole
+    // object into res.data (because "success" is present but no inner "data" key)
+    const result: NutritionMLResponse = {
+      days: payload.days ?? [],
+      foods_to_avoid: payload.foods_to_avoid ?? [],
+      _daily_calories: payload.daily_calories ?? 0,
+    };
+
+    if (!result.days || result.days.length === 0) {
+      throw new Error(
+        "AI returned an empty meal plan. The model may still be loading — please try again.",
+      );
+    }
+
+    return result;
   }
 
-  /** Persist user preferences to localStorage */
-  static savePreferences(
-    userId: number | string,
-    prefs: NutritionPreferences,
-  ): void {
-    try {
-      localStorage.setItem(this.PREFS_KEY(userId), JSON.stringify(prefs));
-    } catch {}
+  // ── LocalStorage helpers ────────────────────────────────────────────────────
+
+  static savePreferences(userId: number | string, prefs: NutritionPreferences): void {
+    try { localStorage.setItem(this.PREFS_KEY(userId), JSON.stringify(prefs)); } catch {}
   }
 
-  /** Load saved preferences from localStorage */
   static getPreferences(userId: number | string): NutritionPreferences | null {
     try {
       const raw = localStorage.getItem(this.PREFS_KEY(userId));
       return raw ? (JSON.parse(raw) as NutritionPreferences) : null;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
-  /** Persist full plan data to localStorage */
   static savePlanLocally(
     userId: number | string,
     plan: NutritionMLResponse,
@@ -190,38 +202,31 @@ export class NutritionMLService {
     } catch {}
   }
 
-  /** Load stored plan from localStorage, normalizing legacy shapes. */
   static getStoredPlan(userId: number | string): StoredNutritionData | null {
     try {
       const raw = localStorage.getItem(this.PLAN_KEY(userId));
       if (!raw) return null;
       const data = JSON.parse(raw) as StoredNutritionData;
-      // Legacy: server response was saved directly as `plan` before normalization fix.
-      // Old shape: data.plan = { daily_calories, plan: { days, foods_to_avoid }, ... }
+      // Normalise legacy shapes saved before this refactor
       const p = data.plan as any;
       if (!Array.isArray(p?.days) && p?.plan?.days) {
         data.plan = {
           days: p.plan.days ?? [],
           foods_to_avoid: p.plan.foods_to_avoid ?? [],
-          _daily_calories:
-            p.daily_calories ?? p._daily_calories ?? data.dailyCalories ?? 0,
+          _daily_calories: p.daily_calories ?? p._daily_calories ?? data.dailyCalories ?? 0,
         } as NutritionMLResponse;
       }
       return data;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
 
-  /** Remove stored plan from localStorage */
   static clearStoredPlan(userId: number | string): void {
-    try {
-      localStorage.removeItem(this.PLAN_KEY(userId));
-    } catch {}
+    try { localStorage.removeItem(this.PLAN_KEY(userId)); } catch {}
   }
 
   /**
-   * Assemble the ML request from user profile, InBody measurement, and wizard preferences.
+   * Build the NutritionMLRequest from user profile + InBody + wizard preferences.
+   * This is what the C# backend / HF Space expects.
    */
   static buildRequest(
     user: { userId: number; gender?: number; dateOfBirth?: string },
@@ -235,7 +240,6 @@ export class NutritionMLService {
     } | null,
     prefs: NutritionPreferences,
   ): NutritionMLRequest {
-    // Derive age from dateOfBirth
     let age = 30;
     if (user.dateOfBirth) {
       const birth = new Date(user.dateOfBirth);
@@ -248,24 +252,24 @@ export class NutritionMLService {
     const gender = user.gender === 1 ? "female" : "male";
 
     const request: NutritionMLRequest = {
-      member_id: String(user.userId),
+      member_id:           String(user.userId),
       gender,
       age,
-      weight_kg: inbody?.weight ?? 70,
-      height_cm: inbody?.height ?? 170,
-      goal: this.GOAL_MAP[prefs.goal] ?? "maintenance",
-      activity_level: this.ACTIVITY_MAP[prefs.activityLevel] ?? "moderate",
-      cuisine_preference: "egyptian",
-      health_conditions: prefs.healthConditions.filter((c) => c !== "None"),
-      allergies: prefs.allergies.filter((a) => a !== "None"),
+      weight_kg:           inbody?.weight ?? 70,
+      height_cm:           inbody?.height ?? 170,
+      goal:                this.GOAL_MAP[prefs.goal] ?? "maintenance",
+      activity_level:      this.ACTIVITY_MAP[prefs.activityLevel] ?? "moderate",
+      cuisine_preference:  "egyptian",
+      health_conditions:   prefs.healthConditions.filter((c) => c !== "None"),
+      allergies:           prefs.allergies.filter((a) => a !== "None"),
       dietary_preferences: prefs.dietaryPreferences,
     };
 
     if (inbody) {
       request.inbody = {
-        body_fat_pct: inbody.bodyFatPercentage ?? 20,
-        muscle_mass_kg: inbody.muscleMass ?? 30,
-        bmr_kcal: inbody.bmr ?? 1500,
+        body_fat_percentage: inbody.bodyFatPercentage ?? 20,
+        muscle_mass_kg:    inbody.muscleMass ?? 30,
+        bmr_kcal:          inbody.bmr ?? 1500,
         visceral_fat_level: inbody.visceralFat ?? 5,
       };
     }

@@ -10,15 +10,33 @@ namespace Presistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // The column was created without quotes, resulting in lowercase "maxfreezedays".
-            // Rename it to the quoted PascalCase name EF Core expects.
-            migrationBuilder.Sql("ALTER TABLE subscription_plans RENAME COLUMN maxfreezedays TO \"MaxFreezeDays\"");
+            // Only rename if the column exists in lowercase (legacy databases).
+            // Fresh databases created by EF Core already have the correct quoted name.
+            migrationBuilder.Sql(@"
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'subscription_plans' AND column_name = 'maxfreezedays'
+    ) THEN
+        ALTER TABLE subscription_plans RENAME COLUMN maxfreezedays TO ""MaxFreezeDays"";
+    END IF;
+END $$;");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("ALTER TABLE subscription_plans RENAME COLUMN \"MaxFreezeDays\" TO maxfreezedays");
+            migrationBuilder.Sql(@"
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'subscription_plans' AND column_name = 'MaxFreezeDays'
+    ) THEN
+        ALTER TABLE subscription_plans RENAME COLUMN ""MaxFreezeDays"" TO maxfreezedays;
+    END IF;
+END $$;");
         }
     }
 }

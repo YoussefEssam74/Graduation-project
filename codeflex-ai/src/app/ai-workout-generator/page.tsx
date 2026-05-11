@@ -765,7 +765,10 @@ function AIWorkoutGeneratorContent() {
     const token = localStorage.getItem("auth_token") || sessionStorage.getItem("auth_token");
     if (!token) { showToast("⚠�? Authentication required. Please log in again.", "error", 6000); return; }
     if (user.tokenBalance !== undefined && user.tokenBalance < 50) { showToast("You need at least 50 tokens to generate an AI workout plan", "error"); return; }
-    if (!inbodyGenerationStatus.canGenerate) { showToast(inbodyGenerationStatus.message, "error", 7000); return; }
+    if (!inbodyGenerationStatus.canGenerate) {
+      // Show warning but still allow generation — InBody enriches the plan but isn't required
+      showToast(`⚠️ ${inbodyGenerationStatus.message} Generating with default parameters.`, "info", 5000);
+    }
 
     setIsGenerating(true);
     try {

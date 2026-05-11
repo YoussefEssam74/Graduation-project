@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { UserRole } from "@/types/gym";
@@ -236,34 +236,47 @@ function NutritionContent() {
                 restrictionsStr ? `Restrictions: ${restrictionsStr}` : null,
             ].filter(Boolean);
 
-            // 1. Call ML nutrition service to generate AI meal plan
+            // ── Step 1: Call AI model to generate the meal plan ───────────────
             let generatedAiPlan: NutritionMLResponse | null = null;
+            let aiError: string | null = null;
+            let effectiveCalories = calorieTarget;
+
+            const mlPrefs = {
+                goal,
+                activityLevel,
+                healthConditions: [] as string[],
+                allergies: restrictions
+                    .filter(r => r.endsWith("-Free"))
+                    .map(r => r.replace("-Free", "").toLowerCase()),
+                dietaryPreferences: dietType !== "Omnivore" ? [dietType.toLowerCase()] : [],
+                savedAt: new Date().toISOString(),
+            };
+
+            const mlRequest = NutritionMLService.buildRequest(
+                { userId: user.userId },
+                null,
+                mlPrefs,
+            );
+
+            setGeneratingStatus("AI is crafting your personalized meal plan...");
             try {
-                const mlPrefs = {
-                    goal,
-                    activityLevel,
-                    healthConditions: [] as string[],
-                    allergies: restrictions
-                        .filter(r => r.endsWith("-Free"))
-                        .map(r => r.replace("-Free", "").toLowerCase()),
-                    dietaryPreferences: dietType !== "Omnivore" ? [dietType.toLowerCase()] : [],
-                    savedAt: new Date().toISOString(),
-                };
-                const mlRequest = NutritionMLService.buildRequest(
-                    { userId: user.userId },
-                    null,
-                    mlPrefs,
-                );
-                setGeneratingStatus("AI is crafting your personalized meal plan...");
                 generatedAiPlan = await NutritionMLService.generatePlan(mlRequest, (status) => {
                     setGeneratingStatus(status);
                 });
-                NutritionMLService.savePlanLocally(user.userId, generatedAiPlan, mlPrefs, calorieTarget);
-            } catch {
-                showToast("AI model unavailable — plan saved with your targets.", "info");
+                // Use the AI-computed calorie target if available
+                if (generatedAiPlan._daily_calories && generatedAiPlan._daily_calories > 0) {
+                    effectiveCalories = generatedAiPlan._daily_calories;
+                }
+                NutritionMLService.savePlanLocally(user.userId, generatedAiPlan, mlPrefs, effectiveCalories);
+            } catch (err: any) {
+                aiError = err?.message ?? "AI model unavailable";
+                console.error("Nutrition AI error:", aiError);
+                showToast(`⚠️ ${aiError}`, "error", 8000);
+                // Don't save to DB if AI failed — user needs to retry
+                return;
             }
 
-            // 2. Save plan metadata to backend
+            // ── Step 2: Save plan metadata to backend DB ──────────────────────
             setGeneratingStatus("Saving your plan...");
             const res = await nutritionPlansApi.generatePlan({
                 memberId: user.userId,
@@ -271,7 +284,7 @@ function NutritionContent() {
                 description: descriptionParts.join(". "),
                 fitnessGoal: goal,
                 dietaryRestrictions: restrictionsStr,
-                dailyCalories: calorieTarget,
+                dailyCalories: effectiveCalories,
                 proteinGrams,
                 carbsGrams,
                 fatGrams,
@@ -280,25 +293,30 @@ function NutritionContent() {
 
             if (res.success && res.data) {
                 setActivePlan(res.data);
-                if (generatedAiPlan) {
-                    setAiPlan(generatedAiPlan);
-                    setSelectedDay(0);
-                }
+                // Display the AI-generated meal plan
+                setAiPlan(generatedAiPlan);
+                setSelectedDay(0);
                 setView("plan");
-                showToast("Nutrition plan generated successfully!", "success");
-                // Refresh global meal library for suggestions
+                showToast("✅ Nutrition plan generated successfully!", "success");
+                // Refresh global meal library
                 const mealsRes = await mealsApi.getActiveMeals();
                 if (mealsRes.success && mealsRes.data) setMeals(mealsRes.data);
             } else {
-                showToast(res.message ?? "Failed to generate plan", "error");
+                showToast(res.message ?? "Failed to save plan to database", "error");
+                // Still show the AI plan even if DB save fails
+                setAiPlan(generatedAiPlan);
+                setSelectedDay(0);
+                setView("plan");
             }
-        } catch {
-            showToast("Failed to generate nutrition plan", "error");
+        } catch (err: any) {
+            console.error("handleGenerate error:", err);
+            showToast(err?.message ?? "Failed to generate nutrition plan", "error");
         } finally {
             setIsGenerating(false);
             setGeneratingStatus("Generating your plan...");
         }
     };
+
 
     const startWizard = () => {
         setWizardStep(1);
