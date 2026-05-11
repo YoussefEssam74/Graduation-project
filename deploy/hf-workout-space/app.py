@@ -689,26 +689,45 @@ _fastapi.add_middleware(
 @_fastapi.post("/generate")
 async def generate_endpoint(request: Request) -> JSONResponse:
     """
-    Called by the C# WorkoutGeneratorService.
-    Request:  {"prompt": "Generate a 4-day workout plan ...", "max_length": 1024, "coach_feedback": null}
-    Response: {"success": true, "plan": {...}, "error": null}
+    Called by the C# MLServiceClient.
+    Accepts a structured request: {days_per_week, goal, fitness_level, equipment, injuries, user_context}
+    OR a legacy prompt string: {"prompt": "Generate a 4-day workout plan ...", "max_length": 1024}
+    Response matches MLWorkoutResponse: {plan, is_valid_json, model_version, generation_latency_ms, prompt_used, error}
     """
     t0 = time.time()
     try:
-        body         = await request.json()
-        prompt       = body.get("prompt", "")
-        max_length   = int(body.get("max_length", 1024))
-        # Parse structured fields from the prompt string:
-        # "Generate a 4-day workout plan for intermediate lifter, goal is Muscle, has access to dumbbell."
-        days_match  = re.search(r'Generate a (\d+)-day',         prompt, re.IGNORECASE)
-        level_match = re.search(r'for (\w+) lifter',             prompt, re.IGNORECASE)
-        goal_match  = re.search(r'goal is (\w+)',                prompt, re.IGNORECASE)
-        equip_match = re.search(r'has access to (.+?)(?:\.|$)',  prompt, re.IGNORECASE)
+        body = await request.json()
 
-        req_days      = int(days_match.group(1))                           if days_match  else 4
-        req_level     = level_match.group(1).title()                       if level_match else "Intermediate"
-        req_goal      = goal_match.group(1).title()                        if goal_match  else "Muscle"
-        req_equipment = [e.strip() for e in equip_match.group(1).split(",")] if equip_match else []
+        # ── Structured request from C# MLServiceClient ───────────────────────
+        if any(k in body for k in ("days_per_week", "goal", "fitness_level")):
+            req = {
+                "days_per_week": int(body.get("days_per_week", 4)),
+                "goal":          body.get("goal", "Muscle"),
+                "fitness_level": body.get("fitness_level", "Intermediate"),
+                "equipment":     body.get("equipment") or [],
+                "injuries":      body.get("injuries") or [],
+            }
+            context = {}
+            user_ctx = body.get("user_context") or {}
+            inbody = (user_ctx.get("inbody_data") or {})
+            if inbody:
+                context["inbody_data"] = inbody
+            prompt = build_prompt(req, context)
+            req_days      = req["days_per_week"]
+            req_goal      = req["goal"]
+            req_level     = req["fitness_level"]
+            req_equipment = req["equipment"]
+        else:
+            # ── Legacy prompt-string request ──────────────────────────────────
+            prompt      = body.get("prompt", "")
+            days_match  = re.search(r'Generate a (\d+)-day',        prompt, re.IGNORECASE)
+            level_match = re.search(r'for (\w+) lifter',            prompt, re.IGNORECASE)
+            goal_match  = re.search(r'goal is (\w+)',               prompt, re.IGNORECASE)
+            equip_match = re.search(r'has access to (.+?)(?:\.|$)', prompt, re.IGNORECASE)
+            req_days      = int(days_match.group(1))                            if days_match  else 4
+            req_level     = level_match.group(1).title()                        if level_match else "Intermediate"
+            req_goal      = goal_match.group(1).title()                         if goal_match  else "Muscle"
+            req_equipment = [e.strip() for e in equip_match.group(1).split(",")] if equip_match else []
 
         log.info(f"/generate: days={req_days} level={req_level} goal={req_goal} equip={req_equipment}")
 
@@ -718,16 +737,27 @@ async def generate_endpoint(request: Request) -> JSONResponse:
 
         if not valid:
             return JSONResponse(
-                {"success": False, "plan": None, "error": "Model produced empty plan"},
+                {"success": False, "plan": None, "is_valid_json": False,
+                 "model_version": MODEL_VERSION,
+                 "generation_latency_ms": int((time.time() - t0) * 1000),
+                 "prompt_used": prompt, "error": "Model produced empty plan"},
                 status_code=500,
             )
 
-        return JSONResponse({"success": True, "plan": plan, "error": None})
+        return JSONResponse({
+            "success": True, "plan": plan, "is_valid_json": True,
+            "model_version": MODEL_VERSION,
+            "generation_latency_ms": int((time.time() - t0) * 1000),
+            "prompt_used": prompt, "error": None,
+        })
 
     except Exception as e:
         log.error(f"/generate error: {e}", exc_info=True)
         return JSONResponse(
-            {"success": False, "plan": None, "error": str(e)},
+            {"success": False, "plan": None, "is_valid_json": False,
+             "model_version": MODEL_VERSION,
+             "generation_latency_ms": int((time.time() - t0) * 1000),
+             "prompt_used": "", "error": str(e)},
             status_code=500,
         )
 
