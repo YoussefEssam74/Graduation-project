@@ -291,7 +291,7 @@ function NutritionContent() {
             } catch (err: any) {
                 aiError = err?.message ?? "AI model unavailable";
                 console.error("Nutrition AI error:", aiError);
-                const isWarmup = aiError.toLowerCase().includes("warm") || aiError.toLowerCase().includes("timeout") || aiError.toLowerCase().includes("timed out");
+                const isWarmup = (aiError as string).toLowerCase().includes("warm") || (aiError as string).toLowerCase().includes("timeout") || (aiError as string).toLowerCase().includes("timed out");
                 showToast(
                     isWarmup
                         ? "⏳ AI model is still warming up. Please wait 30 seconds and try again."
