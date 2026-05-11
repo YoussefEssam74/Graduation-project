@@ -74,9 +74,9 @@ namespace Graduation_Project
             builder.Services.AddHttpClient<ServiceAbstraction.Services.INutritionAIServiceClient, Service.Services.NutritionAIServiceClient>(client =>
             {
                 var baseUrl = builder.Configuration["MLService:NutritionBaseUrl"] ?? "http://localhost:5301";
-                var timeout = int.Parse(builder.Configuration["MLService:TimeoutSeconds"] ?? "360");
                 client.BaseAddress = new Uri(baseUrl);
-                client.Timeout = TimeSpan.FromSeconds(timeout);
+                // Infinite timeout — Nutrition AI (Modal GPU) can take several minutes on cold-start.
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
             });
 
             // Add Equipment Time Slot Service (for background service and booking logic)
