@@ -33,8 +33,8 @@ public class NutritionAIServiceClient : INutritionAIServiceClient
         };
 
         _httpClient.BaseAddress = new Uri(_baseUrl + "/");
-        // Modal container timeout is 120 s; allow 130 s for network overhead.
-        _httpClient.Timeout = TimeSpan.FromSeconds(130);
+        // Timeout is configured via Program.cs (MLService:TimeoutSeconds, default 360 s)
+        // to allow for Modal/HF cold-start delays of up to ~3 minutes.
     }
 
     public async Task<NutritionAIResponse?> GenerateNutritionPlanAsync(NutritionAIRequest request)
@@ -76,7 +76,7 @@ public class NutritionAIServiceClient : INutritionAIServiceClient
         }
         catch (TaskCanceledException)
         {
-            return new NutritionAIResponse { Error = "Nutrition Modal endpoint timed out (130s)" };
+            return new NutritionAIResponse { Error = "Nutrition AI timed out — the model may still be warming up. Please wait 30 seconds and try again." };
         }
         catch (JsonException ex)
         {

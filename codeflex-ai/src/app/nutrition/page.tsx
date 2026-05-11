@@ -258,7 +258,7 @@ function NutritionContent() {
                 mlPrefs,
             );
 
-            setGeneratingStatus("AI is crafting your personalized meal plan...");
+            setGeneratingStatus("Waking up AI model — this may take 1–2 minutes on first use...");
             try {
                 generatedAiPlan = await NutritionMLService.generatePlan(mlRequest, (status) => {
                     setGeneratingStatus(status);
@@ -271,7 +271,14 @@ function NutritionContent() {
             } catch (err: any) {
                 aiError = err?.message ?? "AI model unavailable";
                 console.error("Nutrition AI error:", aiError);
-                showToast(`⚠️ ${aiError}`, "error", 8000);
+                const isWarmup = aiError.toLowerCase().includes("warm") || aiError.toLowerCase().includes("timeout") || aiError.toLowerCase().includes("timed out");
+                showToast(
+                    isWarmup
+                        ? "⏳ AI model is still warming up. Please wait 30 seconds and try again."
+                        : `⚠️ ${aiError}`,
+                    "error",
+                    10000
+                );
                 // Don't save to DB if AI failed — user needs to retry
                 return;
             }
