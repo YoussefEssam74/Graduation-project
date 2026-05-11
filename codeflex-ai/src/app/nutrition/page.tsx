@@ -306,11 +306,11 @@ function NutritionContent() {
             // ── Step 2: Save plan metadata to backend DB ──────────────────────
             setGeneratingStatus("Saving your plan...");
 
-            // Compute macros from AI plan if available (use day 0)
+            // Compute macros from AI plan if available (use day 0 macros summary)
             const day0 = generatedAiPlan?.days?.[0];
-            const effectiveProtein = day0 ? Math.round((day0.meals ?? []).reduce((s: number, m: { items?: { protein?: number }[] }) => s + (m.items ?? []).reduce((ss: number, it: { protein?: number }) => ss + (it.protein ?? 0), 0), 0)) : proteinGrams;
-            const effectiveCarbs   = day0 ? Math.round((day0.meals ?? []).reduce((s: number, m: { items?: { carbs?: number }[] }) => s + (m.items ?? []).reduce((ss: number, it: { carbs?: number }) => ss + (it.carbs ?? 0), 0), 0)) : carbsGrams;
-            const effectiveFat     = day0 ? Math.round((day0.meals ?? []).reduce((s: number, m: { items?: { fat?: number }[] }) => s + (m.items ?? []).reduce((ss: number, it: { fat?: number }) => ss + (it.fat ?? 0), 0), 0)) : fatGrams;
+            const effectiveProtein = day0?.macros?.protein_g != null ? Math.round(day0.macros.protein_g) : proteinGrams;
+            const effectiveCarbs   = day0?.macros?.carbs_g   != null ? Math.round(day0.macros.carbs_g)   : carbsGrams;
+            const effectiveFat     = day0?.macros?.fat_g     != null ? Math.round(day0.macros.fat_g)     : fatGrams;
 
             const res = await nutritionPlansApi.generatePlan({
                 memberId: user.userId,
