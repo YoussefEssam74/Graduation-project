@@ -7,12 +7,13 @@ import {
   Activity,
   Dumbbell,
   UserCog,
-  Shield,
+  Ticket,
   BarChart3,
   Calendar,
   AlertTriangle,
   CheckCircle,
   Clock,
+  UserPlus,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,12 +63,11 @@ function AdminDashboardContent() {
   ];
 
   const quickActions = [
-    { icon: Users, label: "Manage Members", color: "text-blue-500", bgColor: "bg-blue-100", href: "/admin-members" },
-    { icon: UserCog, label: "Manage Coaches", color: "text-purple-500", bgColor: "bg-purple-100", href: "/admin-coaches" },
+    { icon: UserCog, label: "Manage Staff", color: "text-purple-500", bgColor: "bg-purple-100", href: "/admin-coaches" },
+    { icon: UserPlus, label: "Create Staff", color: "text-emerald-500", bgColor: "bg-emerald-100", href: "/admin-users" },
     { icon: Dumbbell, label: "Equipment Management", color: "text-green-500", bgColor: "bg-green-100", href: "/admin-equipment" },
     { icon: BarChart3, label: "Analytics & Reports", color: "text-orange-500", bgColor: "bg-orange-100", href: "/admin-analytics" },
-    { icon: Shield, label: "System Settings", color: "text-red-500", bgColor: "bg-red-100", href: "/admin-settings" },
-    { icon: Calendar, label: "Booking Management", color: "text-indigo-500", bgColor: "bg-indigo-100", href: "/admin-bookings" },
+    { icon: Ticket, label: "Packages", color: "text-red-500", bgColor: "bg-red-100", href: "/admin-packages" },
   ];
 
   return (
@@ -121,7 +121,7 @@ function AdminDashboardContent() {
             </div>
             <TrendingUp className="h-5 w-5 text-green-600" />
           </div>
-          <div className="text-2xl font-bold mb-1">${mockStats.monthlyRevenue.toLocaleString()}</div>
+          <div className="text-2xl font-bold mb-1">{mockStats.monthlyRevenue.toLocaleString()} EGP</div>
           <div className="text-sm text-green-700 font-medium">Monthly Revenue</div>
           <div className="text-xs text-green-600 mt-1">+8.5% from last month</div>
         </Card>
@@ -230,10 +230,10 @@ function AdminDashboardContent() {
                 key={alert.id}
                 className={`p-4 rounded-lg border-l-4 ${
                   alert.severity === "critical"
-                    ? "bg-red-50 border-red-500"
+                    ? "bg-red-50 border-red-500 dark:bg-red-950"
                     : alert.severity === "warning"
-                    ? "bg-orange-50 border-orange-500"
-                    : "bg-blue-50 border-blue-500"
+                    ? "bg-orange-50 border-orange-500 dark:bg-orange-950"
+                    : "bg-blue-50 border-blue-500 dark:bg-blue-950"
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -252,7 +252,7 @@ function AdminDashboardContent() {
                       </span>
                       <span className="text-xs text-muted-foreground">{alert.time}</span>
                     </div>
-                    <p className="text-sm font-medium">{alert.message}</p>
+                    
                   </div>
                   <Button size="sm" variant="outline" className="ml-3">
                     Resolve
@@ -299,7 +299,7 @@ function AdminDashboardContent() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-green-600">${coach.revenue}</div>
+                  <div className="text-lg font-bold text-green-600">{coach.revenue} EGP</div>
                   <div className="text-xs text-muted-foreground">this month</div>
                 </div>
               </div>
@@ -351,7 +351,7 @@ function AdminDashboardContent() {
           {revenueData.map((data) => (
             <div key={data.month} className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
               <div className="text-sm font-medium text-muted-foreground mb-2">{data.month}</div>
-              <div className="text-3xl font-bold text-green-600 mb-1">${(data.revenue / 1000).toFixed(1)}k</div>
+              <div className="text-3xl font-bold text-green-600 mb-1">{(data.revenue / 1000).toFixed(1)}k EGP</div>
               <div className="text-xs text-muted-foreground">{data.members} members</div>
             </div>
           ))}

@@ -1,3 +1,5 @@
+export const EGP_PER_TOKEN = 0.5;
+
 export const USER_PROGRAMS = [
   {
     id: 1,

@@ -1,10 +1,12 @@
-namespace DomainLayer.Enums;
-
-public enum PaymentStatus
+namespace IntelliFit.Domain.Enums
 {
-    Pending,
-    Completed,
-    Failed,
-    Refunded,
-    Cancelled
+
+    public enum PaymentStatus
+    {
+        Pending,
+        Completed,
+        Failed,
+        Refunded,
+        Cancelled
+    }
 }

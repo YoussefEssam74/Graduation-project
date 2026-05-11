@@ -1,10 +1,11 @@
-namespace DomainLayer.Enums;
-
-public enum BookingStatus
+namespace IntelliFit.Domain.Enums
 {
-    Pending,
-    Confirmed,
-    Cancelled,
-    Completed,
-    NoShow
+    public enum BookingStatus
+    {
+        Pending,
+        Confirmed,
+        Cancelled,
+        Completed,
+        NoShow
+    }
 }

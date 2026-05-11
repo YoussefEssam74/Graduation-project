@@ -1,10 +1,12 @@
-namespace DomainLayer.Enums;
-
-public enum EquipmentStatus
+namespace IntelliFit.Domain.Enums
 {
-    Available,
-    InUse,
-    UnderMaintenance,
-    OutOfService,
-    Reserved
+
+    public enum EquipmentStatus
+    {
+        Available,
+        InUse,
+        UnderMaintenance,
+        OutOfService,
+        Reserved
+    }
 }

@@ -1,9 +1,13 @@
-namespace DomainLayer.Enums;
-
-public enum UserRole
+namespace IntelliFit.Domain.Enums
 {
-    Admin,
-    Coach,
-    Member,
-    Receptionist
+    /// <summary>
+    /// User role enumeration for the IntelliFit system
+    /// </summary>
+    public enum UserRole
+    {
+        Member,
+        Coach,
+        Receptionist,
+        Admin
+    }
 }
