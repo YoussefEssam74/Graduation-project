@@ -242,8 +242,7 @@ public class AIExercise
     public int? ExerciseId { get; set; }
     public string Name { get; set; } = null!;
 
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int? Sets { get; set; }
+    public string? Sets { get; set; }
 
     public string? Reps { get; set; }
     public string? Rest { get; set; }
