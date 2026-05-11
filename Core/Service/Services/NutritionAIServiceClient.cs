@@ -33,8 +33,8 @@ public class NutritionAIServiceClient : INutritionAIServiceClient
         };
 
         _httpClient.BaseAddress = new Uri(_baseUrl + "/");
-        // Timeout is configured via Program.cs (MLService:TimeoutSeconds, default 360 s)
-        // to allow for Modal/HF cold-start delays of up to ~3 minutes.
+        // No timeout — let the model take as long as it needs (cold-start can be several minutes).
+        _httpClient.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
     }
 
     public async Task<NutritionAIResponse?> GenerateNutritionPlanAsync(NutritionAIRequest request)
