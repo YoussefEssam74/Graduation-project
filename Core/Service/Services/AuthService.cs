@@ -277,17 +277,7 @@ namespace Service.Services
             var otp = new Random().Next(100000, 999999).ToString();
             _cache.Set($"forgot_pwd_otp_{user.UserId}", otp, TimeSpan.FromMinutes(10));
 
-            var smtpHost = _configuration["Email:SmtpHost"] ?? "";
-            var smtpPort = int.TryParse(_configuration["Email:SmtpPort"], out var p) ? p : 587;
-            var smtpUser = _configuration["Email:SmtpUser"] ?? "";
-            var smtpPass = _configuration["Email:SmtpPass"] ?? "";
-            var fromAddress = _configuration["Email:FromAddress"] ?? smtpUser;
-            var fromName = _configuration["Email:FromName"] ?? "PulseGym";
-
-            if (string.IsNullOrWhiteSpace(fromAddress))
-            {
-                throw new InvalidOperationException("Email sending is not configured. Please set the Email:SmtpUser and Email:SmtpPass environment variables in Render.");
-            }
+            var (smtpHost, smtpPort, smtpUser, smtpPass, fromAddress, fromName) = GetSmtpConfig();
 
             using var client = new SmtpClient(smtpHost, smtpPort)
             {
@@ -386,17 +376,7 @@ namespace Service.Services
             var otp = new Random().Next(100000, 999999).ToString();
             _cache.Set($"pwd_otp_{userId}", otp, TimeSpan.FromMinutes(10));
 
-            var smtpHost = _configuration["Email:SmtpHost"] ?? "";
-            var smtpPort = int.TryParse(_configuration["Email:SmtpPort"], out var p) ? p : 587;
-            var smtpUser = _configuration["Email:SmtpUser"] ?? "";
-            var smtpPass = _configuration["Email:SmtpPass"] ?? "";
-            var fromAddress = _configuration["Email:FromAddress"] ?? smtpUser;
-            var fromName = _configuration["Email:FromName"] ?? "PulseGym";
-
-            if (string.IsNullOrWhiteSpace(fromAddress))
-            {
-                throw new InvalidOperationException("Email sending is not configured. Please set the Email:SmtpUser and Email:SmtpPass environment variables in Render.");
-            }
+            var (smtpHost, smtpPort, smtpUser, smtpPass, fromAddress, fromName) = GetSmtpConfig();
 
             using var client = new SmtpClient(smtpHost, smtpPort)
             {
@@ -562,17 +542,7 @@ namespace Service.Services
             // Cache key scoped to the email so it cannot be reused for a different address.
             _cache.Set($"reg_otp_{email.ToLowerInvariant()}", otp, TimeSpan.FromMinutes(10));
 
-            var smtpHost    = _configuration["Email:SmtpHost"]    ?? "";
-            var smtpPort    = int.TryParse(_configuration["Email:SmtpPort"], out var p) ? p : 587;
-            var smtpUser    = _configuration["Email:SmtpUser"]    ?? "";
-            var smtpPass    = _configuration["Email:SmtpPass"]    ?? "";
-            var fromAddress = _configuration["Email:FromAddress"]  ?? smtpUser;
-            var fromName    = _configuration["Email:FromName"]     ?? "PulseGym";
-
-            if (string.IsNullOrWhiteSpace(fromAddress))
-            {
-                throw new InvalidOperationException("Email sending is not configured. Please set the Email:SmtpUser and Email:SmtpPass environment variables in Render.");
-            }
+            var (smtpHost, smtpPort, smtpUser, smtpPass, fromAddress, fromName) = GetSmtpConfig();
 
             using var client = new SmtpClient(smtpHost, smtpPort)
             {
@@ -611,6 +581,32 @@ namespace Service.Services
                 throw new InvalidOperationException("An account with this email already exists.");
 
             return await RegisterAsync(registerDto);
+        }
+
+        // ── SMTP configuration helper ────────────────────────────────────────────
+        /// <summary>
+        /// Reads SMTP config from IConfiguration (env vars take precedence over appsettings.json).
+        /// Falls back to the embedded defaults so the service works even when the hosting
+        /// platform (e.g. Render) has env var keys set but their VALUES left empty.
+        /// </summary>
+        private (string host, int port, string user, string pass, string from, string fromName)
+            GetSmtpConfig()
+        {
+            // Helper: read a config key; if null or whitespace, use the fallback.
+            string Cfg(string key, string fallback)
+            {
+                var v = _configuration[key]?.Trim();
+                return string.IsNullOrWhiteSpace(v) ? fallback : v;
+            }
+
+            var user = Cfg("Email:SmtpUser",    "eyoussef228@gmail.com");
+            var pass = Cfg("Email:SmtpPass",    "mafobbmeqvbbpkhh");
+            var host = Cfg("Email:SmtpHost",    "smtp.gmail.com");
+            var from = Cfg("Email:FromAddress", user);
+            var name = Cfg("Email:FromName",    "PulseGym");
+            var port = int.TryParse(_configuration["Email:SmtpPort"]?.Trim(), out var p) ? p : 587;
+
+            return (host, port, user, pass, from, name);
         }
     }
 }
