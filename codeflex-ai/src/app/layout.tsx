@@ -133,7 +133,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <GoogleOAuthProvider clientId="1083535101116-p4iirka9e60m4nklv8rbr2r0s2ji2ape.apps.googleusercontent.com">
+          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1083535101116-p4iirka9e60m4nklv8rbr2r0s2ji2ape.apps.googleusercontent.com"}>
           <AuthProvider>
             <SubscriptionProvider>
               <ToastProvider>
