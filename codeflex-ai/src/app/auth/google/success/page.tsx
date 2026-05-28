@@ -44,9 +44,13 @@ function GoogleSuccessInner() {
     // The redirect_uri used in the original auth request must match exactly
     const redirectUri = `${window.location.origin}/auth/google/success`;
 
+    // Retrieve PKCE code_verifier that was stored before the redirect
+    const codeVerifier = sessionStorage.getItem("google_pkce_verifier") ?? undefined;
+    sessionStorage.removeItem("google_pkce_verifier"); // clean up immediately
+
     apiFetch<AuthResponse>("/auth/google/callback", {
       method: "POST",
-      body: JSON.stringify({ code, redirectUri }),
+      body: JSON.stringify({ code, redirectUri, codeVerifier }),
       skipAuth: true,
     })
       .then((res) => {

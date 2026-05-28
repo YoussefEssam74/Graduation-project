@@ -499,37 +499,49 @@ namespace Service.Services
         // ── Registration Email OTP ──────────────────────────────────────────────
 
         /// <summary>
-        /// Server-side OAuth callback: exchange an authorization code for an ID token,
-        /// then delegate to GoogleLoginAsync to find-or-create the user.
-        /// The <paramref name="redirectUri"/> MUST be the same value that was sent in
-        /// the original authorization request (Google validates this for CSRF protection).
+        /// Server-side OAuth callback: exchange an authorization code for an ID token using
+        /// PKCE (Proof Key for Code Exchange) so no client secret is required.
+        /// The <paramref name="redirectUri"/> and <paramref name="codeVerifier"/> MUST
+        /// match the values used in the original authorization request.
         /// </summary>
-        public async Task<AuthResponseDto> GoogleCallbackAsync(string code, string redirectUri)
+        public async Task<AuthResponseDto> GoogleCallbackAsync(
+            string code, string redirectUri, string? codeVerifier = null)
         {
-            var clientId     = _configuration["Google:ClientId"]
-                               ?? throw new InvalidOperationException("Google:ClientId is not configured.");
-            var clientSecret = _configuration["Google:ClientSecret"]
-                               ?? throw new InvalidOperationException("Google:ClientSecret is not configured. Add it to Render env vars.");
+            var clientId = _configuration["Google:ClientId"]
+                           ?? throw new InvalidOperationException("Google:ClientId is not configured.");
 
             using var http = new System.Net.Http.HttpClient();
-            var tokenRequest = new System.Net.Http.FormUrlEncodedContent(new Dictionary<string, string>
+
+            // Build token exchange parameters
+            var tokenParams = new Dictionary<string, string>
             {
                 ["code"]          = code,
                 ["client_id"]     = clientId,
-                ["client_secret"] = clientSecret,
                 ["redirect_uri"]  = redirectUri,
                 ["grant_type"]    = "authorization_code",
-            });
+            };
 
+            // Prefer PKCE (no client secret needed) but fall back to client_secret if available
+            var clientSecret = _configuration["Google:ClientSecret"];
+            if (!string.IsNullOrWhiteSpace(codeVerifier))
+            {
+                tokenParams["code_verifier"] = codeVerifier;
+            }
+            else if (!string.IsNullOrWhiteSpace(clientSecret))
+            {
+                tokenParams["client_secret"] = clientSecret;
+            }
+
+            var tokenRequest = new System.Net.Http.FormUrlEncodedContent(tokenParams);
             var tokenResponse = await http.PostAsync("https://oauth2.googleapis.com/token", tokenRequest);
             var tokenJson     = await tokenResponse.Content.ReadAsStringAsync();
 
             if (!tokenResponse.IsSuccessStatusCode)
                 throw new UnauthorizedAccessException($"Google token exchange failed: {tokenJson}");
 
-            using var doc   = System.Text.Json.JsonDocument.Parse(tokenJson);
-            var idToken     = doc.RootElement.GetProperty("id_token").GetString()
-                              ?? throw new UnauthorizedAccessException("Google did not return an id_token.");
+            using var doc = System.Text.Json.JsonDocument.Parse(tokenJson);
+            var idToken   = doc.RootElement.GetProperty("id_token").GetString()
+                            ?? throw new UnauthorizedAccessException("Google did not return an id_token.");
 
             // Reuse existing validation + find-or-create user logic
             return await GoogleLoginAsync(idToken);

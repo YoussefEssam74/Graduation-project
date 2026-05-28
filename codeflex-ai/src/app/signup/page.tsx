@@ -27,27 +27,47 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 
-/** Build the Google OAuth URL that redirects back to the frontend success page. */
-function getGoogleOAuthUrl() {
+/** PKCE helpers — no client secret needed on the backend */
+async function generateCodeVerifier(): Promise<string> {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const data = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+/** Redirect to Google OAuth with PKCE (stores code_verifier in sessionStorage). */
+async function initGoogleSignIn() {
   const clientId =
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
     "1083535101116-p4iirka9e60m4nklv8rbr2r0s2ji2ape.apps.googleusercontent.com";
 
-  // Always use the current origin so it works in both dev and production
-  // Register https://pulsegym-two.vercel.app/auth/google/success in Google Console → Authorized Redirect URIs
-  const redirectUri =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/auth/google/success`
-      : "https://pulsegym-two.vercel.app/auth/google/success";
+  // Always the frontend success page — add this URL in Google Console → Authorized Redirect URIs
+  const redirectUri = `${window.location.origin}/auth/google/success`;
 
-  return (
+  const codeVerifier  = await generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  sessionStorage.setItem("google_pkce_verifier", codeVerifier);
+
+  const url =
     "https://accounts.google.com/o/oauth2/v2/auth?" +
     `client_id=${encodeURIComponent(clientId)}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&response_type=code` +
     `&scope=${encodeURIComponent("openid email profile")}` +
-    `&access_type=offline`
-  );
+    `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+    `&code_challenge_method=S256`;
+
+  window.location.href = url;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -425,7 +445,7 @@ export default function SignUpPage() {
                   <div className="flex justify-center mb-1">
                     <button
                       type="button"
-                      onClick={() => { window.location.href = getGoogleOAuthUrl(); }}
+                      onClick={() => initGoogleSignIn()}
                       className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-[0.98]"
                     >
                       {/* Google logo SVG */}
@@ -454,6 +474,7 @@ export default function SignUpPage() {
                         <div className="relative group">
                           <UserCircleIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
                           <Input id="name" type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)}
+                            autoComplete="off"
                             className="w-full pl-9 pr-3 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                         </div>
                       </label>
@@ -463,6 +484,7 @@ export default function SignUpPage() {
                         <div className="relative group">
                           <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
                           <Input id="phone" type="tel" placeholder="+1 (555) 000-0000" value={phone} onChange={(e) => setPhone(e.target.value)}
+                            autoComplete="off"
                             className="w-full pl-9 pr-3 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                         </div>
                       </label>
@@ -472,7 +494,8 @@ export default function SignUpPage() {
                       <Label htmlFor="email" className="text-[11px] font-semibold text-slate-700">Email Address</Label>
                       <div className="relative group">
                         <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
-                        <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                        <Input id="email" type="email" placeholder="member@intellifit.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                          autoComplete="off"
                           className="w-full pl-9 pr-3 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                       </div>
                     </label>
@@ -518,6 +541,7 @@ export default function SignUpPage() {
                       <div className="relative group">
                         <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
                         <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
+                          autoComplete="new-password"
                           className="w-full pl-9 pr-9 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                         <button type="button" onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
@@ -538,6 +562,7 @@ export default function SignUpPage() {
                       <div className="relative group">
                         <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
                         <Input id="confirmPassword" type={showPassword ? "text" : "password"} placeholder="Confirm password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                          autoComplete="new-password"
                           className="w-full pl-9 pr-3 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                       </div>
                     </label>

@@ -187,7 +187,7 @@ namespace Presentation.Controllers
                 if (string.IsNullOrWhiteSpace(dto.RedirectUri))
                     return BadRequest(new { error = "RedirectUri is required." });
 
-                var result = await _serviceManager.AuthService.GoogleCallbackAsync(dto.Code, dto.RedirectUri);
+                var result = await _serviceManager.AuthService.GoogleCallbackAsync(dto.Code, dto.RedirectUri, dto.CodeVerifier);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
