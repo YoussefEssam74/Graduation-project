@@ -322,15 +322,15 @@ export default function SignUpPage() {
         />
       )}
 
-      <div className="relative h-screen w-full overflow-hidden">
+      <div className="relative min-h-screen w-full overflow-y-auto flex flex-col">
         {/* Background */}
         <div className="fixed inset-0 z-0">
           <div className="absolute inset-0 home-login-bg" />
           <div className="absolute inset-0 home-login-overlay" />
         </div>
 
-        <div className="relative z-10 h-full w-full px-3 py-3 lg:px-6 lg:py-4">
-          <div className="mx-auto flex h-full w-full max-w-[1200px] flex-col">
+        <div className="relative z-10 flex-1 w-full px-3 py-4 lg:px-6 lg:py-6 flex flex-col justify-center">
+          <div className="mx-auto flex w-full max-w-[1200px] flex-col flex-1 justify-center">
             {/* Header */}
             <div className="flex items-center justify-between px-2 pb-2">
               <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-90" aria-label="Go to homepage">
@@ -350,7 +350,7 @@ export default function SignUpPage() {
               </p>
             </div>
 
-            <div className="mx-auto flex w-full max-w-[980px] flex-1 items-center justify-center">
+            <div className="mx-auto flex w-full max-w-[980px] py-4 items-center justify-center my-auto">
               <div className="grid w-full max-w-[940px] grid-cols-1 overflow-hidden rounded-2xl border border-white/70 bg-white/90 shadow-[0_20px_48px_rgba(15,23,42,0.18)] backdrop-blur-md md:grid-cols-[0.9fr_1.1fr]">
                 {/* Left Visual */}
                 <div className="relative hidden md:flex flex-col justify-between bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 p-5 text-white">

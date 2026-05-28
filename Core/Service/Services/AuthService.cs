@@ -282,6 +282,11 @@ namespace Service.Services
             var fromAddress = _configuration["Email:FromAddress"] ?? smtpUser;
             var fromName = _configuration["Email:FromName"] ?? "PulseGym";
 
+            if (string.IsNullOrWhiteSpace(fromAddress))
+            {
+                throw new InvalidOperationException("Email sending is not configured. Please set the Email:SmtpUser and Email:SmtpPass environment variables in Render.");
+            }
+
             using var client = new SmtpClient(smtpHost, smtpPort)
             {
                 Credentials = new NetworkCredential(smtpUser, smtpPass),
@@ -385,6 +390,11 @@ namespace Service.Services
             var smtpPass = _configuration["Email:SmtpPass"] ?? "";
             var fromAddress = _configuration["Email:FromAddress"] ?? smtpUser;
             var fromName = _configuration["Email:FromName"] ?? "PulseGym";
+
+            if (string.IsNullOrWhiteSpace(fromAddress))
+            {
+                throw new InvalidOperationException("Email sending is not configured. Please set the Email:SmtpUser and Email:SmtpPass environment variables in Render.");
+            }
 
             using var client = new SmtpClient(smtpHost, smtpPort)
             {
@@ -507,6 +517,11 @@ namespace Service.Services
             var smtpPass    = _configuration["Email:SmtpPass"]    ?? "";
             var fromAddress = _configuration["Email:FromAddress"]  ?? smtpUser;
             var fromName    = _configuration["Email:FromName"]     ?? "PulseGym";
+
+            if (string.IsNullOrWhiteSpace(fromAddress))
+            {
+                throw new InvalidOperationException("Email sending is not configured. Please set the Email:SmtpUser and Email:SmtpPass environment variables in Render.");
+            }
 
             using var client = new SmtpClient(smtpHost, smtpPort)
             {
