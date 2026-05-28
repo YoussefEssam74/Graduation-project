@@ -2,9 +2,9 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { setAuthToken } from "@/lib/api/client";
-import { apiFetch } from "@/lib/api/client";
+import { setAuthToken, apiFetch } from "@/lib/api/client";
 import { UserDto } from "@/lib/api/auth";
+import { AuthResponse } from "@/lib/api/auth";
 
 // ─── Inner component (uses useSearchParams — must be inside <Suspense>) ───────
 
@@ -13,23 +13,66 @@ function GoogleSuccessInner() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    const token = searchParams.get("token");
+    // Google sends ?code=... or ?error=...
+    const code  = searchParams.get("code");
     const error = searchParams.get("error");
 
+    // Also handle our own legacy ?token=JWT flow (if somehow reached)
+    const token = searchParams.get("token");
+
     if (error) {
-      setErrorMsg(decodeURIComponent(error));
+      setErrorMsg(
+        error === "access_denied"
+          ? "Google sign-in was cancelled."
+          : decodeURIComponent(error)
+      );
       return;
     }
 
-    if (!token) {
-      setErrorMsg("No authentication token received from Google.");
+    // ── Legacy flow: backend already gave us a JWT ──────────────────────────
+    if (token) {
+      handleToken(token);
       return;
     }
 
-    // Store JWT
+    // ── Primary flow: exchange code with our backend ────────────────────────
+    if (!code) {
+      setErrorMsg("No authorization code received from Google.");
+      return;
+    }
+
+    // The redirect_uri used in the original auth request must match exactly
+    const redirectUri = `${window.location.origin}/auth/google/success`;
+
+    apiFetch<AuthResponse>("/auth/google/callback", {
+      method: "POST",
+      body: JSON.stringify({ code, redirectUri }),
+      skipAuth: true,
+    })
+      .then((res) => {
+        if (!res.success || !res.data) {
+          setErrorMsg(res.message || "Google sign-in failed. Please try again.");
+          return;
+        }
+        handleToken(res.data.token, res.data.user);
+      })
+      .catch((err) => {
+        setErrorMsg(
+          err instanceof Error ? err.message : "Google sign-in failed."
+        );
+      });
+  }, [searchParams]);
+
+  function handleToken(token: string, user?: UserDto) {
     setAuthToken(token);
 
-    // Decode JWT payload to extract userId
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+      window.location.href = "/dashboard";
+      return;
+    }
+
+    // Decode JWT to get userId so we can fetch the full user object
     let userId: number | null = null;
     try {
       const payload = JSON.parse(
@@ -45,24 +88,22 @@ function GoogleSuccessInner() {
         10
       );
     } catch {
-      // Decode failed — proceed without profile; AuthContext will handle it
+      // Ignore — just redirect without profile
     }
-
-    const continueToApp = (user?: UserDto) => {
-      if (user) {
-        localStorage.setItem("user", JSON.stringify(user));
-      }
-      window.location.href = "/dashboard";
-    };
 
     if (userId) {
       apiFetch<UserDto>(`/users/${userId}`)
-        .then((res) => continueToApp(res.data))
-        .catch(() => continueToApp());
+        .then((res) => {
+          if (res.data) localStorage.setItem("user", JSON.stringify(res.data));
+          window.location.href = "/dashboard";
+        })
+        .catch(() => {
+          window.location.href = "/dashboard";
+        });
     } else {
-      continueToApp();
+      window.location.href = "/dashboard";
     }
-  }, [searchParams]);
+  }
 
   if (errorMsg) {
     return (
@@ -93,7 +134,7 @@ function GoogleSuccessInner() {
   );
 }
 
-// ─── Loading fallback (shown during Suspense) ─────────────────────────────────
+// ─── Loading fallback ─────────────────────────────────────────────────────────
 
 function LoadingFallback() {
   return (
@@ -106,18 +147,22 @@ function LoadingFallback() {
   );
 }
 
-// ─── Page export (wraps inner component in Suspense) ─────────────────────────
+// ─── Page export ──────────────────────────────────────────────────────────────
 
 /**
- * Landing page after server-side Google OAuth redirect.
+ * Landing page after Google OAuth redirect.
  *
- * Flow:
- *   Google → Backend /api/auth/google/callback
- *           → Redirects here: /auth/google/success?token=JWT
- *           → Stores token, fetches user profile, redirects to /dashboard
+ * New flow (frontend redirect_uri):
+ *   User clicks "Sign in with Google"
+ *   → Browser goes to accounts.google.com with redirect_uri = /auth/google/success
+ *   → User approves
+ *   → Google redirects here: /auth/google/success?code=AUTH_CODE
+ *   → This page POSTs { code, redirectUri } to POST /api/auth/google/callback
+ *   → Backend exchanges code for ID token, validates, returns JWT
+ *   → We store JWT + user, redirect to /dashboard
  *
- * The Suspense wrapper is required by Next.js App Router whenever
- * useSearchParams() is used in a statically-generated page.
+ * The <Suspense> wrapper is required by Next.js when useSearchParams() is used
+ * in a statically-generated page.
  */
 export default function GoogleSuccessPage() {
   return (
@@ -126,4 +171,3 @@ export default function GoogleSuccessPage() {
     </Suspense>
   );
 }
-

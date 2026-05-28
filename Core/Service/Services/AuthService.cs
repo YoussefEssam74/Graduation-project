@@ -501,15 +501,15 @@ namespace Service.Services
         /// <summary>
         /// Server-side OAuth callback: exchange an authorization code for an ID token,
         /// then delegate to GoogleLoginAsync to find-or-create the user.
+        /// The <paramref name="redirectUri"/> MUST be the same value that was sent in
+        /// the original authorization request (Google validates this for CSRF protection).
         /// </summary>
-        public async Task<AuthResponseDto> GoogleCallbackAsync(string code)
+        public async Task<AuthResponseDto> GoogleCallbackAsync(string code, string redirectUri)
         {
             var clientId     = _configuration["Google:ClientId"]
                                ?? throw new InvalidOperationException("Google:ClientId is not configured.");
             var clientSecret = _configuration["Google:ClientSecret"]
                                ?? throw new InvalidOperationException("Google:ClientSecret is not configured. Add it to Render env vars.");
-            var callbackUrl  = _configuration["Google:CallbackUrl"]
-                               ?? throw new InvalidOperationException("Google:CallbackUrl is not configured.");
 
             using var http = new System.Net.Http.HttpClient();
             var tokenRequest = new System.Net.Http.FormUrlEncodedContent(new Dictionary<string, string>
@@ -517,7 +517,7 @@ namespace Service.Services
                 ["code"]          = code,
                 ["client_id"]     = clientId,
                 ["client_secret"] = clientSecret,
-                ["redirect_uri"]  = callbackUrl,
+                ["redirect_uri"]  = redirectUri,
                 ["grant_type"]    = "authorization_code",
             });
 

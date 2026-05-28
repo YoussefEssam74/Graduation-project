@@ -27,23 +27,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 
-/** Build the Google OAuth URL that redirects through our backend callback. */
+/** Build the Google OAuth URL that redirects back to the frontend success page. */
 function getGoogleOAuthUrl() {
   const clientId =
     process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
     "1083535101116-p4iirka9e60m4nklv8rbr2r0s2ji2ape.apps.googleusercontent.com";
-  const apiBase = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5025/api"
-  ).replace(/\/$/, "");
-  const apiRoot = apiBase.endsWith("/api")
-    ? apiBase.slice(0, -4)
-    : apiBase;
-  const callbackUrl = `${apiRoot}/api/auth/google/callback`;
+
+  // Always use the current origin so it works in both dev and production
+  // Register https://pulsegym-two.vercel.app/auth/google/success in Google Console → Authorized Redirect URIs
+  const redirectUri =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/auth/google/success`
+      : "https://pulsegym-two.vercel.app/auth/google/success";
 
   return (
     "https://accounts.google.com/o/oauth2/v2/auth?" +
     `client_id=${encodeURIComponent(clientId)}` +
-    `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&response_type=code` +
     `&scope=${encodeURIComponent("openid email profile")}` +
     `&access_type=offline`
