@@ -1,0 +1,222 @@
+[
+  {
+    "name": "Shoulder Dislocate",
+    "category": "mobility",
+    "primary_muscles": "[shoulders, rotator cuff, pecs, lats]",
+    "description": "Hold stick/band wide, rotate overhead and behind back in smooth arc.",
+    "progressions": [
+      "Band Pass-Throughs (wide grip)",
+      "Stick Pass-Throughs (narrowing grip)",
+      "Weighted Pass-Throughs (narrow grip)"
+    ]
+  },
+  {
+    "name": "Wall Angel",
+    "category": "mobility",
+    "primary_muscles": "[scapular stabilizers, thoracic spine, shoulders]",
+    "description": "Back against wall, arms in goalpost position, slide up and down maintaining wall contact.",
+    "progressions": [
+      "Seated Wall Angels",
+      "Standing Wall Angels",
+      "Floor Angels (face-down, no wall)"
+    ]
+  },
+  {
+    "name": "German Hang",
+    "category": "mobility",
+    "primary_muscles": "[anterior deltoids, pecs, biceps]",
+    "description": "Hang from rings with arms behind body in full shoulder extension.",
+    "progressions": [
+      "Supinated Hang (feet on ground)",
+      "German Hang (feet touching floor)",
+      "Full German Hang (unsupported, 20s+)"
+    ]
+  },
+  {
+    "name": "Cat-Cow",
+    "category": "mobility",
+    "primary_muscles": "[thoracic spine, lumbar spine, erector spinae, abdominals]",
+    "description": "On all fours, alternate between arching (cow) and rounding (cat) the back.",
+    "progressions": [
+      "Slow Cat-Cow (breathing focus)",
+      "Segmental Cat-Cow with Pauses",
+      "Standing Cat-Cow / Loaded Cat-Cow"
+    ]
+  },
+  {
+    "name": "Quadruped Thoracic Rotation",
+    "category": "mobility",
+    "primary_muscles": "[thoracic spine, obliques, intercostals]",
+    "description": "From all fours, hand behind head, rotate upper body opening chest toward ceiling.",
+    "progressions": [
+      "Hand on Shoulder (small rotation)",
+      "Hand Behind Head (full rotation with pause)",
+      "Thread-the-Needle to Full Open Rotation"
+    ]
+  },
+  {
+    "name": "Jefferson Curl",
+    "category": "mobility",
+    "primary_muscles": "[erector spinae, hamstrings, multifidus]",
+    "description": "Standing, slowly roll spine down vertebra by vertebra into full forward flexion.",
+    "progressions": [
+      "Bodyweight on Flat Ground (partial range)",
+      "Bodyweight on Elevated Surface",
+      "Weighted Jefferson Curl (2-7 kg)"
+    ]
+  },
+  {
+    "name": "Deep Squat Hold",
+    "category": "mobility",
+    "primary_muscles": "[hips, ankles, thoracic spine, quads]",
+    "description": "Sit into full-depth squat with feet flat, hold bottom position.",
+    "progressions": [
+      "Assisted Squat Hold (holding pole)",
+      "Unassisted Deep Squat (60s)",
+      "Weighted Deep Squat Hold"
+    ]
+  },
+  {
+    "name": "90/90 Hip Switch",
+    "category": "mobility",
+    "primary_muscles": "[hip rotators, glutes, hip flexors]",
+    "description": "Sit with both knees at 90 degrees, rotate to switch leg positions.",
+    "progressions": [
+      "Static 90/90 Hold",
+      "90/90 Switches (10 reps per side)",
+      "Elevated 90/90 (hips lifted during transition)"
+    ]
+  },
+  {
+    "name": "Pigeon Pose",
+    "category": "mobility",
+    "primary_muscles": "[glutes, piriformis, hip external rotators, hip flexors]",
+    "description": "Front shin across body, lower hips to floor stretching external rotators and hip flexors.",
+    "progressions": [
+      "Supine Figure-4 Stretch",
+      "Half Pigeon with Block Support",
+      "Full Pigeon (chest flat on floor)"
+    ]
+  },
+  {
+    "name": "Frog Stretch",
+    "category": "mobility",
+    "primary_muscles": "[hip adductors, groin, inner thighs]",
+    "description": "On all fours, widen knees maximally, sink hips back and down.",
+    "progressions": [
+      "Narrow Frog with Gentle Rocking",
+      "Wide Frog Stretch (dynamic rocking)",
+      "Flat Frog (chest and hips on floor)"
+    ]
+  },
+  {
+    "name": "Couch Stretch",
+    "category": "mobility",
+    "primary_muscles": "[hip flexors, psoas, rectus femoris, quads]",
+    "description": "Kneel with back foot against wall, front foot forward, drive hips forward.",
+    "progressions": [
+      "Low Lunge Hip Flexor Stretch",
+      "Couch Stretch (torso leaning forward)",
+      "Upright Couch Stretch (torso vertical)"
+    ]
+  },
+  {
+    "name": "Pancake Stretch",
+    "category": "mobility",
+    "primary_muscles": "[adductors, hamstrings, lower back]",
+    "description": "Seated with legs wide, hinge forward bringing chest toward floor.",
+    "progressions": [
+      "Seated Straddle (gentle forward lean)",
+      "Straddle Forward Fold (chest approaching floor)",
+      "Full Pancake (chest flat on floor)"
+    ]
+  },
+  {
+    "name": "Front Split",
+    "category": "mobility",
+    "primary_muscles": "[hamstrings, hip flexors, quads]",
+    "description": "One leg forward, one back, lower pelvis toward ground with hips squared.",
+    "progressions": [
+      "Low Lunge (30-60s holds)",
+      "Half Split (blocks under hands)",
+      "Full Front Split / Oversplit"
+    ]
+  },
+  {
+    "name": "Middle Split",
+    "category": "mobility",
+    "primary_muscles": "[adductors, hamstrings, groin]",
+    "description": "Both legs extend sideways, lower pelvis toward ground.",
+    "progressions": [
+      "Half Middle Split (one knee bent)",
+      "Wall Straddle (gravity assist)",
+      "Full Middle Split on Floor"
+    ]
+  },
+  {
+    "name": "Cobra Stretch",
+    "category": "mobility",
+    "primary_muscles": "[lumbar spine, hip flexors, abdominals]",
+    "description": "Lying face-down, press chest up with arms keeping hips on floor.",
+    "progressions": [
+      "Baby Cobra (forearms on floor)",
+      "Full Cobra (arms straight)",
+      "Seal Stretch (maximum lumbar extension)"
+    ]
+  },
+  {
+    "name": "Wall Ankle Dorsiflexion",
+    "category": "mobility",
+    "primary_muscles": "[calves, achilles tendon]",
+    "description": "Foot forward near wall, drive knee over toes keeping heel flat.",
+    "progressions": [
+      "Close to Wall (2-3 inches)",
+      "Medium Distance (4-5 inches)",
+      "Weighted Knee-to-Wall / Banded Dorsiflexion"
+    ]
+  },
+  {
+    "name": "Wrist Circles",
+    "category": "mobility",
+    "primary_muscles": "[wrist flexors, wrist extensors, forearms]",
+    "description": "On all fours, slowly shift bodyweight in circles around wrists.",
+    "progressions": [
+      "Kneeling Wrist Circles (minimal weight)",
+      "Plank-Position Wrist Circles",
+      "Plank Wrist Circles on Fingertips"
+    ]
+  },
+  {
+    "name": "Scorpion Stretch",
+    "category": "mobility",
+    "primary_muscles": "[hip flexors, obliques, thoracic spine, lumbar spine]",
+    "description": "Lying face-down, swing one leg up and across body toward opposite hand.",
+    "progressions": [
+      "Supine Scorpion (face-up)",
+      "Prone Scorpion (bent knee)",
+      "Prone Scorpion (straight leg, touching opposite hand)"
+    ]
+  },
+  {
+    "name": "World's Greatest Stretch",
+    "category": "mobility",
+    "primary_muscles": "[hip flexors, adductors, hamstrings, thoracic spine]",
+    "description": "Multi-step: deep lunge, elbow to floor, thoracic rotation reaching arm skyward.",
+    "progressions": [
+      "Spiderman Lunge Only (no rotation)",
+      "Full Sequence (lunge + rotation + reach)",
+      "Add Hamstring Straighten + Overhead Reach"
+    ]
+  },
+  {
+    "name": "Side-Lying Windmill",
+    "category": "mobility",
+    "primary_muscles": "[thoracic spine, pecs, anterior shoulder, obliques]",
+    "description": "Lie on side with knees at 90, rotate top arm open across body toward floor behind.",
+    "progressions": [
+      "Open Book with Partial Rotation",
+      "Full Side-Lying Windmill",
+      "Windmill with Hold + Light Weight"
+    ]
+  }
+]

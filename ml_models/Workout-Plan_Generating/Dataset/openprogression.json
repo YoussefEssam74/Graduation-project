@@ -1,0 +1,2035 @@
+{
+  "version": "1.0.0",
+  "levels": [
+    {
+      "id": "beginner",
+      "number": 1,
+      "name": "Beginner",
+      "shortName": "BEG",
+      "color": "#4ADE80",
+      "description": "New to structured fitness training. Learning fundamental movement patterns.",
+      "trainingAge": "0-6 months",
+      "percentileRange": [
+        0,
+        20
+      ]
+    },
+    {
+      "id": "beginner_plus",
+      "number": 2,
+      "name": "Beginner+",
+      "shortName": "BEG+",
+      "color": "#22C55E",
+      "description": "Basic movements mastered. Building consistency and work capacity.",
+      "trainingAge": "3-12 months",
+      "percentileRange": [
+        20,
+        35
+      ]
+    },
+    {
+      "id": "intermediate",
+      "number": 3,
+      "name": "Intermediate",
+      "shortName": "INT",
+      "color": "#EAB308",
+      "description": "Solid fundamentals across all categories. Handles moderate loads with good form.",
+      "trainingAge": "1-2 years",
+      "percentileRange": [
+        35,
+        50
+      ]
+    },
+    {
+      "id": "intermediate_plus",
+      "number": 4,
+      "name": "Intermediate+",
+      "shortName": "INT+",
+      "color": "#F97316",
+      "description": "Competent athlete proficient across all fitness domains. Requires periodized programming.",
+      "trainingAge": "2-3 years",
+      "percentileRange": [
+        50,
+        65
+      ]
+    },
+    {
+      "id": "advanced",
+      "number": 5,
+      "name": "Advanced",
+      "shortName": "ADV",
+      "color": "#EF4444",
+      "description": "Strong and skilled across all categories. Competition-capable.",
+      "trainingAge": "3-5 years",
+      "percentileRange": [
+        65,
+        80
+      ]
+    },
+    {
+      "id": "advanced_plus",
+      "number": 6,
+      "name": "Advanced+",
+      "shortName": "ADV+",
+      "color": "#DC2626",
+      "description": "Very strong and highly skilled. Competition-level fitness across all domains.",
+      "trainingAge": "5+ years",
+      "percentileRange": [
+        80,
+        95
+      ]
+    },
+    {
+      "id": "rx",
+      "number": 7,
+      "name": "Rx",
+      "shortName": "RX",
+      "color": "#991B1B",
+      "description": "Elite-level performance. Top 5% of trained athletes.",
+      "trainingAge": "5+ years dedicated",
+      "percentileRange": [
+        95,
+        100
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "squatting",
+      "name": "Squatting",
+      "icon": "🏋️",
+      "description": "Lower body pushing strength through squat patterns",
+      "keyMovements": [
+        "back_squat",
+        "front_squat",
+        "overhead_squat",
+        "wall_ball"
+      ]
+    },
+    {
+      "id": "pulling",
+      "name": "Pulling",
+      "icon": "💪",
+      "description": "Hip-hinge and pulling strength from the floor",
+      "keyMovements": [
+        "deadlift",
+        "sumo_deadlift",
+        "romanian_deadlift"
+      ]
+    },
+    {
+      "id": "pressing",
+      "name": "Pressing",
+      "icon": "🔝",
+      "description": "Upper body pressing strength in all planes",
+      "keyMovements": [
+        "strict_press",
+        "push_press",
+        "push_jerk",
+        "bench_press"
+      ]
+    },
+    {
+      "id": "olympic_lifting",
+      "name": "Olympic Lifting",
+      "icon": "⚡",
+      "description": "Speed-strength and technical proficiency in the Olympic lifts",
+      "keyMovements": [
+        "power_clean",
+        "power_snatch",
+        "clean_and_jerk",
+        "snatch"
+      ]
+    },
+    {
+      "id": "gymnastics",
+      "name": "Gymnastics",
+      "icon": "🤸",
+      "description": "Bodyweight strength, control, and skill on apparatus",
+      "keyMovements": [
+        "strict_pull_up",
+        "kipping_pull_up",
+        "hspu",
+        "toes_to_bar",
+        "bar_muscle_up",
+        "ring_muscle_up"
+      ]
+    },
+    {
+      "id": "monostructural",
+      "name": "Monostructural",
+      "icon": "🚣",
+      "description": "Single-modality cardiovascular output",
+      "keyMovements": [
+        "row_500m",
+        "row_2000m",
+        "run_mile",
+        "run_5k"
+      ]
+    },
+    {
+      "id": "bodyweight",
+      "name": "Bodyweight",
+      "icon": "🏃",
+      "description": "Functional bodyweight strength and endurance",
+      "keyMovements": [
+        "push_up",
+        "air_squat",
+        "pistol_squat",
+        "double_under",
+        "rope_climb"
+      ]
+    },
+    {
+      "id": "endurance",
+      "name": "Endurance",
+      "icon": "❤️",
+      "description": "Sustained effort across extended mixed-modal workouts. Benchmarks in this category originated in the CrossFit community and are used here by their widely recognized names.",
+      "keyMovements": [
+        "fran",
+        "grace",
+        "murph",
+        "cindy",
+        "fight_gone_bad"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "van_den_hoek_2024",
+      "citation": "van den Hoek, D.J., Beaumont, P.L., van den Hoek, A.K., Owen, P.J., Garrett, J.M., Buhmann, R., & Latella, C. (2024). Normative data for the squat, bench press and deadlift exercises in powerlifting: Data from 809,986 competition entries. Journal of Science and Medicine in Sport.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/39060209/",
+      "type": "peer_reviewed",
+      "sampleSize": 809986
+    },
+    {
+      "id": "mangine_2020",
+      "citation": "Mangine, G.T. et al. (2020). Determination of a CrossFit Benchmark Performance Profile. International Journal of Exercise Science.",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8228530/",
+      "type": "peer_reviewed",
+      "sampleSize": 162
+    },
+    {
+      "id": "mangine_2023",
+      "citation": "Mangine, G.T., Grundlingh, N., & Feito, Y. (2023). Normative scores for CrossFit Open workouts: 2011-2022. Sports, 11(2), 24.",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9960888/",
+      "type": "peer_reviewed",
+      "sampleSize": 569607
+    },
+    {
+      "id": "kilgore_2023",
+      "citation": "Kilgore, L. (2023). Lon Kilgore Strength Standard Tables.",
+      "url": "http://lonkilgore.com/resources/Lon_Kilgore_Strength_Standard_Tables-Copyright-2023.pdf",
+      "type": "published_standard"
+    },
+    {
+      "id": "concept2_rankings",
+      "citation": "Concept2 Logbook World Rankings (2025 season data).",
+      "url": "https://log.concept2.com/rankings",
+      "type": "public_database"
+    },
+    {
+      "id": "runninglevel",
+      "citation": "RunningLevel.com race time standards. Based on 1,000,000+ race results.",
+      "url": "https://runninglevel.com",
+      "type": "public_database",
+      "sampleSize": 1000000
+    },
+    {
+      "id": "acsm_guidelines",
+      "citation": "ACSM's Guidelines for Exercise Testing and Prescription. American College of Sports Medicine.",
+      "type": "professional_standard"
+    },
+    {
+      "id": "cooper_institute",
+      "citation": "Physical Fitness Specialist Certification Manual. The Cooper Institute for Aerobics Research, Dallas TX (1997).",
+      "type": "professional_standard"
+    },
+    {
+      "id": "military_pft",
+      "citation": "U.S. Military Physical Fitness Test Standards. Department of Defense (public domain).",
+      "type": "government_standard"
+    },
+    {
+      "id": "strengthlevel",
+      "citation": "StrengthLevel.com exercise standards. Community-sourced performance data.",
+      "url": "https://strengthlevel.com",
+      "type": "community_database"
+    },
+    {
+      "id": "catalyst_athletics",
+      "citation": "Everett, G. (2018). Olympic Weightlifting Skill Levels Chart. Catalyst Athletics.",
+      "url": "https://www.catalystathletics.com/article/1836/Olympic-Weightlifting-Skill-Levels-Chart/",
+      "type": "published_standard"
+    },
+    {
+      "id": "butcher_2018",
+      "citation": "Butcher, S.J. et al. (2018). Normative Values for Self-Reported Benchmark Workout Scores in CrossFit Practitioners. Sports Medicine - Open.",
+      "url": "https://link.springer.com/article/10.1186/s40798-018-0156-x",
+      "type": "peer_reviewed"
+    },
+    {
+      "id": "crossfit_open_analysis",
+      "citation": "CrossFit Open Workout Analysis articles (various years). CrossFit Games.",
+      "url": "https://games.crossfit.com",
+      "type": "official_data"
+    },
+    {
+      "id": "crossfit_liftoff",
+      "citation": "CrossFit Liftoff percentile data (2015). CrossFit Games.",
+      "url": "https://games.crossfit.com/article/liftoff-data",
+      "type": "official_data"
+    },
+    {
+      "id": "rikli_jones_2013",
+      "citation": "Rikli, R.E. & Jones, C.J. (2013). Senior Fitness Test Manual. 2nd Ed. Human Kinetics.",
+      "url": "https://doi.org/10.1123/9781450460361",
+      "type": "professional_standard",
+      "notes": "Defines the 30-second chair stand test. Used globally in clinical and rehab settings for functional fitness assessment in older adults and deconditioned populations."
+    },
+    {
+      "id": "nsca_essentials_2016",
+      "citation": "Haff, G.G. & Triplett, N.T. (Eds.) (2016). Essentials of Strength Training and Conditioning. 4th Ed. National Strength and Conditioning Association. Human Kinetics.",
+      "type": "professional_standard",
+      "notes": "Standard reference for exercise progression and regression principles, push-up progressions, and foundational movement patterns."
+    },
+    {
+      "id": "who_physical_activity_2020",
+      "citation": "World Health Organization (2020). WHO Guidelines on Physical Activity and Sedentary Behaviour. Geneva: WHO.",
+      "url": "https://www.who.int/publications/i/item/9789240015128",
+      "type": "government_standard",
+      "notes": "Sets global minimum physical activity recommendations. Relevant for walk/run progression baseline thresholds."
+    },
+    {
+      "id": "mcgill_2015",
+      "citation": "McGill, S.M., Belore, M., Crosby, I., & Russell, C. (2015). Clinical tools to quantify torso flexion endurance: normative data from student and firefighter populations. Occupational Ergonomics, 12(2), 59-66.",
+      "type": "peer_reviewed",
+      "notes": "Provides normative plank hold durations for healthy populations. Used to set Foundation Milestone core endurance criteria."
+    },
+    {
+      "id": "bohannon_2019",
+      "citation": "Bohannon, R.W. (2019). Grip Strength: An Indispensable Biomarker For Older Adults. Clinical Interventions in Aging, 14, 1681-1691.",
+      "url": "https://doi.org/10.2147/CIA.S194543",
+      "type": "peer_reviewed",
+      "notes": "Establishes grip strength and hanging capacity as functional health markers. Supports dead hang and farmer's carry as foundation assessments."
+    },
+    {
+      "id": "chodzko_zajko_2009",
+      "citation": "Chodzko-Zajko, W.J. et al. (2009). Exercise and Physical Activity for Older Adults. ACSM Position Stand. Medicine & Science in Sports & Exercise, 41(7), 1510-1530.",
+      "type": "peer_reviewed",
+      "notes": "Foundational clinical guidelines for exercise prescription in older adults. Recommends low initial intensity with gradual progression."
+    },
+    {
+      "id": "fragala_2019",
+      "citation": "Fragala, M.S. et al. (2019). Resistance Training for Older Adults: Position Statement From the National Strength and Conditioning Association. Journal of Strength and Conditioning Research, 33(8).",
+      "type": "peer_reviewed",
+      "notes": "NSCA position statement on resistance training for older adults. Recommends starting with 1 set of 8-10 exercises at low intensity, progressing no more than once every 4 weeks."
+    },
+    {
+      "id": "jones_rikli_1999",
+      "citation": "Jones, C.J., Rikli, R.E., & Beam, W.C. (1999). A 30-s Chair-Stand Test as a Measure of Lower Body Strength in Community-Residing Older Adults. Research Quarterly for Exercise and Sport, 70(2), 113-119.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/10380242/",
+      "type": "peer_reviewed",
+      "notes": "Validation study for the 30-second chair stand test. Test-retest reliability r=0.89. Normative data for ages 60-94 across 7,183 participants."
+    },
+    {
+      "id": "strand_2014",
+      "citation": "Strand, S.L., Hjelm, J., Shoepe, T.C., & Fajardo, M.A. (2014). Norms for an Isometric Muscle Endurance Test. Journal of Human Kinetics, 40, 93-102.",
+      "type": "peer_reviewed",
+      "sampleSize": 471,
+      "notes": "Normative plank hold and core endurance data for healthy adults. Provides percentile rankings for isometric endurance tests."
+    }
+  ],
+  "benchmarks": {
+    "bodyweight": [
+      {
+        "movement": "push_up",
+        "name": "Push-ups",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum unbroken push-ups with full range of motion (chest to floor, full lockout)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              10
+            ],
+            "female": [
+              0,
+              4
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              11,
+              20
+            ],
+            "female": [
+              5,
+              10
+            ]
+          },
+          "intermediate": {
+            "male": [
+              21,
+              35
+            ],
+            "female": [
+              11,
+              18
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              36,
+              50
+            ],
+            "female": [
+              19,
+              28
+            ]
+          },
+          "advanced": {
+            "male": [
+              51,
+              65
+            ],
+            "female": [
+              29,
+              38
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              66,
+              80
+            ],
+            "female": [
+              39,
+              48
+            ]
+          },
+          "rx": {
+            "male": [
+              81,
+              199
+            ],
+            "female": [
+              49,
+              199
+            ]
+          }
+        },
+        "notes": "Upper bound of 199 indicates 'or more' for the top level.",
+        "sources": [
+          "acsm_guidelines",
+          "military_pft",
+          "strengthlevel"
+        ]
+      },
+      {
+        "movement": "double_under",
+        "name": "Double-Unders",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum unbroken double-unders (jump rope passes twice per jump)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              1,
+              5
+            ],
+            "female": [
+              1,
+              5
+            ]
+          },
+          "intermediate": {
+            "male": [
+              6,
+              25
+            ],
+            "female": [
+              6,
+              25
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              26,
+              50
+            ],
+            "female": [
+              26,
+              50
+            ]
+          },
+          "advanced": {
+            "male": [
+              51,
+              80
+            ],
+            "female": [
+              51,
+              80
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              81,
+              120
+            ],
+            "female": [
+              81,
+              120
+            ]
+          },
+          "rx": {
+            "male": [
+              121,
+              999
+            ],
+            "female": [
+              121,
+              999
+            ]
+          }
+        },
+        "notes": "Skill-based movement; standards are typically the same for male and female. Upper bound of 999 indicates 'or more' for the top level.",
+        "sources": [
+          "crossfit_open_analysis"
+        ]
+      },
+      {
+        "movement": "pistol_squat",
+        "name": "Pistol Squat",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum alternating pistol squats (single-leg squat to full depth, per leg)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "intermediate": {
+            "male": [
+              1,
+              3
+            ],
+            "female": [
+              1,
+              2
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              4,
+              8
+            ],
+            "female": [
+              3,
+              6
+            ]
+          },
+          "advanced": {
+            "male": [
+              9,
+              15
+            ],
+            "female": [
+              7,
+              12
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              16,
+              24
+            ],
+            "female": [
+              13,
+              20
+            ]
+          },
+          "rx": {
+            "male": [
+              25,
+              99
+            ],
+            "female": [
+              21,
+              99
+            ]
+          }
+        },
+        "notes": "Reps per leg. Requires significant single-leg strength, balance, and ankle mobility. Upper bound of 99 indicates 'or more' for the top level.",
+        "sources": [
+          "strengthlevel",
+          "crossfit_open_analysis"
+        ]
+      }
+    ],
+    "endurance": [
+      {
+        "movement": "fran",
+        "name": "Fran",
+        "attribution": "Originally a CrossFit benchmark workout",
+        "testType": "time",
+        "unit": "seconds",
+        "lowerIsBetter": true,
+        "description": "21-15-9 reps of thrusters (43/30kg) and pull-ups, for time",
+        "standards": {
+          "beginner": {
+            "male": 600,
+            "female": 660
+          },
+          "beginner_plus": {
+            "male": 480,
+            "female": 540
+          },
+          "intermediate": {
+            "male": 360,
+            "female": 420
+          },
+          "intermediate_plus": {
+            "male": 270,
+            "female": 330
+          },
+          "advanced": {
+            "male": 210,
+            "female": 260
+          },
+          "advanced_plus": {
+            "male": 160,
+            "female": 200
+          },
+          "rx": {
+            "male": 120,
+            "female": 150
+          }
+        },
+        "notes": "Times in seconds. Rx weight: 43kg/30kg thrusters. BEG=10:00/11:00, BEG+=8:00/9:00, INT=6:00/7:00, INT+=4:30/5:30, ADV=3:30/4:20, ADV+=2:40/3:20, RX=2:00/2:30.",
+        "sources": [
+          "mangine_2023",
+          "butcher_2018"
+        ]
+      },
+      {
+        "movement": "grace",
+        "name": "Grace",
+        "attribution": "Originally a CrossFit benchmark workout",
+        "testType": "time",
+        "unit": "seconds",
+        "lowerIsBetter": true,
+        "description": "30 clean & jerks (61/43kg) for time",
+        "standards": {
+          "beginner": {
+            "male": 480,
+            "female": 540
+          },
+          "beginner_plus": {
+            "male": 360,
+            "female": 420
+          },
+          "intermediate": {
+            "male": 270,
+            "female": 330
+          },
+          "intermediate_plus": {
+            "male": 210,
+            "female": 260
+          },
+          "advanced": {
+            "male": 165,
+            "female": 200
+          },
+          "advanced_plus": {
+            "male": 130,
+            "female": 160
+          },
+          "rx": {
+            "male": 100,
+            "female": 120
+          }
+        },
+        "notes": "Times in seconds. Rx weight: 61kg/43kg. BEG=8:00/9:00, BEG+=6:00/7:00, INT=4:30/5:30, INT+=3:30/4:20, ADV=2:45/3:20, ADV+=2:10/2:40, RX=1:40/2:00.",
+        "sources": [
+          "mangine_2023",
+          "butcher_2018"
+        ]
+      },
+      {
+        "movement": "murph",
+        "name": "Murph",
+        "attribution": "Originally a CrossFit benchmark workout",
+        "testType": "time",
+        "unit": "seconds",
+        "lowerIsBetter": true,
+        "description": "1 mile run + 100 pull-ups + 200 push-ups + 300 air squats + 1 mile run, with weight vest (9/6kg)",
+        "standards": {
+          "beginner": {
+            "male": 4800,
+            "female": 5100
+          },
+          "beginner_plus": {
+            "male": 4200,
+            "female": 4500
+          },
+          "intermediate": {
+            "male": 3600,
+            "female": 3900
+          },
+          "intermediate_plus": {
+            "male": 3000,
+            "female": 3300
+          },
+          "advanced": {
+            "male": 2580,
+            "female": 2880
+          },
+          "advanced_plus": {
+            "male": 2250,
+            "female": 2520
+          },
+          "rx": {
+            "male": 1920,
+            "female": 2220
+          }
+        },
+        "notes": "Times in seconds with weight vest (9kg male / 6kg female). BEG=80:00/85:00, BEG+=70:00/75:00, INT=60:00/65:00, INT+=50:00/55:00, ADV=43:00/48:00, ADV+=37:30/42:00, RX=32:00/37:00.",
+        "sources": [
+          "mangine_2023",
+          "butcher_2018"
+        ]
+      },
+      {
+        "movement": "cindy",
+        "name": "Cindy",
+        "attribution": "Originally a CrossFit benchmark workout",
+        "testType": "amrap",
+        "unit": "rounds",
+        "lowerIsBetter": false,
+        "description": "20-minute AMRAP: 5 pull-ups + 10 push-ups + 15 air squats",
+        "standards": {
+          "beginner": {
+            "male": 8,
+            "female": 6
+          },
+          "beginner_plus": {
+            "male": 11,
+            "female": 9
+          },
+          "intermediate": {
+            "male": 14,
+            "female": 12
+          },
+          "intermediate_plus": {
+            "male": 17,
+            "female": 15
+          },
+          "advanced": {
+            "male": 20,
+            "female": 18
+          },
+          "advanced_plus": {
+            "male": 23,
+            "female": 21
+          },
+          "rx": {
+            "male": 26,
+            "female": 24
+          }
+        },
+        "notes": "Score in completed rounds. Higher is better. Each round = 5 pull-ups + 10 push-ups + 15 air squats.",
+        "sources": [
+          "mangine_2023",
+          "butcher_2018"
+        ]
+      }
+    ],
+    "gymnastics": [
+      {
+        "movement": "strict_pull_up",
+        "name": "Strict Pull-ups",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum unbroken strict pull-ups (dead hang, chin over bar)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              1,
+              3
+            ],
+            "female": [
+              0,
+              1
+            ]
+          },
+          "intermediate": {
+            "male": [
+              4,
+              8
+            ],
+            "female": [
+              2,
+              4
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              9,
+              14
+            ],
+            "female": [
+              5,
+              8
+            ]
+          },
+          "advanced": {
+            "male": [
+              15,
+              20
+            ],
+            "female": [
+              9,
+              12
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              21,
+              25
+            ],
+            "female": [
+              13,
+              16
+            ]
+          },
+          "rx": {
+            "male": [
+              26,
+              99
+            ],
+            "female": [
+              17,
+              99
+            ]
+          }
+        },
+        "notes": "Upper bound of 99 indicates 'or more' for the top level.",
+        "sources": [
+          "strengthlevel",
+          "military_pft",
+          "crossfit_open_analysis",
+          "mangine_2023"
+        ]
+      },
+      {
+        "movement": "hspu",
+        "name": "Handstand Push-ups (Strict)",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum unbroken strict handstand push-ups (wall-facing or back-to-wall, head to floor)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "intermediate": {
+            "male": [
+              1,
+              2
+            ],
+            "female": [
+              1,
+              1
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              3,
+              5
+            ],
+            "female": [
+              2,
+              3
+            ]
+          },
+          "advanced": {
+            "male": [
+              6,
+              8
+            ],
+            "female": [
+              4,
+              6
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              9,
+              15
+            ],
+            "female": [
+              7,
+              10
+            ]
+          },
+          "rx": {
+            "male": [
+              16,
+              99
+            ],
+            "female": [
+              11,
+              99
+            ]
+          }
+        },
+        "notes": "Strict HSPU requires significant pressing strength and balance. Upper bound of 99 indicates 'or more' for the top level.",
+        "sources": [
+          "strengthlevel",
+          "crossfit_open_analysis",
+          "mangine_2023"
+        ]
+      },
+      {
+        "movement": "toes_to_bar",
+        "name": "Toes to Bar",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum unbroken toes-to-bar (kipping or strict, toes touch bar simultaneously)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              1,
+              3
+            ],
+            "female": [
+              1,
+              2
+            ]
+          },
+          "intermediate": {
+            "male": [
+              4,
+              10
+            ],
+            "female": [
+              3,
+              7
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              11,
+              16
+            ],
+            "female": [
+              8,
+              11
+            ]
+          },
+          "advanced": {
+            "male": [
+              17,
+              24
+            ],
+            "female": [
+              12,
+              17
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              25,
+              31
+            ],
+            "female": [
+              18,
+              22
+            ]
+          },
+          "rx": {
+            "male": [
+              32,
+              99
+            ],
+            "female": [
+              23,
+              99
+            ]
+          }
+        },
+        "notes": "Upper bound of 99 indicates 'or more' for the top level.",
+        "sources": [
+          "crossfit_open_analysis",
+          "mangine_2023"
+        ]
+      },
+      {
+        "movement": "bar_muscle_up",
+        "name": "Bar Muscle-up",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum unbroken bar muscle-ups (kipping or strict)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "intermediate": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              1,
+              4
+            ],
+            "female": [
+              1,
+              2
+            ]
+          },
+          "advanced": {
+            "male": [
+              5,
+              9
+            ],
+            "female": [
+              3,
+              6
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              10,
+              14
+            ],
+            "female": [
+              7,
+              10
+            ]
+          },
+          "rx": {
+            "male": [
+              15,
+              99
+            ],
+            "female": [
+              11,
+              99
+            ]
+          }
+        },
+        "notes": "High-skill movement requiring both pull-up and dip strength. Upper bound of 99 indicates 'or more' for the top level.",
+        "sources": [
+          "crossfit_open_analysis",
+          "mangine_2023"
+        ]
+      },
+      {
+        "movement": "ring_muscle_up",
+        "name": "Ring Muscle-up",
+        "testType": "max_reps",
+        "unit": "reps",
+        "description": "Maximum unbroken ring muscle-ups (kipping or strict)",
+        "standards": {
+          "beginner": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "beginner_plus": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "intermediate": {
+            "male": [
+              0,
+              0
+            ],
+            "female": [
+              0,
+              0
+            ]
+          },
+          "intermediate_plus": {
+            "male": [
+              1,
+              3
+            ],
+            "female": [
+              1,
+              2
+            ]
+          },
+          "advanced": {
+            "male": [
+              4,
+              8
+            ],
+            "female": [
+              3,
+              5
+            ]
+          },
+          "advanced_plus": {
+            "male": [
+              9,
+              15
+            ],
+            "female": [
+              6,
+              10
+            ]
+          },
+          "rx": {
+            "male": [
+              16,
+              99
+            ],
+            "female": [
+              11,
+              99
+            ]
+          }
+        },
+        "notes": "Most demanding gymnastics movement. Requires strong false grip and transition. Upper bound of 99 indicates 'or more' for the top level.",
+        "sources": [
+          "crossfit_open_analysis",
+          "mangine_2023"
+        ]
+      }
+    ],
+    "monostructural": [
+      {
+        "movement": "row_500m",
+        "name": "500m Row",
+        "testType": "time",
+        "unit": "seconds",
+        "lowerIsBetter": true,
+        "description": "500 meter row for time on Concept2 rower",
+        "standards": {
+          "beginner": {
+            "male": 150,
+            "female": 170
+          },
+          "beginner_plus": {
+            "male": 130,
+            "female": 150
+          },
+          "intermediate": {
+            "male": 115,
+            "female": 135
+          },
+          "intermediate_plus": {
+            "male": 105,
+            "female": 125
+          },
+          "advanced": {
+            "male": 98,
+            "female": 115
+          },
+          "advanced_plus": {
+            "male": 90,
+            "female": 105
+          },
+          "rx": {
+            "male": 84,
+            "female": 98
+          }
+        },
+        "notes": "Times in seconds. BEG=2:30/2:50, BEG+=2:10/2:30, INT=1:55/2:15, INT+=1:45/2:05, ADV=1:38/1:55, ADV+=1:30/1:45, RX=1:24/1:38.",
+        "sources": [
+          "concept2_rankings"
+        ]
+      },
+      {
+        "movement": "row_2000m",
+        "name": "2000m Row",
+        "testType": "time",
+        "unit": "seconds",
+        "lowerIsBetter": true,
+        "description": "2000 meter row for time on Concept2 rower",
+        "standards": {
+          "beginner": {
+            "male": 570,
+            "female": 630
+          },
+          "beginner_plus": {
+            "male": 510,
+            "female": 570
+          },
+          "intermediate": {
+            "male": 465,
+            "female": 530
+          },
+          "intermediate_plus": {
+            "male": 435,
+            "female": 490
+          },
+          "advanced": {
+            "male": 410,
+            "female": 460
+          },
+          "advanced_plus": {
+            "male": 385,
+            "female": 430
+          },
+          "rx": {
+            "male": 350,
+            "female": 400
+          }
+        },
+        "notes": "Times in seconds. BEG=9:30/10:30, BEG+=8:30/9:30, INT=7:45/8:50, INT+=7:15/8:10, ADV=6:50/7:40, ADV+=6:25/7:10, RX=5:50/6:40.",
+        "sources": [
+          "concept2_rankings"
+        ]
+      },
+      {
+        "movement": "run_mile",
+        "name": "1 Mile Run",
+        "testType": "time",
+        "unit": "seconds",
+        "lowerIsBetter": true,
+        "description": "1 mile (1609m) run for time",
+        "standards": {
+          "beginner": {
+            "male": 600,
+            "female": 660
+          },
+          "beginner_plus": {
+            "male": 510,
+            "female": 570
+          },
+          "intermediate": {
+            "male": 450,
+            "female": 510
+          },
+          "intermediate_plus": {
+            "male": 405,
+            "female": 465
+          },
+          "advanced": {
+            "male": 370,
+            "female": 420
+          },
+          "advanced_plus": {
+            "male": 340,
+            "female": 390
+          },
+          "rx": {
+            "male": 310,
+            "female": 360
+          }
+        },
+        "notes": "Times in seconds. BEG=10:00/11:00, BEG+=8:30/9:30, INT=7:30/8:30, INT+=6:45/7:45, ADV=6:10/7:00, ADV+=5:40/6:30, RX=5:10/6:00.",
+        "sources": [
+          "runninglevel"
+        ]
+      },
+      {
+        "movement": "run_5k",
+        "name": "5K Run",
+        "testType": "time",
+        "unit": "seconds",
+        "lowerIsBetter": true,
+        "description": "5 kilometer run for time",
+        "standards": {
+          "beginner": {
+            "male": 1920,
+            "female": 2160
+          },
+          "beginner_plus": {
+            "male": 1680,
+            "female": 1920
+          },
+          "intermediate": {
+            "male": 1440,
+            "female": 1680
+          },
+          "intermediate_plus": {
+            "male": 1260,
+            "female": 1500
+          },
+          "advanced": {
+            "male": 1140,
+            "female": 1320
+          },
+          "advanced_plus": {
+            "male": 1050,
+            "female": 1230
+          },
+          "rx": {
+            "male": 960,
+            "female": 1140
+          }
+        },
+        "notes": "Times in seconds. BEG=32:00/36:00, BEG+=28:00/32:00, INT=24:00/28:00, INT+=21:00/25:00, ADV=19:00/22:00, ADV+=17:30/20:30, RX=16:00/19:00.",
+        "sources": [
+          "runninglevel"
+        ]
+      }
+    ],
+    "olympic_lifting": [
+      {
+        "movement": "power_clean",
+        "name": "Power Clean",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition power clean (caught above parallel)",
+        "standards": {
+          "beginner": {
+            "male": 30,
+            "female": 20
+          },
+          "beginner_plus": {
+            "male": 45,
+            "female": 30
+          },
+          "intermediate": {
+            "male": 65,
+            "female": 45
+          },
+          "intermediate_plus": {
+            "male": 85,
+            "female": 57
+          },
+          "advanced": {
+            "male": 105,
+            "female": 70
+          },
+          "advanced_plus": {
+            "male": 120,
+            "female": 82
+          },
+          "rx": {
+            "male": 135,
+            "female": 95
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.38,
+            "female": 0.33
+          },
+          "beginner_plus": {
+            "male": 0.56,
+            "female": 0.5
+          },
+          "intermediate": {
+            "male": 0.81,
+            "female": 0.75
+          },
+          "intermediate_plus": {
+            "male": 1.06,
+            "female": 0.95
+          },
+          "advanced": {
+            "male": 1.31,
+            "female": 1.17
+          },
+          "advanced_plus": {
+            "male": 1.5,
+            "female": 1.37
+          },
+          "rx": {
+            "male": 1.69,
+            "female": 1.58
+          }
+        },
+        "notes": "Values based on ~80kg male / ~60kg female. Adjust proportionally for bodyweight.",
+        "sources": [
+          "catalyst_athletics",
+          "crossfit_liftoff",
+          "mangine_2020"
+        ]
+      },
+      {
+        "movement": "snatch",
+        "name": "Snatch",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition full snatch (squat snatch)",
+        "standards": {
+          "beginner": {
+            "male": 20,
+            "female": 15
+          },
+          "beginner_plus": {
+            "male": 35,
+            "female": 25
+          },
+          "intermediate": {
+            "male": 52,
+            "female": 37
+          },
+          "intermediate_plus": {
+            "male": 70,
+            "female": 48
+          },
+          "advanced": {
+            "male": 90,
+            "female": 60
+          },
+          "advanced_plus": {
+            "male": 105,
+            "female": 70
+          },
+          "rx": {
+            "male": 125,
+            "female": 80
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.25,
+            "female": 0.25
+          },
+          "beginner_plus": {
+            "male": 0.44,
+            "female": 0.42
+          },
+          "intermediate": {
+            "male": 0.65,
+            "female": 0.62
+          },
+          "intermediate_plus": {
+            "male": 0.88,
+            "female": 0.8
+          },
+          "advanced": {
+            "male": 1.13,
+            "female": 1
+          },
+          "advanced_plus": {
+            "male": 1.31,
+            "female": 1.17
+          },
+          "rx": {
+            "male": 1.56,
+            "female": 1.33
+          }
+        },
+        "notes": "Most technically demanding Olympic lift. Values based on ~80kg male / ~60kg female.",
+        "sources": [
+          "catalyst_athletics",
+          "crossfit_liftoff",
+          "mangine_2020"
+        ]
+      },
+      {
+        "movement": "clean_and_jerk",
+        "name": "Clean & Jerk",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition clean and jerk (full clean, split or power jerk)",
+        "standards": {
+          "beginner": {
+            "male": 35,
+            "female": 22
+          },
+          "beginner_plus": {
+            "male": 50,
+            "female": 35
+          },
+          "intermediate": {
+            "male": 72,
+            "female": 50
+          },
+          "intermediate_plus": {
+            "male": 95,
+            "female": 65
+          },
+          "advanced": {
+            "male": 115,
+            "female": 80
+          },
+          "advanced_plus": {
+            "male": 130,
+            "female": 92
+          },
+          "rx": {
+            "male": 150,
+            "female": 105
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.44,
+            "female": 0.37
+          },
+          "beginner_plus": {
+            "male": 0.63,
+            "female": 0.58
+          },
+          "intermediate": {
+            "male": 0.9,
+            "female": 0.83
+          },
+          "intermediate_plus": {
+            "male": 1.19,
+            "female": 1.08
+          },
+          "advanced": {
+            "male": 1.44,
+            "female": 1.33
+          },
+          "advanced_plus": {
+            "male": 1.63,
+            "female": 1.53
+          },
+          "rx": {
+            "male": 1.88,
+            "female": 1.75
+          }
+        },
+        "notes": "Values based on ~80kg male / ~60kg female. Adjust proportionally for bodyweight.",
+        "sources": [
+          "catalyst_athletics",
+          "crossfit_liftoff",
+          "mangine_2020"
+        ]
+      }
+    ],
+    "pressing": [
+      {
+        "movement": "strict_press",
+        "name": "Strict Press",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition strict shoulder press (standing, no leg drive)",
+        "standards": {
+          "beginner": {
+            "male": 20,
+            "female": 12
+          },
+          "beginner_plus": {
+            "male": 30,
+            "female": 20
+          },
+          "intermediate": {
+            "male": 45,
+            "female": 30
+          },
+          "intermediate_plus": {
+            "male": 55,
+            "female": 38
+          },
+          "advanced": {
+            "male": 68,
+            "female": 45
+          },
+          "advanced_plus": {
+            "male": 80,
+            "female": 52
+          },
+          "rx": {
+            "male": 95,
+            "female": 57
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.25,
+            "female": 0.2
+          },
+          "beginner_plus": {
+            "male": 0.38,
+            "female": 0.33
+          },
+          "intermediate": {
+            "male": 0.56,
+            "female": 0.5
+          },
+          "intermediate_plus": {
+            "male": 0.69,
+            "female": 0.63
+          },
+          "advanced": {
+            "male": 0.85,
+            "female": 0.75
+          },
+          "advanced_plus": {
+            "male": 1,
+            "female": 0.87
+          },
+          "rx": {
+            "male": 1.19,
+            "female": 0.95
+          }
+        },
+        "notes": "Values based on ~80kg male / ~60kg female. Adjust proportionally for bodyweight.",
+        "sources": [
+          "van_den_hoek_2024",
+          "kilgore_2023",
+          "acsm_guidelines"
+        ]
+      },
+      {
+        "movement": "bench_press",
+        "name": "Bench Press",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition flat barbell bench press",
+        "standards": {
+          "beginner": {
+            "male": 40,
+            "female": 20
+          },
+          "beginner_plus": {
+            "male": 55,
+            "female": 30
+          },
+          "intermediate": {
+            "male": 70,
+            "female": 42
+          },
+          "intermediate_plus": {
+            "male": 90,
+            "female": 55
+          },
+          "advanced": {
+            "male": 105,
+            "female": 65
+          },
+          "advanced_plus": {
+            "male": 125,
+            "female": 80
+          },
+          "rx": {
+            "male": 145,
+            "female": 90
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.5,
+            "female": 0.33
+          },
+          "beginner_plus": {
+            "male": 0.69,
+            "female": 0.5
+          },
+          "intermediate": {
+            "male": 0.88,
+            "female": 0.7
+          },
+          "intermediate_plus": {
+            "male": 1.13,
+            "female": 0.92
+          },
+          "advanced": {
+            "male": 1.31,
+            "female": 1.08
+          },
+          "advanced_plus": {
+            "male": 1.56,
+            "female": 1.33
+          },
+          "rx": {
+            "male": 1.81,
+            "female": 1.5
+          }
+        },
+        "notes": "Values based on ~80kg male / ~60kg female. Adjust proportionally for bodyweight.",
+        "sources": [
+          "van_den_hoek_2024",
+          "kilgore_2023",
+          "acsm_guidelines"
+        ]
+      }
+    ],
+    "pulling": [
+      {
+        "movement": "deadlift",
+        "name": "Deadlift",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition conventional deadlift",
+        "standards": {
+          "beginner": {
+            "male": 60,
+            "female": 35
+          },
+          "beginner_plus": {
+            "male": 90,
+            "female": 55
+          },
+          "intermediate": {
+            "male": 120,
+            "female": 80
+          },
+          "intermediate_plus": {
+            "male": 150,
+            "female": 100
+          },
+          "advanced": {
+            "male": 180,
+            "female": 120
+          },
+          "advanced_plus": {
+            "male": 210,
+            "female": 145
+          },
+          "rx": {
+            "male": 240,
+            "female": 170
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.75,
+            "female": 0.58
+          },
+          "beginner_plus": {
+            "male": 1.13,
+            "female": 0.92
+          },
+          "intermediate": {
+            "male": 1.5,
+            "female": 1.33
+          },
+          "intermediate_plus": {
+            "male": 1.88,
+            "female": 1.67
+          },
+          "advanced": {
+            "male": 2.25,
+            "female": 2
+          },
+          "advanced_plus": {
+            "male": 2.63,
+            "female": 2.42
+          },
+          "rx": {
+            "male": 3,
+            "female": 2.83
+          }
+        },
+        "notes": "Values based on ~80kg male / ~60kg female. Adjust proportionally for bodyweight.",
+        "sources": [
+          "van_den_hoek_2024",
+          "kilgore_2023"
+        ]
+      }
+    ],
+    "squatting": [
+      {
+        "movement": "back_squat",
+        "name": "Back Squat",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition back squat",
+        "standards": {
+          "beginner": {
+            "male": 40,
+            "female": 25
+          },
+          "beginner_plus": {
+            "male": 60,
+            "female": 40
+          },
+          "intermediate": {
+            "male": 80,
+            "female": 55
+          },
+          "intermediate_plus": {
+            "male": 105,
+            "female": 70
+          },
+          "advanced": {
+            "male": 130,
+            "female": 85
+          },
+          "advanced_plus": {
+            "male": 155,
+            "female": 100
+          },
+          "rx": {
+            "male": 180,
+            "female": 120
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.5,
+            "female": 0.42
+          },
+          "beginner_plus": {
+            "male": 0.75,
+            "female": 0.67
+          },
+          "intermediate": {
+            "male": 1,
+            "female": 0.92
+          },
+          "intermediate_plus": {
+            "male": 1.31,
+            "female": 1.17
+          },
+          "advanced": {
+            "male": 1.63,
+            "female": 1.42
+          },
+          "advanced_plus": {
+            "male": 1.94,
+            "female": 1.67
+          },
+          "rx": {
+            "male": 2.25,
+            "female": 2
+          }
+        },
+        "notes": "Values based on ~80kg male / ~60kg female. Adjust proportionally for bodyweight.",
+        "sources": [
+          "van_den_hoek_2024",
+          "kilgore_2023",
+          "mangine_2020"
+        ]
+      },
+      {
+        "movement": "front_squat",
+        "name": "Front Squat",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition front squat",
+        "standards": {
+          "beginner": {
+            "male": 34,
+            "female": 21
+          },
+          "beginner_plus": {
+            "male": 51,
+            "female": 34
+          },
+          "intermediate": {
+            "male": 68,
+            "female": 47
+          },
+          "intermediate_plus": {
+            "male": 89,
+            "female": 60
+          },
+          "advanced": {
+            "male": 110,
+            "female": 72
+          },
+          "advanced_plus": {
+            "male": 132,
+            "female": 85
+          },
+          "rx": {
+            "male": 153,
+            "female": 102
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.43,
+            "female": 0.35
+          },
+          "beginner_plus": {
+            "male": 0.64,
+            "female": 0.57
+          },
+          "intermediate": {
+            "male": 0.85,
+            "female": 0.78
+          },
+          "intermediate_plus": {
+            "male": 1.11,
+            "female": 1
+          },
+          "advanced": {
+            "male": 1.38,
+            "female": 1.2
+          },
+          "advanced_plus": {
+            "male": 1.65,
+            "female": 1.42
+          },
+          "rx": {
+            "male": 1.91,
+            "female": 1.7
+          }
+        },
+        "notes": "Approximately 85% of back squat values. Based on ~80kg male / ~60kg female.",
+        "sources": [
+          "van_den_hoek_2024",
+          "kilgore_2023",
+          "mangine_2020"
+        ]
+      },
+      {
+        "movement": "overhead_squat",
+        "name": "Overhead Squat",
+        "testType": "1rm",
+        "unit": "kg",
+        "description": "Maximum single repetition overhead squat",
+        "standards": {
+          "beginner": {
+            "male": 26,
+            "female": 16
+          },
+          "beginner_plus": {
+            "male": 39,
+            "female": 26
+          },
+          "intermediate": {
+            "male": 52,
+            "female": 36
+          },
+          "intermediate_plus": {
+            "male": 68,
+            "female": 46
+          },
+          "advanced": {
+            "male": 85,
+            "female": 55
+          },
+          "advanced_plus": {
+            "male": 101,
+            "female": 65
+          },
+          "rx": {
+            "male": 117,
+            "female": 78
+          }
+        },
+        "bwMultiplier": {
+          "beginner": {
+            "male": 0.33,
+            "female": 0.27
+          },
+          "beginner_plus": {
+            "male": 0.49,
+            "female": 0.43
+          },
+          "intermediate": {
+            "male": 0.65,
+            "female": 0.6
+          },
+          "intermediate_plus": {
+            "male": 0.85,
+            "female": 0.77
+          },
+          "advanced": {
+            "male": 1.06,
+            "female": 0.92
+          },
+          "advanced_plus": {
+            "male": 1.26,
+            "female": 1.08
+          },
+          "rx": {
+            "male": 1.46,
+            "female": 1.3
+          }
+        },
+        "notes": "Approximately 65% of back squat values. Requires significant shoulder and thoracic mobility. Based on ~80kg male / ~60kg female.",
+        "sources": [
+          "kilgore_2023",
+          "mangine_2020"
+        ]
+      }
+    ]
+  }
+}
