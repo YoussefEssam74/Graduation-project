@@ -467,7 +467,7 @@ export default function SignUpPage() {
                     <div className="flex-1 h-px bg-slate-300" />
                   </div>
 
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                  <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col gap-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <label className="flex flex-col gap-1">
                         <Label htmlFor="name" className="text-[11px] font-semibold text-slate-700">Full Name</Label>
@@ -525,6 +525,7 @@ export default function SignUpPage() {
                       <div className="relative group">
                         <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
                         <Input id="address" type="text" placeholder="123 Main St, City, Country" value={address} onChange={(e) => setAddress(e.target.value)}
+                          autoComplete="off"
                           className="w-full pl-9 pr-3 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                       </div>
                     </label>
