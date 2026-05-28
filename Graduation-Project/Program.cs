@@ -39,13 +39,9 @@ namespace Graduation_Project
 
             var builder = WebApplication.CreateBuilder(args);
 
-            // Use ONLY appsettings.json — no environment-specific overrides needed.
-            // Render/Vercel can still inject non-empty env vars to override specific keys.
-            builder.Configuration.Sources.Clear();
-            builder.Configuration
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-                .AddEnvironmentVariables();   // Non-empty env vars still win over appsettings.json
+            // WebApplication.CreateBuilder already adds appsettings.json +
+            // AddEnvironmentVariables() internally.  Because we purged empty env vars
+            // above, they will no longer shadow the appsettings.json defaults.
 
             // Add DbContext
             builder.Services.AddDbContext<IntelliFitDbContext>(options =>
