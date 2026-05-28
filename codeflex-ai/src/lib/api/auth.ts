@@ -70,6 +70,7 @@ export const authApi = {
 
   /**
    * Register new user (public - always creates Member)
+   * @deprecated Use sendRegistrationOtp + verifyAndCompleteRegistration instead.
    */
   async register(data: RegisterRequest): Promise<ApiResponse<AuthResponse>> {
     const response = await apiFetch<AuthResponse>('/auth/register', {
@@ -79,6 +80,39 @@ export const authApi = {
     });
 
     // Store token if registration successful
+    if (response.success && response.data?.token) {
+      setAuthToken(response.data.token);
+    }
+
+    return response;
+  },
+
+  /**
+   * Step 1 — Check if the email is available and send a 6-digit OTP to it.
+   * Returns 400 { error } if email is already registered.
+   */
+  async sendRegistrationOtp(email: string): Promise<ApiResponse<{ message: string }>> {
+    return apiFetch<{ message: string }>('/auth/register/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+      skipAuth: true,
+    });
+  },
+
+  /**
+   * Step 2 — Verify the OTP then create the account.
+   * Returns 400 { error } if OTP is wrong / expired.
+   */
+  async verifyAndCompleteRegistration(
+    data: RegisterRequest,
+    otp: string
+  ): Promise<ApiResponse<AuthResponse>> {
+    const response = await apiFetch<AuthResponse>('/auth/register/verify-and-complete', {
+      method: 'POST',
+      body: JSON.stringify({ otp, registerData: data }),
+      skipAuth: true,
+    });
+
     if (response.success && response.data?.token) {
       setAuthToken(response.data.token);
     }

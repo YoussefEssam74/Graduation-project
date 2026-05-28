@@ -17,5 +17,17 @@ namespace ServiceAbstraction.Services
         Task SendForgotPasswordOtpAsync(string email);
         Task<bool> ConfirmForgotPasswordAsync(string email, string otp, string newPassword);
         Task<AuthResponseDto> GoogleLoginAsync(string idToken);
+
+        /// <summary>
+        /// Step 1 of email-verified registration:
+        /// Checks the email is not already taken, then sends a 6-digit OTP to it.
+        /// </summary>
+        Task SendRegistrationOtpAsync(string email);
+
+        /// <summary>
+        /// Step 2 of email-verified registration:
+        /// Verifies the OTP, then creates the account if correct.
+        /// </summary>
+        Task<AuthResponseDto> VerifyRegistrationOtpAndRegisterAsync(RegisterRequestDto registerDto, string otp);
     }
 }

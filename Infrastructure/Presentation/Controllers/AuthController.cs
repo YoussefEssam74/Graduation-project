@@ -39,7 +39,8 @@ namespace Presentation.Controllers
         #region Register (Public - Always Creates Member)
 
         /// <summary>
-        /// Public registration - always creates users with Member role
+        /// [Legacy] Direct registration without OTP — kept for admin/internal use.
+        /// Public sign-up should use the /register/send-otp → /register/verify-and-complete flow.
         /// </summary>
         [HttpPost("register")]
         public async Task<ActionResult<AuthResponseDto>> Register(RegisterRequestDto registerDto)
@@ -47,6 +48,56 @@ namespace Presentation.Controllers
             try
             {
                 var result = await _serviceManager.AuthService.RegisterAsync(registerDto);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
+            }
+        }
+
+        /// <summary>
+        /// Step 1 — Check email availability and send a 6-digit OTP to it.
+        /// Returns 400 if the email is already registered.
+        /// </summary>
+        [HttpPost("register/send-otp")]
+        public async Task<ActionResult> RegisterSendOtp([FromBody] RegisterSendOtpDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.Email))
+                    return BadRequest(new { error = "Email is required" });
+
+                await _serviceManager.AuthService.SendRegistrationOtpAsync(dto.Email);
+                return Ok(new { message = "Verification code sent to your email. It expires in 10 minutes." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
+            }
+        }
+
+        /// <summary>
+        /// Step 2 — Verify the OTP, then create the account.
+        /// Returns 400 if the OTP is wrong or expired.
+        /// </summary>
+        [HttpPost("register/verify-and-complete")]
+        public async Task<ActionResult<AuthResponseDto>> RegisterVerifyAndComplete([FromBody] RegisterVerifyDto dto)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dto.Otp))
+                    return BadRequest(new { error = "Verification code is required" });
+
+                var result = await _serviceManager.AuthService.VerifyRegistrationOtpAndRegisterAsync(dto.RegisterData, dto.Otp);
                 return Ok(result);
             }
             catch (InvalidOperationException ex)

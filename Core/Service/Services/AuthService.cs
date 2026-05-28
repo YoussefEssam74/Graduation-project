@@ -483,5 +483,68 @@ namespace Service.Services
                 ExpiresAt = DateTime.UtcNow.AddDays(7)
             };
         }
+
+        // ── Registration Email OTP ──────────────────────────────────────────────
+
+        /// <summary>
+        /// Step 1 of email-verified registration.
+        /// Validates that the email is not already taken, then sends a 6-digit OTP
+        /// to it and stores it in the in-memory cache for 10 minutes.
+        /// Throws InvalidOperationException if the email is already registered.
+        /// </summary>
+        public async Task SendRegistrationOtpAsync(string email)
+        {
+            if (await EmailExistsAsync(email))
+                throw new InvalidOperationException("An account with this email already exists.");
+
+            var otp = new Random().Next(100000, 999999).ToString();
+            // Cache key scoped to the email so it cannot be reused for a different address.
+            _cache.Set($"reg_otp_{email.ToLowerInvariant()}", otp, TimeSpan.FromMinutes(10));
+
+            var smtpHost    = _configuration["Email:SmtpHost"]    ?? "";
+            var smtpPort    = int.TryParse(_configuration["Email:SmtpPort"], out var p) ? p : 587;
+            var smtpUser    = _configuration["Email:SmtpUser"]    ?? "";
+            var smtpPass    = _configuration["Email:SmtpPass"]    ?? "";
+            var fromAddress = _configuration["Email:FromAddress"]  ?? smtpUser;
+            var fromName    = _configuration["Email:FromName"]     ?? "PulseGym";
+
+            using var client = new SmtpClient(smtpHost, smtpPort)
+            {
+                Credentials = new NetworkCredential(smtpUser, smtpPass),
+                EnableSsl = true
+            };
+
+            var message = new MailMessage
+            {
+                From    = new MailAddress(fromAddress, fromName),
+                Subject = "PulseGym — Verify your email to complete registration",
+                Body    = $"Welcome to PulseGym!\n\nYour verification code is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.",
+                IsBodyHtml = false
+            };
+            message.To.Add(email);
+            await client.SendMailAsync(message);
+        }
+
+        /// <summary>
+        /// Step 2 of email-verified registration.
+        /// Verifies the OTP, then delegates account creation to RegisterAsync.
+        /// Throws InvalidOperationException if the OTP is wrong or expired.
+        /// </summary>
+        public async Task<AuthResponseDto> VerifyRegistrationOtpAndRegisterAsync(RegisterRequestDto registerDto, string otp)
+        {
+            var cacheKey = $"reg_otp_{registerDto.Email.ToLowerInvariant()}";
+
+            if (!_cache.TryGetValue(cacheKey, out string? stored) || stored != otp)
+                throw new InvalidOperationException("Invalid or expired verification code. Please request a new one.");
+
+            // Invalidate the OTP immediately so it cannot be reused.
+            _cache.Remove(cacheKey);
+
+            // Re-check email uniqueness (race condition guard).
+            if (await EmailExistsAsync(registerDto.Email))
+                throw new InvalidOperationException("An account with this email already exists.");
+
+            return await RegisterAsync(registerDto);
+        }
     }
 }

@@ -907,7 +907,7 @@ public class WorkoutAIService : IWorkoutAIService
                                             ExerciseName = ex.Name ?? "Exercise",
                                             DayNumber = day.DayNumber,
                                             OrderInDay = order++,
-                                            Sets = ex.Sets,
+                                            Sets = ex.Sets != null ? ParseSets(ex.Sets) : (int?)null,
                                             Reps = ParseReps(ex.Reps ?? "10"),
                                             RestSeconds = ex.RestSeconds ?? ParseRestSeconds(ex.Rest ?? "60"),
                                             Notes = ex.Notes,
