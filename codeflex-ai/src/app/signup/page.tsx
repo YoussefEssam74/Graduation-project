@@ -261,7 +261,7 @@ export default function SignUpPage() {
     try {
       const res = await authApi.sendRegistrationOtp(email);
       if (!res.success) {
-        throw new Error(res.message || res.error || "Failed to send verification code.");
+        throw new Error(res.message || "Failed to send verification code.");
       }
       setShowOtpModal(true);
     } catch (err) {
@@ -289,7 +289,7 @@ export default function SignUpPage() {
     );
 
     if (!res.success) {
-      throw new Error(res.message || res.error || "Verification failed.");
+      throw new Error(res.message || "Verification failed.");
     }
 
     // Auth token stored inside verifyAndCompleteRegistration; redirect handled by AuthContext
@@ -302,7 +302,7 @@ export default function SignUpPage() {
   const handleResendOtp = async () => {
     const res = await authApi.sendRegistrationOtp(email);
     if (!res.success) {
-      throw new Error(res.message || res.error || "Failed to resend code.");
+      throw new Error(res.message || "Failed to resend code.");
     }
     showToast("New verification code sent!", "success");
   };

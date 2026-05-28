@@ -326,8 +326,6 @@ const DropdownMenuContent = ({
   children,
   open,
   className,
-  side = "right",
-  sideOffset = 5,
 }: any) => {
   if (!open) return null;
 
