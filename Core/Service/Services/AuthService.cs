@@ -108,6 +108,7 @@ namespace Service.Services
                 Phone = registerDto.Phone,
                 DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
                 Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                Address = registerDto.Address,
                 Role = UserRole.Member, // Always Member for public signup
                 IsActive = true,
                 MustChangePassword = false, // Members set their own password during signup
@@ -173,6 +174,7 @@ namespace Service.Services
                 Phone = registerDto.Phone,
                 DateOfBirth = EnsureUtc(registerDto.DateOfBirth),
                 Gender = registerDto.Gender.HasValue ? (GenderType)registerDto.Gender.Value : null,
+                Address = registerDto.Address,
                 Role = userRole,
                 IsActive = true,
                 // Admin-created accounts must change password and complete profile on first login

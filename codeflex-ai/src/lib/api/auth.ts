@@ -14,6 +14,7 @@ export interface RegisterRequest {
   gender?: number; // 0 = Male, 1 = Female
   role: string; // Member, Coach, Receptionist, Admin
   invitationCode?: string;
+  address?: string;
 }
 
 export interface ChangePasswordRequest {

@@ -27,5 +27,10 @@ namespace Shared.DTOs.Auth
         /// Optional invitation code provided during signup.
         /// </summary>
         public string? InvitationCode { get; set; }
+
+        /// <summary>
+        /// Home address of the user.
+        /// </summary>
+        public string? Address { get; set; }
     }
 }

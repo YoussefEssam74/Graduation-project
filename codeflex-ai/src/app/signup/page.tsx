@@ -20,6 +20,7 @@ import {
   TicketIcon,
   ShieldCheckIcon,
   RefreshCwIcon,
+  MapPinIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -213,6 +214,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [gender, setGender] = useState<number>(0);
+  const [address, setAddress] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [invitationCode, setInvitationCode] = useState("");
   const [error, setError] = useState("");
@@ -242,6 +244,7 @@ export default function SignUpPage() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Invalid email format"); return false; }
     const phoneRegex = /^\+?[\d\s-]{10,}$/;
     if (!phoneRegex.test(phone.trim())) { setError("Please enter a valid phone number"); return false; }
+    if (!address.trim()) { setError("Address is required"); return false; }
     if (password.length < 8) { setError("Password must be at least 8 characters"); return false; }
     if (!/[A-Z]/.test(password)) { setError("Password must contain at least one uppercase letter"); return false; }
     if (!/[0-9]/.test(password)) { setError("Password must contain at least one number"); return false; }
@@ -282,6 +285,7 @@ export default function SignUpPage() {
         phone,
         dateOfBirth: dateOfBirth || undefined,
         gender,
+        address: address || undefined,
         role: "Member",
         invitationCode: invitationCode || undefined,
       },
@@ -467,6 +471,15 @@ export default function SignUpPage() {
                         </select>
                       </label>
                     </div>
+
+                    <label className="flex flex-col gap-1">
+                      <Label htmlFor="address" className="text-[11px] font-semibold text-slate-700">Home Address</Label>
+                      <div className="relative group">
+                        <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
+                        <Input id="address" type="text" placeholder="123 Main St, City, Country" value={address} onChange={(e) => setAddress(e.target.value)}
+                          className="w-full pl-9 pr-3 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
+                      </div>
+                    </label>
 
                     <label className="flex flex-col gap-1">
                       <div className="flex items-center justify-between">
