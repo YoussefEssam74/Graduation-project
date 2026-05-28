@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE_URL, type ApiResponse as BaseApiResponse } from "./client";
+import { apiFetch, API_BASE_URL } from "./client";
 
 export interface PaymentDto {
   paymentId: number;

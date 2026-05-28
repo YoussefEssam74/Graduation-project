@@ -28,7 +28,7 @@ interface Meal {
 }
 
 export function NutritionView() {
-    const [todayDiet, setTodayDiet] = useState<DailyDiet>({
+    const [todayDiet] = useState<DailyDiet>({
         calories: { current: 1850, target: 2400 },
         protein: { current: 160, target: 180 },
         carbs: { current: 210, target: 300 },

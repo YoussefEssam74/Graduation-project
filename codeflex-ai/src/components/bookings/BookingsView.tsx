@@ -10,7 +10,6 @@ import {
     User,
     ChevronLeft,
     ChevronRight,
-    Clock,
     Loader2
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -35,7 +34,7 @@ export function BookingsView({ showHeader = true }: { showHeader?: boolean }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [bookings, setBookings] = useState<LocalBooking[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
 
     // Generate calendar days
     const calendarData = useMemo(() => {
@@ -199,7 +198,7 @@ export function BookingsView({ showHeader = true }: { showHeader?: boolean }) {
                         {/* Upcoming Today Card */}
                         {getDayBookings(new Date()).length > 0 && (
                             <Card className="p-5 border-none shadow-sm bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl">
-                                <h3 className="font-bold mb-3">Today's Sessions</h3>
+                                <h3 className="font-bold mb-3">Today&apos;s Sessions</h3>
                                 <div className="space-y-2">
                                     {getDayBookings(new Date()).slice(0, 3).map(booking => (
                                         <div key={booking.id} className="flex items-center gap-2 bg-white/10 rounded-lg p-2">
