@@ -76,3 +76,10 @@ services:
       # ── Google OAuth ──
       - key: Google__ClientId
         value: 1083535101116-p4iirka9e60m4nklv8rbr2r0s2ji2ape.apps.googleusercontent.com
+      - key: Google__ClientSecret
+        sync: false          # Set in Render dashboard — get from Google Cloud Console
+      - key: Google__CallbackUrl
+        sync: false          # e.g. https://intellifit-api.onrender.com/api/auth/google/callback
+      # ── App URLs ──
+      - key: App__FrontendUrl
+        value: https://pulsegym-two.vercel.app

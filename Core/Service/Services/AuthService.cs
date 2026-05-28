@@ -499,6 +499,43 @@ namespace Service.Services
         // ── Registration Email OTP ──────────────────────────────────────────────
 
         /// <summary>
+        /// Server-side OAuth callback: exchange an authorization code for an ID token,
+        /// then delegate to GoogleLoginAsync to find-or-create the user.
+        /// </summary>
+        public async Task<AuthResponseDto> GoogleCallbackAsync(string code)
+        {
+            var clientId     = _configuration["Google:ClientId"]
+                               ?? throw new InvalidOperationException("Google:ClientId is not configured.");
+            var clientSecret = _configuration["Google:ClientSecret"]
+                               ?? throw new InvalidOperationException("Google:ClientSecret is not configured. Add it to Render env vars.");
+            var callbackUrl  = _configuration["Google:CallbackUrl"]
+                               ?? throw new InvalidOperationException("Google:CallbackUrl is not configured.");
+
+            using var http = new System.Net.Http.HttpClient();
+            var tokenRequest = new System.Net.Http.FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["code"]          = code,
+                ["client_id"]     = clientId,
+                ["client_secret"] = clientSecret,
+                ["redirect_uri"]  = callbackUrl,
+                ["grant_type"]    = "authorization_code",
+            });
+
+            var tokenResponse = await http.PostAsync("https://oauth2.googleapis.com/token", tokenRequest);
+            var tokenJson     = await tokenResponse.Content.ReadAsStringAsync();
+
+            if (!tokenResponse.IsSuccessStatusCode)
+                throw new UnauthorizedAccessException($"Google token exchange failed: {tokenJson}");
+
+            using var doc   = System.Text.Json.JsonDocument.Parse(tokenJson);
+            var idToken     = doc.RootElement.GetProperty("id_token").GetString()
+                              ?? throw new UnauthorizedAccessException("Google did not return an id_token.");
+
+            // Reuse existing validation + find-or-create user logic
+            return await GoogleLoginAsync(idToken);
+        }
+
+        /// <summary>
         /// Step 1 of email-verified registration.
         /// Validates that the email is not already taken, then sends a 6-digit OTP
         /// to it and stores it in the in-memory cache for 10 minutes.

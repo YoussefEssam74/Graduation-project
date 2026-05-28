@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using ServiceAbstraction;
 using Shared.DTOs.Auth;
 using Shared.DTOs.User;
@@ -7,7 +8,7 @@ using System.Security.Claims;
 
 namespace Presentation.Controllers
 {
-    public class AuthController(IServiceManager _serviceManager) : ApiControllerBase
+    public class AuthController(IServiceManager _serviceManager, IConfiguration _configuration) : ApiControllerBase
     {
         #region Login
 
@@ -148,7 +149,7 @@ namespace Presentation.Controllers
         #region Google OAuth
 
         /// <summary>
-        /// Sign in (or sign up) with a Google ID token issued by the frontend.
+        /// [Legacy / direct] Sign in with a Google ID token issued by the frontend JS SDK.
         /// </summary>
         [HttpPost("google-login")]
         public async Task<ActionResult<AuthResponseDto>> GoogleLogin([FromBody] GoogleLoginRequestDto dto)
@@ -165,6 +166,39 @@ namespace Presentation.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message, details = ex.InnerException?.Message });
+            }
+        }
+
+        /// <summary>
+        /// Server-side OAuth redirect callback — Google redirects here after the user
+        /// approves access.  The handler exchanges the code for an ID token, signs the
+        /// user in, then redirects the browser to the frontend success page with a JWT.
+        /// No JavaScript-Origins configuration in Google Console is needed for this flow.
+        /// </summary>
+        [HttpGet("google/callback")]
+        public async Task<ActionResult> GoogleOAuthCallback(
+            [FromQuery] string? code,
+            [FromQuery] string? error,
+            [FromQuery] string? state)
+        {
+            var frontendUrl = _configuration["App:FrontendUrl"]
+                              ?? "https://pulsegym-two.vercel.app";
+
+            if (!string.IsNullOrEmpty(error))
+                return Redirect($"{frontendUrl}/login?error={Uri.EscapeDataString("Google sign-in was cancelled.")}");
+
+            if (string.IsNullOrEmpty(code))
+                return Redirect($"{frontendUrl}/login?error={Uri.EscapeDataString("No authorization code received from Google.")}");
+
+            try
+            {
+                var result = await _serviceManager.AuthService.GoogleCallbackAsync(code);
+                // Pass the JWT as a query param — the frontend /auth/google/success page reads it
+                return Redirect($"{frontendUrl}/auth/google/success?token={Uri.EscapeDataString(result.Token)}");
+            }
+            catch (Exception ex)
+            {
+                return Redirect($"{frontendUrl}/login?error={Uri.EscapeDataString(ex.Message)}");
             }
         }
 
