@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { setAuthToken } from "@/lib/api/client";
 import { apiFetch } from "@/lib/api/client";
 import { UserDto } from "@/lib/api/auth";
 
-/**
- * Landing page after server-side Google OAuth redirect.
- *
- * Flow:
- *   Google → Backend /api/auth/google/callback
- *           → Backend generates JWT
- *           → Redirects here: /auth/google/success?token=JWT
- *           → We store token + fetch user → redirect to /dashboard
- */
-export default function GoogleSuccessPage() {
+// ─── Inner component (uses useSearchParams — must be inside <Suspense>) ───────
+
+function GoogleSuccessInner() {
   const searchParams = useSearchParams();
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -36,22 +29,23 @@ export default function GoogleSuccessPage() {
     // Store JWT
     setAuthToken(token);
 
-    // Decode JWT to get userId (payload is the middle base64 segment)
+    // Decode JWT payload to extract userId
     let userId: number | null = null;
     try {
       const payload = JSON.parse(
         atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
       );
-      // ASP.NET JWT uses ClaimTypes.NameIdentifier = "sub"
       userId = parseInt(
         payload["sub"] ||
-        payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] ||
-        payload["nameid"] ||
-        "0",
+          payload[
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+          ] ||
+          payload["nameid"] ||
+          "0",
         10
       );
     } catch {
-      // If decode fails, still try to redirect — AuthContext will pick up the token
+      // Decode failed — proceed without profile; AuthContext will handle it
     }
 
     const continueToApp = (user?: UserDto) => {
@@ -62,7 +56,6 @@ export default function GoogleSuccessPage() {
     };
 
     if (userId) {
-      // Fetch full user profile so AuthContext can load it from localStorage
       apiFetch<UserDto>(`/users/${userId}`)
         .then((res) => continueToApp(res.data))
         .catch(() => continueToApp());
@@ -99,3 +92,38 @@ export default function GoogleSuccessPage() {
     </div>
   );
 }
+
+// ─── Loading fallback (shown during Suspense) ─────────────────────────────────
+
+function LoadingFallback() {
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-white gap-4">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+      <p className="text-slate-500 text-sm font-medium">
+        Signing you in with Google…
+      </p>
+    </div>
+  );
+}
+
+// ─── Page export (wraps inner component in Suspense) ─────────────────────────
+
+/**
+ * Landing page after server-side Google OAuth redirect.
+ *
+ * Flow:
+ *   Google → Backend /api/auth/google/callback
+ *           → Redirects here: /auth/google/success?token=JWT
+ *           → Stores token, fetches user profile, redirects to /dashboard
+ *
+ * The Suspense wrapper is required by Next.js App Router whenever
+ * useSearchParams() is used in a statically-generated page.
+ */
+export default function GoogleSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <GoogleSuccessInner />
+    </Suspense>
+  );
+}
+
