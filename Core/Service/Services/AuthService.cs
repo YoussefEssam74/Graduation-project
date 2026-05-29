@@ -501,13 +501,13 @@ namespace Service.Services
                 ["grant_type"]    = "authorization_code",
             };
 
-            // Prefer PKCE (no client secret needed) but fall back to client_secret if available
+            // Include code_verifier if PKCE is used, and client_secret if configured (required for Web client types)
             var clientSecret = _configuration["Google:ClientSecret"];
             if (!string.IsNullOrWhiteSpace(codeVerifier))
             {
                 tokenParams["code_verifier"] = codeVerifier;
             }
-            else if (!string.IsNullOrWhiteSpace(clientSecret))
+            if (!string.IsNullOrWhiteSpace(clientSecret))
             {
                 tokenParams["client_secret"] = clientSecret;
             }

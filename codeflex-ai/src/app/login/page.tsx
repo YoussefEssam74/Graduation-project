@@ -198,7 +198,7 @@ export default function LoginPage() {
                       <Input
                         id="email"
                         type="email"
-                        placeholder="coach@pulsegym.com"
+                        placeholder=""
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full pl-9 pr-3 h-10 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
@@ -225,7 +225,7 @@ export default function LoginPage() {
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder=""
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="w-full pl-9 pr-9 h-10 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"

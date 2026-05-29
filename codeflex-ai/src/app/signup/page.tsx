@@ -494,7 +494,7 @@ export default function SignUpPage() {
                       <Label htmlFor="email" className="text-[11px] font-semibold text-slate-700">Email Address</Label>
                       <div className="relative group">
                         <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
-                        <Input id="email" type="email" placeholder="member@intellifit.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                        <Input id="email" type="email" placeholder="" value={email} onChange={(e) => setEmail(e.target.value)}
                           autoComplete="off"
                           className="w-full pl-9 pr-3 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                       </div>
@@ -541,7 +541,7 @@ export default function SignUpPage() {
                       </div>
                       <div className="relative group">
                         <LockIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
-                        <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)}
+                        <Input id="password" type={showPassword ? "text" : "password"} placeholder="" value={password} onChange={(e) => setPassword(e.target.value)}
                           autoComplete="new-password"
                           className="w-full pl-9 pr-9 h-8 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all" required />
                         <button type="button" onClick={() => setShowPassword(!showPassword)}
