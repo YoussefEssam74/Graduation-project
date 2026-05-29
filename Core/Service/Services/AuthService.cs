@@ -279,7 +279,7 @@ namespace Service.Services
 
             var subject = "PulseGym — Password Reset OTP";
             var body = $"Your one-time password (OTP) to reset your PulseGym account password is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.";
-            await SendEmailViaResendAsync(user.Email, subject, body);
+            await SendEmailViaBrevoAsync(user.Email, subject, body);
         }
 
         /// <summary>
@@ -365,7 +365,7 @@ namespace Service.Services
 
             var subject = "PulseGym — Change Password OTP";
             var body = $"Your one-time password (OTP) for changing your account password is:\n\n{otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.";
-            await SendEmailViaResendAsync(email, subject, body);
+            await SendEmailViaBrevoAsync(email, subject, body);
         }
 
         public Task<bool> VerifyChangePasswordOtpAsync(int userId, string otp)
@@ -518,7 +518,7 @@ namespace Service.Services
 
             var subject = "PulseGym — Verify your email to complete registration";
             var body = $"Welcome to PulseGym!\n\nYour verification code is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.";
-            await SendEmailViaResendAsync(email, subject, body);
+            await SendEmailViaBrevoAsync(email, subject, body);
         }
 
         /// <summary>
@@ -543,46 +543,54 @@ namespace Service.Services
             return await RegisterAsync(registerDto);
         }
 
-        // ── Resend configuration helper ────────────────────────────────────────────
-        private async Task SendEmailViaResendAsync(string toEmail, string subject, string body)
+        // ── Brevo configuration helper ────────────────────────────────────────────
+        private async Task SendEmailViaBrevoAsync(string toEmail, string subject, string body)
         {
-            var apiKey = _configuration["Resend:ApiKey"]?.Trim();
+            var apiKey = _configuration["Brevo:ApiKey"]?.Trim();
             if (string.IsNullOrEmpty(apiKey))
             {
-                apiKey = "re_X2bUA7T6_HuPuHkFMi1tBe6FUY4Msf17N";
+                throw new InvalidOperationException("Brevo API key is not configured.");
             }
 
-            var fromEmail = _configuration["Resend:FromEmail"]?.Trim();
-            if (string.IsNullOrEmpty(fromEmail))
+            var senderEmail = _configuration["Brevo:SenderEmail"]?.Trim();
+            if (string.IsNullOrEmpty(senderEmail))
             {
-                fromEmail = "onboarding@resend.dev";
+                throw new InvalidOperationException("Brevo Sender email is not configured.");
             }
 
-            var fromName = _configuration["Resend:FromName"]?.Trim();
-            if (string.IsNullOrEmpty(fromName))
+            var senderName = _configuration["Brevo:SenderName"]?.Trim();
+            if (string.IsNullOrEmpty(senderName))
             {
-                fromName = "PulseGym";
+                senderName = "PulseGym";
             }
 
             using var http = new System.Net.Http.HttpClient();
-            http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+            http.DefaultRequestHeaders.Add("api-key", apiKey);
+            http.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
             var payload = new
             {
-                from = $"{fromName} <{fromEmail}>",
-                to = new[] { toEmail },
+                sender = new
+                {
+                    name = senderName,
+                    email = senderEmail
+                },
+                to = new[]
+                {
+                    new { email = toEmail }
+                },
                 subject = subject,
-                html = $"<div style=\"font-family: sans-serif; line-height: 1.5;\">{body.Replace("\n", "<br/>")}</div>"
+                htmlContent = $"<div style=\"font-family: sans-serif; line-height: 1.5;\">{body.Replace("\n", "<br/>")}</div>"
             };
 
             var json = System.Text.Json.JsonSerializer.Serialize(payload);
             using var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await http.PostAsync("https://api.resend.com/emails", content);
+            var response = await http.PostAsync("https://api.brevo.com/v3/smtp/email", content);
             if (!response.IsSuccessStatusCode)
             {
                 var errorText = await response.Content.ReadAsStringAsync();
-                throw new InvalidOperationException($"Failed to send email via Resend: {errorText}");
+                throw new InvalidOperationException($"Failed to send email via Brevo: {errorText}");
             }
         }
     }

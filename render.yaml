@@ -60,12 +60,12 @@ services:
         value: http://localhost:3000
       - key: Security__AllowedOrigins__2
         value: http://localhost:3001
-      # ── Email (Resend) ──
-      - key: Resend__ApiKey
-        value: re_X2bUA7T6_HuPuHkFMi1tBe6FUY4Msf17N
-      - key: Resend__FromEmail
-        value: onboarding@resend.dev
-      - key: Resend__FromName
+      # ── Email (Brevo) ──
+      - key: Brevo__ApiKey
+        sync: false
+      - key: Brevo__SenderEmail
+        value: eyoussef228@gmail.com
+      - key: Brevo__SenderName
         value: PulseGym
       # ── Google OAuth ──
       - key: Google__ClientId
