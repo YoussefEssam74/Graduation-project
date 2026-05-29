@@ -130,6 +130,10 @@ namespace Service.Services
             stopwatch.Stop();
             var responseTimeMs = (int)stopwatch.ElapsedMilliseconds;
 
+            // --- Process actions (Idea D) ---
+            var actionResult = await ProcessActionsAsync(request.UserId, responseText);
+            responseText = actionResult.cleanResponse;
+
             var tokensUsed = (request.Query.Length + responseText.Length) / 4;
 
             // --- Persist both turns ---
@@ -165,7 +169,8 @@ namespace Service.Services
             {
                 Response = responseText,
                 TokensUsed = tokensUsed,
-                Timestamp = now.AddMilliseconds(1)
+                Timestamp = now.AddMilliseconds(1),
+                SessionId = sessionId
             };
         }
 
@@ -368,6 +373,145 @@ namespace Service.Services
             }
 
             return messages;
+        }
+
+        private async Task<(string cleanResponse, string? actionStatus)> ProcessActionsAsync(int userId, string responseText)
+        {
+            if (string.IsNullOrWhiteSpace(responseText))
+                return (responseText, null);
+
+            var trimmed = responseText.Trim();
+            if (!trimmed.StartsWith("[ACTION:", StringComparison.OrdinalIgnoreCase))
+                return (responseText, null);
+
+            var closeBracketIndex = trimmed.IndexOf(']');
+            if (closeBracketIndex == -1)
+                return (responseText, null);
+
+            var actionBlock = trimmed.Substring(0, closeBracketIndex + 1);
+            var cleanResponse = trimmed.Substring(closeBracketIndex + 1).Trim();
+
+            try
+            {
+                var content = actionBlock.Trim('[', ']'); 
+                var parts = content.Split('|').Select(p => p.Trim()).ToList();
+                
+                var actionTypePart = parts.FirstOrDefault();
+                if (actionTypePart == null || !actionTypePart.StartsWith("ACTION:", StringComparison.OrdinalIgnoreCase))
+                    return (responseText, null);
+
+                var actionType = actionTypePart.Substring("ACTION:".Length).Trim();
+                var paramsDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var part in parts.Skip(1))
+                {
+                    var kv = part.Split(new[] { ':' }, 2);
+                    if (kv.Length == 2)
+                    {
+                        paramsDict[kv[0].Trim()] = kv[1].Trim();
+                    }
+                }
+
+                if (actionType.Equals("LOG_WORKOUT", StringComparison.OrdinalIgnoreCase))
+                {
+                    var activePlan = (await _unitOfWork.Repository<UserAIWorkoutPlan>()
+                        .FindAsync(p => p.UserId == userId && p.IsActive))
+                        .OrderByDescending(p => p.CreatedAt)
+                        .FirstOrDefault();
+
+                    paramsDict.TryGetValue("EXERCISES", out var exercisesCompleted);
+
+                    var workoutLog = new WorkoutLog
+                    {
+                        UserId = userId,
+                        PlanId = activePlan?.PlanId,
+                        WorkoutDate = DateTime.UtcNow,
+                        ExercisesCompleted = exercisesCompleted ?? "Logged Workout",
+                        Completed = true,
+                        Notes = "Logged via AI Fitness Coach (Captain Kimo)",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.Repository<WorkoutLog>().AddAsync(workoutLog);
+
+                    // Add normalized exercise log entries if names match
+                    if (!string.IsNullOrEmpty(exercisesCompleted))
+                    {
+                        var names = exercisesCompleted.Split(',').Select(n => n.Trim());
+                        int order = 1;
+                        foreach (var name in names)
+                        {
+                            var matches = await _unitOfWork.Repository<Exercise>()
+                                .FindAsync(e => e.Name.Contains(name, StringComparison.OrdinalIgnoreCase) || name.Contains(e.Name, StringComparison.OrdinalIgnoreCase));
+                            var dbExercise = matches.FirstOrDefault();
+                            if (dbExercise != null)
+                            {
+                                workoutLog.WorkoutLogExercises.Add(new WorkoutLogExercise
+                                {
+                                    ExerciseId = dbExercise.ExerciseId,
+                                    OrderPerformed = order++,
+                                    SetsCompleted = 3, // Default fallback
+                                    RepsPerSet = "10,10,10",
+                                    WeightPerSet = "0,0,0",
+                                    CreatedAt = DateTime.UtcNow
+                                });
+                            }
+                        }
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                    return (cleanResponse, $"Successfully logged workout: {exercisesCompleted}");
+                }
+                else if (actionType.Equals("SWAP_EXERCISE", StringComparison.OrdinalIgnoreCase))
+                {
+                    var activePlan = (await _unitOfWork.Repository<UserAIWorkoutPlan>()
+                        .FindAsync(p => p.UserId == userId && p.IsActive))
+                        .OrderByDescending(p => p.CreatedAt)
+                        .FirstOrDefault();
+
+                    if (activePlan != null &&
+                        paramsDict.TryGetValue("FROM", out var oldEx) &&
+                        paramsDict.TryGetValue("TO", out var newEx))
+                    {
+                        var days = await _unitOfWork.Repository<UserAIWorkoutPlanDay>()
+                            .FindAsync(d => d.PlanId == activePlan.PlanId);
+                        
+                        UserAIWorkoutPlanExercise? exerciseToSwap = null;
+                        foreach (var day in days)
+                        {
+                            var exercises = await _unitOfWork.Repository<UserAIWorkoutPlanExercise>()
+                                .FindAsync(e => e.PlanDayId == day.DayId);
+                            exerciseToSwap = exercises.FirstOrDefault(e => e.ExerciseName.Contains(oldEx, StringComparison.OrdinalIgnoreCase) || oldEx.Contains(e.ExerciseName, StringComparison.OrdinalIgnoreCase));
+                            if (exerciseToSwap != null)
+                                break;
+                        }
+
+                        if (exerciseToSwap != null)
+                        {
+                            exerciseToSwap.ExerciseName = newEx;
+                            
+                            // Check if new exercise matches a DB exercise to update ExerciseId too
+                            var matches = await _unitOfWork.Repository<Exercise>()
+                                .FindAsync(e => e.Name.Contains(newEx, StringComparison.OrdinalIgnoreCase) || newEx.Contains(e.Name, StringComparison.OrdinalIgnoreCase));
+                            var dbExercise = matches.FirstOrDefault();
+                            if (dbExercise != null)
+                            {
+                                exerciseToSwap.ExerciseId = dbExercise.ExerciseId;
+                            }
+
+                            _unitOfWork.Repository<UserAIWorkoutPlanExercise>().Update(exerciseToSwap);
+                            await _unitOfWork.SaveChangesAsync();
+                            return (cleanResponse, $"Successfully swapped {oldEx} with {newEx}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing AI action {ActionBlock}", actionBlock);
+            }
+
+            return (cleanResponse, null);
         }
     }
 }

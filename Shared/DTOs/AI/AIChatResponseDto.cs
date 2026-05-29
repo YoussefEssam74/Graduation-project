@@ -5,5 +5,6 @@ namespace Shared.DTOs.AI
         public string Response { get; set; } = null!;
         public int TokensUsed { get; set; }
         public DateTime Timestamp { get; set; }
+        public int SessionId { get; set; }
     }
 }

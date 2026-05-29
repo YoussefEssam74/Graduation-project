@@ -56,24 +56,22 @@ namespace Service.Services
                     sb.AppendLine($"Total Workouts Completed: {memberProfile.TotalWorkoutsCompleted}");
                 }
 
-                // 2. Latest InBody measurement
+                // 2. InBody measurements (last 3 for progress tracking)
                 var inBodyMeasurements = await _unitOfWork.Repository<InBodyMeasurement>()
                     .FindAsync(m => m.UserId == userId);
-                var latestInBody = inBodyMeasurements
+                var sortedInBody = inBodyMeasurements
                     .OrderByDescending(m => m.MeasurementDate)
-                    .FirstOrDefault();
+                    .Take(3)
+                    .ToList();
 
-                if (latestInBody != null)
+                if (sortedInBody.Any())
                 {
                     sb.AppendLine();
-                    sb.AppendLine("=== BODY COMPOSITION (Latest InBody) ===");
-                    sb.AppendLine($"Date: {latestInBody.MeasurementDate:yyyy-MM-dd}");
-                    sb.AppendLine($"Weight: {latestInBody.Weight} kg");
-                    if (latestInBody.BodyFatPercentage.HasValue) sb.AppendLine($"Body Fat: {latestInBody.BodyFatPercentage}%");
-                    if (latestInBody.MuscleMass.HasValue) sb.AppendLine($"Muscle Mass: {latestInBody.MuscleMass} kg");
-                    if (latestInBody.Bmr.HasValue) sb.AppendLine($"BMR: {latestInBody.Bmr} kcal");
-                    if (latestInBody.VisceralFatLevel.HasValue) sb.AppendLine($"Visceral Fat Level: {latestInBody.VisceralFatLevel}");
-                    if (!string.IsNullOrEmpty(latestInBody.BodyType)) sb.AppendLine($"Body Type: {latestInBody.BodyType}");
+                    sb.AppendLine("=== BODY COMPOSITION HISTORY (InBody) ===");
+                    foreach (var ib in sortedInBody)
+                    {
+                        sb.AppendLine($"Date: {ib.MeasurementDate:yyyy-MM-dd} | Weight: {ib.Weight} kg | Body Fat: {(ib.BodyFatPercentage.HasValue ? ib.BodyFatPercentage.Value.ToString() + "%" : "N/A")} | Muscle Mass: {(ib.MuscleMass.HasValue ? ib.MuscleMass.Value.ToString() + " kg" : "N/A")} | BMR: {(ib.Bmr.HasValue ? ib.Bmr.Value.ToString() + " kcal" : "N/A")}");
+                    }
                 }
 
                 // 3. Active nutrition plan

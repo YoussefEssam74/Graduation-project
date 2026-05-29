@@ -215,9 +215,16 @@ namespace Presentation.Controllers
                     return BadRequest(new { success = false, message = "Insufficient token balance. You need at least 1 token to chat with AI." });
                 }
 
-                // Track response time
+                // Call unified AIChatService which reads user context (RAG) and handles session logs
+                var chatRequest = new AIChatRequestDto
+                {
+                    UserId = request.UserId,
+                    Query = request.Message,
+                    SessionId = request.SessionId
+                };
+
                 var stopwatch = Stopwatch.StartNew();
-                var response = await _serviceManager.AIService.ChatWithAIAsync(request.Message, request.UserId);
+                var chatResponse = await _serviceManager.AIChatService.SendMessageAsync(chatRequest);
                 stopwatch.Stop();
 
                 // Deduct 1 token from user balance
@@ -229,7 +236,7 @@ namespace Presentation.Controllers
                         {
                             Amount = -1,
                             TransactionType = "Deduction",
-                            Description = "AI Chat - Gemini conversation",
+                            Description = "AI Chat - Llama conversation",
                             ReferenceType = "AIChat"
                         }
                     );
@@ -240,66 +247,16 @@ namespace Presentation.Controllers
                     return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
                 }
 
-                // Use provided sessionId or generate new one based on user ID and timestamp
-                int sessionId;
-                if (request.SessionId.HasValue && request.SessionId.Value > 0)
-                {
-                    sessionId = request.SessionId.Value;
-                }
-                else
-                {
-                    // Generate unique session ID: userId + timestamp hash
-                    sessionId = Math.Abs((request.UserId.ToString() + DateTime.UtcNow.Ticks).GetHashCode());
-                }
-
-                // Save the chat interaction to the database
-                try
-                {
-                    _logger.LogInformation("Attempting to save chat interaction for user {UserId}, session {SessionId}", request.UserId, sessionId);
-
-                    await _serviceManager.AIChatService.SaveChatInteractionAsync(
-                        userId: request.UserId,
-                        userMessage: request.Message,
-                        aiResponse: response,
-                        tokensUsed: 1,
-                        responseTimeMs: (int)stopwatch.ElapsedMilliseconds,
-                        sessionId: sessionId
-                    );
-
-                    _logger.LogInformation("Successfully saved chat interaction for user {UserId}, session {SessionId}", request.UserId, sessionId);
-                }
-                catch (Exception saveEx)
-                {
-                    // Log the full exception details
-                    _logger.LogError(saveEx, "CRITICAL: Failed to save chat interaction for user {UserId}. Error: {ErrorMessage}. StackTrace: {StackTrace}",
-                        request.UserId, saveEx.Message, saveEx.StackTrace);
-
-                    // Don't fail the request but include warning in response
-                    return Ok(new
-                    {
-                        success = true,
-                        data = new
-                        {
-                            response,
-                            tokensSpent = 1,
-                            responseTimeMs = stopwatch.ElapsedMilliseconds,
-                            newBalance = currentBalance - 1,
-                            sessionId = sessionId,
-                            warning = "Chat was not saved due to a database error. Please contact support."
-                        }
-                    });
-                }
-
                 return Ok(new
                 {
                     success = true,
                     data = new
                     {
-                        response,
-                        tokensSpent = 1,
+                        response = chatResponse.Response,
+                        tokensSpent = chatResponse.TokensUsed,
                         responseTimeMs = stopwatch.ElapsedMilliseconds,
                         newBalance = currentBalance - 1,
-                        sessionId = sessionId
+                        sessionId = chatResponse.SessionId
                     }
                 });
             }
