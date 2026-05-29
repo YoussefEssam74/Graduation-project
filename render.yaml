@@ -38,14 +38,14 @@ services:
         sync: false
       # ── ML Services ──
       - key: MLService__BaseUrl
-        value: https://youssefeemad-workout-generator.hf.space
+        value: https://youssefemaad--intellifit-workout-workoutservice-web.modal.run
       - key: MLService__NutritionBaseUrl
         value: https://youssefemaad--intellifit-nutrition-nutritionservice-web.modal.run
       - key: MLService__TimeoutSeconds
         value: "360"
       # ── Workout Generator API ──
       - key: WorkoutGeneratorAPI__BaseUrl
-        value: https://youssefeemad-workout-generator.hf.space
+        value: https://youssefemaad--intellifit-workout-workoutservice-web.modal.run
       - key: WorkoutGeneratorAPI__TimeoutSeconds
         value: "360"
       # ── Embedding Service ──
