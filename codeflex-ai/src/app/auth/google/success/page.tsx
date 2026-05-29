@@ -67,12 +67,28 @@ function GoogleSuccessInner() {
       });
   }, [searchParams]);
 
+  function redirectToDestination(user: UserDto) {
+    const roleRoutes: Record<string, string> = {
+      'Member': "/dashboard",
+      'Coach': "/coach-dashboard",
+      'Receptionist': "/reception-dashboard",
+      'Admin': "/admin-dashboard",
+    };
+
+    const role = user.role || 'Member';
+    const destination = (role === 'Member' && !user.hasActiveSubscription)
+      ? "/choose-plan"
+      : (roleRoutes[role] || "/dashboard");
+
+    window.location.href = destination;
+  }
+
   function handleToken(token: string, user?: UserDto) {
     setAuthToken(token);
 
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));
-      window.location.href = "/dashboard";
+      redirectToDestination(user);
       return;
     }
 
@@ -98,8 +114,12 @@ function GoogleSuccessInner() {
     if (userId) {
       apiFetch<UserDto>(`/users/${userId}`)
         .then((res) => {
-          if (res.data) localStorage.setItem("user", JSON.stringify(res.data));
-          window.location.href = "/dashboard";
+          if (res.data) {
+            localStorage.setItem("user", JSON.stringify(res.data));
+            redirectToDestination(res.data);
+          } else {
+            window.location.href = "/dashboard";
+          }
         })
         .catch(() => {
           window.location.href = "/dashboard";
