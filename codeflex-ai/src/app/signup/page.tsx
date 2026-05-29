@@ -341,8 +341,24 @@ export default function SignUpPage() {
     // Auth token stored inside verifyAndCompleteRegistration; redirect handled by AuthContext
     showToast("Account created! Welcome to PulseGym 🎉", "success");
     setShowOtpModal(false);
-    // Give the toast a moment then go to dashboard
-    window.location.href = "/dashboard";
+
+    // Redirect based on role and subscription status
+    const userData = res.data?.user;
+    const role = userData?.role || "Member";
+    const hasSubscription = userData?.hasActiveSubscription;
+
+    const roleRoutes: Record<string, string> = {
+      'Member': "/dashboard",
+      'Coach': "/coach-dashboard",
+      'Receptionist': "/reception-dashboard",
+      'Admin': "/admin-dashboard",
+    };
+
+    const destination = (role === 'Member' && !hasSubscription)
+      ? "/choose-plan"
+      : (roleRoutes[role] || "/dashboard");
+
+    window.location.href = destination;
   };
 
   const handleResendOtp = async () => {

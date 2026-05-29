@@ -130,8 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [UserRole.Admin]: "/admin-dashboard",
       };
 
+      // New members without a subscription go to plan selection
+      const destination =
+        mappedRole === UserRole.Member && !userData.hasActiveSubscription
+          ? "/choose-plan"
+          : roleRoutes[mappedRole];
+
       // Force immediate redirect using window.location
-      window.location.href = roleRoutes[mappedRole];
+      window.location.href = destination;
     } catch (error) {
       console.error("Login error:", error);
       setIsRedirecting(false);
