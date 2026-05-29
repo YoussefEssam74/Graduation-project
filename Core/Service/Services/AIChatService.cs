@@ -427,7 +427,7 @@ namespace Service.Services
                         WorkoutDate = DateTime.UtcNow,
                         ExercisesCompleted = exercisesCompleted ?? "Logged Workout",
                         Completed = true,
-                        Notes = "Logged via AI Fitness Coach (Captain Kimo)",
+                        Notes = "Logged via AI Fitness Coach",
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
