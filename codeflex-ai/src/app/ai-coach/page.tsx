@@ -43,9 +43,9 @@ function AICoachContent() {
     scrollToBottom();
   }, [messages, isSending]);
 
-  // Load chat sessions on mount
+  // Load chat sessions on mount and auto-load the latest session's messages
   useEffect(() => {
-    const loadSessions = async () => {
+    const loadSessionsAndLatestMessages = async () => {
       if (!user?.userId) return;
 
       try {
@@ -56,6 +56,47 @@ function AICoachContent() {
         if (res.success && res.sessions) {
           console.log("Chat sessions loaded:", res.sessions.length, "sessions");
           setSessions(res.sessions);
+
+          // Auto-load messages of the latest session if there is one
+          if (res.sessions.length > 0) {
+            const latestSessionId = res.sessions[0].sessionId;
+            setCurrentSessionId(latestSessionId);
+            setIsLoading(true);
+
+            try {
+              const msgResponse = await aiApi.getSessionMessages(user.userId, latestSessionId);
+              const msgRes = msgResponse as any;
+              if (msgRes.success && msgRes.messages) {
+                const withAiResponses: DisplayMessage[] = [];
+                msgRes.messages.forEach((msg: AIChatLogDto) => {
+                  withAiResponses.push({
+                    id: `user-${msg.chatLogId}`,
+                    role: "user",
+                    content: msg.userMessage,
+                    timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                  });
+                  withAiResponses.push({
+                    id: `ai-${msg.chatLogId}`,
+                    role: "ai",
+                    content: msg.aiResponse,
+                    timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                  });
+                });
+
+                setMessages(withAiResponses);
+              }
+            } catch (msgError) {
+              console.error("Failed to load latest session messages on mount:", msgError);
+            } finally {
+              setIsLoading(false);
+            }
+          }
         } else {
           console.error("Failed to load chat sessions:", response.message);
         }
@@ -64,7 +105,7 @@ function AICoachContent() {
       }
     };
 
-    loadSessions();
+    loadSessionsAndLatestMessages();
   }, [user?.userId]);
 
   // Load messages for a session
