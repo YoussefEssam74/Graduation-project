@@ -277,22 +277,9 @@ namespace Service.Services
             var otp = new Random().Next(100000, 999999).ToString();
             _cache.Set($"forgot_pwd_otp_{user.UserId}", otp, TimeSpan.FromMinutes(10));
 
-            var (smtpHost, smtpPort, smtpUser, smtpPass, fromAddress, fromName) = GetSmtpConfig();
-
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
-            var message = new MailMessage
-            {
-                From = new MailAddress(fromAddress, fromName),
-                Subject = "PulseGym — Password Reset OTP",
-                Body = $"Your one-time password (OTP) to reset your PulseGym account password is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.",
-                IsBodyHtml = false
-            };
-            message.To.Add(user.Email);
-            await client.SendMailAsync(message);
+            var subject = "PulseGym — Password Reset OTP";
+            var body = $"Your one-time password (OTP) to reset your PulseGym account password is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.";
+            await SendEmailViaResendAsync(user.Email, subject, body);
         }
 
         /// <summary>
@@ -376,22 +363,9 @@ namespace Service.Services
             var otp = new Random().Next(100000, 999999).ToString();
             _cache.Set($"pwd_otp_{userId}", otp, TimeSpan.FromMinutes(10));
 
-            var (smtpHost, smtpPort, smtpUser, smtpPass, fromAddress, fromName) = GetSmtpConfig();
-
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
-            var message = new MailMessage
-            {
-                From = new MailAddress(fromAddress, fromName),
-                Subject = "PulseGym — Change Password OTP",
-                Body = $"Your one-time password (OTP) for changing your account password is:\n\n{otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.",
-                IsBodyHtml = false
-            };
-            message.To.Add(email);
-            await client.SendMailAsync(message);
+            var subject = "PulseGym — Change Password OTP";
+            var body = $"Your one-time password (OTP) for changing your account password is:\n\n{otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.";
+            await SendEmailViaResendAsync(email, subject, body);
         }
 
         public Task<bool> VerifyChangePasswordOtpAsync(int userId, string otp)
@@ -542,23 +516,9 @@ namespace Service.Services
             // Cache key scoped to the email so it cannot be reused for a different address.
             _cache.Set($"reg_otp_{email.ToLowerInvariant()}", otp, TimeSpan.FromMinutes(10));
 
-            var (smtpHost, smtpPort, smtpUser, smtpPass, fromAddress, fromName) = GetSmtpConfig();
-
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
-
-            var message = new MailMessage
-            {
-                From    = new MailAddress(fromAddress, fromName),
-                Subject = "PulseGym — Verify your email to complete registration",
-                Body    = $"Welcome to PulseGym!\n\nYour verification code is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.",
-                IsBodyHtml = false
-            };
-            message.To.Add(email);
-            await client.SendMailAsync(message);
+            var subject = "PulseGym — Verify your email to complete registration";
+            var body = $"Welcome to PulseGym!\n\nYour verification code is:\n\n{otp}\n\nThis code expires in 10 minutes. If you did not request this, please ignore it.";
+            await SendEmailViaResendAsync(email, subject, body);
         }
 
         /// <summary>
@@ -583,30 +543,47 @@ namespace Service.Services
             return await RegisterAsync(registerDto);
         }
 
-        // ── SMTP configuration helper ────────────────────────────────────────────
-        /// <summary>
-        /// Reads SMTP config from IConfiguration (env vars take precedence over appsettings.json).
-        /// Falls back to the embedded defaults so the service works even when the hosting
-        /// platform (e.g. Render) has env var keys set but their VALUES left empty.
-        /// </summary>
-        private (string host, int port, string user, string pass, string from, string fromName)
-            GetSmtpConfig()
+        // ── Resend configuration helper ────────────────────────────────────────────
+        private async Task SendEmailViaResendAsync(string toEmail, string subject, string body)
         {
-            // Helper: read a config key; if null or whitespace, use the fallback.
-            string Cfg(string key, string fallback)
+            var apiKey = _configuration["Resend:ApiKey"]?.Trim();
+            if (string.IsNullOrEmpty(apiKey))
             {
-                var v = _configuration[key]?.Trim();
-                return string.IsNullOrWhiteSpace(v) ? fallback : v;
+                apiKey = "re_X2bUA7T6_HuPuHkFMi1tBe6FUY4Msf17N";
             }
 
-            var user = Cfg("Email:SmtpUser",    "eyoussef228@gmail.com");
-            var pass = Cfg("Email:SmtpPass",    "mafobbmeqvbbpkhh");
-            var host = Cfg("Email:SmtpHost",    "smtp.gmail.com");
-            var from = Cfg("Email:FromAddress", user);
-            var name = Cfg("Email:FromName",    "PulseGym");
-            var port = int.TryParse(_configuration["Email:SmtpPort"]?.Trim(), out var p) ? p : 587;
+            var fromEmail = _configuration["Resend:FromEmail"]?.Trim();
+            if (string.IsNullOrEmpty(fromEmail))
+            {
+                fromEmail = "onboarding@resend.dev";
+            }
 
-            return (host, port, user, pass, from, name);
+            var fromName = _configuration["Resend:FromName"]?.Trim();
+            if (string.IsNullOrEmpty(fromName))
+            {
+                fromName = "PulseGym";
+            }
+
+            using var http = new System.Net.Http.HttpClient();
+            http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
+            var payload = new
+            {
+                from = $"{fromName} <{fromEmail}>",
+                to = new[] { toEmail },
+                subject = subject,
+                html = $"<div style=\"font-family: sans-serif; line-height: 1.5;\">{body.Replace("\n", "<br/>")}</div>"
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(payload);
+            using var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await http.PostAsync("https://api.resend.com/emails", content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorText = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"Failed to send email via Resend: {errorText}");
+            }
         }
     }
 }
