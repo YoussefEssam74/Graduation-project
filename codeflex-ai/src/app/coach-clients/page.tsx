@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usersApi, type CoachClientDto } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { ClientProgressModal } from "@/components/coach/ClientProgressModal";
+import { ClientPlansProgressModal } from "@/components/coach/ClientPlansProgressModal";
 import { ChatDialog } from "@/components/Chat/ChatDialog";
 
 function CoachClientsContent() {
@@ -32,7 +33,8 @@ function CoachClientsContent() {
 
   // Modal & Chat States
   const [selectedClient, setSelectedClient] = useState<CoachClientDto | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
   const [chatMemberId, setChatMemberId] = useState<number | null>(null);
   const [chatMemberName, setChatMemberName] = useState<string>("");
 
@@ -74,9 +76,14 @@ function CoachClientsContent() {
     client.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleOpenProgress = (client: CoachClientDto) => {
+  const handleOpenProfile = (client: CoachClientDto) => {
     setSelectedClient(client);
-    setIsModalOpen(true);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleOpenPlans = (client: CoachClientDto) => {
+    setSelectedClient(client);
+    setIsPlansModalOpen(true);
   };
 
   const handleOpenChat = (userId: number, userName: string) => {
@@ -227,7 +234,7 @@ function CoachClientsContent() {
                       variant="outline"
                       className="flex-1 gap-2"
                       size="sm"
-                      onClick={() => handleOpenProgress(client)}
+                      onClick={() => handleOpenProfile(client)}
                     >
                       <Eye className="h-4 w-4" />
                       View Profile
@@ -235,7 +242,7 @@ function CoachClientsContent() {
                     <Button
                       className="flex-1 gap-2"
                       size="sm"
-                      onClick={() => handleOpenProgress(client)}
+                      onClick={() => handleOpenPlans(client)}
                     >
                       <Activity className="h-4 w-4" />
                       Track Progress
@@ -272,12 +279,24 @@ function CoachClientsContent() {
       {selectedClient && (
         <ClientProgressModal
           client={selectedClient}
-          isOpen={isModalOpen}
+          isOpen={isProfileModalOpen}
           onClose={() => {
-            setIsModalOpen(false);
+            setIsProfileModalOpen(false);
             setSelectedClient(null);
           }}
           onOpenChat={handleOpenChat}
+        />
+      )}
+
+      {/* Client Active Workout & Nutrition Plans Modal */}
+      {selectedClient && (
+        <ClientPlansProgressModal
+          client={selectedClient}
+          isOpen={isPlansModalOpen}
+          onClose={() => {
+            setIsPlansModalOpen(false);
+            setSelectedClient(null);
+          }}
         />
       )}
 

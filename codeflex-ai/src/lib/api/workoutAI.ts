@@ -399,3 +399,14 @@ export async function updatePlanStatus(
     },
   );
 }
+
+/**
+ * Get a specific user's saved AI workout plans (for coaches/admins)
+ */
+export async function getUserAIPlans(
+  userId: number,
+): Promise<ApiResponse<UserAIWorkoutPlan[]>> {
+  return apiFetch<UserAIWorkoutPlan[]>(`/workout-ai/user-plans/${userId}`, {
+    method: "GET",
+  });
+}
