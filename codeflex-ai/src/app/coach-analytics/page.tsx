@@ -68,7 +68,7 @@ function CoachAnalyticsContent() {
   // Filter bookings based on selected time range
   const filteredBookings = useMemo(() => {
     const now = new Date();
-    let cutoff = new Date();
+    const cutoff = new Date();
 
     if (timeRange === "week") {
       cutoff.setDate(now.getDate() - 7);
