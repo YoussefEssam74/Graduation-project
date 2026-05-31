@@ -381,5 +381,113 @@ namespace Service.Services
                 })
                 .ToList();
         }
+
+        public async Task<IEnumerable<CoachClientDto>> GetCoachClientsAsync(int coachId)
+        {
+            // Resolve coachId (can be CoachProfileId or UserId)
+            var coachProfile = await _unitOfWork.Repository<CoachProfile>()
+                .FirstOrDefaultAsync(cp => cp.UserId == coachId);
+
+            if (coachProfile == null)
+            {
+                coachProfile = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(coachId);
+            }
+
+            if (coachProfile == null)
+            {
+                return new List<CoachClientDto>();
+            }
+
+            var actualCoachProfileId = coachProfile.Id;
+
+            // Fetch all required data to combine
+            var bookings = await _unitOfWork.Repository<Booking>().GetAllAsync();
+            var workoutPlans = await _unitOfWork.Repository<WorkoutPlan>().GetAllAsync();
+            var nutritionPlans = await _unitOfWork.Repository<NutritionPlan>().GetAllAsync();
+            var users = await _unitOfWork.Repository<User>().GetAllAsync();
+            var memberProfiles = await _unitOfWork.Repository<MemberProfile>().GetAllAsync();
+            var workoutLogs = await _unitOfWork.Repository<WorkoutLog>().GetAllAsync();
+
+            // Find all client UserIds associated with this coach
+            var clientUserIds = bookings
+                .Where(b => b.CoachId == actualCoachProfileId)
+                .Select(b => b.UserId)
+                .Union(workoutPlans.Where(p => p.GeneratedByCoachId == actualCoachProfileId).Select(p => p.UserId))
+                .Union(nutritionPlans.Where(p => p.GeneratedByCoachId == actualCoachProfileId).Select(p => p.UserId))
+                .Distinct()
+                .ToList();
+
+            var coachClients = new List<CoachClientDto>();
+
+            foreach (var userId in clientUserIds)
+            {
+                var clientUser = users.FirstOrDefault(u => u.UserId == userId);
+                if (clientUser == null || !clientUser.IsActive) continue;
+
+                var memberProfile = memberProfiles.FirstOrDefault(m => m.UserId == userId);
+                
+                // Get the subscription/membership type name
+                var membershipType = "Standard";
+                if (memberProfile?.SubscriptionPlanId != null)
+                {
+                    var subscriptionPlan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(memberProfile.SubscriptionPlanId.Value);
+                    if (subscriptionPlan != null)
+                    {
+                        membershipType = subscriptionPlan.PlanName;
+                    }
+                }
+
+                // Count active plans
+                var activeWorkoutCount = workoutPlans.Count(p => p.UserId == userId && p.IsActive);
+                var activeNutritionCount = nutritionPlans.Count(p => p.UserId == userId && p.IsActive);
+                var activeProgramsCount = activeWorkoutCount + activeNutritionCount;
+
+                // Get last session date with this coach
+                var lastSession = bookings
+                    .Where(b => b.UserId == userId && b.CoachId == actualCoachProfileId && b.Status == BookingStatus.Completed)
+                    .OrderByDescending(b => b.StartTime)
+                    .FirstOrDefault();
+
+                // Compute progress
+                var progress = 0;
+                var activePlan = workoutPlans.FirstOrDefault(p => p.UserId == userId && p.IsActive);
+                if (activePlan != null)
+                {
+                    var planLogsCount = workoutLogs.Count(wl => wl.PlanId == activePlan.PlanId && wl.Completed);
+                    // Assume 12 total workouts per plan
+                    progress = Math.Min((planLogsCount * 100) / 12, 100);
+                    if (progress == 0 && memberProfile != null && memberProfile.TotalWorkoutsCompleted > 0)
+                    {
+                        progress = Math.Min(memberProfile.TotalWorkoutsCompleted * 5, 100);
+                    }
+                }
+                else if (memberProfile != null && memberProfile.TotalWorkoutsCompleted > 0)
+                {
+                    progress = Math.Min(memberProfile.TotalWorkoutsCompleted * 5, 100);
+                }
+                else
+                {
+                    // Default fallback progress for visual simulation if they have bookings
+                    var bookingCount = bookings.Count(b => b.UserId == userId && b.CoachId == actualCoachProfileId);
+                    progress = Math.Min(bookingCount * 15, 95);
+                }
+
+                coachClients.Add(new CoachClientDto
+                {
+                    UserId = userId,
+                    Name = clientUser.Name,
+                    Email = clientUser.Email,
+                    Phone = clientUser.Phone,
+                    MembershipType = membershipType,
+                    JoinDate = clientUser.CreatedAt,
+                    ActiveProgramsCount = activeProgramsCount,
+                    LastSessionDate = lastSession?.StartTime,
+                    Progress = progress,
+                    ProfileImageUrl = clientUser.ProfileImageUrl
+                });
+            }
+
+            return coachClients;
+        }
     }
 }

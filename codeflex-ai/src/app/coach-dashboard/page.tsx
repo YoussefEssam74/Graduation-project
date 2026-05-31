@@ -21,7 +21,7 @@ import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/gym";
-import { bookingsApi, type BookingDto } from "@/lib/api";
+import { bookingsApi, statsApi, coachReviewsApi, type BookingDto } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { ChatDialog } from "@/components/Chat/ChatDialog";
 
@@ -33,6 +33,13 @@ function CoachDashboardContent() {
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [chatMemberId, setChatMemberId] = useState<number | null>(null);
   const [chatMemberName, setChatMemberName] = useState<string>("");
+
+  const [rating, setRating] = useState<number>(5.0);
+  const [totalReviews, setTotalReviews] = useState<number>(0);
+  const [activeClients, setActiveClients] = useState<number>(0);
+  const [totalBookingsCount, setTotalBookingsCount] = useState<number>(0);
+  const [totalEarnings, setTotalEarnings] = useState<number>(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   // Fetch coach bookings
   useEffect(() => {
@@ -56,6 +63,31 @@ function CoachDashboardContent() {
     fetchBookings();
   }, [user?.userId]);
 
+  // Fetch coach stats and rating
+  useEffect(() => {
+    const fetchCoachStats = async () => {
+      if (!user?.userId) return;
+      
+      try {
+        setIsLoadingStats(true);
+        const statsResponse = await statsApi.getCoachStats(user.userId);
+        if (statsResponse.success && statsResponse.data) {
+          setRating(statsResponse.data.averageRating || 0);
+          setTotalReviews(statsResponse.data.totalReviews || 0);
+          setActiveClients(statsResponse.data.totalClients || 0);
+          setTotalBookingsCount(statsResponse.data.totalBookings || 0);
+          setTotalEarnings(statsResponse.data.tokensEarned || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch coach stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+    
+    fetchCoachStats();
+  }, [user?.userId]);
+
   // Calculate stats from real bookings
   const today = new Date();
   const todaysBookings = bookings.filter(b => {
@@ -64,15 +96,15 @@ function CoachDashboardContent() {
   });
 
   const confirmedBookings = bookings.filter(b => b.status === 1 || b.statusText?.toLowerCase() === 'confirmed');
-  const totalEarnings = confirmedBookings.reduce((sum, b) => sum + b.tokensCost, 0);
+  const totalEarningsFromBookings = confirmedBookings.reduce((sum, b) => sum + b.tokensCost, 0);
   
   const stats = {
-    activeClients: new Set(bookings.map(b => b.userId)).size,
+    activeClients: activeClients || new Set(bookings.map(b => b.userId)).size,
     upcomingSessions: todaysBookings.length,
-    totalBookings: bookings.length,
-    monthlyEarnings: totalEarnings,
-    rating: 4.8,
-    totalReviews: 127,
+    totalBookings: totalBookingsCount || bookings.length,
+    monthlyEarnings: totalEarnings || totalEarningsFromBookings,
+    rating: rating || 5.0,
+    totalReviews: totalReviews || 0,
   };
 
   const formatTime = (dateString: string) => {
@@ -167,8 +199,14 @@ function CoachDashboardContent() {
         <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
           <Star className="h-5 w-5 text-white fill-white" />
           <div className="text-white">
-            <div className="text-2xl font-bold">{stats.rating}</div>
-            <div className="text-xs opacity-90">{stats.totalReviews} reviews</div>
+            {isLoadingStats ? (
+              <div className="text-sm font-medium animate-pulse">Loading...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.rating.toFixed(1)}</div>
+                <div className="text-xs opacity-90">{stats.totalReviews} reviews</div>
+              </>
+            )}
           </div>
         </div>
       </div>

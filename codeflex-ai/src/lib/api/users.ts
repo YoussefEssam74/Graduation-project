@@ -72,6 +72,19 @@ export interface UserAIContextDto {
   dietaryPreferences: string[];
 }
 
+export interface CoachClientDto {
+  userId: number;
+  name: string;
+  email: string;
+  phone?: string;
+  membershipType?: string;
+  joinDate: string;
+  activeProgramsCount: number;
+  lastSessionDate?: string;
+  progress: number;
+  profileImageUrl?: string;
+}
+
 const CACHE_KEYS = {
   COACHES: "users:coaches",
   USER: (id: number) => `users:${id}`,
@@ -275,5 +288,12 @@ export const usersApi = {
       `/users/${id}/upload-image`,
       formData,
     );
+  },
+
+  /**
+   * Get all clients associated with a coach
+   */
+  async getCoachClients(coachId: number): Promise<ApiResponse<CoachClientDto[]>> {
+    return apiFetch<CoachClientDto[]>(`/users/coach/${coachId}/clients`);
   },
 };

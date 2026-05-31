@@ -65,11 +65,21 @@ namespace Service.Services
 
         public async Task<CoachStatsDto> GetCoachStatsAsync(int coachId)
         {
-            var coachProfile = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(coachId);
+            // Resolve coachId (can be CoachProfileId or UserId)
+            var coachProfile = await _unitOfWork.Repository<CoachProfile>()
+                .FirstOrDefaultAsync(cp => cp.UserId == coachId);
+
             if (coachProfile == null)
             {
-                throw new KeyNotFoundException($"Coach profile with ID {coachId} not found");
+                coachProfile = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(coachId);
             }
+
+            if (coachProfile == null)
+            {
+                throw new KeyNotFoundException($"Coach profile with ID or UserId {coachId} not found");
+            }
+
+            var actualCoachProfileId = coachProfile.Id;
 
             var coachUser = await _unitOfWork.Repository<User>().GetByIdAsync(coachProfile.UserId);
             var workoutPlans = await _unitOfWork.Repository<WorkoutPlan>().GetAllAsync();
@@ -77,18 +87,18 @@ namespace Service.Services
             var bookings = await _unitOfWork.Repository<Booking>().GetAllAsync();
             var reviews = await _unitOfWork.Repository<CoachReview>().GetAllAsync();
 
-            var coachWorkoutPlans = workoutPlans.Where(p => p.GeneratedByCoachId == coachId).ToList();
-            var coachNutritionPlans = nutritionPlans.Where(p => p.GeneratedByCoachId == coachId).ToList();
-            var coachBookings = bookings.Where(b => b.CoachId == coachId).ToList();
-            var coachReviews = reviews.Where(r => r.CoachId == coachId).ToList();
+            var coachWorkoutPlans = workoutPlans.Where(p => p.GeneratedByCoachId == actualCoachProfileId).ToList();
+            var coachNutritionPlans = nutritionPlans.Where(p => p.GeneratedByCoachId == actualCoachProfileId).ToList();
+            var coachBookings = bookings.Where(b => b.CoachId == actualCoachProfileId).ToList();
+            var coachReviews = reviews.Where(r => r.CoachId == actualCoachProfileId).ToList();
 
-            var totalClients = workoutPlans.Where(p => p.GeneratedByCoachId == coachId).Select(p => p.UserId).Distinct().Count();
+            var totalClients = workoutPlans.Where(p => p.GeneratedByCoachId == actualCoachProfileId).Select(p => p.UserId).Distinct().Count();
             var avgRating = coachReviews.Any() ? (decimal)coachReviews.Average(r => r.Rating) : 0m;
             var nextBooking = coachBookings.Where(b => b.StartTime > DateTime.UtcNow && b.Status == BookingStatus.Confirmed).OrderBy(b => b.StartTime).FirstOrDefault();
 
             return new CoachStatsDto
             {
-                CoachId = coachId,
+                CoachId = actualCoachProfileId,
                 CoachName = coachUser?.Name ?? "Unknown",
                 TotalClients = totalClients,
                 ActiveWorkoutPlans = coachWorkoutPlans.Count(p => p.IsActive),

@@ -10,6 +10,7 @@ export interface WorkoutLogDto {
   durationMinutes: number;
   caloriesBurned?: number;
   notes?: string;
+  feelingRating?: number;
   exercises: LoggedExerciseDto[];
   createdAt: string;
 }

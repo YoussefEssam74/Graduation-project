@@ -32,5 +32,10 @@ namespace ServiceAbstraction.Services
         /// Get complete user context for AI (metrics + recent workouts)
         /// </summary>
         Task<UserAIContextDto> GetUserAIContextAsync(int userId);
+
+        /// <summary>
+        /// Get all clients associated with a coach
+        /// </summary>
+        Task<IEnumerable<CoachClientDto>> GetCoachClientsAsync(int coachId);
     }
 }

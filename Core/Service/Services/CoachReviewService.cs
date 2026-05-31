@@ -36,8 +36,14 @@ namespace Service.Services
 
         public async Task<IEnumerable<CoachReviewDto>> GetCoachReviewsAsync(int coachId)
         {
+            // Resolve coachId (can be CoachProfileId or UserId)
+            var coachProfile = await _unitOfWork.Repository<CoachProfile>()
+                .FirstOrDefaultAsync(cp => cp.UserId == coachId);
+
+            var actualCoachProfileId = coachProfile?.Id ?? coachId;
+
             var reviews = await _unitOfWork.Repository<CoachReview>().GetAllAsync();
-            var coachReviews = reviews.Where(r => r.CoachId == coachId)
+            var coachReviews = reviews.Where(r => r.CoachId == actualCoachProfileId)
                                      .OrderByDescending(r => r.CreatedAt);
 
             var reviewDtos = new List<CoachReviewDto>();
@@ -73,8 +79,14 @@ namespace Service.Services
 
         public async Task<double> GetCoachAverageRatingAsync(int coachId)
         {
+            // Resolve coachId (can be CoachProfileId or UserId)
+            var coachProfile = await _unitOfWork.Repository<CoachProfile>()
+                .FirstOrDefaultAsync(cp => cp.UserId == coachId);
+
+            var actualCoachProfileId = coachProfile?.Id ?? coachId;
+
             var reviews = await _unitOfWork.Repository<CoachReview>().GetAllAsync();
-            var coachReviews = reviews.Where(r => r.CoachId == coachId).ToList();
+            var coachReviews = reviews.Where(r => r.CoachId == actualCoachProfileId).ToList();
 
             if (!coachReviews.Any()) return 0;
 
@@ -83,7 +95,8 @@ namespace Service.Services
 
         private async Task<CoachReviewDto> MapToDtoAsync(CoachReview review)
         {
-            var coach = await _unitOfWork.Repository<User>().GetByIdAsync(review.CoachId);
+            var coachProfile = await _unitOfWork.Repository<CoachProfile>().GetByIdAsync(review.CoachId);
+            var coach = coachProfile != null ? await _unitOfWork.Repository<User>().GetByIdAsync(coachProfile.UserId) : null;
             var user = review.IsAnonymous ? null : await _unitOfWork.Repository<User>().GetByIdAsync(review.UserId);
 
             var dto = _mapper.Map<CoachReviewDto>(review);

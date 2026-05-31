@@ -197,5 +197,25 @@ namespace Presentation.Controllers
         }
 
         #endregion
+
+        #region Get Coach Clients
+
+        /// <summary>
+        /// Get all clients associated with a coach
+        /// </summary>
+        [HttpGet("coach/{coachId}/clients")]
+        public async Task<ActionResult<IEnumerable<CoachClientDto>>> GetCoachClients(int coachId)
+        {
+            var currentUserId = GetUserIdFromToken();
+            if (currentUserId != coachId && !IsAdmin && !IsCoach)
+            {
+                return Forbid();
+            }
+
+            var clients = await _serviceManager.UserService.GetCoachClientsAsync(coachId);
+            return Ok(clients);
+        }
+
+        #endregion
     }
 }
