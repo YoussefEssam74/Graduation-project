@@ -17,31 +17,7 @@ namespace Graduation_Project
     {
         public static void Main(string[] args)
         {
-            // ── Config hardening ────────────────────────────────────────────────
-            // Remove env vars with empty/whitespace values so they cannot override
-            // the non-empty defaults in appsettings.json.
-            // This is a common pain point when hosting platforms (e.g. Render) add
-            // env var KEYS but leave VALUES empty; ASP.NET Core would otherwise treat
-            // those empty strings as overriding the appsettings.json values.
-            foreach (System.Collections.DictionaryEntry kv in
-                     System.Environment.GetEnvironmentVariables())
-            {
-                var key = kv.Key?.ToString() ?? "";
-                var val = kv.Value?.ToString() ?? "";
-
-                // Only filter application-level config env vars (contain __ separator)
-                // Leave system env vars (PATH, HOME, etc.) alone.
-                if (key.Contains("__") && string.IsNullOrWhiteSpace(val))
-                {
-                    System.Environment.SetEnvironmentVariable(key, null);
-                }
-            }
-
             var builder = WebApplication.CreateBuilder(args);
-
-            // WebApplication.CreateBuilder already adds appsettings.json +
-            // AddEnvironmentVariables() internally.  Because we purged empty env vars
-            // above, they will no longer shadow the appsettings.json defaults.
 
             // Add DbContext
             builder.Services.AddDbContext<IntelliFitDbContext>(options =>

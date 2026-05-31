@@ -108,7 +108,7 @@ namespace Service.Services
                 UpcomingBookings = coachBookings.Count(b => b.StartTime > DateTime.UtcNow && b.Status == BookingStatus.Confirmed),
                 AverageRating = avgRating,
                 TotalReviews = coachReviews.Count,
-                TotalEarnings = 0m, // Can be calculated from bookings/tokens
+                TotalEarnings = coachBookings.Where(b => b.Status == BookingStatus.Completed).Sum(b => b.TokensCost),
                 TokensEarned = coachBookings.Where(b => b.Status == BookingStatus.Completed).Sum(b => b.TokensCost),
                 NextBookingDate = nextBooking?.StartTime
             };
