@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bell,
   Calendar,
@@ -14,139 +14,143 @@ import {
   X,
   Eye,
   Trash2,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/toast";
+import { notificationsApi, type NotificationDto } from "@/lib/api/notifications";
+import Link from "next/link";
 
 function ReceptionNotificationsContent() {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  
   const [filter, setFilter] = useState("all");
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock notification data
-  const notifications = [
-    {
-      id: 1,
-      type: "membership_expiring",
-      icon: AlertCircle,
-      iconColor: "text-yellow-500",
-      iconBg: "bg-yellow-500/10",
-      title: "Membership Expiring Soon",
-      message: "Ahmed Hassan's Premium membership expires in 3 days",
-      time: "5 minutes ago",
-      read: false,
-      priority: "high",
-    },
-    {
-      id: 2,
-      type: "payment_received",
-      icon: CreditCard,
-      iconColor: "text-green-500",
-      iconBg: "bg-green-500/10",
-      title: "Payment Received",
-      message: "Sara Mohamed paid $800 for Standard membership renewal",
-      time: "15 minutes ago",
-      read: false,
-      priority: "normal",
-    },
-    {
-      id: 3,
-      type: "new_booking",
-      icon: Calendar,
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10",
-      title: "New Booking Request",
-      message: "Omar Ali requested to book Treadmill 3 for tomorrow at 10:00 AM",
-      time: "30 minutes ago",
-      read: false,
-      priority: "normal",
-    },
-    {
-      id: 4,
-      type: "membership_expired",
-      icon: AlertCircle,
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      title: "Membership Expired",
-      message: "Fatma Ibrahim's Basic membership has expired",
-      time: "1 hour ago",
-      read: true,
-      priority: "high",
-    },
-    {
-      id: 5,
-      type: "new_member",
-      icon: UserPlus,
-      iconColor: "text-purple-500",
-      iconBg: "bg-purple-500/10",
-      title: "New Member Registration",
-      message: "Karim Youssef completed registration for Premium membership",
-      time: "2 hours ago",
-      read: true,
-      priority: "normal",
-    },
-    {
-      id: 6,
-      type: "checkin",
-      icon: CheckCircle,
-      iconColor: "text-cyan-500",
-      iconBg: "bg-cyan-500/10",
-      title: "Member Check-In",
-      message: "Nour Ahmed checked in at the gym",
-      time: "3 hours ago",
-      read: true,
-      priority: "low",
-    },
-    {
-      id: 7,
-      type: "payment_pending",
-      icon: Clock,
-      iconColor: "text-orange-500",
-      iconBg: "bg-orange-500/10",
-      title: "Payment Pending",
-      message: "Hassan Ali has a pending payment of $300 for Personal Training",
-      time: "4 hours ago",
-      read: true,
-      priority: "high",
-    },
-    {
-      id: 8,
-      type: "booking_cancelled",
-      icon: X,
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      title: "Booking Cancelled",
-      message: "Layla Hassan cancelled her booking for Coach Session",
-      time: "5 hours ago",
-      read: true,
-      priority: "normal",
-    },
-  ];
+  const fetchNotifications = async () => {
+    if (!user?.userId) return;
+    setLoading(true);
+    try {
+      const response = await notificationsApi.getUserNotifications(user.userId);
+      if (response.success && response.data) {
+        setNotifications(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+      showToast("Failed to load notifications", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [user?.userId]);
+
+  const markAsRead = async (id: number) => {
+    try {
+      const response = await notificationsApi.markAsRead(id);
+      if (response.success) {
+        setNotifications(prev =>
+          prev.map(n => n.notificationId === id ? { ...n, isRead: true } : n)
+        );
+        showToast("Notification marked as read", "success");
+      }
+    } catch (err) {
+      console.error("Failed to mark as read:", err);
+    }
+  };
+
+  const deleteNotification = async (id: number) => {
+    try {
+      const response = await notificationsApi.deleteNotification(id);
+      if (response.success) {
+        setNotifications(prev => prev.filter(n => n.notificationId !== id));
+        showToast("Notification deleted", "success");
+      }
+    } catch (err) {
+      console.error("Failed to delete notification:", err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    if (!user?.userId) return;
+    try {
+      const response = await notificationsApi.markAllAsRead(user.userId);
+      if (response.success) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        showToast("All notifications marked as read", "success");
+      }
+    } catch (err) {
+      console.error("Failed to mark all as read:", err);
+    }
+  };
+
+  const getPriorityText = (priority?: number) => {
+    switch (priority) {
+      case 2:
+        return "high";
+      case 1:
+        return "normal";
+      default:
+        return "low";
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case "membership_expiring":
+      case "membership_expired":
+      case "subscriptionexpiring":
+        return { icon: AlertCircle, color: "text-yellow-500", bg: "bg-yellow-500/10" };
+      case "payment_received":
+      case "payment":
+        return { icon: CreditCard, color: "text-green-500", bg: "bg-green-500/10" };
+      case "new_booking":
+      case "booking":
+      case "booking_cancelled":
+        return { icon: Calendar, color: "text-blue-500", bg: "bg-blue-500/10" };
+      case "new_member":
+      case "member":
+        return { icon: UserPlus, color: "text-purple-500", bg: "bg-purple-500/10" };
+      case "checkin":
+      case "checkout":
+        return { icon: CheckCircle, color: "text-cyan-500", bg: "bg-cyan-500/10" };
+      default:
+        return { icon: Bell, color: "text-primary", bg: "bg-primary/10" };
+    }
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const diffMs = new Date().getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    return date.toLocaleDateString();
+  };
 
   const filteredNotifications = notifications.filter((notif) => {
     if (filter === "all") return true;
-    if (filter === "unread") return !notif.read;
-    if (filter === "high") return notif.priority === "high";
+    if (filter === "unread") return !notif.isRead;
+    if (filter === "high") return getPriorityText(notif.priority) === "high";
     return true;
   });
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const highPriorityCount = notifications.filter((n) => n.priority === "high").length;
-
-  const markAsRead = (id: number) => {
-    // Logic to mark notification as read
-    console.log(`Marking notification ${id} as read`);
-  };
-
-  const deleteNotification = (id: number) => {
-    // Logic to delete notification
-    console.log(`Deleting notification ${id}`);
-  };
-
-  const markAllAsRead = () => {
-    // Logic to mark all as read
-    console.log("Marking all notifications as read");
-  };
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const highPriorityCount = notifications.filter((n) => getPriorityText(n.priority) === "high").length;
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
@@ -160,9 +164,14 @@ function ReceptionNotificationsContent() {
             Stay updated with important alerts and activities
           </p>
         </div>
-        <Button variant="outline" onClick={markAllAsRead}>
-          Mark All as Read
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={fetchNotifications} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+          <Button variant="outline" onClick={markAllAsRead} disabled={unreadCount === 0}>
+            Mark All as Read
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -227,75 +236,85 @@ function ReceptionNotificationsContent() {
       </div>
 
       {/* Notifications List */}
-      <div className="space-y-3">
-        {filteredNotifications.map((notification) => {
-          const Icon = notification.icon;
-          return (
-            <Card
-              key={notification.id}
-              className={`p-6 border transition-all hover:shadow-md ${
-                notification.read
-                  ? "border-border bg-card/30"
-                  : "border-primary/30 bg-primary/5"
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                {/* Icon */}
-                <div className={`p-3 rounded-full ${notification.iconBg} flex-shrink-0`}>
-                  <Icon className={`h-6 w-6 ${notification.iconColor}`} />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <div>
-                      <h3 className="font-bold text-lg mb-1">{notification.title}</h3>
-                      <p className="text-muted-foreground">{notification.message}</p>
-                    </div>
-                    {notification.priority === "high" && (
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-500 whitespace-nowrap">
-                        High Priority
-                      </span>
-                    )}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Loading notifications...</span>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredNotifications.map((notification) => {
+            const visual = getNotificationIcon(notification.type);
+            const Icon = visual.icon;
+            const priority = getPriorityText(notification.priority);
+            
+            return (
+              <Card
+                key={notification.notificationId}
+                className={`p-6 border transition-all hover:shadow-md ${
+                  notification.isRead
+                    ? "border-border bg-card/30"
+                    : "border-primary/30 bg-primary/5"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Icon */}
+                  <div className={`p-3 rounded-full ${visual.bg} flex-shrink-0`}>
+                    <Icon className={`h-6 w-6 ${visual.color}`} />
                   </div>
 
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>{notification.time}</span>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div>
+                        <h3 className="font-bold text-lg mb-1">{notification.title}</h3>
+                        <p className="text-muted-foreground">{notification.message}</p>
+                      </div>
+                      {priority === "high" && (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-500 whitespace-nowrap">
+                          High Priority
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      {!notification.read && (
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span>{formatTime(notification.createdAt)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {!notification.isRead && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => markAsRead(notification.notificationId)}
+                            className="gap-2"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            Mark as Read
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => markAsRead(notification.id)}
-                          className="gap-2"
+                          onClick={() => deleteNotification(notification.notificationId)}
+                          className="text-red-500 hover:text-red-600"
                         >
-                          <CheckCircle className="h-4 w-4" />
-                          Mark as Read
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => deleteNotification(notification.id)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Empty State */}
-      {filteredNotifications.length === 0 && (
+      {!loading && filteredNotifications.length === 0 && (
         <Card className="p-12 border border-border bg-card/50 backdrop-blur-sm">
           <div className="text-center">
             <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -315,22 +334,30 @@ function ReceptionNotificationsContent() {
       <Card className="p-6 border border-border bg-card/50 backdrop-blur-sm">
         <h3 className="text-xl font-bold mb-4">Quick Actions</h3>
         <div className="grid md:grid-cols-4 gap-4">
-          <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-            <Users className="h-6 w-6" />
-            <span className="text-sm">View Members</span>
-          </Button>
-          <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-            <Calendar className="h-6 w-6" />
-            <span className="text-sm">Manage Bookings</span>
-          </Button>
-          <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-            <CreditCard className="h-6 w-6" />
-            <span className="text-sm">Process Payment</span>
-          </Button>
-          <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-            <TrendingUp className="h-6 w-6" />
-            <span className="text-sm">View Reports</span>
-          </Button>
+          <Link href="/reception-members" className="w-full">
+            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+              <Users className="h-6 w-6" />
+              <span className="text-sm">View Members</span>
+            </Button>
+          </Link>
+          <Link href="/reception-bookings" className="w-full">
+            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+              <Calendar className="h-6 w-6" />
+              <span className="text-sm">Manage Bookings</span>
+            </Button>
+          </Link>
+          <Link href="/reception-payments" className="w-full">
+            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+              <CreditCard className="h-6 w-6" />
+              <span className="text-sm">Process Payment</span>
+            </Button>
+          </Link>
+          <Link href="/reception-dashboard" className="w-full">
+            <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
+              <TrendingUp className="h-6 w-6" />
+              <span className="text-sm">View Dashboard</span>
+            </Button>
+          </Link>
         </div>
       </Card>
     </div>

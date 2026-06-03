@@ -41,8 +41,8 @@ public class ReceptionPaymentService : IReceptionPaymentService
         {
             var searchLower = filter.SearchQuery.ToLower();
             query = query.Where(p =>
-                (p.User.Name != null && p.User.Name.ToLower().Contains(searchLower)) ||
-                (p.User.Email != null && p.User.Email.ToLower().Contains(searchLower)) ||
+                (p.User != null && p.User.Name != null && p.User.Name.ToLower().Contains(searchLower)) ||
+                (p.User != null && p.User.Email != null && p.User.Email.ToLower().Contains(searchLower)) ||
                 p.UserId.ToString().Contains(searchLower)
             );
         }
@@ -200,6 +200,48 @@ public class ReceptionPaymentService : IReceptionPaymentService
 
         await _unitOfWork.Repository<Payment>().AddAsync(payment);
         await _unitOfWork.SaveChangesAsync();
+
+        // If payment is for a subscription, create or renew the user's subscription
+        if (paymentDto.PlanOrService.Contains("Subscription", StringComparison.OrdinalIgnoreCase))
+        {
+            // Find a subscription plan matching the payment amount, or use the first active plan
+            var plan = (await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p =>
+                p.IsActive && p.Price == paymentDto.Amount))
+                .FirstOrDefault()
+                ?? (await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p => p.IsActive))
+                    .OrderBy(p => p.Price)
+                    .FirstOrDefault();
+
+            if (plan != null)
+            {
+                // Expire any existing active subscriptions for this user
+                var existingSubs = await _unitOfWork.Repository<UserSubscription>()
+                    .FindAsync(s => s.UserId == paymentDto.UserId && s.Status == SubscriptionStatus.Active);
+                foreach (var sub in existingSubs)
+                {
+                    sub.Status = SubscriptionStatus.Expired;
+                    sub.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.Repository<UserSubscription>().Update(sub);
+                }
+
+                // Create new subscription
+                var subscription = new UserSubscription
+                {
+                    UserId = paymentDto.UserId,
+                    PlanId = plan.PlanId,
+                    PaymentId = payment.PaymentId,
+                    StartDate = DateTime.UtcNow,
+                    EndDate = DateTime.UtcNow.AddDays(plan.DurationDays),
+                    Status = SubscriptionStatus.Active,
+                    AutoRenew = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Repository<UserSubscription>().AddAsync(subscription);
+                await _unitOfWork.SaveChangesAsync();
+            }
+        }
 
         return new PaymentDto
         {

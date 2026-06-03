@@ -1,4 +1,4 @@
--- Active: 1764278759643@@127.0.0.1@5432@PulseGym_v1.0.1
+-- Active: 1765923938814@@127.0.0.1@5432@PulseGym_v1.0.1
 -- IntelliFit Database Complete Seed Data - PostgreSQL
 -- ==========================================
 -- Test Account Credentials (password for ALL users: 224466):
@@ -32,7 +32,10 @@ TRUNCATE TABLE
   exercises, ingredients,
   member_profiles, coach_profiles, users
 RESTART IDENTITY CASCADE;
+TRUNCATE TABLE
 
+subscription_plans
+RESTART IDENTITY CASCADE;
 
 -- ==========================================
 -- 1. USERS (12 users: IDs 1-12)

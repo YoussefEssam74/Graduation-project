@@ -204,7 +204,7 @@ function ReceptionMembersContent() {
                         <div>
                           <div className="font-semibold">{member.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            #{member.memberNumber}
+                            {member.memberNumber}
                           </div>
                         </div>
                       </div>
@@ -247,9 +247,11 @@ function ReceptionMembersContent() {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/reception/member-details/${member.userId}`}>
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
                       </div>
                     </td>
                   </tr>

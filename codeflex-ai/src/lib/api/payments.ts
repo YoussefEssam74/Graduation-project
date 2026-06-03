@@ -110,6 +110,6 @@ export const paymentsApi = {
   },
 
   async getMemberPayments(userId: number): Promise<ApiResponse<PaymentDto[]>> {
-    return await apiFetch<PaymentDto[]>(`/payment?userId=${userId}`);
+    return await apiFetch<PaymentDto[]>(`/payment/user/${userId}`);
   },
 };

@@ -9,8 +9,9 @@ import {
   Calendar,
   AlertTriangle,
   X,
-  Dumbbell,
   CreditCard,
+  Dumbbell,
+
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -188,6 +189,9 @@ function ReceptionCheckInContent() {
 
   const startScanner = async () => {
     try {
+      // Show QR reader container first so it's in the DOM
+      setIsScanning(true);
+
       // Check if we're on HTTPS or localhost
       const isSecureContext = window.isSecureContext;
       if (
@@ -199,6 +203,7 @@ function ReceptionCheckInContent() {
           "Camera access requires HTTPS. Please use localhost or HTTPS.",
           "error",
         );
+        setIsScanning(false);
         return;
       }
 
@@ -207,7 +212,6 @@ function ReceptionCheckInContent() {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
-        // Stop the test stream immediately
         stream.getTracks().forEach((track) => track.stop());
       } catch (permError: any) {
         if (permError.name === "NotAllowedError") {
@@ -225,6 +229,7 @@ function ReceptionCheckInContent() {
         } else {
           showToast(`Camera error: ${permError.message}`, "error");
         }
+        setIsScanning(false);
         return;
       }
 
@@ -331,70 +336,57 @@ function ReceptionCheckInContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
-                <Dumbbell className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                  PulseGym
-                </h1>
-                <p className="text-xs text-gray-500">STAFF PORTAL</p>
-              </div>
-            </div>
+      {/* Slim Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Check-In Station
+        </h2>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 text-sm text-gray-500">
+            <span className="font-medium text-blue-600">{capacityPercentage}%</span>
+            Capacity
+            <span className="mx-2">|</span>
+            <span className="font-medium text-green-600">{stats?.todayCheckIns || 0}</span>
+            Checked In
           </div>
-
-          <div className="flex items-center gap-6">
-            <Button
-              onClick={() => router.push("/reception/payments")}
-              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg"
-            >
-              <CreditCard className="h-4 w-4" />
-              Payments
-            </Button>
-            <Button
-              onClick={() => router.push("/reception/member-details/1")}
-              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg"
-            >
-              <Search className="h-4 w-4" />
-              Member Details
-            </Button>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">
-                Capacity
-              </p>
-              <p className="text-2xl font-bold text-blue-600">
-                {capacityPercentage}%
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">
-                Checked In
-              </p>
-              <p className="text-2xl font-bold text-green-600">
-                {stats?.todayCheckIns || 0}
-              </p>
-            </div>
-            <div className="text-center border-l border-gray-200 dark:border-gray-700 pl-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {formatDate()}
-              </p>
-              <p className="text-xs text-gray-500">
-                {user?.name || "Front Desk"}
-              </p>
-            </div>
-          </div>
+          <div className="h-6 w-px bg-gray-300" />
+          <Button
+            onClick={() => {
+              if (selectedMember) {
+                router.push(`/reception-payments?memberId=${selectedMember.userId}`);
+              } else {
+                router.push("/reception-payments");
+              }
+            }}
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+          >
+            <CreditCard className="h-4 w-4" />
+            Payments
+          </Button>
+          <Button
+            onClick={() => {
+              if (selectedMember) {
+                router.push(`/reception/member-details/${selectedMember.userId}`);
+              } else {
+                router.push("/reception-members");
+              }
+            }}
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+          >
+            <Search className="h-4 w-4" />
+            Member Details
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Check-In Station */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Check-In Station */}
+            <div className="lg:col-span-2 space-y-6">
             {/* Check-In Card */}
             <Card className="p-6 bg-white dark:bg-gray-800">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -637,7 +629,7 @@ function ReceptionCheckInContent() {
                 <h3 className="font-bold text-gray-900 dark:text-white">
                   Live Feed
                 </h3>
-                <button className="text-sm text-blue-600 hover:text-blue-700 font-semibold">
+                <button onClick={() => router.push("/reception-checkin")} className="text-sm text-blue-600 hover:text-blue-700 font-semibold">
                   VIEW ALL
                 </button>
               </div>

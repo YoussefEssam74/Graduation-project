@@ -35,6 +35,7 @@ function ReceptionNewMemberContent() {
   const [loading, setLoading] = useState(false);
   const [plansLoading, setPlansLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [responseErrors, setResponseErrors] = useState<string[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlanDto[]>([]);
   const [formData, setFormData] = useState({
     // Personal Information
@@ -117,6 +118,7 @@ function ReceptionNewMemberContent() {
       [name]: value,
     }));
     setError(null);
+    setResponseErrors([]);
   };
 
   const handlePlanSelect = (planId: number) => {
@@ -134,6 +136,7 @@ function ReceptionNewMemberContent() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setResponseErrors([]);
 
     try {
       const response = await receptionApi.createMember({
@@ -160,6 +163,7 @@ function ReceptionNewMemberContent() {
         router.push("/reception-members");
       } else {
         setError(response.message || "Failed to create member");
+        setResponseErrors(response.errors || []);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -227,10 +231,17 @@ function ReceptionNewMemberContent() {
 
       {/* Error Banner */}
       {error && (
-        <Card className="p-4 border-red-500/50 bg-red-500/10">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-500 font-medium">{error}</p>
+        <Card className="p-4 bg-red-500/10 border-red-500/20">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-red-500 font-medium">{error}</p>
+              {responseErrors.length > 0 && (
+                <ul className="text-red-400 text-sm mt-1 list-disc list-inside">
+                  {responseErrors.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              )}
+            </div>
           </div>
         </Card>
       )}

@@ -13,6 +13,7 @@ import {
   Search,
   DollarSign,
   Activity,
+  AlertCircle,
   RefreshCw,
   Ticket,
   Copy,
@@ -30,6 +31,7 @@ import { bookingsApi, type BookingDto } from "@/lib/api";
 import { subscriptionApi, type UserSubscriptionDetailsDto } from "@/lib/api/subscription";
 import { invitationsApi, type InvitationDto } from "@/lib/api/invitations";
 import { useToast } from "@/components/ui/toast";
+import { receptionApi, type AlertDto } from "@/lib/api/reception";
 
 // Map booking status from number to string
 const mapBookingStatus = (status: number): string => {
@@ -60,6 +62,7 @@ function ReceptionDashboardContent() {
   // Real data states
   const [todaysBookings, setTodaysBookings] = useState<BookingDto[]>([]);
   const [frozenSubscriptions, setFrozenSubscriptions] = useState<UserSubscriptionDetailsDto[]>([]);
+  const [alerts, setAlerts] = useState<AlertDto[]>([]);
   const [stats, setStats] = useState({
     checkedInToday: 0,
     activeMembers: 0,
@@ -71,23 +74,28 @@ function ReceptionDashboardContent() {
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
+      // Fetch stats from receptionApi
+      const statsRes = await receptionApi.getStats();
+      if (statsRes.success && statsRes.data) {
+        setStats({
+          checkedInToday: statsRes.data.todayCheckIns,
+          activeMembers: statsRes.data.activeMembers,
+          pendingBookings: statsRes.data.pendingBookings,
+          todayRevenue: statsRes.data.todayRevenue,
+        });
+      }
+
+      // Fetch alerts
+      const alertsRes = await receptionApi.getAlerts();
+      if (alertsRes.success && alertsRes.data) {
+        setAlerts(alertsRes.data);
+      }
+
       // First try to get today's bookings
       const todayResponse = await bookingsApi.getTodaysBookings();
       
       if (todayResponse.success && todayResponse.data && todayResponse.data.length > 0) {
         setTodaysBookings(todayResponse.data);
-        
-        // Calculate stats from today's bookings
-        const pending = todayResponse.data.filter(b => b.status === 0).length;
-        const confirmed = todayResponse.data.filter(b => b.status === 1).length;
-        const completed = todayResponse.data.filter(b => b.status === 2).length;
-        
-        setStats({
-          checkedInToday: confirmed + completed,
-          activeMembers: confirmed,
-          pendingBookings: pending,
-          todayRevenue: todayResponse.data.reduce((sum, b) => sum + (b.tokensCost || 0), 0),
-        });
       } else {
         // Fallback: Get all bookings if no today's bookings
         const allResponse = await bookingsApi.getAllBookings();
@@ -95,13 +103,6 @@ function ReceptionDashboardContent() {
           // Show pending bookings from all bookings
           const allPending = allResponse.data.filter(b => b.status === 0);
           setTodaysBookings(allPending.slice(0, 10)); // Show up to 10 pending
-          
-          setStats({
-            checkedInToday: allResponse.data.filter(b => b.status === 1 || b.status === 2).length,
-            activeMembers: allResponse.data.filter(b => b.status === 1).length,
-            pendingBookings: allPending.length,
-            todayRevenue: allResponse.data.reduce((sum, b) => sum + (b.tokensCost || 0), 0),
-          });
         }
       }
       // Fetch frozen subscriptions for receptionist view
@@ -306,7 +307,7 @@ function ReceptionDashboardContent() {
               <DollarSign className="h-6 w-6 text-purple-500" />
             </div>
           </div>
-          <div className="text-2xl font-bold mb-1">{stats.todayRevenue} Tokens</div>
+          <div className="text-2xl font-bold mb-1">{stats.todayRevenue} EGP</div>
           <div className="text-sm text-muted-foreground">Today&apos;s Revenue</div>
         </Card>
       </div>
@@ -371,7 +372,7 @@ function ReceptionDashboardContent() {
             )}
           </div>
 
-          <Link href="/reception-bookings">
+          <Link href="/reception-checkin">
             <Button variant="outline" className="w-full mt-4">
               View All Check-Ins
             </Button>
@@ -445,20 +446,34 @@ function ReceptionDashboardContent() {
         </Card>
       </div>
 
-      {/* Subscription Expiry Alerts - Coming Soon */}
+      {/* Subscription Expiry Alerts */}
       <Card className="p-6 border border-border">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <Bell className="h-6 w-6 text-orange-500" />
             Subscription Expiry Alerts
           </h3>
-          <span className="text-sm text-muted-foreground">Coming soon</span>
+          <span className="px-3 py-1 text-xs font-bold bg-orange-100 text-orange-600 rounded-full">
+            {alerts.filter(a => a.type === "SubscriptionExpiring").length} Alerts
+          </span>
         </div>
 
-        <div className="text-center py-8 text-muted-foreground">
-          <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>Subscription alerts will be available soon</p>
-          <p className="text-sm mt-2">This feature will notify you of expiring memberships</p>
+        <div className="space-y-4 max-h-[300px] overflow-y-auto">
+          {alerts.filter(a => a.type === "SubscriptionExpiring").map((alert) => (
+            <div key={alert.alertId} className="flex items-start gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 rounded-lg">
+              <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-orange-850 dark:text-orange-355">{alert.title}</p>
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">{alert.description}</p>
+              </div>
+            </div>
+          ))}
+          {alerts.filter(a => a.type === "SubscriptionExpiring").length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Bell className="h-12 w-12 mx-auto mb-4 opacity-50 text-orange-500/50" />
+              <p className="text-sm">No expiring subscription alerts</p>
+            </div>
+          )}
         </div>
       </Card>
 

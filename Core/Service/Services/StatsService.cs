@@ -135,11 +135,20 @@ namespace Service.Services
             var todayPayments = payments.Where(p => p.CreatedAt.Date == today && p.Status == PaymentStatus.Completed);
             var todayRevenue = todayPayments.Sum(p => p.Amount);
 
+            var subscriptions = await _unitOfWork.Repository<UserSubscription>().GetAllAsync();
+            var activeSubs = subscriptions.Where(s => s.Status == SubscriptionStatus.Active).ToList();
+            var activeSubsCount = activeSubs.Count;
+            var expiringSubsCount = activeSubs.Count(s => s.EndDate > DateTime.UtcNow && s.EndDate < DateTime.UtcNow.AddDays(7));
+
+            // Count check-ins from ActivityFeed (QR check-in flow) as well as Bookings
+            var activityFeeds = await _unitOfWork.Repository<ActivityFeed>().GetAllAsync();
+            var todayCheckInActivities = activityFeeds.Count(a => a.ActivityType == "CheckIn" && a.CreatedAt.Date == today);
+
             return new ReceptionStatsDto
             {
                 TotalMembers = totalMembers,
                 ActiveMembers = activeMembers,
-                TodayCheckIns = todayBookings.Count(b => b.CheckInTime.HasValue),
+                TodayCheckIns = todayBookings.Count(b => b.CheckInTime.HasValue) + todayCheckInActivities,
                 TodayBookings = todayBookings.Count,
                 PendingBookings = bookings.Count(b => b.Status == BookingStatus.Pending),
                 AvailableEquipment = availableEquipment,
@@ -147,8 +156,8 @@ namespace Service.Services
                 MaintenanceEquipment = maintenanceEquipment,
                 TodayInBodyTests = todayInBodyTests,
                 TodayRevenue = todayRevenue,
-                ActiveSubscriptions = 0, // Can be added when subscription entity is available
-                ExpiringSubscriptions = 0
+                ActiveSubscriptions = activeSubsCount,
+                ExpiringSubscriptions = expiringSubsCount
             };
         }
     }

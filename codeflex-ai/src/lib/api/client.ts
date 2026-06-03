@@ -75,7 +75,7 @@ export async function apiFetch<T>(
     const contentLength = response.headers.get("content-length");
 
     // Check if response has content to parse
-    if (contentLength === "0" || !contentType?.includes("application/json")) {
+    if (contentLength === "0" || !contentType?.includes("json")) {
       // No content or not JSON - treat as success for 2xx responses
       if (response.ok) {
         return {
@@ -126,6 +126,14 @@ export async function apiFetch<T>(
         statusText: response.statusText,
         data: data,
       });
+
+      // Handle ASP.NET ValidationProblemDetails (field-level errors object)
+      let fieldErrors: string[] | undefined;
+      if (data?.errors && typeof data.errors === "object" && !Array.isArray(data.errors)) {
+        fieldErrors = Object.entries(data.errors)
+          .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`);
+      }
+
       return {
         success: false,
         message:
@@ -134,7 +142,7 @@ export async function apiFetch<T>(
           data?.message ||
           data?.title ||
           "An error occurred",
-        errors: data?.errors || [
+        errors: fieldErrors || data?.errors || [
           data?.errorMessage || data?.error || response.statusText,
         ],
       };

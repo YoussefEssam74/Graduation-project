@@ -88,7 +88,7 @@ function MemberDetailsContent() {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <div className="text-muted-foreground">Member not found</div>
-        <Button onClick={() => router.push("/reception/members")}>
+        <Button onClick={() => router.push("/reception-members")}>
           Back to Members
         </Button>
       </div>
@@ -101,13 +101,12 @@ function MemberDetailsContent() {
   };
 
   const handleRenew = () => {
-    // TODO: Navigate to renewal page
-    router.push(`/reception/renew-membership/${member.userId}`);
+    router.push(`/reception-payments?memberId=${member.userId}`);
   };
 
   const handleNewPayment = () => {
-    // TODO: Navigate to payment page
-    router.push(`/reception/payments?memberId=${member.userId}`);
+    // Navigate to payment page
+    router.push(`/reception-payments?memberId=${member.userId}`);
   };
 
   const handleAddNote = () => {
@@ -512,7 +511,7 @@ function MemberDetailsContent() {
                     className="w-full"
                     onClick={() =>
                       router.push(
-                        `/reception/payments?memberId=${member.userId}`
+                        `/reception-payments?memberId=${member.userId}`
                       )
                     }
                   >

@@ -52,14 +52,9 @@ namespace Presentation.Controllers
         /// Search members by name, email, or member ID
         /// </summary>
         [HttpGet("search")]
-        public async Task<IActionResult> SearchMembers([FromQuery] string query)
+        public async Task<IActionResult> SearchMembers([FromQuery] string? query)
         {
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                return BadRequest(new { message = "Search query is required" });
-            }
-
-            var members = await _serviceManager.ReceptionService.SearchMembersAsync(query);
+            var members = await _serviceManager.ReceptionService.SearchMembersAsync(query ?? "");
             return Ok(members);
         }
 

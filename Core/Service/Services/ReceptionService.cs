@@ -130,31 +130,43 @@ namespace Service.Services
             }
 
             var result = new List<MemberSearchDto>();
-            foreach (var member in filtered)
+            var filteredList = filtered.ToList();
+            if (filteredList.Any())
             {
-                var subscriptions = await _unitOfWork.Repository<UserSubscription>().GetAllAsync();
-                var activeSubscription = subscriptions
-                    .Where(s => s.UserId == member.UserId && s.Status == IntelliFit.Domain.Enums.SubscriptionStatus.Active)
-                    .OrderByDescending(s => s.EndDate)
-                    .FirstOrDefault();
+                var userIds = filteredList.Select(m => m.UserId).ToList();
+                var activeSubscriptions = (await _unitOfWork.Repository<UserSubscription>()
+                    .FindAsync(s => userIds.Contains(s.UserId) && s.Status == IntelliFit.Domain.Enums.SubscriptionStatus.Active))
+                    .GroupBy(s => s.UserId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.OrderByDescending(s => s.EndDate).FirstOrDefault()
+                    );
 
-                string? planName = null;
-                if (activeSubscription != null)
+                var plans = (await _unitOfWork.Repository<SubscriptionPlan>().GetAllAsync())
+                    .ToDictionary(p => p.PlanId);
+
+                foreach (var member in filteredList)
                 {
-                    var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(activeSubscription.PlanId);
-                    planName = plan?.PlanName;
+                    string? planName = null;
+                    if (activeSubscriptions.TryGetValue(member.UserId, out var activeSub) && activeSub != null)
+                    {
+                        if (plans.TryGetValue(activeSub.PlanId, out var plan))
+                        {
+                            planName = plan.PlanName;
+                        }
+                    }
+
+                    result.Add(new MemberSearchDto
+                    {
+                        UserId = member.UserId,
+                        Name = member.Name,
+                        Email = member.Email,
+                        MemberNumber = $"#{member.UserId:D5}",
+                        ProfileImageUrl = member.ProfileImageUrl,
+                        SubscriptionPlan = planName,
+                        IsActive = member.IsActive
+                    });
                 }
-
-                result.Add(new MemberSearchDto
-                {
-                    UserId = member.UserId,
-                    Name = member.Name,
-                    Email = member.Email,
-                    MemberNumber = $"#{member.UserId:D5}",
-                    ProfileImageUrl = member.ProfileImageUrl,
-                    SubscriptionPlan = planName,
-                    IsActive = member.IsActive
-                });
             }
 
             return result;
@@ -332,6 +344,20 @@ namespace Service.Services
                 lastVisit = lastActivity.CreatedAt;
             }
 
+            var lastCheckInOut = activityFeeds
+                .Where(a => a.UserId == userId && (a.ActivityType == "CheckIn" || a.ActivityType == "CheckOut"))
+                .OrderByDescending(a => a.CreatedAt)
+                .FirstOrDefault();
+
+            if (lastCheckInOut != null && lastCheckInOut.ActivityType == "CheckIn")
+            {
+                if (DateTime.UtcNow - lastCheckInOut.CreatedAt < TimeSpan.FromHours(12))
+                {
+                    isCurrentlyInside = true;
+                    checkInTime = lastCheckInOut.CreatedAt;
+                }
+            }
+
             if (activeSubscription == null || activeSubscription.EndDate < DateTime.UtcNow)
             {
                 status = "Expired";
@@ -370,7 +396,7 @@ namespace Service.Services
                 MemberNumber = $"#{user.UserId:D5}",
                 Email = user.Email ?? string.Empty,
                 Phone = user.Phone ?? string.Empty,
-                Gender = user.Gender.ToString(),
+                Gender = user.Gender?.ToString(),
                 DateOfBirth = user.DateOfBirth,
                 ProfileImageUrl = user.ProfileImageUrl,
                 Status = status,
@@ -479,6 +505,30 @@ namespace Service.Services
                     Severity = "warning",
                     IsRead = false,
                     CreatedAt = booking.EndTime
+                });
+            }
+
+            // Check for expiring subscriptions (expiring in the next 7 days)
+            var subscriptions = await _unitOfWork.Repository<UserSubscription>().GetAllAsync();
+            var expiringSubscriptions = subscriptions
+                .Where(s => s.Status == IntelliFit.Domain.Enums.SubscriptionStatus.Active &&
+                           s.EndDate > DateTime.UtcNow &&
+                           s.EndDate < DateTime.UtcNow.AddDays(7))
+                .Take(5);
+
+            foreach (var sub in expiringSubscriptions)
+            {
+                var user = await _unitOfWork.Repository<User>().GetByIdAsync(sub.UserId);
+                var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(sub.PlanId);
+                alerts.Add(new AlertDto
+                {
+                    AlertId = alertId++,
+                    Type = "SubscriptionExpiring",
+                    Title = "Subscription Expiring",
+                    Description = $"{user?.Name ?? "Member"}'s {plan?.PlanName ?? "Membership"} expires in {(int)(sub.EndDate - DateTime.UtcNow).TotalDays} days",
+                    Severity = "warning",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
                 });
             }
 
