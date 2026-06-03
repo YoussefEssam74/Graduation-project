@@ -316,7 +316,8 @@ public class WorkoutAIController : ApiControllerBase
     /// Optimized flow: Frontend → ML API (direct) → Frontend → Backend (save)
     /// </remarks>
     [HttpPost("save-plan")]
-    [AllowAnonymous]  // Allow anonymous for direct ML API workflow (frontend already authenticated)
+    // NOTE: Requires authentication – the frontend always sends a Bearer token.
+    // [AllowAnonymous] was removed because GetUserIdFromToken() throws on anonymous requests.
     [ProducesResponseType(typeof(SavePlanResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SaveAIGeneratedPlan([FromBody] SaveAIGeneratedPlanRequest request)
@@ -336,7 +337,9 @@ public class WorkoutAIController : ApiControllerBase
             var authenticatedUserId = GetUserIdFromToken();
             if (request.UserId != authenticatedUserId && !IsAdmin)
             {
-                return Forbid();
+                // Silently fix the user ID instead of rejecting – the frontend may send
+                // a stale/mismatched userId when the token was refreshed.
+                request.UserId = authenticatedUserId;
             }
 
             _logger.LogInformation(
@@ -532,6 +535,39 @@ public class WorkoutAIController : ApiControllerBase
         {
             _logger.LogError(ex, "Error updating plan {PlanId} status", planId);
             return StatusCode(500, new { error = "Failed to update plan status" });
+        }
+    }
+
+    /// <summary>
+    /// Edit an AI workout plan (coach correction)
+    /// PUT: api/workout-ai/plans/{planId}/edit
+    /// </summary>
+    [HttpPut("plans/{planId}/edit")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> EditPlan(int planId, [FromBody] CoachEditWorkoutPlanRequest request)
+    {
+        try
+        {
+            if (!IsCoach && !IsAdmin)
+                return Forbid();
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = GetUserIdFromToken();
+            var success = await _workoutAIService.EditWorkoutPlanAsync(planId, userId, request);
+
+            if (!success)
+                return BadRequest(new { message = "Failed to edit workout plan or plan not found/assigned to you" });
+
+            return Ok(new { success = true, message = "Workout plan successfully updated and approved" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error editing workout plan {PlanId}", planId);
+            return StatusCode(500, new { error = "An internal server error occurred while updating the workout plan." });
         }
     }
 

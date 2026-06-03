@@ -92,7 +92,7 @@ namespace Service
             _lazyExerciseService = new Lazy<IExerciseService>(() => new ExerciseService(_unitOfWork));
             _lazyEquipmentService = new Lazy<IEquipmentService>(() => new EquipmentService(_unitOfWork));
             _lazyWorkoutPlanService = new Lazy<IWorkoutPlanService>(() => new WorkoutPlanService(_unitOfWork));
-            _lazyNutritionPlanService = new Lazy<INutritionPlanService>(() => new NutritionPlanService(_unitOfWork));
+            _lazyNutritionPlanService = new Lazy<INutritionPlanService>(() => new NutritionPlanService(_unitOfWork, _loggerFactory.CreateLogger<NutritionPlanService>()));
             _lazyInBodyService = new Lazy<IInBodyService>(() => new InBodyService(_unitOfWork));
             _lazyStatsService = new Lazy<IStatsService>(() => new StatsService(_unitOfWork));
             _lazyMealService = new Lazy<IMealService>(() => new MealService(_unitOfWork));

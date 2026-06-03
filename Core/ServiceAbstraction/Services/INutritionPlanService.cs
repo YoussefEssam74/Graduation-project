@@ -9,5 +9,8 @@ namespace ServiceAbstraction.Services
         Task<NutritionPlanDto> GeneratePlanAsync(GenerateNutritionPlanDto generateDto);
         Task<NutritionPlanDto> UpdatePlanAsync(int planId, GenerateNutritionPlanDto updateDto);
         Task<NutritionPlanDto> DeactivatePlanAsync(int planId);
+        Task<IEnumerable<NutritionPlanDto>> GetCoachReviewNutritionPlansAsync(int coachUserId);
+        Task<bool> EditNutritionPlanAsync(int planId, int coachUserId, CoachEditNutritionPlanRequest request);
+        Task<bool> UpdateNutritionPlanStatusAsync(int planId, int coachUserId, string status, string? notes);
     }
 }

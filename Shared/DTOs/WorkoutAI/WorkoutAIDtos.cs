@@ -567,6 +567,7 @@ public class UserAIPlanDayDto
 {
     public int DayNumber { get; set; }
     public string? DayName { get; set; }
+    public string? Focus { get; set; }
     public List<UserAIPlanExerciseDto> Exercises { get; set; } = new();
 }
 
@@ -599,5 +600,35 @@ public class ExerciseAlternativesRequest
     public List<string> TargetMuscles { get; set; } = new();
 }
 
+public class CoachEditWorkoutPlanRequest
+{
+    public string? PlanName { get; set; }
+    public string? Description { get; set; }
+    public List<CoachEditPlanDayDto> Days { get; set; } = new();
+    public string? CoachNotes { get; set; }
+}
+
+public class CoachEditPlanDayDto
+{
+    public int DayNumber { get; set; }
+    public string? DayName { get; set; }
+    public string? Focus { get; set; }
+    public List<CoachEditPlanExerciseDto> Exercises { get; set; } = new();
+}
+
+public class CoachEditPlanExerciseDto
+{
+    public int? WorkoutPlanExerciseId { get; set; }
+    public int ExerciseId { get; set; }
+    public string ExerciseName { get; set; } = null!;
+    public int DayNumber { get; set; }
+    public int OrderInDay { get; set; }
+    public object? Sets { get; set; }
+    public object? Reps { get; set; }
+    public int? RestSeconds { get; set; }
+    public string? Notes { get; set; }
+}
+
 #endregion
+
 

@@ -400,9 +400,6 @@ export async function updatePlanStatus(
   );
 }
 
-/**
- * Get a specific user's saved AI workout plans (for coaches/admins)
- */
 export async function getUserAIPlans(
   userId: number,
 ): Promise<ApiResponse<UserAIWorkoutPlan[]>> {
@@ -410,3 +407,36 @@ export async function getUserAIPlans(
     method: "GET",
   });
 }
+
+export interface CoachEditWorkoutPlanRequest {
+  planName?: string;
+  description?: string;
+  days: {
+    dayNumber: number;
+    dayName?: string;
+    focus?: string;
+    exercises: {
+      workoutPlanExerciseId?: number;
+      exerciseId: number;
+      exerciseName: string;
+      dayNumber: number;
+      orderInDay: number;
+      sets?: string | number;
+      reps?: string | number;
+      restSeconds?: number;
+      notes?: string;
+    }[];
+  }[];
+  coachNotes?: string;
+}
+
+export async function editWorkoutPlan(
+  planId: number,
+  request: CoachEditWorkoutPlanRequest
+): Promise<ApiResponse<{ success: boolean; message?: string }>> {
+  return apiFetch<{ success: boolean; message?: string }>(`/workout-ai/plans/${planId}/edit`, {
+    method: "PUT",
+    body: JSON.stringify(request),
+  });
+}
+

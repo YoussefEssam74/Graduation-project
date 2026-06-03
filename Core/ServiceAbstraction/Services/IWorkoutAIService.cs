@@ -75,6 +75,11 @@ public interface IWorkoutAIService
     Task<bool> UpdatePlanStatusAsync(int planId, int coachUserId, string status, string? notes);
 
     /// <summary>
+    /// Edit an AI-generated workout plan by a coach (and automatically approve it)
+    /// </summary>
+    Task<bool> EditWorkoutPlanAsync(int planId, int coachUserId, CoachEditWorkoutPlanRequest request);
+
+    /// <summary>
     /// Get alternative exercises for substitution based on muscle group
     /// </summary>
     /// <param name="exerciseName">Current exercise name to exclude</param>

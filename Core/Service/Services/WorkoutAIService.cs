@@ -504,11 +504,12 @@ public class WorkoutAIService : IWorkoutAIService
             Goal = request.Goal,
             DaysPerWeek = request.DaysPerWeek,
             DifficultyLevel = MapFitnessLevelToDifficulty(request.FitnessLevel),
-            Status = "Active",
+            // FIX: was "Active" – must be "UnderReview" so the coach can see it
+            Status = "UnderReview",
             IsActive = true,
 
             // AI-specific fields
-            PlanData = JsonSerializer.Serialize(planData, _jsonOptions),
+            PlanData = JsonSerializer.Serialize(planData, _snakeCaseOptions),
             RequestParameters = JsonSerializer.Serialize(mlRequest, _jsonOptions),
             RequestParametersHash = ComputeHash(mlRequest),
             UserContextSnapshot = mlRequest.UserContext != null
@@ -520,6 +521,13 @@ public class WorkoutAIService : IWorkoutAIService
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        // FIX: auto-assign to an available coach so the plan appears in coach-review-plans
+        var availableCoach = (await _unitOfWork.Repository<CoachProfile>()
+            .FindAsync(c => c.IsAvailable))
+            .FirstOrDefault();
+        if (availableCoach != null)
+            workoutPlan.GeneratedByCoachId = availableCoach.Id;
 
         await _unitOfWork.Repository<WorkoutPlan>().AddAsync(workoutPlan);
         await _unitOfWork.SaveChangesAsync();
@@ -851,7 +859,7 @@ public class WorkoutAIService : IWorkoutAIService
                         })
                         .ToList();
 
-                    // Enrich day names from PlanData
+                    // Enrich day names and focus from PlanData
                     if (!string.IsNullOrEmpty(plan.PlanData))
                     {
                         try
@@ -861,14 +869,16 @@ public class WorkoutAIService : IWorkoutAIService
                             {
                                 foreach (var dayEl in daysElement.EnumerateArray())
                                 {
-                                    if (dayEl.TryGetProperty("day_number", out var dayNumEl) &&
-                                        dayEl.TryGetProperty("day_name", out var dayNameEl))
+                                    if (dayEl.TryGetProperty("day_number", out var dayNumEl))
                                     {
                                         var dayNum = dayNumEl.GetInt32();
                                         var dayDto = dayGroups.FirstOrDefault(d => d.DayNumber == dayNum);
                                         if (dayDto != null)
                                         {
-                                            dayDto.DayName = dayNameEl.GetString() ?? $"Day {dayNum}";
+                                            if (dayEl.TryGetProperty("day_name", out var dayNameEl))
+                                                dayDto.DayName = dayNameEl.GetString() ?? $"Day {dayNum}";
+                                            if (dayEl.TryGetProperty("focus", out var focusEl))
+                                                dayDto.Focus = focusEl.GetString();
                                         }
                                     }
                                 }
@@ -892,6 +902,7 @@ public class WorkoutAIService : IWorkoutAIService
                                 {
                                     DayNumber = day.DayNumber,
                                     DayName = day.DayName ?? $"Day {day.DayNumber}",
+                                    Focus = day.Focus,
                                     Exercises = new List<UserAIPlanExerciseDto>()
                                 };
 
@@ -1047,7 +1058,12 @@ public class WorkoutAIService : IWorkoutAIService
             var coachProfileId = coachProfile.Id;
 
             var plans = (await _unitOfWork.Repository<WorkoutPlan>()
-                .FindAsync(p => p.GeneratedByCoachId == coachProfileId))
+                .FindAsync(p =>
+                    // Plans explicitly assigned to this coach
+                    p.GeneratedByCoachId == coachProfileId ||
+                    // Unassigned UnderReview/PendingApproval plans that any coach can pick up
+                    (p.GeneratedByCoachId == null &&
+                        (p.Status == "UnderReview" || p.Status == "PendingApproval"))))
                 .OrderByDescending(p => p.CreatedAt)
                 .ToList();
 
@@ -1099,6 +1115,31 @@ public class WorkoutAIService : IWorkoutAIService
                         }).ToList()
                     })
                     .ToList();
+
+                // Enrich day names and focus from PlanData JSON
+                if (!string.IsNullOrEmpty(plan.PlanData))
+                {
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(plan.PlanData);
+                        if (doc.RootElement.TryGetProperty("days", out var daysElement))
+                        {
+                            foreach (var dayEl in daysElement.EnumerateArray())
+                            {
+                                var dayNum = dayEl.TryGetProperty("day_number", out var dnEl) ? dnEl.GetInt32() : 0;
+                                var dayDto = dayGroups.FirstOrDefault(d => d.DayNumber == dayNum);
+                                if (dayDto != null)
+                                {
+                                    if (dayEl.TryGetProperty("day_name", out var dayNameEl))
+                                        dayDto.DayName = dayNameEl.GetString() ?? dayDto.DayName;
+                                    if (dayEl.TryGetProperty("focus", out var focusEl))
+                                        dayDto.Focus = focusEl.GetString();
+                                }
+                            }
+                        }
+                    }
+                    catch { /* Ignore JSON parse errors */ }
+                }
 
                 result.Add(new UserAIWorkoutPlanDto
                 {
@@ -1152,10 +1193,15 @@ public class WorkoutAIService : IWorkoutAIService
             }
 
             var plan = await _unitOfWork.Repository<WorkoutPlan>().GetByIdAsync(planId);
-            if (plan == null || plan.GeneratedByCoachId != coachProfile.Id)
+            if (plan == null || (plan.GeneratedByCoachId != null && plan.GeneratedByCoachId != coachProfile.Id))
             {
-                _logger.LogWarning("Plan {PlanId} not found or not assigned to coach {CoachId}", planId, coachProfile.Id);
+                _logger.LogWarning("Plan {PlanId} not found or assigned to another coach", planId);
                 return false;
+            }
+
+            if (plan.GeneratedByCoachId == null)
+            {
+                plan.GeneratedByCoachId = coachProfile.Id;
             }
 
             plan.Status = status;
@@ -1179,6 +1225,280 @@ public class WorkoutAIService : IWorkoutAIService
             _logger.LogError(ex, "Error updating plan {PlanId} status", planId);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Edit an AI-generated workout plan by a coach (and automatically approve it)
+    /// </summary>
+    public async Task<bool> EditWorkoutPlanAsync(int planId, int coachUserId, CoachEditWorkoutPlanRequest request)
+    {
+        try
+        {
+            // Resolve coach profile from user ID
+            var coachProfile = (await _unitOfWork.Repository<CoachProfile>()
+                .FindAsync(c => c.UserId == coachUserId))
+                .FirstOrDefault();
+
+            if (coachProfile == null)
+            {
+                _logger.LogWarning("No coach profile found for user {UserId}", coachUserId);
+                return false;
+            }
+
+            var plan = await _unitOfWork.Repository<WorkoutPlan>().GetByIdAsync(planId);
+            if (plan == null || (plan.GeneratedByCoachId != null && plan.GeneratedByCoachId != coachProfile.Id))
+            {
+                _logger.LogWarning("Plan {PlanId} not found or assigned to another coach (Assigned: {AssignedCoachId}, Coach: {CoachId})", planId, plan?.GeneratedByCoachId, coachProfile.Id);
+                return false;
+            }
+
+            if (plan.GeneratedByCoachId == null)
+            {
+                plan.GeneratedByCoachId = coachProfile.Id;
+            }
+
+            // 1. Save backup snapshot of the current state of the plan into AiProgramGeneration
+            var generationRepo = _unitOfWork.Repository<AiProgramGeneration>();
+            var existingGen = (await generationRepo.FindAsync(g => g.WorkoutPlanId == planId)).FirstOrDefault();
+            if (existingGen == null)
+            {
+                var backup = new AiProgramGeneration
+                {
+                    UserId = plan.UserId,
+                    ProgramType = "Workout",
+                    WorkoutPlanId = plan.PlanId,
+                    InputPrompt = plan.AiPrompt ?? "Pre-Coach Edit Backup",
+                    GeneratedPlan = plan.PlanData, // snapshot the current PlanData json
+                    AiModel = plan.ModelVersion ?? "workout-ai",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await generationRepo.AddAsync(backup);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            // 2. Map request structure back to AIGeneratedPlanData JSON and update PlanData
+            var updatedPlanData = new AIGeneratedPlanData
+            {
+                Schedule = plan.Schedule ?? "Custom",
+                PlanName = request.PlanName ?? plan.PlanName,
+                FitnessLevel = plan.FitnessLevel,
+                Goal = plan.Goal,
+                DaysPerWeek = request.Days.Count,
+                ProgramDurationWeeks = plan.DurationWeeks,
+                Notes = request.CoachNotes ?? plan.Description,
+                Days = request.Days.Select(d => new AIWorkoutDay
+                {
+                    DayNumber = d.DayNumber,
+                    DayName = d.DayName ?? $"Day {d.DayNumber}",
+                    Focus = d.Focus,
+                    FocusAreas = d.Focus?.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(f => f.Trim().ToLower()).ToList(),
+                    Exercises = d.Exercises.Select(e => new AIExercise
+                    {
+                        ExerciseId = e.ExerciseId,
+                        Name = e.ExerciseName,
+                        Sets = e.Sets?.ToString() ?? "3",
+                        Reps = e.Reps?.ToString() ?? "10",
+                        Rest = e.RestSeconds.HasValue ? $"{e.RestSeconds}s" : "60s",
+                        RestSeconds = e.RestSeconds ?? 60,
+                        Notes = e.Notes
+                    }).ToList()
+                }).ToList()
+            };
+
+            plan.PlanData = JsonSerializer.Serialize(updatedPlanData, _snakeCaseOptions);
+
+            // 3. Update WorkoutPlan entity metadata
+            plan.PlanName = request.PlanName ?? plan.PlanName;
+            plan.Description = request.Description ?? plan.Description;
+            plan.Status = "Approved";
+            plan.ApprovalNotes = request.CoachNotes;
+            plan.ApprovedBy = coachProfile.Id;
+            plan.ApprovedAt = DateTime.UtcNow;
+            plan.UpdatedAt = DateTime.UtcNow;
+
+            // 4. Sync WorkoutPlanExercise database rows (update-in-place)
+            var planExRepo = _unitOfWork.Repository<WorkoutPlanExercise>();
+            var currentExercises = await planExRepo.FindAsync(pe => pe.WorkoutPlanId == planId);
+
+            var incomingExercises = request.Days.SelectMany(d => d.Exercises.Select(e => new { DayNumber = d.DayNumber, Ex = e })).ToList();
+
+            var incomingExIds = incomingExercises
+                .Where(ie => ie.Ex.WorkoutPlanExerciseId.HasValue)
+                .Select(ie => ie.Ex.WorkoutPlanExerciseId!.Value)
+                .ToHashSet();
+
+            var toDelete = currentExercises.Where(ce => !incomingExIds.Contains(ce.WorkoutPlanExerciseId)).ToList();
+            if (toDelete.Any())
+            {
+                planExRepo.RemoveRange(toDelete);
+            }
+
+            var resolvedExercisesCache = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var ie in incomingExercises)
+            {
+                // Helper: resolve exercise ID — always resolve by name when ID is 0/invalid
+                // (frontend sends 0 for exercises loaded from PlanData JSON path or newly added)
+                async Task<int> ResolveExerciseIdAsync(int rawId, string exerciseName)
+                {
+                    if (rawId > 0 && await ExerciseExistsAsync(rawId))
+                        return rawId;
+
+                    var trimmed = exerciseName.Trim();
+                    if (resolvedExercisesCache.TryGetValue(trimmed, out var cached))
+                        return cached;
+
+                    var resolved = await ResolveOrCreateExerciseAsync(exerciseName);
+                    resolvedExercisesCache[trimmed] = resolved;
+                    return resolved;
+                }
+
+                if (ie.Ex.WorkoutPlanExerciseId.HasValue)
+                {
+                    // UPDATE an existing WorkoutPlanExercise row
+                    var existingEx = currentExercises.FirstOrDefault(ce => ce.WorkoutPlanExerciseId == ie.Ex.WorkoutPlanExerciseId.Value);
+                    if (existingEx != null)
+                    {
+                        existingEx.ExerciseId = await ResolveExerciseIdAsync(ie.Ex.ExerciseId, ie.Ex.ExerciseName);
+                        existingEx.DayNumber = ie.DayNumber;
+                        existingEx.OrderInDay = ie.Ex.OrderInDay;
+                        existingEx.Sets = ParseSetsOrReps(ie.Ex.Sets);
+                        existingEx.Reps = ParseSetsOrReps(ie.Ex.Reps);
+                        existingEx.RestSeconds = ie.Ex.RestSeconds;
+                        existingEx.Notes = ie.Ex.Notes;
+                        planExRepo.Update(existingEx);
+                    }
+                    // else: the frontend sent a stale ID that no longer exists — skip silently
+                }
+                else
+                {
+                    // INSERT a new WorkoutPlanExercise row (new exercise added by coach in modal)
+                    var resolvedExerciseId = await ResolveExerciseIdAsync(ie.Ex.ExerciseId, ie.Ex.ExerciseName);
+
+                    var newEx = new WorkoutPlanExercise
+                    {
+                        WorkoutPlanId = planId,
+                        ExerciseId = resolvedExerciseId,
+                        DayNumber = ie.DayNumber,
+                        OrderInDay = ie.Ex.OrderInDay,
+                        Sets = ParseSetsOrReps(ie.Ex.Sets),
+                        Reps = ParseSetsOrReps(ie.Ex.Reps),
+                        RestSeconds = ie.Ex.RestSeconds,
+                        Notes = ie.Ex.Notes,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await planExRepo.AddAsync(newEx);
+                }
+            }
+
+            _unitOfWork.Repository<WorkoutPlan>().Update(plan);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Plan {PlanId} successfully edited and approved by coach user {UserId}", planId, coachUserId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error editing workout plan {PlanId}", planId);
+            return false;
+        }
+    }
+
+    private int? ParseSetsOrReps(object? val)
+    {
+        if (val == null) return null;
+        
+        string? strValue = null;
+        if (val is System.Text.Json.JsonElement element)
+        {
+            if (element.ValueKind == System.Text.Json.JsonValueKind.Number)
+            {
+                if (element.TryGetInt32(out var i)) return i;
+                if (element.TryGetDouble(out var d)) return (int)Math.Round(d);
+            }
+            else if (element.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                strValue = element.GetString();
+            }
+            else if (element.ValueKind == System.Text.Json.JsonValueKind.Null)
+            {
+                return null;
+            }
+            else
+            {
+                strValue = element.ToString();
+            }
+        }
+        else
+        {
+            strValue = val.ToString();
+        }
+
+        if (string.IsNullOrWhiteSpace(strValue)) return null;
+
+        // Try parsing directly
+        if (int.TryParse(strValue, out var parsedInt))
+        {
+            return parsedInt;
+        }
+
+        // Try extracting first number from range (e.g. "8-12" -> 8)
+        var parts = strValue.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 0)
+        {
+            var firstPart = parts[0].Trim();
+            var digitsOnly = new string(firstPart.Where(char.IsDigit).ToArray());
+            if (int.TryParse(digitsOnly, out var result))
+            {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Check if an exercise with the given ID exists in the database
+    /// </summary>
+    private async Task<bool> ExerciseExistsAsync(int exerciseId)
+    {
+        var exercise = await _unitOfWork.Repository<Exercise>().GetByIdAsync(exerciseId);
+        return exercise != null;
+    }
+
+    /// <summary>
+    /// Resolve an exercise by name, creating a placeholder entry if not found
+    /// </summary>
+    private async Task<int> ResolveOrCreateExerciseAsync(string exerciseName)
+    {
+        // Try to find existing exercise by name (case-insensitive)
+        var existing = (await _unitOfWork.Repository<Exercise>()
+            .FindAsync(e => e.Name.ToLower() == exerciseName.ToLower()))
+            .FirstOrDefault();
+
+        if (existing != null)
+            return existing.ExerciseId;
+
+        // Create a placeholder exercise for coach-added entries
+        var newExercise = new Exercise
+        {
+            Name = exerciseName,
+            Category = "Coach-Added",
+            MuscleGroup = "General",
+            Description = $"Exercise added by coach: {exerciseName}",
+            DifficultyLevel = "Intermediate",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _unitOfWork.Repository<Exercise>().AddAsync(newExercise);
+        await _unitOfWork.SaveChangesAsync();
+
+        _logger.LogInformation("Created placeholder exercise '{ExerciseName}' (ID: {ExerciseId}) during plan edit",
+            exerciseName, newExercise.ExerciseId);
+
+        return newExercise.ExerciseId;
     }
 
     /// <summary>

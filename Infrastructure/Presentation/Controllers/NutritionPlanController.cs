@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using ServiceAbstraction;
 using Shared.DTOs.NutritionPlan;
+using Shared.DTOs.WorkoutAI;
 
 namespace Presentation.Controllers
 {
     [Authorize]
     [ApiController]
     [Route("api/nutrition-plans")]
-    public class NutritionPlanController(IServiceManager _serviceManager) : ApiControllerBase
+    public class NutritionPlanController(IServiceManager _serviceManager, ILogger<NutritionPlanController> _logger) : ApiControllerBase
     {
         #region Get Nutrition Plans
         [HttpGet("member/{memberId}")]
@@ -81,6 +82,59 @@ namespace Presentation.Controllers
             {
                 return NotFound(new { message = ex.Message });
             }
+        }
+
+        [HttpGet("coach-review")]
+        public async Task<IActionResult> GetCoachReviewPlans()
+        {
+            if (!IsCoach && !IsAdmin)
+                return Forbid();
+
+            var coachUserId = GetUserIdFromToken();
+            var plans = await _serviceManager.NutritionPlanService.GetCoachReviewNutritionPlansAsync(coachUserId);
+            return Ok(plans);
+        }
+
+        [HttpPut("{planId}/coach-edit")]
+        public async Task<IActionResult> CoachEditPlan(int planId, [FromBody] CoachEditNutritionPlanRequest request)
+        {
+            try
+            {
+                if (!IsCoach && !IsAdmin)
+                    return Forbid();
+
+                if (!ModelState.IsValid)
+                    return BadRequest(ModelState);
+
+                var coachUserId = GetUserIdFromToken();
+                var success = await _serviceManager.NutritionPlanService.EditNutritionPlanAsync(planId, coachUserId, request);
+                if (!success)
+                    return BadRequest(new { message = "Failed to edit nutrition plan" });
+
+                return Ok(new { success = true, message = "Nutrition plan edited and approved successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error editing nutrition plan {PlanId}", planId);
+                return StatusCode(500, new { error = "An internal server error occurred while updating the nutrition plan." });
+            }
+        }
+
+        [HttpPut("{planId}/coach-status")]
+        public async Task<IActionResult> CoachUpdateStatus(int planId, [FromBody] UpdatePlanStatusRequest request)
+        {
+            if (!IsCoach && !IsAdmin)
+                return Forbid();
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var coachUserId = GetUserIdFromToken();
+            var success = await _serviceManager.NutritionPlanService.UpdateNutritionPlanStatusAsync(planId, coachUserId, request.Status, request.Notes);
+            if (!success)
+                return BadRequest(new { message = "Failed to update nutrition plan status" });
+
+            return Ok(new { success = true, message = $"Nutrition plan status updated to {request.Status}" });
         }
         #endregion
     }

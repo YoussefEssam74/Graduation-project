@@ -19,6 +19,7 @@ namespace Shared.DTOs.NutritionPlan
         public int Status { get; set; }
         public string StatusText { get; set; } = null!;
         public bool IsActive { get; set; }
+        public string? ApprovalNotes { get; set; }
         public DateTime CreatedAt { get; set; }
         public string[]? DietaryRestrictions { get; set; }
         public string? AiPlanJson { get; set; }
@@ -35,4 +36,36 @@ namespace Shared.DTOs.NutritionPlan
         public int CarbsGrams { get; set; }
         public int FatGrams { get; set; }
     }
+
+    public class CoachEditNutritionPlanRequest
+    {
+        public string? PlanName { get; set; }
+        public string? Description { get; set; }
+        public int? DailyCalories { get; set; }
+        public int? ProteinGrams { get; set; }
+        public int? CarbsGrams { get; set; }
+        public int? FatGrams { get; set; }
+        public List<string>? DietaryRestrictions { get; set; }
+        public string? CoachNotes { get; set; }
+        public List<CoachEditNutritionPlanDayDto> Days { get; set; } = new();
+    }
+
+    public class CoachEditNutritionPlanDayDto
+    {
+        public int DayNumber { get; set; }
+        public List<CoachEditNutritionPlanMealItemDto> Meals { get; set; } = new();
+    }
+
+    public class CoachEditNutritionPlanMealItemDto
+    {
+        public int? MealId { get; set; }
+        public string Name { get; set; } = null!;
+        public string MealType { get; set; } = null!;
+        public int Calories { get; set; }
+        public int ProteinGrams { get; set; }
+        public int CarbsGrams { get; set; }
+        public int FatGrams { get; set; }
+        public string? Description { get; set; }
+    }
 }
+
