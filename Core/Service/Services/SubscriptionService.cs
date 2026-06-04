@@ -137,6 +137,10 @@ namespace Service.Services
                 Features = plan.Features,
                 MaxBookingsPerDay = plan.MaxBookingsPerDay,
                 MaxFreezeDays = plan.MaxFreezeDays,
+                FreeWorkoutPlans = plan.FreeWorkoutPlans,
+                FreeNutritionPlans = plan.FreeNutritionPlans,
+                ExtraWorkoutPlanTokenCost = plan.ExtraWorkoutPlanTokenCost,
+                ExtraNutritionPlanTokenCost = plan.ExtraNutritionPlanTokenCost,
                 IsPopular = plan.IsPopular,
                 IsActive = plan.IsActive
             };
@@ -304,6 +308,10 @@ namespace Service.Services
                 Features = dto.Features,
                 MaxBookingsPerDay = dto.MaxBookingsPerDay,
                 MaxFreezeDays = dto.MaxFreezeDays,
+                FreeWorkoutPlans = dto.FreeWorkoutPlans,
+                FreeNutritionPlans = dto.FreeNutritionPlans,
+                ExtraWorkoutPlanTokenCost = dto.ExtraWorkoutPlanTokenCost,
+                ExtraNutritionPlanTokenCost = dto.ExtraNutritionPlanTokenCost,
                 IsPopular = dto.IsPopular,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -333,6 +341,10 @@ namespace Service.Services
             plan.Features = dto.Features;
             plan.MaxBookingsPerDay = dto.MaxBookingsPerDay;
             plan.MaxFreezeDays = dto.MaxFreezeDays;
+            plan.FreeWorkoutPlans = dto.FreeWorkoutPlans;
+            plan.FreeNutritionPlans = dto.FreeNutritionPlans;
+            plan.ExtraWorkoutPlanTokenCost = dto.ExtraWorkoutPlanTokenCost;
+            plan.ExtraNutritionPlanTokenCost = dto.ExtraNutritionPlanTokenCost;
             plan.IsPopular = dto.IsPopular;
             plan.IsActive = dto.IsActive;
             plan.UpdatedAt = DateTime.UtcNow;

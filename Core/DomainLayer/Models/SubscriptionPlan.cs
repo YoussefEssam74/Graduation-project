@@ -14,6 +14,10 @@ namespace IntelliFit.Domain.Models
         public string? Features { get; set; }
         public int? MaxBookingsPerDay { get; set; }
         public int MaxFreezeDays { get; set; } = 14;
+        public int FreeWorkoutPlans { get; set; } = 0;
+        public int FreeNutritionPlans { get; set; } = 0;
+        public int ExtraWorkoutPlanTokenCost { get; set; } = 10;
+        public int ExtraNutritionPlanTokenCost { get; set; } = 10;
         public bool IsPopular { get; set; } = false;
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

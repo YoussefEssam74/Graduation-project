@@ -12,6 +12,10 @@ namespace Shared.DTOs.Subscription
         public string? Features { get; set; }
         public int? MaxBookingsPerDay { get; set; }
         public int MaxFreezeDays { get; set; }
+        public int FreeWorkoutPlans { get; set; }
+        public int FreeNutritionPlans { get; set; }
+        public int ExtraWorkoutPlanTokenCost { get; set; }
+        public int ExtraNutritionPlanTokenCost { get; set; }
         public bool IsPopular { get; set; }
         public bool IsActive { get; set; }
     }
