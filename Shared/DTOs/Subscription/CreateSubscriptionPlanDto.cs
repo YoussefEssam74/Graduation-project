@@ -12,5 +12,13 @@ namespace Shared.DTOs.Subscription
         public int? MaxBookingsPerDay { get; set; }
         public int MaxFreezeDays { get; set; }
         public bool IsPopular { get; set; }
+        /// <summary>Number of free AI workout plan generations included per subscription period.</summary>
+        public int FreeWorkoutPlans { get; set; } = 0;
+        /// <summary>Number of free AI nutrition plan generations included per subscription period.</summary>
+        public int FreeNutritionPlans { get; set; } = 0;
+        /// <summary>Token cost for each AI workout plan generation beyond the free quota.</summary>
+        public int ExtraWorkoutPlanTokenCost { get; set; } = 10;
+        /// <summary>Token cost for each AI nutrition plan generation beyond the free quota.</summary>
+        public int ExtraNutritionPlanTokenCost { get; set; } = 10;
     }
 }

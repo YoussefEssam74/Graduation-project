@@ -2,7 +2,6 @@
 
 import {
   UserIcon,
-  Ticket,
   LayoutDashboardIcon,
   CalendarIcon,
   ActivityIcon,
@@ -166,7 +165,7 @@ export default function Sidebar() {
       <div className="p-6 pb-2">
         <Link href={getDashboardUrl()} className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
-            <Ticket className="w-6 h-6 text-white" />
+            <DumbbellIcon className="w-6 h-6 text-white" />
           </div>
           <span className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Pulse<span className="text-blue-600">Gym</span>

@@ -13,7 +13,12 @@ export interface SubscriptionPlanDto {
   maxFreezeDays: number;
   isPopular: boolean;
   isActive: boolean;
+  freeWorkoutPlans: number;
+  freeNutritionPlans: number;
+  extraWorkoutPlanTokenCost: number;
+  extraNutritionPlanTokenCost: number;
 }
+
 
 export interface CreateSubscriptionDto {
   userId: number;

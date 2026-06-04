@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import {
-  Ticket,
+  PackagePlus,
+  Dumbbell,
   Edit,
   Trash2,
   Plus,
@@ -15,6 +16,13 @@ import {
   Tag,
   Calendar,
   Percent,
+  Zap,
+  Utensils,
+  Shield,
+  UserCheck,
+  Star,
+  Clock,
+  Bot,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,11 +63,36 @@ function AdminPackagesContent() {
   const [description, setDescription] = useState("");
   const [tokensIncluded, setTokensIncluded] = useState<number>(0);
   const [invitationsAllowed, setInvitationsAllowed] = useState<number>(0);
-  const [features, setFeatures] = useState("");
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [maxBookingsPerDay, setMaxBookingsPerDay] = useState<number>(5);
   const [maxFreezeDays, setMaxFreezeDays] = useState<number>(7);
   const [isPopular, setIsPopular] = useState(false);
   const [isActivePlan, setIsActivePlan] = useState(true);
+  // AI plan quota
+  const [freeWorkoutPlans, setFreeWorkoutPlans] = useState<number>(1);
+  const [freeNutritionPlans, setFreeNutritionPlans] = useState<number>(1);
+  const [extraWorkoutPlanTokenCost, setExtraWorkoutPlanTokenCost] = useState<number>(10);
+  const [extraNutritionPlanTokenCost, setExtraNutritionPlanTokenCost] = useState<number>(10);
+
+  // All predefined features
+  const PREDEFINED_FEATURES = [
+    { key: "Equipment Booking", icon: Dumbbell },
+    { key: "AI Coach", icon: Bot },
+    { key: "AI Workout Generator", icon: Zap },
+    { key: "Coach Booking", icon: UserCheck },
+    { key: "Coach Plan Review", icon: Shield },
+    { key: "AI Nutrition Plan", icon: Utensils },
+    { key: "Priority Booking", icon: Star },
+    { key: "Free Guest Pass", icon: Users },
+    { key: "Group Classes", icon: Users },
+    { key: "AI Coach Trial", icon: Clock },
+  ];
+
+  const toggleFeature = (key: string) => {
+    setSelectedFeatures(prev =>
+      prev.includes(key) ? prev.filter(f => f !== key) : [...prev, key]
+    );
+  };
 
   // Coupon Form State
   const [couponCode, setCouponCode] = useState("");
@@ -116,11 +149,15 @@ function AdminPackagesContent() {
       setDescription(plan.description || "");
       setTokensIncluded(plan.tokensIncluded);
       setInvitationsAllowed(plan.invitationsAllowed);
-      setFeatures(plan.features || "");
+      setSelectedFeatures(plan.features ? plan.features.split(",").map(f => f.trim()).filter(Boolean) : []);
       setMaxBookingsPerDay(plan.maxBookingsPerDay || 5);
       setMaxFreezeDays(plan.maxFreezeDays || 7);
       setIsPopular(plan.isPopular);
       setIsActivePlan(plan.isActive);
+      setFreeWorkoutPlans(plan.freeWorkoutPlans ?? 1);
+      setFreeNutritionPlans(plan.freeNutritionPlans ?? 1);
+      setExtraWorkoutPlanTokenCost(plan.extraWorkoutPlanTokenCost ?? 10);
+      setExtraNutritionPlanTokenCost(plan.extraNutritionPlanTokenCost ?? 10);
     } else {
       setPlanName("");
       setPrice(0);
@@ -128,11 +165,15 @@ function AdminPackagesContent() {
       setDescription("");
       setTokensIncluded(0);
       setInvitationsAllowed(0);
-      setFeatures("");
+      setSelectedFeatures([]);
       setMaxBookingsPerDay(5);
       setMaxFreezeDays(7);
       setIsPopular(false);
       setIsActivePlan(true);
+      setFreeWorkoutPlans(1);
+      setFreeNutritionPlans(1);
+      setExtraWorkoutPlanTokenCost(10);
+      setExtraNutritionPlanTokenCost(10);
     }
     setIsPlanModalOpen(true);
   };
@@ -150,10 +191,14 @@ function AdminPackagesContent() {
         description,
         tokensIncluded,
         invitationsAllowed,
-        features,
+        features: selectedFeatures.join(", "),
         maxBookingsPerDay,
         maxFreezeDays,
         isPopular,
+        freeWorkoutPlans,
+        freeNutritionPlans,
+        extraWorkoutPlanTokenCost,
+        extraNutritionPlanTokenCost,
       };
 
       if (planModalType === "create") {
@@ -348,8 +393,8 @@ function AdminPackagesContent() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Ticket className="h-8 w-8 text-indigo-500" />
-            Packages & Plans Hub
+            <PackagePlus className="h-8 w-8 text-indigo-500" />
+            Packages &amp; Plans Hub
           </h1>
           <p className="text-muted-foreground mt-2">
             Manage your gym's financial ecosystem, subscription tiers, and promotional discount codes
@@ -443,7 +488,7 @@ function AdminPackagesContent() {
 
               {pkg.features && (
                 <div className="space-y-1.5 pt-3 border-t border-border/60 text-xs">
-                  <span className="font-semibold text-muted-foreground block">Tuned Privileges:</span>
+                  <span className="font-semibold text-muted-foreground block">Included Features:</span>
                   {pkg.features.split(",").map((feat, idx) => (
                     <div key={idx} className="flex items-center gap-1.5 text-muted-foreground">
                       <CheckCircle className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
@@ -452,6 +497,27 @@ function AdminPackagesContent() {
                   ))}
                 </div>
               )}
+
+              {/* AI Plan Quotas */}
+              <div className="space-y-1.5 pt-3 border-t border-border/60 text-xs">
+                <span className="font-semibold text-muted-foreground block">AI Plan Quotas:</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1"><Zap className="h-3 w-3 text-indigo-400" /> Free Workout Plans:</span>
+                  <span className="font-bold text-indigo-600">{pkg.freeWorkoutPlans ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1"><Utensils className="h-3 w-3 text-orange-400" /> Free Nutrition Plans:</span>
+                  <span className="font-bold text-indigo-600">{pkg.freeNutritionPlans ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Extra Workout Cost:</span>
+                  <span className="font-bold text-indigo-600">{pkg.extraWorkoutPlanTokenCost ?? 10} tokens</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Extra Nutrition Cost:</span>
+                  <span className="font-bold text-indigo-600">{pkg.extraNutritionPlanTokenCost ?? 10} tokens</span>
+                </div>
+              </div>
 
               <div className="flex gap-2 pt-4 border-t border-border mt-auto">
                 <Button variant="outline" className="flex-1" onClick={() => openPlanModal("edit", pkg)}>
@@ -672,14 +738,86 @@ function AdminPackagesContent() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor="features">Privilege Highlights (comma separated)</Label>
-                  <Input
-                    id="features"
-                    value={features}
-                    onChange={(e) => setFeatures(e.target.value)}
-                    placeholder="e.g. Free Towels, 24/7 Entry, Sauna Access"
-                  />
+                <div className="space-y-2">
+                  <Label>Included Features</Label>
+                  <div className="grid grid-cols-2 gap-2 p-3 border border-border rounded-lg bg-muted/30">
+                    {PREDEFINED_FEATURES.map(({ key, icon: Icon }) => (
+                      <label
+                        key={key}
+                        className={`flex items-center gap-2 text-sm p-2 rounded-lg cursor-pointer transition-colors ${
+                          selectedFeatures.includes(key)
+                            ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
+                            : "hover:bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedFeatures.includes(key)}
+                          onChange={() => toggleFeature(key)}
+                          className="rounded border-border accent-indigo-600"
+                        />
+                        <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="text-xs">{key}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedFeatures.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{selectedFeatures.length} feature(s) selected</p>
+                  )}
+                </div>
+
+                {/* AI Plan Quota Section */}
+                <div className="space-y-3 p-3 border border-indigo-200 dark:border-indigo-800 rounded-lg bg-indigo-50/50 dark:bg-indigo-900/10">
+                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                    <Zap className="h-4 w-4" /> AI Plan Generation Quotas
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="freeWorkout" className="text-xs flex items-center gap-1">
+                        <Dumbbell className="h-3.5 w-3.5 text-indigo-500" /> Free Workout Plans
+                      </Label>
+                      <Input
+                        id="freeWorkout"
+                        type="number"
+                        min={0}
+                        value={freeWorkoutPlans}
+                        onChange={(e) => setFreeWorkoutPlans(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="freeNutrition" className="text-xs flex items-center gap-1">
+                        <Utensils className="h-3.5 w-3.5 text-orange-500" /> Free Nutrition Plans
+                      </Label>
+                      <Input
+                        id="freeNutrition"
+                        type="number"
+                        min={0}
+                        value={freeNutritionPlans}
+                        onChange={(e) => setFreeNutritionPlans(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="extraWorkoutCost" className="text-xs">Extra Workout Cost (tokens)</Label>
+                      <Input
+                        id="extraWorkoutCost"
+                        type="number"
+                        min={0}
+                        value={extraWorkoutPlanTokenCost}
+                        onChange={(e) => setExtraWorkoutPlanTokenCost(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="extraNutritionCost" className="text-xs">Extra Nutrition Cost (tokens)</Label>
+                      <Input
+                        id="extraNutritionCost"
+                        type="number"
+                        min={0}
+                        value={extraNutritionPlanTokenCost}
+                        onChange={(e) => setExtraNutritionPlanTokenCost(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Members get the free quota first; extra generations deduct the token cost above.</p>
                 </div>
 
                 <div className="flex items-center gap-4 py-2">
