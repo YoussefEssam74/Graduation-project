@@ -80,10 +80,10 @@ export default function NutritionPlanEditModal({
                 mealsList.push({
                   name: item.name || item.foodName || "Food Item",
                   mealType: type,
-                  calories: item.calories || 0,
-                  proteinGrams: item.protein_g || item.protein || 0,
-                  carbsGrams: item.carbs_g || item.carbs || 0,
-                  fatGrams: item.fat_g || item.fats || item.fat || 0,
+                  calories: Math.round(item.calories || 0),
+                  proteinGrams: Math.round(item.protein_g || item.protein || 0),
+                  carbsGrams: Math.round(item.carbs_g || item.carbs || 0),
+                  fatGrams: Math.round(item.fat_g || item.fats || item.fat || 0),
                   description: item.description || `${item.grams || 100}g portion`
                 });
               });
@@ -100,27 +100,35 @@ export default function NutritionPlanEditModal({
       }
     }
 
-    // Fallback: Group meals by days (approximate 7 days if meals are not day-coded, or default to Day 1)
-    if (parsedDays.length === 0) {
-      const fallbackMeals = (plan.meals || []).map(m => ({
-        mealId: m.mealId,
-        name: m.name,
-        mealType: m.mealType || "Breakfast",
-        calories: m.calories,
-        proteinGrams: m.proteinGrams,
-        carbsGrams: m.carbsGrams,
-        fatGrams: m.fatGrams,
-        description: m.name
-      }));
-
-      // Group fallback meals in a single day (as database meals doesn't explicitly track day numbers)
-      parsedDays = [
-        {
-          dayNumber: 1,
-          meals: fallbackMeals
+    // Fallback: Group meals by days (use dayNumber from database if available)
+    if (parsedDays.length === 0 && plan.meals && plan.meals.length > 0) {
+      const daysMap: Record<number, any[]> = {};
+      plan.meals.forEach(m => {
+        const dayNum = m.dayNumber || 1;
+        if (!daysMap[dayNum]) {
+          daysMap[dayNum] = [];
         }
-      ];
+        daysMap[dayNum].push({
+          mealId: m.mealId,
+          name: m.name,
+          mealType: m.mealType || "Breakfast",
+          calories: m.calories,
+          proteinGrams: m.proteinGrams,
+          carbsGrams: m.carbsGrams,
+          fatGrams: m.fatGrams,
+          description: m.name
+        });
+      });
+
+      parsedDays = Object.keys(daysMap).map(dayStr => {
+        const dNum = parseInt(dayStr, 10);
+        return {
+          dayNumber: dNum,
+          meals: daysMap[dNum]
+        };
+      }).sort((a, b) => a.dayNumber - b.dayNumber);
     }
+
 
     setDays(parsedDays);
   }, [plan]);

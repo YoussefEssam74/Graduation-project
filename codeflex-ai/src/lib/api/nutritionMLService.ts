@@ -23,6 +23,7 @@ export interface NutritionMLFoodItem {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  description?: string;
 }
 
 export interface NutritionMLMeal {

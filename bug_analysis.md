@@ -1,0 +1,241 @@
+# Bug Analysis: Coach Plan Edit & Coach-Review Errors
+
+## Summary of Errors Found
+
+| # | Error | Request | HTTP Status | Root Cause |
+|---|-------|---------|-------------|------------|
+| 1 | Edit plan from coach saves | `PUT /api/workout-ai/plans/16/edit` | **404 Not Found** | Frontend calling a non-existent `/edit` suffix on the URL |
+| 2 | Coach review nutrition plans | `GET /api/nutrition-plans/coach-review` | **400 Bad Request** | `coach-review` string is being parsed as the `{planId:int}` route param |
+
+---
+
+## Bug #1 — Edit Plan: 404 Not Found
+
+### URL Called by Frontend
+```
+PUT https://pulsgym-api.onrender.com/api/workout-ai/plans/16/edit
+```
+
+### Actual Backend Route
+```csharp
+// WorkoutAIController.cs – Line 509
+[HttpPut("plans/{planId}/status")]
+public async Task<IActionResult> UpdatePlanStatus(int planId, [FromBody] UpdatePlanStatusRequest request)
+```
+
+### Root Cause
+The frontend is appending `/edit` to the URL, but **the backend endpoint is `/status`**, not `/edit`.  
+The correct URL should be:
+```
+PUT /api/workout-ai/plans/16/status
+```
+
+No `/edit` endpoint exists anywhere in the backend — that's why it returns 404.
+
+### Where to Fix (Frontend)
+File: [`workoutAI.ts`](file:///d:/Youssef/Projects/_Graduation%20Project/Project%20Repo/appGrad/Graduation-project/codeflex-ai/src/lib/api/workoutAI.ts#L394-L401)
+
+The `updatePlanStatus` function is already correct at line 395:
+```ts
+// ✅ Already correct in workoutAI.ts
+return apiFetch(`/workout-ai/plans/${planId}/status`, { method: "PUT", ... });
+```
+
+So the `/edit` call is **not coming from `workoutAI.ts`**. It's likely coming from somewhere else — possibly a Vapi webhook, a Next.js API route, or a direct `fetch()` call in a component. Search for any component/API route calling:
+```
+/workout-ai/plans/${planId}/edit
+/plans/edit
+```
+
+> [!IMPORTANT]
+> Run this search in your frontend project:
+> ```bash
+> grep -r "plans.*edit\|/edit" src/ --include="*.ts" --include="*.tsx"
+> ```
+> The bug is in whichever component constructs the URL with `/edit` instead of `/status`.
+
+### Alternative Backend Fix (if you can't find the caller)
+If the edit call is coming from a place you control that you'd rather not change, add an alias route in the controller:
+
+```csharp
+// Add this alias in WorkoutAIController.cs alongside the existing /status endpoint
+[HttpPut("plans/{planId}/edit")]   // alias for legacy callers
+public async Task<IActionResult> EditPlan(int planId, [FromBody] UpdatePlanStatusRequest request)
+    => await UpdatePlanStatus(planId, request);
+```
+
+---
+
+## Bug #2 — Coach Review Nutrition Plans: 400 Bad Request
+
+### URL Called
+```
+GET https://pulsgym-api.onrender.com/api/nutrition-plans/coach-review
+```
+
+### Error Response
+```json
+{
+  "status": 400,
+  "title": "One or more validation errors occurred.",
+  "errors": {
+    "planId": ["The value 'coach-review' is not valid."]
+  }
+}
+```
+
+### Root Cause — Route Conflict
+The `NutritionPlanController` has this route:
+```csharp
+// NutritionPlanController.cs – Line 21
+[HttpGet("{planId}")]
+public async Task<IActionResult> GetPlanDetails(int planId)
+```
+
+When the frontend requests `/api/nutrition-plans/coach-review`, the router matches `{planId}` = `"coach-review"` because it comes first. Since `planId` is declared as `int`, ASP.NET Core model binding fails with the 400 error.
+
+**The `coach-review` route for nutrition plans doesn't exist at all in the backend.**
+
+The backend only has a `coach-review-plans` route for **workout** plans (in `WorkoutAIController`):
+```csharp
+[HttpGet("coach-review-plans")]   // ← Only in WorkoutAIController
+```
+
+### Fix Options
+
+#### Option A — Add the missing endpoint to `NutritionPlanController.cs`
+Place the new route **before** the `{planId}` catch-all:
+
+```csharp
+// NutritionPlanController.cs
+[HttpGet("coach-review-plans")]
+[Authorize(Roles = "Coach,Admin")]
+public async Task<IActionResult> GetCoachReviewNutritionPlans()
+{
+    var coachId = GetUserIdFromToken(); // from ApiControllerBase
+    var plans = await _serviceManager.NutritionPlanService.GetCoachReviewPlansAsync(coachId);
+    return Ok(plans);
+}
+```
+
+And add the corresponding method to `NutritionPlanService`:
+```csharp
+// NutritionPlanService.cs
+public async Task<IEnumerable<NutritionPlanDto>> GetCoachReviewPlansAsync(int coachId)
+{
+    // Return nutrition plans that have status = UnderReview and assigned to this coach
+    var plans = await _unitOfWork.Repository<NutritionPlan>()
+        .FindAsync(p => p.AssignedCoachId == coachId && p.Status == NutritionPlanStatus.UnderReview);
+    return plans.Select(MapToDto);
+}
+```
+
+#### Option B — Fix the frontend to not call this non-existent URL
+If nutrition plans don't have a coach-review workflow yet, **remove** the API call from the frontend until the backend endpoint is implemented.
+
+---
+
+## Bug #3 — Generated Plan May Not Save Properly to Database
+
+### Symptom
+Plan is generated by ML → frontend receives data → `save-plan` POST is called, but data might be incomplete.
+
+### What Was Found
+
+**In `SaveAIGeneratedPlanAsync` (WorkoutAIService.cs ~Line 640):**
+
+```csharp
+// ⚠️ BUG: Coach assignment uses CoachProfile.IsAvailable
+// but the column is named differently or may not exist
+var availableCoach = (await _unitOfWork.Repository<CoachProfile>()
+    .FindAsync(c => c.IsAvailable))      // ← check field name in your DB schema
+    .FirstOrDefault();
+if (availableCoach != null)
+    workoutPlan.GeneratedByCoachId = availableCoach.Id;
+```
+
+**Problem:** The plan is saved to `WorkoutPlan` table, but `GetCoachReviewPlansAsync` queries by `GeneratedByCoachId`. If `IsAvailable` doesn't match or no coach is available, `GeneratedByCoachId` will be null, causing the plan to **never appear in the coach's review list**.
+
+**In `GenerateWorkoutPlanAsync` (Line ~497-528):** This path saves to `WorkoutPlan` but does NOT go through `SaveAIGeneratedPlanAsync` — it uses `SaveWorkoutPlanAsync` which does NOT assign a coach at all:
+```csharp
+// ⚠️ BUG: SaveWorkoutPlanAsync does NOT assign a coach
+var workoutPlan = new WorkoutPlan
+{
+    // ...no GeneratedByCoachId assignment here!
+    Status = "Active",   // ← Also "Active" not "UnderReview"
+};
+```
+
+So if the generate call goes through the backend (not the save-plan route), the plan:
+1. Gets `Status = "Active"` instead of `"UnderReview"`
+2. Has no `GeneratedByCoachId` → coach never sees it
+
+### Fix for `SaveWorkoutPlanAsync`
+
+```csharp
+private async Task<WorkoutPlan> SaveWorkoutPlanAsync(...)
+{
+    var workoutPlan = new WorkoutPlan
+    {
+        // ...existing fields...
+        Status = "UnderReview",   // ← Fix: was "Active"
+        IsActive = true,
+    };
+
+    // ✅ Add coach assignment (same as SaveAIGeneratedPlanAsync)
+    var availableCoach = (await _unitOfWork.Repository<CoachProfile>()
+        .FindAsync(c => c.IsAvailable))
+        .FirstOrDefault();
+    if (availableCoach != null)
+        workoutPlan.GeneratedByCoachId = availableCoach.Id;
+
+    await _unitOfWork.Repository<WorkoutPlan>().AddAsync(workoutPlan);
+    await _unitOfWork.SaveChangesAsync();
+    return workoutPlan;
+}
+```
+
+---
+
+## Complete Flow (How It Should Work)
+
+```
+Member (Flutter/Web)
+  │
+  ├─ 1. POST /workout-ai/generate (or direct ML + POST /workout-ai/save-plan)
+  │       └── Backend saves WorkoutPlan with Status="UnderReview" + GeneratedByCoachId
+  │
+  ├─ 2. GET /workout-ai/my-plans
+  │       └── Member sees their plan displayed
+  │
+Coach (Web Dashboard)
+  ├─ 3. GET /workout-ai/coach-review-plans
+  │       └── Coach sees all UnderReview plans assigned to them
+  │
+  ├─ 4. [Edit] Coach modifies plan in UI → needs a backend PATCH/PUT endpoint
+  │       Current: PUT /workout-ai/plans/{planId}/status  (only changes status + notes)
+  │       Missing: PUT /workout-ai/plans/{planId}/edit    (needs to update exercises)
+  │
+  └─ 5. PUT /workout-ai/plans/{planId}/status  { status: "Approved", notes: "..." }
+          └── Plan.Status → "Approved", Member can now see approval
+```
+
+> [!WARNING]
+> **The full "edit exercises" flow is not yet implemented in the backend.**  
+> The current `UpdatePlanStatus` only updates `Status` and `ApprovalNotes`.  
+> If the coach needs to actually edit exercises in the plan, a new endpoint is needed:
+> ```
+> PUT /api/workout-ai/plans/{planId}/edit
+> Body: { days: [...updated exercises...] }
+> ```
+
+---
+
+## Action Items Summary
+
+| Priority | Fix | Where |
+|----------|-----|-------|
+| 🔴 Critical | Fix the `/edit` URL → change to `/status` in the calling component | Frontend (find the component making the wrong call) |
+| 🔴 Critical | Add `[HttpGet("coach-review-plans")]` **before** `{planId}` in `NutritionPlanController` | Backend: [NutritionPlanController.cs](file:///d:/Youssef/Projects/_Graduation%20Project/Project%20Repo/appGrad/Graduation-project/Infrastructure/Presentation/Controllers/NutritionPlanController.cs) |
+| 🟡 High | Fix `SaveWorkoutPlanAsync` to set `Status = "UnderReview"` and assign coach | Backend: [WorkoutAIService.cs](file:///d:/Youssef/Projects/_Graduation%20Project/Project%20Repo/appGrad/Graduation-project/Core/Service/Services/WorkoutAIService.cs#L491-L528) |
+| 🟡 High | Implement `PUT /workout-ai/plans/{planId}/edit` if coach can edit exercises | Backend: [WorkoutAIController.cs](file:///d:/Youssef/Projects/_Graduation%20Project/Project%20Repo/appGrad/Graduation-project/Infrastructure/Presentation/Controllers/WorkoutAIController.cs) |

@@ -183,16 +183,80 @@ function NutritionContent() {
             if (plansRes.success && plansRes.data && plansRes.data.length > 0) {
                 const active = plansRes.data.find(p => p.isActive) ?? plansRes.data[0];
                 setActivePlan(active);
-                // Restore AI-generated plan from DB first, fallback to localStorage
+                // Restore AI-generated plan from DB first, fallback to localStorage, and finally reconstruct from database meals if any
+                let parsedAiPlan: NutritionMLResponse | null = null;
                 if (active.aiPlanJson) {
-                    try { setAiPlan(JSON.parse(active.aiPlanJson)); } catch {
-                        const stored = NutritionMLService.getStoredPlan(user.userId);
-                        if (stored) setAiPlan(stored.plan);
-                    }
-                } else {
-                    const stored = NutritionMLService.getStoredPlan(user.userId);
-                    if (stored) setAiPlan(stored.plan);
+                    try { parsedAiPlan = JSON.parse(active.aiPlanJson); } catch {}
                 }
+                
+                if (!parsedAiPlan) {
+                    const stored = NutritionMLService.getStoredPlan(user.userId);
+                    if (stored) parsedAiPlan = stored.plan;
+                }
+
+                if (!parsedAiPlan && active.meals && active.meals.length > 0) {
+                    // Reconstruct from DB meals
+                    const daysMap: Record<number, Record<string, any[]>> = {};
+                    active.meals.forEach(m => {
+                        const dayNum = m.dayNumber || 1;
+                        const mealType = (m.mealType || "Breakfast").toLowerCase();
+                        if (!daysMap[dayNum]) daysMap[dayNum] = {};
+                        if (!daysMap[dayNum][mealType]) daysMap[dayNum][mealType] = [];
+                        daysMap[dayNum][mealType].push({
+                            name: m.name,
+                            grams: 100,
+                            calories: m.calories,
+                            protein_g: m.proteinGrams,
+                            carbs_g: m.carbsGrams,
+                            fat_g: m.fatGrams
+                        });
+                    });
+
+                    const daysArray = Object.keys(daysMap).map(dayStr => {
+                        const dayNum = parseInt(dayStr, 10);
+                        const mealsObj: any = {};
+                        let dayCalories = 0;
+                        let dayProtein = 0;
+                        let dayCarbs = 0;
+                        let dayFat = 0;
+
+                        ["breakfast", "lunch", "dinner", "snack"].forEach(type => {
+                            const items = daysMap[dayNum][type] || [];
+                            const total_calories = items.reduce((sum, item) => sum + item.calories, 0);
+                            dayCalories += total_calories;
+                            dayProtein += items.reduce((sum, item) => sum + item.protein_g, 0);
+                            dayCarbs += items.reduce((sum, item) => sum + item.carbs_g, 0);
+                            dayFat += items.reduce((sum, item) => sum + item.fat_g, 0);
+
+                            mealsObj[type] = {
+                                items,
+                                total_calories
+                            };
+                        });
+
+                        return {
+                            day: dayNum,
+                            total_calories: dayCalories,
+                            macros: {
+                                protein_g: dayProtein,
+                                carbs_g: dayCarbs,
+                                fat_g: dayFat
+                            },
+                            meals: mealsObj
+                        };
+                    }).sort((a, b) => a.day - b.day);
+
+                    parsedAiPlan = {
+                        foods_to_avoid: [],
+                        days: daysArray,
+                        _daily_calories: active.dailyCalories || 2000
+                    };
+                }
+
+                if (parsedAiPlan) {
+                    setAiPlan(parsedAiPlan);
+                }
+
                 setView("plan");
             } else {
                 setView(latestInbody ? "no-plan" : "no-inbody");
@@ -285,7 +349,7 @@ function NutritionContent() {
                 });
                 // Use the AI-computed calorie target if available
                 if (generatedAiPlan._daily_calories && generatedAiPlan._daily_calories > 0) {
-                    effectiveCalories = generatedAiPlan._daily_calories;
+                    effectiveCalories = Math.round(generatedAiPlan._daily_calories);
                 }
                 NutritionMLService.savePlanLocally(user.userId, generatedAiPlan, mlPrefs, effectiveCalories);
             } catch (err: any) {
@@ -676,14 +740,35 @@ function NutritionContent() {
         <div className="min-h-screen">
             <div className="max-w-5xl mx-auto px-6 py-4 space-y-6">
 
+                {/* Review status notification banner */}
+                {plan.statusText === "UnderReview" && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+                        <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="font-bold text-sm">Plan Under Review by Coach</p>
+                            <p className="text-xs mt-0.5">This plan has been generated by AI and is currently awaiting review and approval by a coach. Some meal choices or macro distributions might change slightly to better suit your needs. You can view and follow the current plan in the meantime.</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <h1 className="text-2xl font-black text-slate-900 dark:text-white">{plan.planName}</h1>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${plan.isActive ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"}`}>
-                                {plan.isActive ? "Active" : plan.statusText}
-                            </span>
+                            {plan.statusText === "UnderReview" ? (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                                    Under Review
+                                </span>
+                            ) : plan.statusText === "Approved" ? (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300">
+                                    Approved
+                                </span>
+                            ) : (
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${plan.isActive ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300" : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"}`}>
+                                    {plan.isActive ? "Active" : plan.statusText}
+                                </span>
+                            )}
                         </div>
                         {plan.description && (
                             <p className="text-slate-500 dark:text-slate-400 text-sm">{plan.description}</p>
@@ -819,7 +904,9 @@ function NutritionContent() {
                                                         <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
                                                             <div className="flex-1 min-w-0">
                                                                 <span className="font-medium text-slate-900 dark:text-white text-sm">{item.name}</span>
-                                                                <span className="text-slate-400 text-xs ml-1.5">{item.grams}g</span>
+                                                                <span className="text-slate-400 text-xs ml-1.5">
+                                                                    {item.grams ? `${item.grams}g` : (item.description || "")}
+                                                                </span>
                                                             </div>
                                                             <div className="flex gap-1 ml-2 flex-shrink-0 flex-wrap justify-end">
                                                                 <span className="text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded font-medium">{item.calories} kcal</span>

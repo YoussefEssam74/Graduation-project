@@ -1264,13 +1264,19 @@ function ProgramsContent() {
                     <span
                       className={cn(
                         "text-xs font-semibold px-2.5 py-1 rounded-full",
-                        activeNutritionPlan.isActive
-                          ? "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400"
-                          : "bg-slate-100 text-slate-500 dark:bg-slate-600/50 dark:text-slate-400",
+                        activeNutritionPlan.statusText === "UnderReview"
+                          ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                          : activeNutritionPlan.statusText === "Approved" || activeNutritionPlan.isActive
+                            ? "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400"
+                            : "bg-slate-100 text-slate-500 dark:bg-slate-600/50 dark:text-slate-400",
                       )}
                     >
-                      {activeNutritionPlan.statusText ||
-                        (activeNutritionPlan.isActive ? "Active" : "Inactive")}
+                      {activeNutritionPlan.statusText === "UnderReview"
+                        ? "Under Review"
+                        : activeNutritionPlan.statusText === "Approved"
+                          ? "Approved"
+                          : activeNutritionPlan.statusText ||
+                            (activeNutritionPlan.isActive ? "Active" : "Inactive")}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">

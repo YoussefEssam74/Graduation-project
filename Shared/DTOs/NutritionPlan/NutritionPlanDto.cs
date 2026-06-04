@@ -35,6 +35,7 @@ namespace Shared.DTOs.NutritionPlan
         public int ProteinGrams { get; set; }
         public int CarbsGrams { get; set; }
         public int FatGrams { get; set; }
+        public int DayNumber { get; set; }
     }
 
     public class CoachEditNutritionPlanRequest

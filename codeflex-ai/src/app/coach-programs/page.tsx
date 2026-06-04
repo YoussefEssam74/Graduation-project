@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Dumbbell,
   Search,
@@ -172,6 +172,28 @@ function CoachProgramsContent() {
         p.description?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // Group workouts by member
+  const groupedWorkouts = useMemo(() => {
+    const groups: Record<string, UserAIWorkoutPlan[]> = {};
+    filteredWorkouts.forEach(plan => {
+      const key = plan.memberName || `Member #${plan.memberId}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(plan);
+    });
+    return groups;
+  }, [filteredWorkouts]);
+
+  // Group nutrition by member
+  const groupedNutrition = useMemo(() => {
+    const groups: Record<string, NutritionPlanDto[]> = {};
+    filteredNutrition.forEach(plan => {
+      const key = plan.memberName || `Member #${plan.memberId}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(plan);
+    });
+    return groups;
+  }, [filteredNutrition]);
+
   // Counts
   const pendingWorkoutsCount = workoutPlans.filter(p => p.status === "UnderReview").length;
   const pendingNutritionCount = nutritionPlans.filter(p => p.statusText === "UnderReview").length;
@@ -217,6 +239,44 @@ function CoachProgramsContent() {
         if (aiPlan.days) return aiPlan.days;
       } catch {}
     }
+
+    // Fallback: group plan.meals by dayNumber and mealType
+    if (plan.meals && plan.meals.length > 0) {
+      const daysMap: Record<number, Record<string, any[]>> = {};
+
+      plan.meals.forEach(m => {
+        const dayNum = m.dayNumber || 1;
+        const mealType = (m.mealType || "Breakfast").toLowerCase();
+
+        if (!daysMap[dayNum]) {
+          daysMap[dayNum] = {};
+        }
+        if (!daysMap[dayNum][mealType]) {
+          daysMap[dayNum][mealType] = [];
+        }
+
+        daysMap[dayNum][mealType].push({
+          name: m.name,
+          calories: m.calories,
+          protein_g: m.proteinGrams,
+          carbs_g: m.carbsGrams,
+          fat_g: m.fatGrams
+        });
+      });
+
+      return Object.keys(daysMap).map(dayStr => {
+        const dayNum = parseInt(dayStr, 10);
+        const mealsObj: Record<string, { items: any[] }> = {};
+        Object.keys(daysMap[dayNum]).forEach(type => {
+          mealsObj[type] = { items: daysMap[dayNum][type] };
+        });
+        return {
+          day: dayNum,
+          meals: mealsObj
+        };
+      }).sort((a, b) => a.day - b.day);
+    }
+
     return [];
   };
 
@@ -404,9 +464,21 @@ function CoachProgramsContent() {
               <p className="font-semibold">No AI workout plans match your filter.</p>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {filteredWorkouts.map(plan => (
-                <Card key={plan.planId} className="border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="space-y-6">
+              {Object.entries(groupedWorkouts).map(([memberName, plans]) => (
+                <div key={memberName} className="space-y-3 bg-muted/10 p-4 rounded-xl border border-border/40">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border/30">
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    <h3 className="font-bold text-sm text-foreground uppercase tracking-wide">
+                      Client: {memberName}
+                    </h3>
+                    <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground uppercase tracking-wider">
+                      {plans.length} plan{plans.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="space-y-4">
+                    {plans.map(plan => (
+                      <Card key={plan.planId} className="border border-border bg-card shadow-sm overflow-hidden">
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="flex-1 min-w-0">
@@ -536,7 +608,10 @@ function CoachProgramsContent() {
                       </div>
                     )}
                   </div>
-                </Card>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )
@@ -552,9 +627,21 @@ function CoachProgramsContent() {
               <p className="font-semibold">No AI nutrition plans match your filter.</p>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {filteredNutrition.map(plan => (
-                <Card key={plan.planId} className="border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="space-y-6">
+              {Object.entries(groupedNutrition).map(([memberName, plans]) => (
+                <div key={memberName} className="space-y-3 bg-muted/10 p-4 rounded-xl border border-border/40">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border/30">
+                    <span className="h-2 w-2 rounded-full bg-primary" />
+                    <h3 className="font-bold text-sm text-foreground uppercase tracking-wide">
+                      Client: {memberName}
+                    </h3>
+                    <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground uppercase tracking-wider">
+                      {plans.length} plan{plans.length > 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="space-y-4">
+                    {plans.map(plan => (
+                      <Card key={plan.planId} className="border border-border bg-card shadow-sm overflow-hidden">
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="flex-1 min-w-0">
@@ -704,7 +791,10 @@ function CoachProgramsContent() {
                       </div>
                     )}
                   </div>
-                </Card>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )

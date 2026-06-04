@@ -9,6 +9,7 @@ export interface PlanMealItem {
   proteinGrams: number;
   carbsGrams: number;
   fatGrams: number;
+  dayNumber: number;
 }
 
 export interface NutritionPlanDto {

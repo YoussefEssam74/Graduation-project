@@ -39,49 +39,75 @@ public class NutritionAIServiceClient : INutritionAIServiceClient
 
     public async Task<NutritionAIResponse?> GenerateNutritionPlanAsync(NutritionAIRequest request)
     {
-        try
+        int maxRetries = 2;
+        int delaySeconds = 5;
+
+        for (int attempt = 1; attempt <= maxRetries + 1; attempt++)
         {
-            _logger.LogInformation(
-                "Sending nutrition request to Modal GPU endpoint for member {MemberId}", request.MemberId);
-
-            using var response = await _httpClient.PostAsJsonAsync("generate", request, _jsonOptions);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var body = await response.Content.ReadAsStringAsync();
-                _logger.LogError(
-                    "Nutrition Modal endpoint returned {Status}: {Body}",
-                    response.StatusCode, body[..Math.Min(300, body.Length)]);
-                return new NutritionAIResponse { Error = $"Modal endpoint error {(int)response.StatusCode}: {body[..Math.Min(200, body.Length)]}" };
-            }
+                _logger.LogInformation(
+                    "Sending nutrition request to Modal GPU endpoint for member {MemberId} (Attempt {Attempt})",
+                    request.MemberId, attempt);
 
-            var result = await response.Content.ReadFromJsonAsync<NutritionAIResponse>(_jsonOptions);
+                using var response = await _httpClient.PostAsJsonAsync("generate", request, _jsonOptions);
 
-            if (result?.Error is not null)
-            {
-                _logger.LogError("Nutrition Modal returned an error: {Error}", result.Error);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning(
+                        "Nutrition Modal endpoint returned status {Status} on attempt {Attempt}: {Body}",
+                        response.StatusCode, attempt, body[..Math.Min(300, body.Length)]);
+
+                    // Retry if it's a timeout (408), Bad Gateway (502), Gateway Timeout (504), or Service Unavailable (503)
+                    if (attempt <= maxRetries && (response.StatusCode == System.Net.HttpStatusCode.RequestTimeout || 
+                                                  response.StatusCode == System.Net.HttpStatusCode.BadGateway || 
+                                                  response.StatusCode == System.Net.HttpStatusCode.GatewayTimeout ||
+                                                  response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable))
+                    {
+                        _logger.LogInformation("Retrying Modal request in {Delay} seconds...", delaySeconds);
+                        await Task.Delay(delaySeconds * 1000);
+                        continue;
+                    }
+
+                    return new NutritionAIResponse { Error = $"Modal endpoint error {(int)response.StatusCode}: {body[..Math.Min(200, body.Length)]}" };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<NutritionAIResponse>(_jsonOptions);
+
+                if (result?.Error is not null)
+                {
+                    _logger.LogError("Nutrition Modal returned an error: {Error}", result.Error);
+                    return result;
+                }
+
+                _logger.LogInformation(
+                    "Nutrition plan generated: calories={Cal}, latency={Ms}ms",
+                    result?.DailyCalories, result?.GenerationMs);
+
                 return result;
             }
+            catch (Exception ex) when (attempt <= maxRetries && (ex is HttpRequestException || ex is TaskCanceledException))
+            {
+                _logger.LogWarning(ex, "Transient error occurred on attempt {Attempt}. Retrying in {Delay} seconds...", attempt, delaySeconds);
+                await Task.Delay(delaySeconds * 1000);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Failed to connect to Nutrition Modal endpoint at {BaseUrl}", _baseUrl);
+                return new NutritionAIResponse { Error = $"Modal endpoint unreachable: {ex.Message}" };
+            }
+            catch (TaskCanceledException)
+            {
+                return new NutritionAIResponse { Error = "Nutrition AI timed out — the model may still be warming up. Please wait 30 seconds and try again." };
+            }
+            catch (JsonException ex)
+            {
+                return new NutritionAIResponse { Error = $"Invalid response JSON: {ex.Message}" };
+            }
+        }
 
-            _logger.LogInformation(
-                "Nutrition plan generated: calories={Cal}, latency={Ms}ms",
-                result?.DailyCalories, result?.GenerationMs);
-
-            return result;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Failed to connect to Nutrition Modal endpoint at {BaseUrl}", _baseUrl);
-            return new NutritionAIResponse { Error = $"Modal endpoint unreachable: {ex.Message}" };
-        }
-        catch (TaskCanceledException)
-        {
-            return new NutritionAIResponse { Error = "Nutrition AI timed out — the model may still be warming up. Please wait 30 seconds and try again." };
-        }
-        catch (JsonException ex)
-        {
-            return new NutritionAIResponse { Error = $"Invalid response JSON: {ex.Message}" };
-        }
+        return new NutritionAIResponse { Error = "Exceeded maximum retry attempts connecting to the AI model." };
     }
 
     public async Task<bool> IsHealthyAsync()
