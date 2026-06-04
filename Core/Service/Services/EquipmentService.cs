@@ -87,5 +87,58 @@ namespace Service.Services
                 TokensCostPerHour = equipment.BookingCostTokens
             };
         }
+        public async Task<EquipmentDto> CreateEquipmentAsync(CreateEquipmentDto dto)
+        {
+            var item = new Equipment
+            {
+                Name = dto.Name,
+                CategoryId = dto.CategoryId ?? 1,
+                Location = dto.Location,
+                BookingCostTokens = dto.TokensCostPerHour,
+                Status = EquipmentStatus.Available,
+                ConditionRating = 5,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<Equipment>().AddAsync(item);
+            await _unitOfWork.SaveChangesAsync();
+
+            return await MapToEquipmentDtoAsync(item);
+        }
+
+        public async Task<EquipmentDto> UpdateEquipmentAsync(int id, UpdateEquipmentDto dto)
+        {
+            var item = await _unitOfWork.Repository<Equipment>().GetByIdAsync(id);
+            if (item == null)
+            {
+                throw new KeyNotFoundException($"Equipment with ID {id} not found");
+            }
+
+            item.Name = dto.Name;
+            item.CategoryId = dto.CategoryId ?? item.CategoryId;
+            item.Location = dto.Location;
+            item.Status = (EquipmentStatus)dto.Status;
+            item.LastMaintenanceDate = dto.LastMaintenanceDate;
+            item.NextMaintenanceDate = dto.NextMaintenanceDate;
+            item.BookingCostTokens = dto.TokensCostPerHour;
+            item.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<Equipment>().Update(item);
+            await _unitOfWork.SaveChangesAsync();
+
+            return await MapToEquipmentDtoAsync(item);
+        }
+
+        public async Task<bool> DeleteEquipmentAsync(int id)
+        {
+            var item = await _unitOfWork.Repository<Equipment>().GetByIdAsync(id);
+            if (item == null) return false;
+
+            _unitOfWork.Repository<Equipment>().Remove(item);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
     }
 }

@@ -57,6 +57,7 @@ namespace Service
         private readonly Lazy<IReceptionPaymentService> _lazyReceptionPaymentService;
         private readonly Lazy<IAchievementsService> _lazyAchievementsService;
         private readonly Lazy<IInvitationService> _lazyInvitationService;
+        private readonly Lazy<ICouponService> _lazyCouponService;
 
         public ServiceManager(
             IUnitOfWork unitOfWork,
@@ -118,6 +119,7 @@ namespace Service
             _lazyReceptionPaymentService = new Lazy<IReceptionPaymentService>(() => new ReceptionPaymentService(_unitOfWork, _mapper));
             _lazyAchievementsService = new Lazy<IAchievementsService>(() => new AchievementsService(_unitOfWork));
             _lazyInvitationService = new Lazy<IInvitationService>(() => new InvitationService(_unitOfWork));
+            _lazyCouponService = new Lazy<ICouponService>(() => new CouponService(_unitOfWork));
         }
 
         // BookingService needs TokenTransactionService and EquipmentTimeSlotService - initialize with factory getter
@@ -157,6 +159,7 @@ namespace Service
         public IReceptionPaymentService ReceptionPaymentService => _lazyReceptionPaymentService.Value;
         public IAchievementsService AchievementsService => _lazyAchievementsService.Value;
         public IInvitationService InvitationService => _lazyInvitationService.Value;
+        public ICouponService CouponService => _lazyCouponService.Value;
     }
 }
 

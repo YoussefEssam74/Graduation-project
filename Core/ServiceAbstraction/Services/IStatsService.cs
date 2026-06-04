@@ -7,5 +7,6 @@ namespace ServiceAbstraction.Services
         Task<MemberStatsDto> GetMemberStatsAsync(int userId);
         Task<CoachStatsDto> GetCoachStatsAsync(int coachId);
         Task<ReceptionStatsDto> GetReceptionStatsAsync();
+        Task<AdminStatsDto> GetAdminStatsAsync();
     }
 }

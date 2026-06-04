@@ -99,7 +99,7 @@ function BookEquipmentContent() {
     // Booking modal state
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentWithDetails | null>(null);
     const [bookingModalOpen, setBookingModalOpen] = useState(false);
-    const [selectedDuration, setSelectedDuration] = useState(60);
+    const [selectedDuration, setSelectedDuration] = useState(10);
     const [bookingDate, setBookingDate] = useState("");
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
@@ -128,10 +128,13 @@ function BookEquipmentContent() {
 
     // Duration options
     const durationOptions = [
+        { value: 10, label: "10 minutes" },
+        { value: 15, label: "15 minutes" },
+        { value: 20, label: "20 minutes" },
+        { value: 25, label: "25 minutes" },
         { value: 30, label: "30 minutes" },
-        { value: 45, label: "45 minutes" },
-        { value: 60, label: "1 hour" },
-        { value: 90, label: "1.5 hours" },
+        { value: 35, label: "35 minutes" },
+        { value: 40, label: "40 minutes" },
     ];
 
     // Rest time options between sequential equipment bookings
@@ -400,7 +403,7 @@ function BookEquipmentContent() {
         setSelectedEquipment(eq);
         setBookingDate(availabilityDate);
         setStartTime(`${hStr}:00`);
-        setSelectedDuration(60);
+        setSelectedDuration(10);
         setLastBookingEndTime("");
         setBookingModalOpen(true);
     };
@@ -633,7 +636,7 @@ function BookEquipmentContent() {
                                                 <Button
                                                     onClick={() => {
                                                         setSelectedEquipment(eq);
-                                                        setSelectedDuration(60);
+                                                        setSelectedDuration(10);
                                                         setSelectedRestTime(5);
                                                         setBookingModalOpen(true);
                                                         if (lastBookingEndTime) {

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction;
 using Shared.DTOs.User;
 using Microsoft.AspNetCore.Hosting;
+using Shared.Helpers;
 
 namespace Presentation.Controllers
 {
@@ -214,6 +215,48 @@ namespace Presentation.Controllers
 
             var clients = await _serviceManager.UserService.GetCoachClientsAsync(coachId);
             return Ok(clients);
+        }
+
+        #endregion
+
+        #region Get & Update Coach Profile
+
+        /// <summary>
+        /// Get coach profile by user ID
+        /// </summary>
+        [HttpGet("coach/{coachId}/profile")]
+        public async Task<ActionResult<ApiResponse<CoachProfileDto>>> GetCoachProfile(int coachId)
+        {
+            var profile = await _serviceManager.UserService.GetCoachProfileByUserIdAsync(coachId);
+            if (profile == null)
+            {
+                return NotFound(ApiResponse<CoachProfileDto>.ErrorResponse("Coach profile not found"));
+            }
+            return Ok(ApiResponse<CoachProfileDto>.SuccessResponse(profile));
+        }
+
+        /// <summary>
+        /// Update coach profile professional fields
+        /// </summary>
+        [HttpPut("coach/{coachId}/profile")]
+        [Authorize(Roles = "Coach,Admin")]
+        public async Task<ActionResult<ApiResponse<CoachProfileDto>>> UpdateCoachProfile(int coachId, [FromBody] UpdateCoachProfileDto dto)
+        {
+            var currentUserId = GetUserIdFromToken();
+            if (currentUserId != coachId && !IsAdmin)
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var profile = await _serviceManager.UserService.UpdateCoachProfileAsync(coachId, dto);
+                return Ok(ApiResponse<CoachProfileDto>.SuccessResponse(profile, "Professional profile updated successfully."));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<CoachProfileDto>.ErrorResponse(ex.Message));
+            }
         }
 
         #endregion

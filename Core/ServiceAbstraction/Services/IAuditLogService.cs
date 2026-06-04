@@ -8,5 +8,6 @@ namespace IntelliFit.ServiceAbstraction.Services
         Task<IEnumerable<AuditLogDto>> GetUserAuditLogsAsync(int userId, int limit = 100);
         Task<IEnumerable<AuditLogDto>> GetTableAuditLogsAsync(string tableName, int limit = 100);
         Task<AuditLogDto> GetAuditLogByIdAsync(int logId);
+        Task<IEnumerable<AuditLogDto>> GetAllAuditLogsAsync(int page, int pageSize, string? actionFilter = null, string? tableFilter = null);
     }
 }

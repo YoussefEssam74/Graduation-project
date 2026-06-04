@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using IntelliFit.Domain.Models;
 using IntelliFit.Domain.Models.AI;
 using IntelliFit.Domain.Enums;
+using Shared.Enums;
 
 namespace IntelliFit.Infrastructure.Persistence
 {
@@ -86,6 +87,9 @@ namespace IntelliFit.Infrastructure.Persistence
         // Invitations
         public DbSet<Invitation> Invitations { get; set; }
 
+        // Coupons
+        public DbSet<Coupon> Coupons { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -98,6 +102,7 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.HasPostgresEnum<TransactionType>();
             modelBuilder.HasPostgresEnum<PaymentStatus>();
             modelBuilder.HasPostgresEnum<NotificationType>();
+            modelBuilder.HasPostgresEnum<DiscountType>();
 
             // Table mappings
             modelBuilder.Entity<User>().ToTable("users");
@@ -146,6 +151,14 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<CoachReview>().ToTable("coach_reviews");
             modelBuilder.Entity<AuditLog>().ToTable("audit_logs");
             modelBuilder.Entity<Invitation>().ToTable("invitations");
+            modelBuilder.Entity<Coupon>(entity =>
+            {
+                entity.ToTable("coupons");
+                entity.HasKey(c => c.CouponId);
+                entity.Property(c => c.Code).IsRequired().HasMaxLength(50);
+                entity.HasIndex(c => c.Code).IsUnique();
+                entity.Property(c => c.DiscountValue).HasPrecision(10, 2);
+            });
 
             // User Configuration (single table with Role column)
             modelBuilder.Entity<User>(entity =>

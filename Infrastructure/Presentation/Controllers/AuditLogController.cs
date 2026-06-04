@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction;
 using IntelliFit.Shared.DTOs.User;
+using Shared.Helpers;
 
 namespace Presentation.Controllers
 {
@@ -52,6 +53,26 @@ namespace Presentation.Controllers
             return Ok(logs);
         }
 
+        #endregion
+
+        #region Get All Audit Logs (Admin only)
+        [HttpGet]
+        public async Task<ActionResult<ApiResponse<IEnumerable<AuditLogDto>>>> GetAllAuditLogs(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50,
+            [FromQuery] string? action = null,
+            [FromQuery] string? table = null)
+        {
+            try
+            {
+                var logs = await _serviceManager.AuditLogService.GetAllAuditLogsAsync(page, pageSize, action, table);
+                return Ok(ApiResponse<IEnumerable<AuditLogDto>>.SuccessResponse(logs));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<IEnumerable<AuditLogDto>>.ErrorResponse("Failed to retrieve audit logs", new List<string> { ex.Message }));
+            }
+        }
         #endregion
     }
 }

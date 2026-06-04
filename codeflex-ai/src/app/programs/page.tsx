@@ -748,7 +748,7 @@ function ProgramsContent() {
               </p>
             </div>
             <div className="flex gap-3">
-              <Link href="/generate-program">
+              <Link href="/ai-workout-generator">
                 <Button className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-bold text-white shadow-lg shadow-primary/30 hover:bg-blue-600 transition-transform hover:scale-105 active:scale-95">
                   <Sparkles className="h-5 w-5" />
                   Generate AI Plan
@@ -1171,7 +1171,7 @@ function ProgramsContent() {
                     title="No AI Plans Yet"
                     description="Generate your first AI-powered workout plan"
                     actionLabel="Generate AI Plan"
-                    actionHref="/generate-program"
+                    actionHref="/ai-workout-generator"
                   />
                 )}
               </div>
@@ -1453,7 +1453,7 @@ function ProgramsContent() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Link href="/generate-program">
+                  <Link href="/ai-workout-generator">
                     <Button className="w-full bg-primary hover:bg-primary/90 rounded-xl font-bold text-sm gap-2 shadow-lg shadow-primary/20">
                       <Sparkles className="h-4 w-4" />
                       AI Workout Generator

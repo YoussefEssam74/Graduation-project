@@ -66,4 +66,11 @@ export const paymentApi = {
       body: JSON.stringify(status),
     });
   },
+
+  /**
+   * Get all payments in the system (Admin only)
+   */
+  async getAllPayments(limit = 100): Promise<ApiResponse<PaymentDto[]>> {
+    return apiFetch<PaymentDto[]>(`/payment?limit=${limit}`);
+  },
 };

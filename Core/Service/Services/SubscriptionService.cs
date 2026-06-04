@@ -133,6 +133,7 @@ namespace Service.Services
                 DurationDays = plan.DurationDays,
                 Description = plan.Description,
                 TokensIncluded = plan.TokensIncluded,
+                InvitationsAllowed = plan.InvitationsAllowed,
                 Features = plan.Features,
                 MaxBookingsPerDay = plan.MaxBookingsPerDay,
                 MaxFreezeDays = plan.MaxFreezeDays,
@@ -289,6 +290,67 @@ namespace Service.Services
                 });
             }
             return result;
+        }
+        public async Task<SubscriptionPlanDto> CreatePlanAsync(CreateSubscriptionPlanDto dto)
+        {
+            var plan = new SubscriptionPlan
+            {
+                PlanName = dto.PlanName,
+                Description = dto.Description,
+                Price = dto.Price,
+                DurationDays = dto.DurationDays,
+                TokensIncluded = dto.TokensIncluded,
+                InvitationsAllowed = dto.InvitationsAllowed,
+                Features = dto.Features,
+                MaxBookingsPerDay = dto.MaxBookingsPerDay,
+                MaxFreezeDays = dto.MaxFreezeDays,
+                IsPopular = dto.IsPopular,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _unitOfWork.Repository<SubscriptionPlan>().AddAsync(plan);
+            await _unitOfWork.SaveChangesAsync();
+
+            return MapToPlanDto(plan);
+        }
+
+        public async Task<SubscriptionPlanDto> UpdatePlanAsync(int planId, UpdateSubscriptionPlanDto dto)
+        {
+            var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(planId);
+            if (plan == null)
+            {
+                throw new KeyNotFoundException($"Subscription plan with ID {planId} not found");
+            }
+
+            plan.PlanName = dto.PlanName;
+            plan.Description = dto.Description;
+            plan.Price = dto.Price;
+            plan.DurationDays = dto.DurationDays;
+            plan.TokensIncluded = dto.TokensIncluded;
+            plan.InvitationsAllowed = dto.InvitationsAllowed;
+            plan.Features = dto.Features;
+            plan.MaxBookingsPerDay = dto.MaxBookingsPerDay;
+            plan.MaxFreezeDays = dto.MaxFreezeDays;
+            plan.IsPopular = dto.IsPopular;
+            plan.IsActive = dto.IsActive;
+            plan.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<SubscriptionPlan>().Update(plan);
+            await _unitOfWork.SaveChangesAsync();
+
+            return MapToPlanDto(plan);
+        }
+
+        public async Task<bool> DeletePlanAsync(int planId)
+        {
+            var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(planId);
+            if (plan == null) return false;
+
+            _unitOfWork.Repository<SubscriptionPlan>().Remove(plan);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
         }
     }
 }

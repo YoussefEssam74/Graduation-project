@@ -21,6 +21,7 @@ namespace Presistence.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "booking_status", new[] { "pending", "confirmed", "cancelled", "completed", "no_show" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "discount_type", new[] { "percentage", "fixed_amount" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "equipment_status", new[] { "available", "in_use", "under_maintenance", "out_of_service", "reserved" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "gender_type", new[] { "male", "female" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "notification_type", new[] { "booking_reminder", "maintenance_alert", "payment_due", "workout_complete", "milestone_achieved", "coach_message", "system_alert", "promotional_offer" });
@@ -1093,6 +1094,52 @@ namespace Presistence.Migrations
                     b.HasIndex("WorkoutPlanExerciseId");
 
                     b.ToTable("coach_session_equipments", (string)null);
+                });
+
+            modelBuilder.Entity("IntelliFit.Domain.Models.Coupon", b =>
+                {
+                    b.Property<int>("CouponId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("CouponId"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentUsage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DiscountType")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("DiscountValue")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxUsage")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CouponId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("coupons", (string)null);
                 });
 
             modelBuilder.Entity("IntelliFit.Domain.Models.Equipment", b =>

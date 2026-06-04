@@ -8,5 +8,6 @@ namespace ServiceAbstraction.Services
         Task<PaymentDto?> GetPaymentByIdAsync(int paymentId);
         Task<IEnumerable<PaymentDto>> GetUserPaymentsAsync(int userId);
         Task<PaymentDto> UpdatePaymentStatusAsync(int paymentId, int status, string? transactionId = null);
+        Task<IEnumerable<PaymentDto>> GetAllPaymentsAsync(int limit = 100);
     }
 }

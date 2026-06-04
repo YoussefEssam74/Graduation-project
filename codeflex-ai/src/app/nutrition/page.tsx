@@ -23,6 +23,7 @@ import {
     Plus,
     Minus,
     CalendarDays,
+    Clock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/toast";
@@ -63,30 +64,118 @@ const DIETARY_RESTRICTIONS = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const calculateCalorieTarget = (goal: string, activityLevel: string): number => {
-    const baseTDEE = 2000;
-    const multiplier = ACTIVITY_LEVELS.find(a => a.value === activityLevel)?.multiplier ?? 1.55;
-    const tdee = Math.round(baseTDEE * multiplier);
-    switch (goal) {
-        case "Weight Loss": return Math.max(1200, tdee - 500);
-        case "Muscle Gain": return tdee + 300;
-        case "Body Recomposition": return Math.max(1400, tdee - 200);
-        default: return tdee;
+const calculateCalorieTarget = (
+    goal: string,
+    activityLevel: string,
+    user: any,
+    inbody: InBodyMeasurementDto | null
+): number => {
+    if (!user) return 2000;
+
+    let bmr = 1500;
+    
+    // Calculate age from DateOfBirth
+    let age = 25;
+    if (user.dateOfBirth) {
+        const birth = new Date(user.dateOfBirth);
+        const today = new Date();
+        age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
     }
+
+    const weight = inbody?.weight ?? 75;
+    const height = inbody?.height ?? 175;
+    const gender = user.gender === 1 ? "female" : "male";
+
+    // Calculate BMR using Harris-Benedict
+    if (gender === "male") {
+        bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    } else {
+        bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+    }
+
+    // Override with InBody BMR if available
+    if (inbody?.bmr && inbody.bmr > 0) {
+        bmr = inbody.bmr;
+    }
+
+    const activityMultipliers: Record<string, number> = {
+        "Sedentary": 1.2,
+        "Lightly Active": 1.375,
+        "Moderately Active": 1.55,
+        "Very Active": 1.725,
+        "Extremely Active": 1.9,
+    };
+    const activityFactor = activityMultipliers[activityLevel] ?? 1.55;
+    let tdee = bmr * activityFactor;
+
+    const goalMultipliers: Record<string, number> = {
+        "Weight Loss": 0.80,
+        "Muscle Gain": 1.10,
+        "Maintain": 1.0,
+        "Body Recomposition": 0.95,
+    };
+    const goalFactor = goalMultipliers[goal] ?? 1.0;
+    let targetCalories = tdee * goalFactor;
+
+    // InBody-driven fat deficit for body recomposition
+    if (inbody && goal === "Body Recomposition" && inbody.bodyFatPercentage && inbody.bodyFatPercentage > 30) {
+        targetCalories = targetCalories * 0.80;
+    }
+
+    return Math.max(1200, Math.round(targetCalories));
 };
 
-const calculateMacros = (goal: string, calories: number) => {
-    let pPct: number, cPct: number, fPct: number;
-    switch (goal) {
-        case "Muscle Gain":      pPct = 0.30; cPct = 0.45; fPct = 0.25; break;
-        case "Weight Loss":     pPct = 0.35; cPct = 0.35; fPct = 0.30; break;
-        case "Body Recomposition": pPct = 0.35; cPct = 0.35; fPct = 0.30; break;
-        default:                pPct = 0.25; cPct = 0.50; fPct = 0.25;
+const calculateMacros = (
+    goal: string,
+    calories: number,
+    inbody: InBodyMeasurementDto | null
+) => {
+    // Default macros ratio: 50% carbs, 25% protein, 25% fats
+    let pPct = 0.25;
+    let cPct = 0.50;
+    let fPct = 0.25;
+
+    // Adjust based on InBody body fat
+    if (inbody?.bodyFatPercentage && inbody.bodyFatPercentage > 30) {
+        pPct = 0.35;
+        fPct = 0.20;
+        cPct = 0.45;
     }
+    
+    // Adjust based on InBody muscle mass
+    if (inbody?.muscleMass && inbody.muscleMass < 25) {
+        pPct = Math.max(pPct, 0.35);
+        fPct = 0.20;
+        cPct = 1 - pPct - fPct;
+    }
+
+    // Adjust based on Goal if no InBody flags override
+    if (!inbody) {
+        switch (goal) {
+            case "Muscle Gain":
+                pPct = 0.30;
+                cPct = 0.45;
+                fPct = 0.25;
+                break;
+            case "Weight Loss":
+                pPct = 0.35;
+                cPct = 0.35;
+                fPct = 0.30;
+                break;
+            case "Body Recomposition":
+                pPct = 0.35;
+                cPct = 0.35;
+                fPct = 0.30;
+                break;
+        }
+    }
+
     return {
         protein: Math.round((calories * pPct) / 4),
-        carbs:   Math.round((calories * cPct) / 4),
-        fat:     Math.round((calories * fPct) / 9),
+        carbs: Math.round((calories * cPct) / 4),
+        fat: Math.round((calories * fPct) / 9),
     };
 };
 
@@ -136,7 +225,19 @@ function StepIndicator({ currentStep, totalSteps }: { currentStep: number; total
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-type ViewState = "loading" | "no-plan" | "no-inbody" | "wizard" | "plan";
+const getInbodyAgeInDays = (measurement: InBodyMeasurementDto | null): number => {
+    if (!measurement) return Infinity;
+    const dateStr = measurement.measurementDate || measurement.createdAt;
+    if (!dateStr) return Infinity;
+    const scanDate = new Date(dateStr);
+    if (isNaN(scanDate.getTime())) return Infinity;
+    
+    const today = new Date();
+    const diffTime = today.getTime() - scanDate.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+};
+
+type ViewState = "loading" | "no-plan" | "no-inbody" | "expired-inbody" | "wizard" | "plan";
 
 function NutritionContent() {
     const { user } = useAuth();
@@ -167,6 +268,58 @@ function NutritionContent() {
     const [manualMacros, setManualMacros] = useState(false);
     const [planName, setPlanName] = useState("");
     const [inbodyData, setInbodyData] = useState<InBodyMeasurementDto | null>(null);
+
+    // Body metrics states (initialized from InBody scan or defaults)
+    const [weight, setWeight] = useState<number>(75);
+    const [height, setHeight] = useState<number>(175);
+    const [bodyFat, setBodyFat] = useState<number>(20);
+    const [muscleMass, setMuscleMass] = useState<number>(30);
+    const [bmr, setBmr] = useState<number>(1500);
+    const [isManualBmr, setIsManualBmr] = useState<boolean>(false);
+
+    // Helper to calculate estimated BMR
+    const calculateEstimatedBmr = useCallback((genderVal: number | undefined, dobStr: string | undefined, w: number, h: number): number => {
+        let age = 25;
+        if (dobStr) {
+            const birth = new Date(dobStr);
+            const today = new Date();
+            age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        }
+        const gender = genderVal === 1 ? "female" : "male";
+        if (gender === "male") {
+            return Math.round(10 * w + 6.25 * h - 5 * age + 5);
+        } else {
+            return Math.round(10 * w + 6.25 * h - 5 * age - 161);
+        }
+    }, []);
+
+    // Sync body metrics state from InBody scan once loaded
+    useEffect(() => {
+        if (inbodyData) {
+            setWeight(inbodyData.weight);
+            setHeight(inbodyData.height);
+            setBodyFat(inbodyData.bodyFatPercentage ?? 20);
+            setMuscleMass(inbodyData.muscleMass ?? 30);
+            setBmr(inbodyData.bmr ?? 1500);
+        } else if (user) {
+            setWeight(75);
+            setHeight(175);
+            setBodyFat(20);
+            setMuscleMass(30);
+            const estBmr = calculateEstimatedBmr(user.gender, user.dateOfBirth, 75, 175);
+            setBmr(estBmr);
+        }
+    }, [inbodyData, user, calculateEstimatedBmr]);
+
+    // Recalculate estimated BMR when weight/height changes (unless BMR is locked to manual)
+    useEffect(() => {
+        if (!isManualBmr && user) {
+            const estBmr = calculateEstimatedBmr(user.gender, user.dateOfBirth, weight, height);
+            setBmr(estBmr);
+        }
+    }, [weight, height, isManualBmr, user, calculateEstimatedBmr]);
 
     // ── Fetch Data ────────────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {
@@ -259,7 +412,14 @@ function NutritionContent() {
 
                 setView("plan");
             } else {
-                setView(latestInbody ? "no-plan" : "no-inbody");
+                const inbodyAge = getInbodyAgeInDays(latestInbody);
+                if (!latestInbody) {
+                    setView("no-inbody");
+                } else if (inbodyAge > 30) {
+                    setView("expired-inbody");
+                } else {
+                    setView("no-plan");
+                }
             }
             if (mealsRes.success && mealsRes.data) {
                 setMeals(mealsRes.data);
@@ -272,28 +432,52 @@ function NutritionContent() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    // ── Auto-calculate calories when goal/activity changes ────────────────────
+    // ── Auto-calculate calories when goal/activity/metrics change ─────────────
     useEffect(() => {
         if (!manualCalories && goal) {
-            const cals = calculateCalorieTarget(goal, activityLevel);
+            const currentMetrics = {
+                measurementId: 0,
+                userId: user?.userId ?? 0,
+                userName: user?.name ?? "",
+                weight,
+                height,
+                bodyFatPercentage: bodyFat,
+                muscleMass,
+                bmr,
+                measurementDate: new Date().toISOString(),
+                createdAt: new Date().toISOString()
+            };
+            const cals = calculateCalorieTarget(goal, activityLevel, user, currentMetrics);
             setCalorieTarget(cals);
             if (!manualMacros) {
-                const m = calculateMacros(goal, cals);
+                const m = calculateMacros(goal, cals, currentMetrics);
                 setProteinGrams(m.protein);
                 setCarbsGrams(m.carbs);
                 setFatGrams(m.fat);
             }
         }
-    }, [goal, activityLevel, manualCalories, manualMacros]);
+    }, [goal, activityLevel, user, weight, height, bodyFat, muscleMass, bmr, manualCalories, manualMacros]);
 
     useEffect(() => {
         if (!manualMacros && goal) {
-            const m = calculateMacros(goal, calorieTarget);
+            const currentMetrics = {
+                measurementId: 0,
+                userId: user?.userId ?? 0,
+                userName: user?.name ?? "",
+                weight,
+                height,
+                bodyFatPercentage: bodyFat,
+                muscleMass,
+                bmr,
+                measurementDate: new Date().toISOString(),
+                createdAt: new Date().toISOString()
+            };
+            const m = calculateMacros(goal, calorieTarget, currentMetrics);
             setProteinGrams(m.protein);
             setCarbsGrams(m.carbs);
             setFatGrams(m.fat);
         }
-    }, [calorieTarget, goal, manualMacros]);
+    }, [calorieTarget, goal, weight, height, bodyFat, muscleMass, bmr, manualMacros]);
 
     // ── Wizard Validation ─────────────────────────────────────────────────────
     const canProceedStep1 = goal !== "" && activityLevel !== "";
@@ -331,14 +515,14 @@ function NutritionContent() {
 
             const mlRequest = NutritionMLService.buildRequest(
                 { userId: user.userId, gender: user.gender as number | undefined, dateOfBirth: user.dateOfBirth as string | undefined },
-                inbodyData ? {
-                    weight: inbodyData.weight,
-                    height: inbodyData.height,
-                    bodyFatPercentage: inbodyData.bodyFatPercentage,
-                    muscleMass: inbodyData.muscleMass,
-                    bmr: inbodyData.bmr,
-                    visceralFat: inbodyData.visceralFat,
-                } : null,
+                {
+                    weight,
+                    height,
+                    bodyFatPercentage: bodyFat,
+                    muscleMass,
+                    bmr,
+                    visceralFat: inbodyData?.visceralFat ?? 5,
+                },
                 mlPrefs,
             );
 
@@ -418,8 +602,15 @@ function NutritionContent() {
 
 
     const startWizard = () => {
+        const inbodyAge = getInbodyAgeInDays(inbodyData);
         if (!inbodyData) {
-            showToast("Please complete an InBody scan before generating a nutrition plan.", "error");
+            showToast("An active InBody scan is required to generate a nutrition plan.", "error");
+            setView("no-inbody");
+            return;
+        }
+        if (inbodyAge > 30) {
+            showToast("Your InBody scan has expired (older than 30 days). Please complete a new scan.", "error");
+            setView("expired-inbody");
             return;
         }
         setWizardStep(1);
@@ -454,8 +645,8 @@ function NutritionContent() {
                         <Info className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-3">InBody Scan Required</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mb-8 text-lg">
-                        To generate an accurate nutrition plan, we need your body composition data. Please complete an InBody scan at the gym reception first.
+                    <p className="text-slate-500 dark:text-slate-400 mb-8 text-lg leading-relaxed">
+                        To generate a personalized nutrition plan, you must have an active InBody scan. Please complete an InBody scan at the gym reception first.
                     </p>
                     <div className="grid grid-cols-3 gap-4 mb-8">
                         {[
@@ -469,9 +660,65 @@ function NutritionContent() {
                             </div>
                         ))}
                     </div>
-                    <p className="text-sm text-slate-400 dark:text-slate-500">
-                        Once your InBody data is recorded, come back here to generate your personalized nutrition plan.
+                    <div className="flex flex-col sm:flex-row justify-center gap-4">
+                        {activePlan && (
+                            <Button
+                                onClick={() => setView("plan")}
+                                variant="outline"
+                                className="px-6"
+                            >
+                                Back to My Current Plan
+                            </Button>
+                        )}
+                        <a
+                            href="/dashboard"
+                            className="inline-flex items-center justify-center h-10 px-6 rounded-md bg-slate-900 text-slate-50 hover:bg-slate-800 font-semibold"
+                        >
+                            Go to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ─── Expired InBody ────────────────────────────────────────────────────────
+    if (view === "expired-inbody") {
+        const lastScanDate = inbodyData?.measurementDate || inbodyData?.createdAt
+            ? new Date(inbodyData.measurementDate || inbodyData.createdAt).toLocaleDateString()
+            : "Unknown";
+        return (
+            <div className="min-h-screen">
+                <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                        <Clock className="w-10 h-10 text-white" />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-3">InBody Scan Expired</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mb-6 text-lg leading-relaxed">
+                        Your last InBody scan was on <strong className="text-slate-800 dark:text-white">{lastScanDate}</strong>. 
+                        InBody scans are only valid for <strong className="text-slate-800 dark:text-white">30 days</strong> to ensure your nutrition plan macro ratios match your current body composition.
                     </p>
+                    <p className="text-slate-500 dark:text-slate-400 mb-8 text-md leading-relaxed">
+                        Please complete a new InBody scan at the gym reception to update your metrics and generate a plan.
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row justify-center gap-4">
+                        {activePlan && (
+                            <Button
+                                onClick={() => setView("plan")}
+                                variant="outline"
+                                className="px-6"
+                            >
+                                Back to My Current Plan
+                            </Button>
+                        )}
+                        <a
+                            href="/dashboard"
+                            className="inline-flex items-center justify-center h-10 px-6 rounded-md bg-slate-900 text-slate-50 hover:bg-slate-800 font-semibold"
+                        >
+                            Go to Dashboard
+                        </a>
+                    </div>
                 </div>
             </div>
         );
@@ -583,6 +830,49 @@ function NutritionContent() {
                                 </div>
                             </div>
 
+                            {/* Body Metrics Card (Read-Only) */}
+                            <div className="p-5 bg-white dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                                <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                                    <Utensils className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+                                    Your Body Metrics (InBody)
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Your daily targets are automatically calculated based on your active InBody scan from the database.
+                                </p>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+                                    {/* Weight */}
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg text-center border border-slate-100 dark:border-slate-800">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Weight</div>
+                                        <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-1">{weight} kg</div>
+                                    </div>
+
+                                    {/* Height */}
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg text-center border border-slate-100 dark:border-slate-800">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Height</div>
+                                        <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-1">{height} cm</div>
+                                    </div>
+
+                                    {/* Body Fat % */}
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg text-center border border-slate-100 dark:border-slate-800">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Body Fat</div>
+                                        <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-1">{bodyFat}%</div>
+                                    </div>
+
+                                    {/* Muscle Mass */}
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg text-center border border-slate-100 dark:border-slate-800">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Muscle Mass</div>
+                                        <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-1">{muscleMass} kg</div>
+                                    </div>
+
+                                    {/* BMR */}
+                                    <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg text-center border border-slate-100 dark:border-slate-800 col-span-2 sm:col-span-1">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">BMR</div>
+                                        <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-1">{bmr} kcal</div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <Button
                                 onClick={() => setWizardStep(2)}
                                 disabled={!canProceedStep1}
@@ -687,15 +977,110 @@ function NutritionContent() {
                                 </div>
                             </div>
 
-                            {/* AI info card */}
-                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                                <div className="flex items-start gap-3">
-                                    <Sparkles className="w-5 h-5 text-emerald-600 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <p className="font-semibold text-emerald-800 dark:text-emerald-200 text-sm">AI Will Calculate Your Targets</p>
-                                        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                                            Based on your InBody measurements, goal, and activity level, the AI will compute your optimal daily calories and macro targets automatically.
+                            {/* Calories & Macros Configuration */}
+                            <div className="p-5 bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-emerald-500 animate-pulse" />
+                                        InBody-Driven Calories & Macros
+                                    </h3>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (manualCalories) {
+                                                setManualCalories(false);
+                                                setManualMacros(false);
+                                            } else {
+                                                setManualCalories(true);
+                                                setManualMacros(true);
+                                            }
+                                        }}
+                                        className="text-xs h-8"
+                                    >
+                                        {manualCalories ? "Reset to Auto" : "Manual Adjust"}
+                                    </Button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Calorie Settings */}
+                                    <div className="space-y-2 border-r border-slate-100 dark:border-slate-700 pr-4">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Daily Calorie Target</label>
+                                        {manualCalories ? (
+                                            <input
+                                                type="number"
+                                                value={calorieTarget}
+                                                onChange={(e) => setCalorieTarget(Math.max(1000, Number(e.target.value)))}
+                                                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-lg font-bold focus:outline-none focus:border-blue-500"
+                                            />
+                                        ) : (
+                                            <div className="flex items-baseline gap-1 py-1">
+                                                <span className="text-3xl font-black text-slate-900 dark:text-white">{calorieTarget.toLocaleString()}</span>
+                                                <span className="text-xs font-semibold text-slate-500 ml-1">kcal/day</span>
+                                                {inbodyData?.bmr && (
+                                                    <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-green-700 border border-green-200">
+                                                        InBody Sync
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                                            {inbodyData?.bmr
+                                                ? `Calculated using your actual InBody BMR (${inbodyData.bmr} kcal) and active multipliers.`
+                                                : "Calculated using estimated BMR values."}
                                         </p>
+                                    </div>
+
+                                    {/* Macro Settings */}
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Macronutrient Targets</label>
+                                        
+                                        <div className="space-y-2">
+                                            {/* Protein */}
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-semibold text-slate-600 dark:text-slate-400">Protein (g)</span>
+                                                {manualMacros ? (
+                                                    <input
+                                                        type="number"
+                                                        value={proteinGrams}
+                                                        onChange={(e) => setProteinGrams(Math.max(0, Number(e.target.value)))}
+                                                        className="w-20 px-2 py-1 text-center rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 font-bold"
+                                                    />
+                                                ) : (
+                                                    <span className="font-bold text-blue-600 dark:text-blue-400">{proteinGrams}g ({calorieTarget > 0 ? Math.round((proteinGrams * 4 / calorieTarget) * 100) : 0}%)</span>
+                                                )}
+                                            </div>
+
+                                            {/* Carbs */}
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-semibold text-slate-600 dark:text-slate-400">Carbs (g)</span>
+                                                {manualMacros ? (
+                                                    <input
+                                                        type="number"
+                                                        value={carbsGrams}
+                                                        onChange={(e) => setCarbsGrams(Math.max(0, Number(e.target.value)))}
+                                                        className="w-20 px-2 py-1 text-center rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 font-bold"
+                                                    />
+                                                ) : (
+                                                    <span className="font-bold text-orange-600 dark:text-orange-400">{carbsGrams}g ({calorieTarget > 0 ? Math.round((carbsGrams * 4 / calorieTarget) * 100) : 0}%)</span>
+                                                )}
+                                            </div>
+
+                                            {/* Fats */}
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-semibold text-slate-600 dark:text-slate-400">Fat (g)</span>
+                                                {manualMacros ? (
+                                                    <input
+                                                        type="number"
+                                                        value={fatGrams}
+                                                        onChange={(e) => setFatGrams(Math.max(0, Number(e.target.value)))}
+                                                        className="w-20 px-2 py-1 text-center rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 font-bold"
+                                                    />
+                                                ) : (
+                                                    <span className="font-bold text-yellow-600 dark:text-yellow-400">{fatGrams}g ({calorieTarget > 0 ? Math.round((fatGrams * 9 / calorieTarget) * 100) : 0}%)</span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

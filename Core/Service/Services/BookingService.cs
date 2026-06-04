@@ -382,7 +382,7 @@ namespace Service.Services
                 BookingType = BookingTypes.Equipment,
                 StartTime = createDto.StartTime,
                 EndTime = createDto.EndTime,
-                Status = BookingStatus.Pending,
+                Status = BookingStatus.Confirmed,
                 TokensCost = tokensCost,
                 Notes = createDto.Notes,
                 IsAutoBookedForCoachSession = false,

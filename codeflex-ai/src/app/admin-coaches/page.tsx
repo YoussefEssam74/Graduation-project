@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   UserCog,
   Search,
@@ -14,114 +14,74 @@ import {
   XCircle,
   Clock,
   Award,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
+import { usersApi, type CoachDto } from "@/lib/api/users";
 import Link from "next/link";
 
 function AdminCoachesContent() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [coaches, setCoaches] = useState<CoachDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const coaches = [
-    {
-      id: 1,
-      name: "Coach Ahmed",
-      email: "coach@pulsegym.com",
-      phone: "+20 100 123 4567",
-      specialization: "Strength & Conditioning",
-      status: "Active",
-      rating: 4.8,
-      totalClients: 24,
-      sessionsThisMonth: 48,
-      monthlyEarnings: 4500,
-      joinDate: "Jan 2024",
-      certifications: ["NASM-CPT", "CrossFit Level 2"],
-    },
-    {
-      id: 2,
-      name: "Coach Sara",
-      email: "sara.coach@pulsegym.com",
-      phone: "+20 100 234 5678",
-      specialization: "Yoga & Flexibility",
-      status: "Active",
-      rating: 4.9,
-      totalClients: 32,
-      sessionsThisMonth: 56,
-      monthlyEarnings: 5200,
-      joinDate: "Mar 2024",
-      certifications: ["RYT-500", "NASM-CPT"],
-    },
-    {
-      id: 3,
-      name: "Coach Omar",
-      email: "omar.coach@pulsegym.com",
-      phone: "+20 100 345 6789",
-      specialization: "HIIT & Cardio",
-      status: "Active",
-      rating: 4.7,
-      totalClients: 18,
-      sessionsThisMonth: 36,
-      monthlyEarnings: 3800,
-      joinDate: "Jun 2024",
-      certifications: ["ACE-CPT", "HIIT Specialist"],
-    },
-    {
-      id: 4,
-      name: "Coach Fatma",
-      email: "fatma.coach@pulsegym.com",
-      phone: "+20 100 456 7890",
-      specialization: "Nutrition & Wellness",
-      status: "Active",
-      rating: 4.9,
-      totalClients: 28,
-      sessionsThisMonth: 42,
-      monthlyEarnings: 4800,
-      joinDate: "Feb 2024",
-      certifications: ["Certified Nutritionist", "Wellness Coach"],
-    },
-    {
-      id: 5,
-      name: "Coach Mahmoud",
-      email: "mahmoud.coach@pulsegym.com",
-      phone: "+20 100 567 8901",
-      specialization: "Bodybuilding",
-      status: "On Leave",
-      rating: 4.6,
-      totalClients: 15,
-      sessionsThisMonth: 12,
-      monthlyEarnings: 2200,
-      joinDate: "Sep 2024",
-      certifications: ["ISSA-CPT", "Bodybuilding Specialist"],
-    },
-  ];
+  useEffect(() => {
+    fetchCoaches();
+  }, []);
 
-  const stats = [
-    { label: "Total Coaches", value: "12", color: "text-purple-500", icon: UserCog },
-    { label: "Active Coaches", value: "10", color: "text-green-500", icon: CheckCircle },
-    { label: "Avg Rating", value: "4.8", color: "text-yellow-500", icon: Star },
-    { label: "Total Sessions", value: "194", color: "text-blue-500", icon: Calendar },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "bg-green-100 text-green-700";
-      case "On Leave":
-        return "bg-orange-100 text-orange-700";
-      case "Inactive":
-        return "bg-red-100 text-red-700";
-      default:
-        return "bg-gray-100 text-gray-700";
+  const fetchCoaches = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await usersApi.getCoachesWithProfiles(true);
+      if (response.success && response.data) {
+        setCoaches(response.data);
+      } else {
+        setError(response.errors?.[0] || "Failed to load coaches");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred while loading coaches");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const getStats = () => {
+    const total = coaches.length;
+    const active = coaches.filter(c => c.isAvailable).length;
+    const avgRating = total > 0 
+      ? (coaches.reduce((acc, c) => acc + (c.rating || 0), 0) / total).toFixed(1) 
+      : "0.0";
+    const totalClients = coaches.reduce((acc, c) => acc + (c.totalClients || 0), 0);
+
+    return [
+      { label: "Total Coaches", value: total.toString(), color: "text-purple-500", icon: UserCog },
+      { label: "Available/Active", value: active.toString(), color: "text-green-500", icon: CheckCircle },
+      { label: "Avg Rating", value: avgRating, color: "text-yellow-500", icon: Star },
+      { label: "Total Clients", value: totalClients.toString(), color: "text-blue-500", icon: Users },
+    ];
+  };
+
+  const stats = getStats();
+
+  const getStatusColor = (isAvailable: boolean) => {
+    return isAvailable ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700";
+  };
+
   const filteredCoaches = coaches.filter((coach) => {
-    return coach.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           coach.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           coach.specialization.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = coach.name || "";
+    const email = coach.email || "";
+    const spec = coach.specialization || "";
+    return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           spec.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
   return (
@@ -169,79 +129,115 @@ function AdminCoachesContent() {
         </div>
       </Card>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          <span className="ml-2 text-lg">Loading coaches...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Card className="p-8 border border-red-200 bg-red-50">
+          <div className="flex flex-col items-center text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+            <h3 className="text-lg font-semibold text-red-900 mb-2">
+              Failed to Load Coaches
+            </h3>
+            <p className="text-red-700 mb-4">{error}</p>
+            <Button
+              onClick={fetchCoaches}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && coaches.length === 0 && (
+        <Card className="p-8 border border-border text-center">
+          <UserCog className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Coaches Found</h3>
+          <p className="text-muted-foreground mb-4">Create coach accounts via Create Staff.</p>
+          <Link href="/admin-users">
+            <Button className="bg-purple-600 hover:bg-purple-700">
+              Go to Create Staff
+            </Button>
+          </Link>
+        </Card>
+      )}
+
       {/* Coaches Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCoaches.map((coach) => (
-          <Card key={coach.id} className="p-6 border border-border hover:border-primary/50 transition-colors">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-xl font-bold mb-1">{coach.name}</h3>
-                <p className="text-sm text-muted-foreground mb-2">{coach.specialization}</p>
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(coach.status)}`}>
-                  {coach.status}
-                </span>
-              </div>
-              <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-lg">
-                <Star className="h-4 w-4 text-yellow-600 fill-yellow-600" />
-                <span className="font-semibold text-yellow-700">{coach.rating}</span>
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Users className="h-4 w-4 text-blue-500" />
-                <span className="text-muted-foreground">Clients:</span>
-                <span className="font-semibold">{coach.totalClients}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-purple-500" />
-                <span className="text-muted-foreground">Sessions:</span>
-                <span className="font-semibold">{coach.sessionsThisMonth} this month</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <DollarSign className="h-4 w-4 text-green-500" />
-                <span className="text-muted-foreground">Earnings:</span>
-                <span className="font-semibold">{coach.monthlyEarnings} EGP</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-orange-500" />
-                <span className="text-muted-foreground">Joined:</span>
-                <span className="font-semibold">{coach.joinDate}</span>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="h-4 w-4 text-indigo-500" />
-                <span className="text-sm font-semibold">Certifications</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {coach.certifications.map((cert, index) => (
-                  <span key={index} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full">
-                    {cert}
+      {!loading && !error && filteredCoaches.length > 0 && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCoaches.map((coach) => (
+            <Card key={coach.userId} className="p-6 border border-border hover:border-primary/50 transition-colors">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold mb-1">{coach.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{coach.specialization || "General Trainer"}</p>
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(coach.isAvailable)}`}>
+                    {coach.isAvailable ? "Available" : "Not Available"}
                   </span>
-                ))}
+                </div>
+                <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-lg">
+                  <Star className="h-4 w-4 text-yellow-600 fill-yellow-600" />
+                  <span className="font-semibold text-yellow-700">{(coach.rating || 0).toFixed(1)}</span>
+                </div>
               </div>
-            </div>
 
-            <div className="pt-4 border-t border-border">
-              <div className="text-sm text-muted-foreground mb-2">
-                <div>{coach.email}</div>
-                <div>{coach.phone}</div>
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  <span className="text-muted-foreground">Clients:</span>
+                  <span className="font-semibold">{coach.totalClients || 0}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-purple-500" />
+                  <span className="text-muted-foreground">Reviews:</span>
+                  <span className="font-semibold">{coach.totalReviews || 0} reviews</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                  <span className="text-muted-foreground">Hourly Rate:</span>
+                  <span className="font-semibold">{coach.hourlyRate || 0} EGP/hr</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-orange-500" />
+                  <span className="text-muted-foreground">Experience:</span>
+                  <span className="font-semibold">{coach.experienceYears || 0} years</span>
+                </div>
               </div>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" variant="outline" className="flex-1">
-                  <Edit className="h-3 w-3 mr-2" />
-                  Edit
-                </Button>
-                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+
+              {coach.certifications && coach.certifications.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Award className="h-4 w-4 text-indigo-500" />
+                    <span className="text-sm font-semibold">Certifications</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {coach.certifications.map((cert, index) => (
+                      <span key={index} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full">
+                        {cert}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-border">
+                <div className="text-sm text-muted-foreground mb-2">
+                  <div>{coach.email}</div>
+                  <div>{coach.phone || "No phone number"}</div>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

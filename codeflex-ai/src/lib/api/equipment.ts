@@ -100,9 +100,72 @@ export const equipmentApi = {
   },
 
   /**
+   * Create new equipment (Admin only)
+   */
+  async createEquipment(data: CreateEquipmentDto): Promise<ApiResponse<EquipmentDto>> {
+    const response = await apiFetch<EquipmentDto>('/equipment', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (response.success) {
+      apiCache.invalidate(CACHE_KEYS.ALL_EQUIPMENT);
+      apiCache.invalidate(CACHE_KEYS.AVAILABLE_EQUIPMENT);
+    }
+    return response;
+  },
+
+  /**
+   * Update equipment details (Admin only)
+   */
+  async updateEquipment(id: number, data: UpdateEquipmentDto): Promise<ApiResponse<EquipmentDto>> {
+    const response = await apiFetch<EquipmentDto>(`/equipment/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (response.success) {
+      apiCache.invalidate(CACHE_KEYS.ALL_EQUIPMENT);
+      apiCache.invalidate(CACHE_KEYS.AVAILABLE_EQUIPMENT);
+      apiCache.invalidate(CACHE_KEYS.EQUIPMENT_BY_ID(id));
+    }
+    return response;
+  },
+
+  /**
+   * Delete equipment (Admin only)
+   */
+  async deleteEquipment(id: number): Promise<ApiResponse<boolean>> {
+    const response = await apiFetch<boolean>(`/equipment/${id}`, {
+      method: 'DELETE',
+    });
+    if (response.success) {
+      apiCache.invalidate(CACHE_KEYS.ALL_EQUIPMENT);
+      apiCache.invalidate(CACHE_KEYS.AVAILABLE_EQUIPMENT);
+      apiCache.invalidate(CACHE_KEYS.EQUIPMENT_BY_ID(id));
+    }
+    return response;
+  },
+
+  /**
    * Force refresh all equipment caches
    */
   invalidateCache(): void {
     apiCache.invalidatePrefix('equipment:');
   },
 };
+
+export interface CreateEquipmentDto {
+  name: string;
+  categoryId?: number;
+  location?: string;
+  tokensCostPerHour: number;
+}
+
+export interface UpdateEquipmentDto {
+  name: string;
+  categoryId?: number;
+  status: number;
+  location?: string;
+  lastMaintenanceDate?: string;
+  nextMaintenanceDate?: string;
+  tokensCostPerHour: number;
+}

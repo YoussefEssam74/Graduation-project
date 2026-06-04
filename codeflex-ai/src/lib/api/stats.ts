@@ -71,4 +71,44 @@ export const statsApi = {
   async getReceptionStats(): Promise<ApiResponse<ReceptionStatsDto>> {
     return apiFetch<ReceptionStatsDto>('/stats/reception');
   },
+
+  /**
+   * Get admin statistics
+   */
+  async getAdminStats(): Promise<ApiResponse<AdminStatsDto>> {
+    return apiFetch<AdminStatsDto>('/stats/admin');
+  },
 };
+
+export interface AdminStatsDto {
+  totalMembers: number;
+  monthlyRevenue: number;
+  activeCoaches: number;
+  equipmentCount: number;
+  todayCheckIns: number;
+  pendingIssues: number;
+  systemUptime: number;
+  tokensSold: number;
+  revenueTrend: RevenueTrendItemDto[];
+  membershipDistribution: MembershipDistributionItemDto[];
+  peakHours: PeakHourItemDto[];
+}
+
+export interface RevenueTrendItemDto {
+  month: string;
+  revenue: number;
+  members: number;
+}
+
+export interface MembershipDistributionItemDto {
+  type: string;
+  count: number;
+  percentage: number;
+  color: string;
+}
+
+export interface PeakHourItemDto {
+  time: string;
+  usage: number;
+  color: string;
+}

@@ -37,5 +37,15 @@ namespace ServiceAbstraction.Services
         /// Get all clients associated with a coach
         /// </summary>
         Task<IEnumerable<CoachClientDto>> GetCoachClientsAsync(int coachId);
+
+        /// <summary>
+        /// Get coach profile by user ID
+        /// </summary>
+        Task<CoachProfileDto?> GetCoachProfileByUserIdAsync(int userId);
+
+        /// <summary>
+        /// Update coach profile professional fields
+        /// </summary>
+        Task<CoachProfileDto> UpdateCoachProfileAsync(int userId, UpdateCoachProfileDto dto);
     }
 }

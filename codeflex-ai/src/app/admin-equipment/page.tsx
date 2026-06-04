@@ -21,6 +21,9 @@ import { Input } from "@/components/ui/input";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
 import { equipmentApi, type EquipmentDto } from "@/lib/api/equipment";
+import { useToast } from "@/components/ui/toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // Equipment Status enum matching backend
 enum EquipmentStatus {
@@ -36,6 +39,21 @@ function AdminEquipmentContent() {
   const [equipment, setEquipment] = useState<EquipmentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal and form states
+  const { showToast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<"add" | "edit" | "maintain" | "delete">("add");
+  const [selectedItem, setSelectedItem] = useState<EquipmentDto | null>(null);
+  
+  const [name, setName] = useState("");
+  const [categoryId, setCategoryId] = useState<number>(1);
+  const [location, setLocation] = useState("");
+  const [tokensCostPerHour, setTokensCostPerHour] = useState<number>(0);
+  const [status, setStatus] = useState<number>(0);
+  const [lastMaintenanceDate, setLastMaintenanceDate] = useState("");
+  const [nextMaintenanceDate, setNextMaintenanceDate] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchEquipment();
@@ -57,6 +75,118 @@ function AdminEquipmentContent() {
       console.error("Equipment fetch error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openModal = (type: "add" | "edit" | "maintain" | "delete", item?: EquipmentDto) => {
+    setModalType(type);
+    setSelectedItem(item || null);
+    
+    if (item) {
+      setName(item.name || "");
+      setCategoryId(item.categoryId || 1);
+      setLocation(item.location || "");
+      setTokensCostPerHour(item.tokensCostPerHour || item.tokensCost || 0);
+      setStatus(item.status);
+      setLastMaintenanceDate(item.lastMaintenanceDate ? new Date(item.lastMaintenanceDate).toISOString().split('T')[0] : "");
+      setNextMaintenanceDate(item.nextMaintenanceDate ? new Date(item.nextMaintenanceDate).toISOString().split('T')[0] : "");
+    } else {
+      setName("");
+      setCategoryId(1);
+      setLocation("");
+      setTokensCostPerHour(0);
+      setStatus(0);
+      setLastMaintenanceDate("");
+      setNextMaintenanceDate("");
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name) {
+      showToast("Name is required", "error");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (modalType === "add") {
+        const response = await equipmentApi.createEquipment({
+          name,
+          categoryId,
+          location,
+          tokensCostPerHour,
+        });
+        if (response.success) {
+          showToast("Equipment added successfully", "success");
+          setIsModalOpen(false);
+          fetchEquipment();
+        } else {
+          showToast(response.message || "Failed to add equipment", "error");
+        }
+      } else if (modalType === "edit") {
+        if (!selectedItem) return;
+        const response = await equipmentApi.updateEquipment(selectedItem.equipmentId, {
+          name,
+          categoryId,
+          status,
+          location,
+          lastMaintenanceDate: lastMaintenanceDate || undefined,
+          nextMaintenanceDate: nextMaintenanceDate || undefined,
+          tokensCostPerHour,
+        });
+        if (response.success) {
+          showToast("Equipment updated successfully", "success");
+          setIsModalOpen(false);
+          fetchEquipment();
+        } else {
+          showToast(response.message || "Failed to update equipment", "error");
+        }
+      } else if (modalType === "maintain") {
+        if (!selectedItem) return;
+        const response = await equipmentApi.updateEquipment(selectedItem.equipmentId, {
+          name: selectedItem.name,
+          categoryId: selectedItem.categoryId,
+          status: EquipmentStatus.UnderMaintenance,
+          location: selectedItem.location,
+          lastMaintenanceDate: new Date().toISOString(),
+          nextMaintenanceDate: nextMaintenanceDate || undefined,
+          tokensCostPerHour: selectedItem.tokensCostPerHour || selectedItem.tokensCost || 0,
+        });
+        if (response.success) {
+          showToast("Equipment set to maintenance", "success");
+          setIsModalOpen(false);
+          fetchEquipment();
+        } else {
+          showToast(response.message || "Failed to update maintenance details", "error");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("An error occurred. Please try again.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    setIsSubmitting(true);
+    try {
+      const response = await equipmentApi.deleteEquipment(selectedItem.equipmentId);
+      if (response.success) {
+        showToast("Equipment deleted successfully", "success");
+        setIsModalOpen(false);
+        fetchEquipment();
+      } else {
+        showToast(response.message || "Failed to delete equipment", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("An error occurred while deleting.", "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -176,7 +306,7 @@ function AdminEquipmentContent() {
             Track and manage all gym equipment
           </p>
         </div>
-        <Button className="bg-green-600 hover:bg-green-700">
+        <Button className="bg-green-600 hover:bg-green-700" onClick={() => openModal("add")}>
           <Plus className="h-4 w-4 mr-2" />
           Add Equipment
         </Button>
@@ -357,11 +487,11 @@ function AdminEquipmentContent() {
               </div>
 
               <div className="flex gap-2 pt-4 border-t border-border">
-                <Button size="sm" variant="outline" className="flex-1">
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => openModal("edit", item)}>
                   <Edit className="h-3 w-3 mr-2" />
                   Edit
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1">
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => openModal("maintain", item)}>
                   <Wrench className="h-3 w-3 mr-2" />
                   Maintain
                 </Button>
@@ -369,6 +499,7 @@ function AdminEquipmentContent() {
                   size="sm"
                   variant="outline"
                   className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => openModal("delete", item)}
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
@@ -395,6 +526,156 @@ function AdminEquipmentContent() {
             </div>
           </Card>
         )}
+      {/* Dialog Modals */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-md bg-card border border-border shadow-2xl rounded-xl">
+          {modalType === "delete" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-red-600 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Delete Equipment
+                </DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete <strong>{selectedItem?.name}</strong>? This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="mt-6">
+                <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
+                  {isSubmitting ? "Deleting..." : "Delete"}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <form onSubmit={handleSave}>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {modalType === "add" && <Plus className="h-5 w-5 text-green-500" />}
+                  {modalType === "edit" && <Edit className="h-5 w-5 text-blue-500" />}
+                  {modalType === "maintain" && <Wrench className="h-5 w-5 text-orange-500" />}
+                  {modalType === "add" && "Add New Equipment"}
+                  {modalType === "edit" && "Edit Equipment"}
+                  {modalType === "maintain" && "Schedule Maintenance"}
+                </DialogTitle>
+                <DialogDescription>
+                  {modalType === "maintain" 
+                    ? `Update maintenance schedule for ${selectedItem?.name}.` 
+                    : "Fill in the details below to save the equipment."}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 my-4">
+                {modalType !== "maintain" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label htmlFor="name">Equipment Name</Label>
+                      <Input
+                        id="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="e.g. Treadmill Pro 500"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label htmlFor="categoryId">Category</Label>
+                      <select
+                        id="categoryId"
+                        value={categoryId}
+                        onChange={(e) => setCategoryId(Number(e.target.value))}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <option value={1}>Cardio</option>
+                        <option value={2}>Strength</option>
+                        <option value={3}>Wellness</option>
+                        <option value={4}>Other</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="location">Gym Location / Area</Label>
+                      <Input
+                        id="location"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="e.g. Zone A (Cardio Section)"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="tokensCost">Token Cost Per Hour</Label>
+                      <Input
+                        id="tokensCost"
+                        type="number"
+                        min={0}
+                        value={tokensCostPerHour}
+                        onChange={(e) => setTokensCostPerHour(Number(e.target.value))}
+                        placeholder="e.g. 5"
+                      />
+                    </div>
+
+                    {modalType === "edit" && (
+                      <div className="space-y-1">
+                        <Label htmlFor="status">Status</Label>
+                        <select
+                          id="status"
+                          value={status}
+                          onChange={(e) => setStatus(Number(e.target.value))}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                          <option value={0}>Available</option>
+                          <option value={1}>In Use</option>
+                          <option value={2}>Under Maintenance</option>
+                          <option value={3}>Out of Service</option>
+                        </select>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {modalType === "edit" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label htmlFor="lastMaintenance">Last Maintenance Date</Label>
+                      <Input
+                        id="lastMaintenance"
+                        type="date"
+                        value={lastMaintenanceDate}
+                        onChange={(e) => setLastMaintenanceDate(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {(modalType === "edit" || modalType === "maintain") && (
+                  <div className="space-y-1">
+                    <Label htmlFor="nextMaintenance">Next Maintenance Date</Label>
+                    <Input
+                      id="nextMaintenance"
+                      type="date"
+                      value={nextMaintenanceDate}
+                      onChange={(e) => setNextMaintenanceDate(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white">
+                  {isSubmitting ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

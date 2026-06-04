@@ -26,6 +26,28 @@ export interface CoachDto extends UserDto {
   isAvailable: boolean;
 }
 
+export interface CoachProfileDto {
+  id: number;
+  userId: number;
+  specialization?: string;
+  certifications?: string[];
+  experienceYears?: number;
+  bio?: string;
+  hourlyRate?: number;
+  availabilitySchedule?: string;
+  isAvailable: boolean;
+}
+
+export interface UpdateCoachProfileDto {
+  specialization?: string;
+  certifications?: string[];
+  experienceYears?: number;
+  bio?: string;
+  hourlyRate?: number;
+  availabilitySchedule?: string;
+  isAvailable?: boolean;
+}
+
 // DTOs for new endpoints
 export interface UserMetricsDto {
   userId: number;
@@ -295,5 +317,22 @@ export const usersApi = {
    */
   async getCoachClients(coachId: number): Promise<ApiResponse<CoachClientDto[]>> {
     return apiFetch<CoachClientDto[]>(`/users/coach/${coachId}/clients`);
+  },
+
+  /**
+   * Get coach professional profile
+   */
+  async getCoachProfile(coachId: number): Promise<ApiResponse<CoachProfileDto>> {
+    return apiFetch<CoachProfileDto>(`/users/coach/${coachId}/profile`);
+  },
+
+  /**
+   * Update coach professional profile
+   */
+  async updateCoachProfile(coachId: number, data: UpdateCoachProfileDto): Promise<ApiResponse<CoachProfileDto>> {
+    return apiFetch<CoachProfileDto>(`/users/coach/${coachId}/profile`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   },
 };

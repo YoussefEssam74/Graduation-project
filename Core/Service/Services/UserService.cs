@@ -489,5 +489,74 @@ namespace Service.Services
 
             return coachClients;
         }
+
+        public async Task<CoachProfileDto?> GetCoachProfileByUserIdAsync(int userId)
+        {
+            var profile = await _unitOfWork.Repository<CoachProfile>()
+                .FirstOrDefaultAsync(cp => cp.UserId == userId);
+
+            if (profile == null) return null;
+
+            return new CoachProfileDto
+            {
+                Id = profile.Id,
+                UserId = profile.UserId,
+                Specialization = profile.Specialization,
+                Certifications = profile.Certifications,
+                ExperienceYears = profile.ExperienceYears,
+                Bio = profile.Bio,
+                HourlyRate = profile.HourlyRate,
+                AvailabilitySchedule = profile.AvailabilitySchedule,
+                IsAvailable = profile.IsAvailable
+            };
+        }
+
+        public async Task<CoachProfileDto> UpdateCoachProfileAsync(int userId, UpdateCoachProfileDto dto)
+        {
+            var profile = await _unitOfWork.Repository<CoachProfile>()
+                .FirstOrDefaultAsync(cp => cp.UserId == userId);
+
+            if (profile == null)
+            {
+                var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+                if (user == null || user.Role != UserRole.Coach)
+                {
+                    throw new KeyNotFoundException($"Active coach user with ID {userId} not found.");
+                }
+
+                profile = new CoachProfile
+                {
+                    UserId = userId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<CoachProfile>().AddAsync(profile);
+            }
+
+            if (dto.Specialization != null) profile.Specialization = dto.Specialization;
+            if (dto.Certifications != null) profile.Certifications = dto.Certifications;
+            if (dto.ExperienceYears.HasValue) profile.ExperienceYears = dto.ExperienceYears.Value;
+            if (dto.Bio != null) profile.Bio = dto.Bio;
+            if (dto.HourlyRate.HasValue) profile.HourlyRate = dto.HourlyRate.Value;
+            if (dto.AvailabilitySchedule != null) profile.AvailabilitySchedule = dto.AvailabilitySchedule;
+            if (dto.IsAvailable.HasValue) profile.IsAvailable = dto.IsAvailable.Value;
+            profile.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<CoachProfile>().Update(profile);
+            await _unitOfWork.SaveChangesAsync();
+
+            return new CoachProfileDto
+            {
+                Id = profile.Id,
+                UserId = profile.UserId,
+                Specialization = profile.Specialization,
+                Certifications = profile.Certifications,
+                ExperienceYears = profile.ExperienceYears,
+                Bio = profile.Bio,
+                HourlyRate = profile.HourlyRate,
+                AvailabilitySchedule = profile.AvailabilitySchedule,
+                IsAvailable = profile.IsAvailable
+            };
+        }
     }
 }

@@ -220,5 +220,65 @@ namespace Presentation.Controllers
             }
         }
         #endregion
+        #region Manage Plans (Admin only)
+        /// <summary>
+        /// Create a new subscription plan (Admin only)
+        /// </summary>
+        [HttpPost("plans")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponse<SubscriptionPlanDto>>> CreatePlan([FromBody] CreateSubscriptionPlanDto dto)
+        {
+            try
+            {
+                var plan = await _serviceManager.SubscriptionService.CreatePlanAsync(dto);
+                return Ok(ApiResponse<SubscriptionPlanDto>.SuccessResponse(plan, "Subscription plan created successfully"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<SubscriptionPlanDto>.ErrorResponse("Failed to create plan", new List<string> { ex.Message }));
+            }
+        }
+
+        /// <summary>
+        /// Update an existing subscription plan (Admin only)
+        /// </summary>
+        [HttpPut("plans/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponse<SubscriptionPlanDto>>> UpdatePlan(int id, [FromBody] UpdateSubscriptionPlanDto dto)
+        {
+            try
+            {
+                var plan = await _serviceManager.SubscriptionService.UpdatePlanAsync(id, dto);
+                return Ok(ApiResponse<SubscriptionPlanDto>.SuccessResponse(plan, "Subscription plan updated successfully"));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ApiResponse<SubscriptionPlanDto>.ErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<SubscriptionPlanDto>.ErrorResponse("Failed to update plan", new List<string> { ex.Message }));
+            }
+        }
+
+        /// <summary>
+        /// Delete a subscription plan (Admin only)
+        /// </summary>
+        [HttpDelete("plans/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponse<bool>>> DeletePlan(int id)
+        {
+            try
+            {
+                var result = await _serviceManager.SubscriptionService.DeletePlanAsync(id);
+                if (!result) return NotFound(ApiResponse<bool>.ErrorResponse("Subscription plan not found"));
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Subscription plan deleted successfully"));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to delete plan", new List<string> { ex.Message }));
+            }
+        }
+        #endregion
     }
 }

@@ -107,5 +107,22 @@ namespace Service.Services
 
             return dto;
         }
+        public async Task<IEnumerable<PaymentDto>> GetAllPaymentsAsync(int limit = 100)
+        {
+            var payments = await _unitOfWork.Repository<Payment>().GetAllAsync();
+            var sorted = payments.OrderByDescending(p => p.CreatedAt).Take(limit).ToList();
+
+            var paymentDtos = new List<PaymentDto>();
+            foreach (var payment in sorted)
+            {
+                var dto = await GetPaymentDtoAsync(payment.PaymentId);
+                if (dto != null)
+                {
+                    paymentDtos.Add(dto);
+                }
+            }
+
+            return paymentDtos;
+        }
     }
 }

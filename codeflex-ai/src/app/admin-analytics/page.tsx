@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   BarChart3,
   TrendingUp,
@@ -10,17 +11,81 @@ import {
   Target,
   Award,
   Activity,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
+import { statsApi, type AdminStatsDto } from "@/lib/api/stats";
+import { usersApi, type CoachDto } from "@/lib/api/users";
 
 function AdminAnalyticsContent() {
-  const stats = [
+  const [stats, setStats] = useState<AdminStatsDto | null>(null);
+  const [coaches, setCoaches] = useState<CoachDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, []);
+
+  const fetchAnalyticsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [statsRes, coachesRes] = await Promise.all([
+        statsApi.getAdminStats(),
+        usersApi.getCoachesWithProfiles(true),
+      ]);
+
+      if (statsRes.success && statsRes.data) {
+        setStats(statsRes.data);
+      } else {
+        throw new Error(statsRes.errors?.[0] || statsRes.message || "Failed to load admin analytics");
+      }
+
+      if (coachesRes.success && coachesRes.data) {
+        const sorted = [...coachesRes.data]
+          .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+          .slice(0, 3);
+        setCoaches(sorted);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "An error occurred while loading analytics reports");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <span className="ml-2 text-lg font-medium mt-4">Loading Reports and Analytics...</span>
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <Card className="p-8 border border-red-200 bg-red-50 text-center max-w-md mx-auto my-12">
+        <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-red-900 mb-2">Error Loading Reports</h3>
+        <p className="text-red-700 mb-4">{error}</p>
+        <Button onClick={fetchAnalyticsData} className="bg-red-600 hover:bg-red-700">
+          Try Again
+        </Button>
+      </Card>
+    );
+  }
+
+  const metricCards = [
     {
       label: "Total Revenue",
-      value: "156,450 EGP",
+      value: `${stats.monthlyRevenue.toLocaleString()} EGP`,
       change: "+12.5%",
       trend: "up",
       color: "text-green-500",
@@ -29,7 +94,7 @@ function AdminAnalyticsContent() {
     },
     {
       label: "Active Members",
-      value: "342",
+      value: stats.totalMembers.toString(),
       change: "+8.2%",
       trend: "up",
       color: "text-blue-500",
@@ -37,62 +102,35 @@ function AdminAnalyticsContent() {
       icon: Users,
     },
     {
-      label: "Monthly Sessions",
-      value: "1,248",
-      change: "+15.3%",
+      label: "Equipment Inventory",
+      value: stats.equipmentCount.toString(),
+      change: "Items tracked",
       trend: "up",
       color: "text-purple-500",
       bgColor: "bg-purple-100",
       icon: Calendar,
     },
     {
-      label: "Retention Rate",
-      value: "94.2%",
-      change: "-1.2%",
-      trend: "down",
+      label: "Active Coaches",
+      value: stats.activeCoaches.toString(),
+      change: "Profiles verified",
+      trend: "up",
       color: "text-orange-500",
       bgColor: "bg-orange-100",
       icon: Target,
     },
   ];
 
-  const revenueByMonth = [
-    { month: "Jun", revenue: 12500 },
-    { month: "Jul", revenue: 13800 },
-    { month: "Aug", revenue: 15200 },
-    { month: "Sep", revenue: 14100 },
-    { month: "Oct", revenue: 16300 },
-    { month: "Nov", revenue: 18450 },
-  ];
+  const maxRevenue = stats.revenueTrend && stats.revenueTrend.length > 0 
+    ? Math.max(...stats.revenueTrend.map(m => m.revenue)) 
+    : 1;
 
-  const membershipDistribution = [
-    { type: "VIP", count: 45, percentage: 13, color: "bg-purple-500" },
-    { type: "Premium", count: 142, percentage: 42, color: "bg-blue-500" },
-    { type: "Basic", count: 155, percentage: 45, color: "bg-gray-500" },
-  ];
-
-  const topPerformers = [
-    { name: "Coach Ahmed", metric: "48 Sessions", rating: 4.8, specialty: "Strength" },
-    { name: "Coach Sara", metric: "56 Sessions", rating: 4.9, specialty: "Yoga" },
-    { name: "Coach Fatma", metric: "42 Sessions", rating: 4.9, specialty: "Nutrition" },
-  ];
-
-  const peakHours = [
-    { time: "6-8 AM", usage: 85, color: "bg-blue-500" },
-    { time: "8-10 AM", usage: 65, color: "bg-blue-400" },
-    { time: "10-12 PM", usage: 40, color: "bg-blue-300" },
-    { time: "12-2 PM", usage: 35, color: "bg-blue-200" },
-    { time: "2-4 PM", usage: 45, color: "bg-blue-300" },
-    { time: "4-6 PM", usage: 75, color: "bg-blue-400" },
-    { time: "6-8 PM", usage: 95, color: "bg-blue-500" },
-    { time: "8-10 PM", usage: 70, color: "bg-blue-400" },
-  ];
-
-  const maxRevenue = Math.max(...revenueByMonth.map(m => m.revenue));
+  const handleExport = () => {
+    window.print();
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold flex items-center gap-3">
@@ -106,28 +144,21 @@ function AdminAnalyticsContent() {
             <Calendar className="h-4 w-4 mr-2" />
             Last 30 Days
           </Button>
-          <Button className="bg-orange-600 hover:bg-orange-700">
+          <Button className="bg-orange-600 hover:bg-orange-700" onClick={handleExport}>
             Export Report
           </Button>
         </div>
       </div>
 
-      {/* Key Metrics */}
       <div className="grid md:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
+        {metricCards.map((stat, index) => (
           <Card key={index} className="p-6 border border-border">
             <div className="flex items-center justify-between mb-4">
               <div className={`p-3 ${stat.bgColor} rounded-lg`}>
                 <stat.icon className={`h-6 w-6 ${stat.color}`} />
               </div>
-              <div className={`flex items-center gap-1 text-sm font-semibold ${
-                stat.trend === "up" ? "text-green-600" : "text-red-600"
-              }`}>
-                {stat.trend === "up" ? (
-                  <TrendingUp className="h-4 w-4" />
-                ) : (
-                  <TrendingDown className="h-4 w-4" />
-                )}
+              <div className="flex items-center gap-1 text-sm font-semibold text-green-600">
+                <TrendingUp className="h-4 w-4" />
                 {stat.change}
               </div>
             </div>
@@ -138,65 +169,70 @@ function AdminAnalyticsContent() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
         <Card className="p-6 border border-border">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <DollarSign className="h-6 w-6 text-green-500" />
               Revenue Trend
             </h3>
-            <span className="text-sm text-muted-foreground">Last 6 Months</span>
+            <span className="text-sm text-muted-foreground">Monthly billing</span>
           </div>
           <div className="space-y-4">
-            {revenueByMonth.map((item) => (
-              <div key={item.month}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold">{item.month}</span>
-                  <span className="text-sm font-bold text-green-600">{item.revenue.toLocaleString()} EGP</span>
+            {stats.revenueTrend && stats.revenueTrend.length > 0 ? (
+              stats.revenueTrend.map((item) => (
+                <div key={item.month}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold">{item.month}</span>
+                    <span className="text-sm font-bold text-green-600">{item.revenue.toLocaleString()} EGP</span>
+                  </div>
+                  <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full"
+                      style={{ width: `${(item.revenue / maxRevenue) * 100}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full"
-                    style={{ width: `${(item.revenue / maxRevenue) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm text-center py-6">No trend data available.</p>
+            )}
           </div>
         </Card>
 
-        {/* Membership Distribution */}
         <Card className="p-6 border border-border">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Users className="h-6 w-6 text-blue-500" />
               Membership Distribution
             </h3>
-            <span className="text-sm text-muted-foreground">342 Total</span>
+            <span className="text-sm text-muted-foreground">{stats.totalMembers} Total</span>
           </div>
           <div className="space-y-6">
-            {membershipDistribution.map((item) => (
-              <div key={item.type}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold">{item.type}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {item.count} members ({item.percentage}%)
-                  </span>
+            {stats.membershipDistribution && stats.membershipDistribution.length > 0 ? (
+              stats.membershipDistribution.map((item) => (
+                <div key={item.type}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold">{item.type}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {item.count} members ({item.percentage.toFixed(0)}%)
+                    </span>
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${item.color || "bg-blue-500"} rounded-full transition-all duration-500`}
+                      style={{ width: `${item.percentage}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${item.color} rounded-full transition-all duration-500`}
-                    style={{ width: `${item.percentage}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm text-center py-6">No distribution data available.</p>
+            )}
           </div>
         </Card>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Top Performers */}
         <Card className="p-6 border border-border">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold flex items-center gap-2">
@@ -205,60 +241,67 @@ function AdminAnalyticsContent() {
             </h3>
           </div>
           <div className="space-y-4">
-            {topPerformers.map((coach, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full text-white font-bold">
-                    {index + 1}
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">{coach.name}</h4>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span>{coach.specialty}</span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Activity className="h-3 w-3" />
-                        {coach.metric}
-                      </span>
+            {coaches.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-6">No coaches found.</p>
+            ) : (
+              coaches.map((coach, index) => (
+                <div
+                  key={coach.userId}
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full text-white font-bold">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">{coach.name}</h4>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>{coach.specialization || "Gym Coach"}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Activity className="h-3 w-3" />
+                          {coach.totalClients || 0} Clients
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-lg">
+                    <Award className="h-4 w-4 text-yellow-600" />
+                    <span className="font-semibold text-yellow-700">{(coach.rating || 0).toFixed(1)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-lg">
-                  <Award className="h-4 w-4 text-yellow-600" />
-                  <span className="font-semibold text-yellow-700">{coach.rating}</span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </Card>
 
-        {/* Peak Hours */}
         <Card className="p-6 border border-border">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Activity className="h-6 w-6 text-purple-500" />
               Peak Usage Hours
             </h3>
-            <span className="text-sm text-muted-foreground">Daily Average</span>
+            <span className="text-sm text-muted-foreground">Check-in patterns</span>
           </div>
           <div className="space-y-3">
-            {peakHours.map((hour) => (
-              <div key={hour.time}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold">{hour.time}</span>
-                  <span className="text-sm font-bold text-purple-600">{hour.usage}%</span>
+            {stats.peakHours && stats.peakHours.length > 0 ? (
+              stats.peakHours.map((hour) => (
+                <div key={hour.time}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold">{hour.time}</span>
+                    <span className="text-sm font-bold text-purple-600">{hour.usage.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${hour.color || "bg-purple-500"} rounded-full transition-all duration-500`}
+                      style={{ width: `${hour.usage}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${hour.color} rounded-full transition-all duration-500`}
-                    style={{ width: `${hour.usage}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-muted-foreground text-sm text-center py-6">No peak hour data available.</p>
+            )}
           </div>
         </Card>
       </div>

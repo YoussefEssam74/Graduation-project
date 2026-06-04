@@ -10,6 +10,7 @@ export interface SubscriptionPlanDto {
   tokensIncluded: number;
   invitationsAllowed: number;
   maxBookingsPerDay?: number;
+  maxFreezeDays: number;
   isPopular: boolean;
   isActive: boolean;
 }
@@ -129,4 +130,50 @@ export const subscriptionApi = {
   async getFrozenSubscriptions(): Promise<ApiResponse<UserSubscriptionDetailsDto[]>> {
     return apiFetch<UserSubscriptionDetailsDto[]>("/subscription/frozen");
   },
+
+  /**
+   * Create a new subscription plan (Admin only)
+   */
+  async createPlan(data: CreateSubscriptionPlanDto): Promise<ApiResponse<SubscriptionPlanDto>> {
+    return apiFetch<SubscriptionPlanDto>("/subscription/plans", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Update an existing subscription plan (Admin only)
+   */
+  async updatePlan(id: number, data: UpdateSubscriptionPlanDto): Promise<ApiResponse<SubscriptionPlanDto>> {
+    return apiFetch<SubscriptionPlanDto>(`/subscription/plans/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Delete a subscription plan (Admin only)
+   */
+  async deletePlan(id: number): Promise<ApiResponse<boolean>> {
+    return apiFetch<boolean>(`/subscription/plans/${id}`, {
+      method: "DELETE",
+    });
+  },
 };
+
+export interface CreateSubscriptionPlanDto {
+  planName: string;
+  price: number;
+  durationDays: number;
+  description?: string;
+  tokensIncluded: number;
+  invitationsAllowed: number;
+  features?: string;
+  maxBookingsPerDay?: number;
+  maxFreezeDays: number;
+  isPopular: boolean;
+}
+
+export interface UpdateSubscriptionPlanDto extends CreateSubscriptionPlanDto {
+  isActive: boolean;
+}

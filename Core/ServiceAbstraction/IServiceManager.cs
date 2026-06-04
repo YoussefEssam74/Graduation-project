@@ -33,6 +33,7 @@ namespace ServiceAbstraction
         public IReceptionPaymentService ReceptionPaymentService { get; }
         public IAchievementsService AchievementsService { get; }
         public IInvitationService InvitationService { get; }
+        public ICouponService CouponService { get; }
 
     }
 }

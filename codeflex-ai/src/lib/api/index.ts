@@ -22,3 +22,6 @@ export * from "./ai";
 export * from "./meals";
 export * from "./workoutAI";
 export * from "./achievements";
+export * from "./coupons";
+export * from "./auditLogs";
+

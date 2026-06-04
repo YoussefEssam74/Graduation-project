@@ -46,6 +46,92 @@ import { ChatDialog } from "@/components/Chat/ChatDialog";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
 import { invitationsApi, type MemberInvitationQuota, type InvitationDto } from "@/lib/api/invitations";
 
+// Helpers for Recent Activity formatting
+const formatBookingTimeCompact = (startStr: string, endStr: string) => {
+  try {
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    
+    const dateFormatted = start.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric"
+    });
+    
+    const startTimeFormatted = start.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    });
+    
+    const endTimeFormatted = end.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    });
+    
+    return `${dateFormatted} at ${startTimeFormatted} - ${endTimeFormatted}`;
+  } catch (e) {
+    return "";
+  }
+};
+
+const getBookingIconInfo = (type: string) => {
+  const normalizedType = type.toLowerCase();
+  if (normalizedType === "session" || normalizedType === "personaltraining") {
+    return {
+      bg: "bg-purple-50 border border-purple-100 dark:bg-purple-950/30 dark:border-purple-900/50",
+      text: "text-purple-600 dark:text-purple-400",
+      icon: <UserCheck className="h-5 w-5" />
+    };
+  } else if (normalizedType === "equipment") {
+    return {
+      bg: "bg-blue-50 border border-blue-100 dark:bg-blue-950/30 dark:border-blue-900/50",
+      text: "text-blue-600 dark:text-blue-400",
+      icon: <Dumbbell className="h-5 w-5" />
+    };
+  } else if (normalizedType === "inbody") {
+    return {
+      bg: "bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/50",
+      text: "text-emerald-600 dark:text-emerald-400",
+      icon: <Activity className="h-5 w-5" />
+    };
+  } else {
+    return {
+      bg: "bg-slate-50 border border-slate-100 dark:bg-slate-850 dark:border-slate-800",
+      text: "text-slate-600 dark:text-slate-400",
+      icon: <Calendar className="h-5 w-5" />
+    };
+  }
+};
+
+const getBookingStatusStyle = (status: number) => {
+  switch (status) {
+    case 0: // Pending
+      return "bg-amber-50 text-amber-600 border border-amber-200/60 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50";
+    case 1: // Confirmed
+      return "bg-green-50 text-green-600 border border-green-200/60 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900/50";
+    case 2: // Cancelled
+      return "bg-rose-50 text-rose-600 border border-rose-200/60 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50";
+    case 3: // Completed
+      return "bg-blue-50 text-blue-600 border border-blue-200/60 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50";
+    case 4: // NoShow
+      return "bg-slate-50 text-slate-500 border border-slate-200/60 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/50";
+    default:
+      return "bg-slate-50 text-slate-500 border border-slate-200/60 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/50";
+  }
+};
+
+const getBookingStatusLabel = (status: number) => {
+  switch (status) {
+    case 0: return "Pending";
+    case 1: return "Confirmed";
+    case 2: return "Cancelled";
+    case 3: return "Completed";
+    case 4: return "No Show";
+    default: return "Unknown";
+  }
+};
+
 function DashboardContent() {
   const { user, refreshUser } = useAuth();
   const { hasAiAccess, hasCoachAccess } = useSubscription();
@@ -412,7 +498,7 @@ function DashboardContent() {
             icon: TrendingUp,
             title: "Generate Program",
             description: "Generate AI workout plan",
-            href: "/generate-program",
+            href: "/ai-workout-generator",
             color: "text-pink-500",
             bgColor: "bg-pink-50",
             hoverBgColor: "group-hover:bg-pink-500",
@@ -506,7 +592,7 @@ function DashboardContent() {
               </p>
               <div className="flex gap-3 flex-wrap">
                 {hasAiAccess && (
-                  <Link href="/generate-program">
+                  <Link href="/ai-workout-generator">
                     <Button className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-bold text-white shadow-lg shadow-primary/30 hover:bg-blue-600 transition-transform hover:scale-105 active:scale-95">
                       <Ticket className="h-5 w-5" />
                       Generate Program
@@ -728,7 +814,7 @@ function DashboardContent() {
             {/* Recent Pages / Active Plans (Simplified) */}
             <div className="mt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                   Recent Activity
                 </h3>
                 <Link
@@ -739,42 +825,67 @@ function DashboardContent() {
                 </Link>
               </div>
               <div className="space-y-4">
-                {recentBookings.slice(0, 2).map((booking) => (
+                {recentBookings.slice(0, 3).map((booking) => (
                   <div
                     key={booking.bookingId}
-                    className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100"
+                    className="group relative flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] hover:border-slate-200/80 dark:hover:border-slate-600 transition-all duration-300 gap-4"
                   >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`p-3 rounded-xl ${booking.coachId ? "bg-purple-50" : "bg-blue-50"}`}
-                      >
-                        {booking.coachId ? (
-                          <User className="h-5 w-5 text-purple-500" />
-                        ) : (
-                          <Dumbbell className="h-5 w-5 text-blue-500" />
-                        )}
+                    <div className="flex items-start sm:items-center gap-4">
+                      {/* Icon Container */}
+                      <div className={`p-3.5 rounded-2xl shrink-0 transition-transform group-hover:scale-110 duration-300 ${getBookingIconInfo(booking.bookingType).bg} ${getBookingIconInfo(booking.bookingType).text}`}>
+                        {getBookingIconInfo(booking.bookingType).icon}
                       </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-sm">
-                          {booking.coachName ||
-                            booking.equipmentName ||
-                            "Workout Session"}
+
+                      {/* Info Details */}
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug group-hover:text-primary transition-colors duration-200">
+                          {booking.bookingType.toLowerCase() === "session" || booking.bookingType.toLowerCase() === "personaltraining"
+                            ? `Personal Session with ${booking.coachName || "Coach"}`
+                            : booking.bookingType.toLowerCase() === "equipment"
+                            ? `${booking.equipmentName || "Gym Equipment"}`
+                            : booking.bookingType.toLowerCase() === "inbody"
+                            ? "InBody Composition Scan"
+                            : "Gym Booking"}
                         </h4>
-                        <p className="text-xs text-slate-500">
-                          {new Date(booking.createdAt).toLocaleDateString()}
-                        </p>
+                        
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5 text-slate-400" />
+                            {formatBookingTimeCompact(booking.startTime, booking.endTime)}
+                          </span>
+                          {booking.tokensCost > 0 ? (
+                            <>
+                              <span className="text-slate-300 dark:text-slate-600">•</span>
+                              <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold bg-green-50/50 dark:bg-green-950/20 px-2 py-0.5 rounded-md border border-green-100/50 dark:border-green-900/30">
+                                <Ticket className="h-3.5 w-3.5 fill-green-500/20" />
+                                {booking.tokensCost} Tokens
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-slate-300 dark:text-slate-600">•</span>
+                              <span className="text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-100 dark:border-slate-800">
+                                {booking.isAutoBookedForCoachSession ? "Session Equipment" : "Free"}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${booking.status === 1 ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"}`}
-                    >
-                      {booking.status === 1 ? "Confirmed" : "Pending"}
-                    </span>
+
+                    {/* Status Badge */}
+                    <div className="flex items-center gap-3 self-end sm:self-center">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${getBookingStatusStyle(booking.status)}`}
+                      >
+                        {getBookingStatusLabel(booking.status)}
+                      </span>
+                    </div>
                   </div>
                 ))}
                 {recentBookings.length === 0 && (
-                  <div className="text-center py-8 bg-white rounded-2xl border border-slate-100 border-dashed">
-                    <p className="text-slate-400 text-sm">No recent activity</p>
+                  <div className="text-center py-8 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 border-dashed">
+                    <p className="text-slate-400 dark:text-slate-500 text-sm">No recent activity</p>
                   </div>
                 )}
               </div>
@@ -1018,7 +1129,7 @@ function DashboardContent() {
                   </span>
                 </div>
               </div>
-              <Link href="/generate-program">
+              <Link href="/ai-workout-generator">
                 <Button
                   size="lg"
                   className="px-8 bg-primary hover:bg-primary/90 shadow-lg shadow-blue-500/30"

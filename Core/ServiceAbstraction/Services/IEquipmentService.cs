@@ -8,5 +8,8 @@ namespace ServiceAbstraction.Services
         Task<IEnumerable<EquipmentDto>> GetAvailableEquipmentAsync();
         Task<EquipmentDto?> GetEquipmentByIdAsync(int equipmentId);
         Task<EquipmentDto> UpdateEquipmentStatusAsync(int equipmentId, int status);
+        Task<EquipmentDto> CreateEquipmentAsync(CreateEquipmentDto dto);
+        Task<EquipmentDto> UpdateEquipmentAsync(int id, UpdateEquipmentDto dto);
+        Task<bool> DeleteEquipmentAsync(int id);
     }
 }

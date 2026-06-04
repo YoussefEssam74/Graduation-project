@@ -75,5 +75,32 @@ namespace Service.Services
 
             return dto;
         }
+        public async Task<IEnumerable<AuditLogDto>> GetAllAuditLogsAsync(int page, int pageSize, string? actionFilter = null, string? tableFilter = null)
+        {
+            var logs = await _unitOfWork.Repository<AuditLog>().GetAllAsync();
+            var query = logs.AsQueryable();
+
+            if (!string.IsNullOrEmpty(actionFilter))
+            {
+                query = query.Where(l => l.Action.Contains(actionFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrEmpty(tableFilter))
+            {
+                query = query.Where(l => l.TableName.Contains(tableFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var pagedLogs = query.OrderByDescending(l => l.CreatedAt)
+                                 .Skip((page - 1) * pageSize)
+                                 .Take(pageSize)
+                                 .ToList();
+
+            var logDtos = new List<AuditLogDto>();
+            foreach (var log in pagedLogs)
+            {
+                logDtos.Add(await MapToDtoAsync(log));
+            }
+            return logDtos;
+        }
     }
 }

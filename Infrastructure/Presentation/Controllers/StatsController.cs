@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using ServiceAbstraction;
+using Shared.Helpers;
+using Shared.DTOs.Stats;
 
 namespace Presentation.Controllers
 {
@@ -43,6 +45,21 @@ namespace Presentation.Controllers
         {
             var stats = await _serviceManager.StatsService.GetReceptionStatsAsync();
             return Ok(stats);
+        }
+
+        [HttpGet("admin")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminStats()
+        {
+            try
+            {
+                var stats = await _serviceManager.StatsService.GetAdminStatsAsync();
+                return Ok(ApiResponse<AdminStatsDto>.SuccessResponse(stats));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<AdminStatsDto>.ErrorResponse("Failed to retrieve admin stats", new List<string> { ex.Message }));
+            }
         }
         #endregion
     }

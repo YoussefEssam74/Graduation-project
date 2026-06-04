@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { usersApi, bookingsApi, coachReviewsApi, type CoachDto } from "@/lib/api";
+import { ChatDialog } from "@/components/Chat/ChatDialog";
 import { useToast } from "@/components/ui/toast";
 import {
   Dialog,
@@ -76,6 +77,10 @@ function BookCoachContent() {
   const [autoBookedEquipment, setAutoBookedEquipment] = useState<Array<{ equipmentName: string; bookingId: number }>>([]);
   const [lastBookedCoach, setLastBookedCoach] = useState<string>("");
   const [lastBookingTime, setLastBookingTime] = useState<string>("");
+
+  // Chat Dialog states
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeChatCoach, setActiveChatCoach] = useState<{ userId: number; name: string } | null>(null);
 
   // Available categories from coaches specializations
   const categories = ["All Coaches", "Yoga", "HIIT", "Strength", "Cardio", "CrossFit", "Pilates"];
@@ -135,11 +140,9 @@ function BookCoachContent() {
     setIsModalOpen(true);
   };
 
-  const handleChatClick = (coachId: string | number) => {
-    // Navigate to chat or open chat modal
-    // For now, let's route to the chat page or show a toast
-    showToast("Chat feature coming soon!", "info");
-    // Ideally: router.push(`/chat/${coachId}`);
+  const handleChatClick = (coachId: number, coachName: string) => {
+    setActiveChatCoach({ userId: coachId, name: coachName });
+    setIsChatOpen(true);
   };
 
   const confirmBooking = async () => {
@@ -355,7 +358,7 @@ function BookCoachContent() {
                           size="icon"
                           variant="outline"
                           className="h-9 w-9 rounded-xl border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50"
-                          onClick={() => handleChatClick(coach.userId)}
+                          onClick={() => handleChatClick(coach.userId, coach.name)}
                           title="Chat with Coach"
                         >
                           <MessageSquare className="h-4 w-4" />
@@ -474,6 +477,17 @@ function BookCoachContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {isChatOpen && activeChatCoach && (
+        <ChatDialog
+          recipientId={activeChatCoach.userId}
+          recipientName={activeChatCoach.name}
+          recipientRole="coach"
+          onClose={() => {
+            setIsChatOpen(false);
+            setActiveChatCoach(null);
+          }}
+        />
+      )}
     </div>
   );
 }

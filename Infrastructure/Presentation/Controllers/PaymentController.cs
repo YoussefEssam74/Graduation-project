@@ -98,5 +98,24 @@ namespace Presentation.Controllers
             }
         }
         #endregion
+        #region Get All Payments (Admin only)
+        /// <summary>
+        /// Get all payments in the system (Admin only)
+        /// </summary>
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<PaymentDto>>>> GetAllPayments([FromQuery] int limit = 100)
+        {
+            try
+            {
+                var payments = await _serviceManager.PaymentService.GetAllPaymentsAsync(limit);
+                return Ok(ApiResponse<IEnumerable<PaymentDto>>.SuccessResponse(payments));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ApiResponse<IEnumerable<PaymentDto>>.ErrorResponse("Failed to retrieve all payments", new List<string> { ex.Message }));
+            }
+        }
+        #endregion
     }
 }

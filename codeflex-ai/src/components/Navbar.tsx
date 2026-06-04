@@ -80,6 +80,7 @@ export default function Navbar() {
     { href: "/admin-equipment", icon: DumbbellIcon, label: "Equipment" },
     { href: "/admin-packages", icon: Ticket, label: "Packages" },
     { href: "/admin-analytics", icon: ActivityIcon, label: "Analytics" },
+    { href: "/admin-activity-log", icon: ClipboardListIcon, label: "Activity Log" },
   ];
 
   const getNavItems = () => {
@@ -220,7 +221,7 @@ export default function Navbar() {
                 variant="outline"
                 className="ml-2 border-primary/50 text-primary hover:bg-primary hover:text-white shadow-sm"
               >
-                <Link href="/generate-program">Generate Program</Link>
+                <Link href="/ai-workout-generator">Generate Program</Link>
               </Button>
             )}
           </nav>

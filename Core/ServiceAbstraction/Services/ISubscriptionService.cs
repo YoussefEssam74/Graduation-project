@@ -14,5 +14,8 @@ namespace ServiceAbstraction.Services
         Task FreezeSubscriptionAsync(int subscriptionId, int freezeDays, DateTime startDate);
         Task UnfreezeSubscriptionAsync(int subscriptionId);
         Task<IEnumerable<UserSubscriptionDetailsDto>> GetFrozenSubscriptionsAsync();
+        Task<SubscriptionPlanDto> CreatePlanAsync(CreateSubscriptionPlanDto dto);
+        Task<SubscriptionPlanDto> UpdatePlanAsync(int planId, UpdateSubscriptionPlanDto dto);
+        Task<bool> DeletePlanAsync(int planId);
     }
 }
