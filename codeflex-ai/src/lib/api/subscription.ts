@@ -13,10 +13,11 @@ export interface SubscriptionPlanDto {
   maxFreezeDays: number;
   isPopular: boolean;
   isActive: boolean;
-  freeWorkoutPlans: number;
-  freeNutritionPlans: number;
-  extraWorkoutPlanTokenCost: number;
-  extraNutritionPlanTokenCost: number;
+  freeWorkoutPlans?: number;
+  freeNutritionPlans?: number;
+  extraWorkoutPlanTokenCost?: number;
+  extraNutritionPlanTokenCost?: number;
+  freeAiCoachMessagesPerDay?: number;
 }
 
 
@@ -51,6 +52,11 @@ export interface UserSubscriptionDetailsDto {
   freezeStartDate?: string;
   freezeEndDate?: string;
   maxFreezeDays: number;
+  freeWorkoutPlans?: number;
+  freeNutritionPlans?: number;
+  extraWorkoutPlanTokenCost?: number;
+  extraNutritionPlanTokenCost?: number;
+  freeAiCoachMessagesPerDay?: number;
 }
 
 export const subscriptionApi = {
@@ -177,6 +183,11 @@ export interface CreateSubscriptionPlanDto {
   maxBookingsPerDay?: number;
   maxFreezeDays: number;
   isPopular: boolean;
+  freeWorkoutPlans?: number;
+  freeNutritionPlans?: number;
+  extraWorkoutPlanTokenCost?: number;
+  extraNutritionPlanTokenCost?: number;
+  freeAiCoachMessagesPerDay?: number;
 }
 
 export interface UpdateSubscriptionPlanDto extends CreateSubscriptionPlanDto {

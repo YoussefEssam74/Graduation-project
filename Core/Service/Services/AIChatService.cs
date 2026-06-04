@@ -513,5 +513,14 @@ namespace Service.Services
 
             return (cleanResponse, null);
         }
+
+        public async Task<int> GetUserMessagesSentTodayAsync(int userId)
+        {
+            var logs = await _unitOfWork.Repository<AiChatLog>()
+                .FindAsync(l => l.UserId == userId && l.MessageType == "user");
+            
+            var today = DateTime.UtcNow.Date;
+            return logs.Count(l => l.CreatedAt >= today);
+        }
     }
 }

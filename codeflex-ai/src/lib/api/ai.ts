@@ -81,4 +81,11 @@ export const aiApi = {
     async getSessionMessages(userId: number, sessionId: number): Promise<ApiResponse<{ messages: AIChatLogDto[] }>> {
         return apiFetch<{ messages: AIChatLogDto[] }>(`/ai/sessions/${userId}/${sessionId}`);
     },
+
+    /**
+     * Get daily coach limits and count for a user
+     */
+    async getCoachLimits(userId: number): Promise<ApiResponse<{ freeLimit: number; sentToday: number; remainingFree: number }>> {
+        return apiFetch<{ freeLimit: number; sentToday: number; remainingFree: number }>(`/ai/coach-limits/${userId}`);
+    },
 };

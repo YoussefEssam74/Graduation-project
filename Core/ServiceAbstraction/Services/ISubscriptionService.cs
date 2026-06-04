@@ -17,5 +17,7 @@ namespace ServiceAbstraction.Services
         Task<SubscriptionPlanDto> CreatePlanAsync(CreateSubscriptionPlanDto dto);
         Task<SubscriptionPlanDto> UpdatePlanAsync(int planId, UpdateSubscriptionPlanDto dto);
         Task<bool> DeletePlanAsync(int planId);
+        Task<(bool canGenerate, string message, int cost)> CheckQuotaAndTokenBalanceAsync(int userId, string programType);
+        Task<(bool success, string message)> DeductTokensForGenerationAsync(int userId, string programType, int cost);
     }
 }

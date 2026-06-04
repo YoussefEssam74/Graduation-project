@@ -8,7 +8,7 @@ import {
   Activity,
   Dumbbell,
   UserCog,
-  Ticket,
+  PackageOpen,
   BarChart3,
   AlertTriangle,
   CheckCircle,
@@ -81,7 +81,7 @@ function AdminDashboardContent() {
     { icon: UserPlus, label: "Create Staff", color: "text-emerald-500", bgColor: "bg-emerald-100", href: "/admin-users" },
     { icon: Dumbbell, label: "Equipment Management", color: "text-green-500", bgColor: "bg-green-100", href: "/admin-equipment" },
     { icon: BarChart3, label: "Analytics & Reports", color: "text-orange-500", bgColor: "bg-orange-100", href: "/admin-analytics" },
-    { icon: Ticket, label: "Packages & Coupons", color: "text-red-500", bgColor: "bg-red-100", href: "/admin-packages" },
+    { icon: PackageOpen, label: "Packages & Coupons", color: "text-red-500", bgColor: "bg-red-100", href: "/admin-packages" },
     { icon: FileText, label: "Activity Log", color: "text-blue-500", bgColor: "bg-blue-100", href: "/admin-activity-log" },
   ];
 

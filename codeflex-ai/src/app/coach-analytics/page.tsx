@@ -291,7 +291,7 @@ function CoachAnalyticsContent() {
     if (!stats) return;
 
     let content = "========================================\n";
-    content += "       INTELLIFIT COACH ANALYTICS       \n";
+    content += "       PULSEGYM COACH ANALYTICS       \n";
     content += "========================================\n";
     content += `Coach: ${stats.coachName}\n`;
     content += `Date Generated: ${new Date().toLocaleString()}\n`;

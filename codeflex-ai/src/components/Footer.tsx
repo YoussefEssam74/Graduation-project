@@ -1,4 +1,4 @@
-import { Ticket } from "lucide-react";
+import { Dumbbell } from "lucide-react";
 import Link from "next/link";
 
 const Footer = () => {
@@ -13,7 +13,7 @@ const Footer = () => {
           <div className="flex flex-col items-center md:items-start gap-2">
             <Link href="/" className="flex items-center gap-2">
               <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg shadow-blue-500/20">
-                <Ticket className="w-4 h-4 text-white" />
+                <Dumbbell className="w-4 h-4 text-white" />
               </div>
               <span className="text-xl font-bold">
                 Pulse<span className="text-primary">Gym</span>

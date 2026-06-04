@@ -18,6 +18,7 @@ namespace IntelliFit.Domain.Models
         public int FreeNutritionPlans { get; set; } = 0;
         public int ExtraWorkoutPlanTokenCost { get; set; } = 10;
         public int ExtraNutritionPlanTokenCost { get; set; } = 10;
+        public int FreeAiCoachMessagesPerDay { get; set; } = 0;
         public bool IsPopular { get; set; } = false;
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ServiceAbstraction.Services;
 using Shared.DTOs.NutritionAI;
 
-namespace IntelliFit.Presentation.Controllers;
+namespace Presentation.Controllers;
 
 /// <summary>
 /// Nutrition AI Controller — proxies to the HF Space via NutritionAIServiceClient.
@@ -18,16 +18,19 @@ namespace IntelliFit.Presentation.Controllers;
 [ApiController]
 [Route("api/nutrition-ai")]
 [Authorize]
-public class NutritionAIController : ControllerBase
+public class NutritionAIController : ApiControllerBase
 {
     private readonly INutritionAIServiceClient _nutritionAI;
+    private readonly ISubscriptionService _subscriptionService;
     private readonly ILogger<NutritionAIController> _logger;
 
     public NutritionAIController(
         INutritionAIServiceClient nutritionAI,
+        ISubscriptionService subscriptionService,
         ILogger<NutritionAIController> logger)
     {
         _nutritionAI = nutritionAI;
+        _subscriptionService = subscriptionService;
         _logger = logger;
     }
 
@@ -42,6 +45,19 @@ public class NutritionAIController : ControllerBase
             "Nutrition AI: goal={Goal}, activity={Activity}, gender={Gender}, member={Member}",
             request.Goal, request.ActivityLevel, request.Gender, request.MemberId);
 
+        int userId = 0;
+        if (!int.TryParse(request.MemberId, out userId))
+        {
+            userId = GetUserIdFromToken();
+        }
+
+        // Check Quota and Token Balance first (pre-generation check)
+        var quotaCheck = await _subscriptionService.CheckQuotaAndTokenBalanceAsync(userId, "Nutrition");
+        if (!quotaCheck.canGenerate)
+        {
+            return BadRequest(new { success = false, error = quotaCheck.message });
+        }
+
         var result = await _nutritionAI.GenerateNutritionPlanAsync(request);
 
         if (result == null)
@@ -54,6 +70,17 @@ public class NutritionAIController : ControllerBase
         {
             _logger.LogWarning("Nutrition AI error: {Error}", result.Error);
             return StatusCode(502, new { success = false, error = result.Error });
+        }
+
+        // Generation succeeded - deduct tokens if not free (post-generation charge)
+        if (quotaCheck.cost > 0)
+        {
+            var deduction = await _subscriptionService.DeductTokensForGenerationAsync(userId, "Nutrition", quotaCheck.cost);
+            if (!deduction.success)
+            {
+                _logger.LogError("Failed to deduct tokens for user {UserId} after generation: {Message}",
+                    userId, deduction.message);
+            }
         }
 
         // ── Flatten the nested plan structure ──────────────────────────────────

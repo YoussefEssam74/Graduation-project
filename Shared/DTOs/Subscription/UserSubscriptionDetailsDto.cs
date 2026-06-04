@@ -20,5 +20,10 @@ namespace Shared.DTOs.Subscription
         public DateTime? FreezeStartDate { get; set; }
         public DateTime? FreezeEndDate { get; set; }
         public int MaxFreezeDays { get; set; }
+        public int FreeWorkoutPlans { get; set; } = 0;
+        public int FreeNutritionPlans { get; set; } = 0;
+        public int ExtraWorkoutPlanTokenCost { get; set; } = 10;
+        public int ExtraNutritionPlanTokenCost { get; set; } = 10;
+        public int FreeAiCoachMessagesPerDay { get; set; } = 0;
     }
 }

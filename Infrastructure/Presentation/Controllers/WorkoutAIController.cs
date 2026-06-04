@@ -16,15 +16,18 @@ public class WorkoutAIController : ApiControllerBase
 {
     private readonly IWorkoutAIService _workoutAIService;
     private readonly IWorkoutFeedbackService _feedbackService;
+    private readonly ISubscriptionService _subscriptionService;
     private readonly ILogger<WorkoutAIController> _logger;
 
     public WorkoutAIController(
         IWorkoutAIService workoutAIService,
         IWorkoutFeedbackService feedbackService,
+        ISubscriptionService subscriptionService,
         ILogger<WorkoutAIController> logger)
     {
         _workoutAIService = workoutAIService;
         _feedbackService = feedbackService;
+        _subscriptionService = subscriptionService;
         _logger = logger;
     }
 
@@ -71,6 +74,18 @@ public class WorkoutAIController : ApiControllerBase
                 "Generating AI workout plan for user {UserId}: {Goal}, {Level}, {Days} days/week",
                 request.UserId, request.Goal, request.FitnessLevel, request.DaysPerWeek);
 
+            // Check Quota and Token Balance first (pre-generation check)
+            var quotaCheck = await _subscriptionService.CheckQuotaAndTokenBalanceAsync(request.UserId, "Workout");
+            if (!quotaCheck.canGenerate)
+            {
+                return BadRequest(new AIWorkoutPlanResult
+                {
+                    Success = false,
+                    ErrorMessage = quotaCheck.message
+                });
+            }
+
+            // Perform generation
             var result = await _workoutAIService.GenerateWorkoutPlanAsync(request);
 
             if (!result.Success)
@@ -79,6 +94,17 @@ public class WorkoutAIController : ApiControllerBase
                     request.UserId, result.ErrorMessage);
 
                 return BadRequest(result);
+            }
+
+            // Generation succeeded - deduct tokens if not free (post-generation charge)
+            if (quotaCheck.cost > 0)
+            {
+                var deduction = await _subscriptionService.DeductTokensForGenerationAsync(request.UserId, "Workout", quotaCheck.cost);
+                if (!deduction.success)
+                {
+                    _logger.LogError("Failed to deduct tokens for user {UserId} after generation: {Message}",
+                        request.UserId, deduction.message);
+                }
             }
 
             _logger.LogInformation(

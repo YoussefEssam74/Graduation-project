@@ -532,6 +532,20 @@ public class WorkoutAIService : IWorkoutAIService
         await _unitOfWork.Repository<WorkoutPlan>().AddAsync(workoutPlan);
         await _unitOfWork.SaveChangesAsync();
 
+        // Log AI generation in AiProgramGeneration
+        var generation = new AiProgramGeneration
+        {
+            UserId = request.UserId,
+            ProgramType = "Workout",
+            WorkoutPlanId = workoutPlan.PlanId,
+            InputPrompt = $"Goal: {request.Goal}, Level: {request.FitnessLevel}, Days: {request.DaysPerWeek}",
+            GeneratedPlan = workoutPlan.PlanData,
+            AiModel = mlResponse.ModelVersion ?? "workout-ai",
+            CreatedAt = DateTime.UtcNow
+        };
+        await _unitOfWork.Repository<AiProgramGeneration>().AddAsync(generation);
+        await _unitOfWork.SaveChangesAsync();
+
         return workoutPlan;
     }
 
@@ -663,6 +677,20 @@ public class WorkoutAIService : IWorkoutAIService
                 workoutPlan.GeneratedByCoachId = availableCoach.Id;
 
             await _unitOfWork.Repository<WorkoutPlan>().AddAsync(workoutPlan);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Log AI generation in AiProgramGeneration
+            var generation = new AiProgramGeneration
+            {
+                UserId = request.UserId,
+                ProgramType = "Workout",
+                WorkoutPlanId = workoutPlan.PlanId,
+                InputPrompt = request.Notes ?? $"Goal: {request.Goal}, Level: {request.FitnessLevel}, Days: {request.DaysPerWeek}",
+                GeneratedPlan = planDataJson,
+                AiModel = request.ModelVersion ?? "workout-ai",
+                CreatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Repository<AiProgramGeneration>().AddAsync(generation);
             await _unitOfWork.SaveChangesAsync();
 
             // Save exercises for each day

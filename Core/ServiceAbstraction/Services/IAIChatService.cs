@@ -21,5 +21,10 @@ namespace ServiceAbstraction.Services
         /// Get all messages for a specific session
         /// </summary>
         Task<IEnumerable<object>> GetSessionMessagesAsync(int userId, int sessionId);
+
+        /// <summary>
+        /// Gets the count of messages sent by a user today
+        /// </summary>
+        Task<int> GetUserMessagesSentTodayAsync(int userId);
     }
 }

@@ -208,11 +208,26 @@ namespace Presentation.Controllers
 
                 _logger.LogInformation("AI chat request from user {UserId}", request.UserId);
 
-                // Check user has sufficient tokens
-                var currentBalance = await _serviceManager.TokenTransactionService.GetUserTokenBalanceAsync(request.UserId);
-                if (currentBalance < 1)
+                // 1. Determine if this message is free based on subscription limits
+                int freeLimit = 0;
+                var activeSub = await _serviceManager.SubscriptionService.GetUserSubscriptionDetailsAsync(request.UserId);
+                if (activeSub != null)
                 {
-                    return BadRequest(new { success = false, message = "Insufficient token balance. You need at least 1 token to chat with AI." });
+                    freeLimit = activeSub.FreeAiCoachMessagesPerDay;
+                }
+
+                int sentToday = await _serviceManager.AIChatService.GetUserMessagesSentTodayAsync(request.UserId);
+                bool isFree = sentToday < freeLimit;
+
+                var currentBalance = await _serviceManager.TokenTransactionService.GetUserTokenBalanceAsync(request.UserId);
+                
+                // If it is NOT free, check that the user has at least 1 token
+                if (!isFree && currentBalance < 1)
+                {
+                    return BadRequest(new { 
+                        success = false, 
+                        message = $"Daily free message limit ({freeLimit}) exceeded and insufficient token balance. You need at least 1 token to chat with AI." 
+                    });
                 }
 
                 // Call unified AIChatService which reads user context (RAG) and handles session logs
@@ -227,24 +242,32 @@ namespace Presentation.Controllers
                 var chatResponse = await _serviceManager.AIChatService.SendMessageAsync(chatRequest);
                 stopwatch.Stop();
 
-                // Deduct 1 token from user balance
-                try
+                int tokensSpent = 0;
+                int newBalance = currentBalance;
+
+                // Deduct 1 token from user balance if NOT free
+                if (!isFree)
                 {
-                    await _serviceManager.TokenTransactionService.CreateTransactionAsync(
-                        userId: request.UserId,
-                        dto: new CreateTokenTransactionDto
-                        {
-                            Amount = -1,
-                            TransactionType = "Deduction",
-                            Description = "AI Chat - Llama conversation",
-                            ReferenceType = "AIChat"
-                        }
-                    );
-                }
-                catch (Exception tokenEx)
-                {
-                    _logger.LogError(tokenEx, "Failed to deduct tokens for user {UserId}", request.UserId);
-                    return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
+                    try
+                    {
+                        await _serviceManager.TokenTransactionService.CreateTransactionAsync(
+                            userId: request.UserId,
+                            dto: new CreateTokenTransactionDto
+                            {
+                                Amount = -1,
+                                TransactionType = "Deduction",
+                                Description = "AI Chat - message beyond daily free limit",
+                                ReferenceType = "AIChat"
+                            }
+                        );
+                        tokensSpent = 1;
+                        newBalance = currentBalance - 1;
+                    }
+                    catch (Exception tokenEx)
+                    {
+                        _logger.LogError(tokenEx, "Failed to deduct tokens for user {UserId}", request.UserId);
+                        return StatusCode(500, new { success = false, message = "Failed to process token transaction" });
+                    }
                 }
 
                 return Ok(new
@@ -253,9 +276,9 @@ namespace Presentation.Controllers
                     data = new
                     {
                         response = chatResponse.Response,
-                        tokensSpent = chatResponse.TokensUsed,
+                        tokensSpent = tokensSpent,
                         responseTimeMs = stopwatch.ElapsedMilliseconds,
-                        newBalance = currentBalance - 1,
+                        newBalance = newBalance,
                         sessionId = chatResponse.SessionId
                     }
                 });
@@ -267,6 +290,39 @@ namespace Presentation.Controllers
             }
         }
         #endregion
+
+        /// <summary>
+        /// Get AI coach message limits and count for today
+        /// GET: api/ai/coach-limits/{userId}
+        /// </summary>
+        [HttpGet("coach-limits/{userId}")]
+        public async Task<IActionResult> GetCoachLimits(int userId)
+        {
+            try
+            {
+                int freeLimit = 0;
+                var activeSub = await _serviceManager.SubscriptionService.GetUserSubscriptionDetailsAsync(userId);
+                if (activeSub != null)
+                {
+                    freeLimit = activeSub.FreeAiCoachMessagesPerDay;
+                }
+
+                int sentToday = await _serviceManager.AIChatService.GetUserMessagesSentTodayAsync(userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    freeLimit = freeLimit,
+                    sentToday = sentToday,
+                    remainingFree = Math.Max(0, freeLimit - sentToday)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting coach limits for user {UserId}", userId);
+                return StatusCode(500, new { success = false, message = "Failed to get coach limits" });
+            }
+        }
 
         /// <summary>
         /// Get all chat sessions for a user

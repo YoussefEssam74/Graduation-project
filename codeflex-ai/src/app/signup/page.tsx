@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/lib/api/auth";
 import Link from "next/link";
 import {
-  HeartPulseIcon,
+  Dumbbell,
   ZapIcon,
   MailIcon,
   LockIcon,
@@ -397,7 +397,7 @@ export default function SignUpPage() {
             <div className="flex items-center justify-between px-2 pb-2">
               <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-90" aria-label="Go to homepage">
                 <div className="flex items-center justify-center size-9 rounded-xl bg-primary/15 text-primary shadow-md shadow-blue-500/20">
-                  <HeartPulseIcon className="w-5 h-5" />
+                  <Dumbbell className="w-5 h-5" />
                 </div>
                 <div>
                   <h1 className="text-[24px] leading-none font-black tracking-tight text-slate-900">PulseGym</h1>

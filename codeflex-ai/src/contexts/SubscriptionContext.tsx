@@ -34,17 +34,22 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(
   undefined,
 );
 
-/** Parse the features JSON string into an array of strings */
+/** Parse the features JSON string or comma-separated string into an array of strings */
 function parseFeatures(features?: string | null): string[] {
   if (!features) return [];
   try {
     const parsed = JSON.parse(features);
-    return Array.isArray(parsed)
-      ? parsed.map((f: string) => f.toLowerCase())
-      : [];
+    if (Array.isArray(parsed)) {
+      return parsed.map((f: string) => f.toLowerCase());
+    }
   } catch {
-    return [];
+    // Treat as comma-separated values
+    return features
+      .split(",")
+      .map((f: string) => f.trim().toLowerCase())
+      .filter(Boolean);
   }
+  return [];
 }
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
@@ -95,16 +100,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     subscription?.status === "Active" &&
     (hasFeature("ai") || hasFeature("generate program"));
 
-  // Coach access: features explicitly containing "coach booking" or "coach plan review"
-  // Note: "AI Coach" should NOT grant coach access — only real coach booking does
-  const hasCoachAccess =
-    subscription?.status === "Active" &&
-    features.some(
-      (f) =>
-        f === "coach booking" ||
-        f === "coach plan review" ||
-        f === "personal training",
-    );
+  // Coach access is standard for all active subscriptions
+  const hasCoachAccess = subscription?.status === "Active";
 
   return (
     <SubscriptionContext.Provider

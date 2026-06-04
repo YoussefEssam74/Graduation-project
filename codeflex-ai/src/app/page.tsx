@@ -15,7 +15,6 @@ import {
   CalendarClock,
   ChartColumn,
   Dumbbell,
-  HeartPulse,
   ShieldCheck,
   Sparkles,
   Users,
@@ -240,7 +239,7 @@ export default function HomePage() {
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-6 md:gap-8 items-center">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 mb-4">
-                  <HeartPulse className="h-3.5 w-3.5 text-primary" />
+                  <Dumbbell className="h-3.5 w-3.5 text-primary" />
                   <span className="text-[11px] font-semibold tracking-[0.14em] uppercase text-slate-700">
                     PulseGym Live Platform
                   </span>

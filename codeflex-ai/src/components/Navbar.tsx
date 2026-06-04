@@ -16,6 +16,7 @@ import {
   TrophyIcon,
   ClipboardListIcon,
   MessageSquareIcon,
+  PackageOpenIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -78,7 +79,7 @@ export default function Navbar() {
     { href: "/admin-users", icon: Users2Icon, label: "Create Staff" },
     { href: "/admin-coaches", icon: UserCogIcon, label: "Manage Staff" },
     { href: "/admin-equipment", icon: DumbbellIcon, label: "Equipment" },
-    { href: "/admin-packages", icon: Ticket, label: "Packages" },
+    { href: "/admin-packages", icon: PackageOpenIcon, label: "Packages" },
     { href: "/admin-analytics", icon: ActivityIcon, label: "Analytics" },
     { href: "/admin-activity-log", icon: ClipboardListIcon, label: "Activity Log" },
   ];
@@ -152,7 +153,7 @@ export default function Navbar() {
           className="flex items-center gap-2"
         >
           <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg shadow-blue-500/20">
-            <Ticket className="w-5 h-5 text-white" />
+            <DumbbellIcon className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold">
             Pulse<span className="text-primary">Gym</span>

@@ -73,19 +73,14 @@ function AdminPackagesContent() {
   const [freeNutritionPlans, setFreeNutritionPlans] = useState<number>(1);
   const [extraWorkoutPlanTokenCost, setExtraWorkoutPlanTokenCost] = useState<number>(10);
   const [extraNutritionPlanTokenCost, setExtraNutritionPlanTokenCost] = useState<number>(10);
+  const [freeAiCoachMessagesPerDay, setFreeAiCoachMessagesPerDay] = useState<number>(10);
 
   // All predefined features
   const PREDEFINED_FEATURES = [
-    { key: "Equipment Booking", icon: Dumbbell },
     { key: "AI Coach", icon: Bot },
     { key: "AI Workout Generator", icon: Zap },
-    { key: "Coach Booking", icon: UserCheck },
-    { key: "Coach Plan Review", icon: Shield },
     { key: "AI Nutrition Plan", icon: Utensils },
-    { key: "Priority Booking", icon: Star },
     { key: "Free Guest Pass", icon: Users },
-    { key: "Group Classes", icon: Users },
-    { key: "AI Coach Trial", icon: Clock },
   ];
 
   const toggleFeature = (key: string) => {
@@ -158,6 +153,7 @@ function AdminPackagesContent() {
       setFreeNutritionPlans(plan.freeNutritionPlans ?? 1);
       setExtraWorkoutPlanTokenCost(plan.extraWorkoutPlanTokenCost ?? 10);
       setExtraNutritionPlanTokenCost(plan.extraNutritionPlanTokenCost ?? 10);
+      setFreeAiCoachMessagesPerDay(plan.freeAiCoachMessagesPerDay ?? 10);
     } else {
       setPlanName("");
       setPrice(0);
@@ -174,6 +170,7 @@ function AdminPackagesContent() {
       setFreeNutritionPlans(1);
       setExtraWorkoutPlanTokenCost(10);
       setExtraNutritionPlanTokenCost(10);
+      setFreeAiCoachMessagesPerDay(10);
     }
     setIsPlanModalOpen(true);
   };
@@ -199,6 +196,7 @@ function AdminPackagesContent() {
         freeNutritionPlans,
         extraWorkoutPlanTokenCost,
         extraNutritionPlanTokenCost,
+        freeAiCoachMessagesPerDay,
       };
 
       if (planModalType === "create") {
@@ -517,6 +515,10 @@ function AdminPackagesContent() {
                   <span className="text-muted-foreground">Extra Nutrition Cost:</span>
                   <span className="font-bold text-indigo-600">{pkg.extraNutritionPlanTokenCost ?? 10} tokens</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground flex items-center gap-1"><Bot className="h-3 w-3 text-emerald-400" /> AI Coach Free Messages/Day:</span>
+                  <span className="font-bold text-indigo-600">{pkg.freeAiCoachMessagesPerDay ?? 10}</span>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-4 border-t border-border mt-auto">
@@ -818,6 +820,25 @@ function AdminPackagesContent() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">Members get the free quota first; extra generations deduct the token cost above.</p>
+                </div>
+
+                {/* AI Coach Quota Section */}
+                <div className="space-y-3 p-3 border border-emerald-200 dark:border-emerald-800 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10">
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                    <Bot className="h-4 w-4" /> AI Coach Quotas
+                  </p>
+                  <div className="space-y-1">
+                    <Label htmlFor="freeAiMessages" className="text-xs flex items-center gap-1">
+                      <Bot className="h-3.5 w-3.5 text-emerald-500" /> Free Messages Per Day
+                    </Label>
+                    <Input
+                      id="freeAiMessages"
+                      type="number"
+                      min={0}
+                      value={freeAiCoachMessagesPerDay}
+                      onChange={(e) => setFreeAiCoachMessagesPerDay(Number(e.target.value))}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-4 py-2">

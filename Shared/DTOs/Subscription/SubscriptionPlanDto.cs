@@ -16,6 +16,7 @@ namespace Shared.DTOs.Subscription
         public int FreeNutritionPlans { get; set; }
         public int ExtraWorkoutPlanTokenCost { get; set; }
         public int ExtraNutritionPlanTokenCost { get; set; }
+        public int FreeAiCoachMessagesPerDay { get; set; }
         public bool IsPopular { get; set; }
         public bool IsActive { get; set; }
     }

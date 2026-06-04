@@ -19,6 +19,7 @@ import {
   UsersIcon,
   SunIcon,
   ClipboardListIcon,
+  PackageOpenIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -117,7 +118,7 @@ export default function Sidebar() {
     { href: "/admin-users", icon: Users2Icon, label: "Create Staff" },
     { href: "/admin-coaches", icon: UserCogIcon, label: "Manage Staff" },
     { href: "/admin-equipment", icon: DumbbellIcon, label: "Equipment" },
-    { href: "/admin-packages", icon: Ticket, label: "Packages" },
+    { href: "/admin-packages", icon: PackageOpenIcon, label: "Packages" },
     { href: "/admin-analytics", icon: ActivityIcon, label: "Analytics" },
     { href: "/admin-activity-log", icon: ClipboardListIcon, label: "Activity Log" },
   ];

@@ -119,7 +119,12 @@ namespace Service.Services
                 IsFrozen = activeSub.FreezeStartDate.HasValue && activeSub.FreezeEndDate.HasValue && activeSub.FreezeEndDate.Value > DateTime.UtcNow,
                 FreezeStartDate = activeSub.FreezeStartDate,
                 FreezeEndDate = activeSub.FreezeEndDate,
-                MaxFreezeDays = plan.MaxFreezeDays
+                MaxFreezeDays = plan.MaxFreezeDays,
+                FreeWorkoutPlans = plan.FreeWorkoutPlans,
+                FreeNutritionPlans = plan.FreeNutritionPlans,
+                ExtraWorkoutPlanTokenCost = plan.ExtraWorkoutPlanTokenCost,
+                ExtraNutritionPlanTokenCost = plan.ExtraNutritionPlanTokenCost,
+                FreeAiCoachMessagesPerDay = plan.FreeAiCoachMessagesPerDay
             };
         }
 
@@ -141,6 +146,7 @@ namespace Service.Services
                 FreeNutritionPlans = plan.FreeNutritionPlans,
                 ExtraWorkoutPlanTokenCost = plan.ExtraWorkoutPlanTokenCost,
                 ExtraNutritionPlanTokenCost = plan.ExtraNutritionPlanTokenCost,
+                FreeAiCoachMessagesPerDay = plan.FreeAiCoachMessagesPerDay,
                 IsPopular = plan.IsPopular,
                 IsActive = plan.IsActive
             };
@@ -290,7 +296,12 @@ namespace Service.Services
                     AutoRenew = sub.AutoRenew,
                     IsFrozen = true,
                     FreezeStartDate = sub.FreezeStartDate,
-                    FreezeEndDate = sub.FreezeEndDate
+                    FreezeEndDate = sub.FreezeEndDate,
+                    FreeWorkoutPlans = plan.FreeWorkoutPlans,
+                    FreeNutritionPlans = plan.FreeNutritionPlans,
+                    ExtraWorkoutPlanTokenCost = plan.ExtraWorkoutPlanTokenCost,
+                    ExtraNutritionPlanTokenCost = plan.ExtraNutritionPlanTokenCost,
+                    FreeAiCoachMessagesPerDay = plan.FreeAiCoachMessagesPerDay
                 });
             }
             return result;
@@ -312,6 +323,7 @@ namespace Service.Services
                 FreeNutritionPlans = dto.FreeNutritionPlans,
                 ExtraWorkoutPlanTokenCost = dto.ExtraWorkoutPlanTokenCost,
                 ExtraNutritionPlanTokenCost = dto.ExtraNutritionPlanTokenCost,
+                FreeAiCoachMessagesPerDay = dto.FreeAiCoachMessagesPerDay,
                 IsPopular = dto.IsPopular,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
@@ -345,6 +357,7 @@ namespace Service.Services
             plan.FreeNutritionPlans = dto.FreeNutritionPlans;
             plan.ExtraWorkoutPlanTokenCost = dto.ExtraWorkoutPlanTokenCost;
             plan.ExtraNutritionPlanTokenCost = dto.ExtraNutritionPlanTokenCost;
+            plan.FreeAiCoachMessagesPerDay = dto.FreeAiCoachMessagesPerDay;
             plan.IsPopular = dto.IsPopular;
             plan.IsActive = dto.IsActive;
             plan.UpdatedAt = DateTime.UtcNow;
@@ -363,6 +376,109 @@ namespace Service.Services
             _unitOfWork.Repository<SubscriptionPlan>().Remove(plan);
             await _unitOfWork.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<(bool canGenerate, string message, int cost)> CheckQuotaAndTokenBalanceAsync(int userId, string programType)
+        {
+            var subscriptions = await _unitOfWork.Repository<UserSubscription>().GetAllAsync();
+            var activeSub = subscriptions
+                .Where(s => s.UserId == userId &&
+                           s.Status == IntelliFit.Domain.Enums.SubscriptionStatus.Active &&
+                           s.StartDate <= DateTime.UtcNow &&
+                           s.EndDate > DateTime.UtcNow)
+                .OrderByDescending(s => s.EndDate)
+                .FirstOrDefault();
+
+            if (activeSub == null)
+            {
+                return (false, "You must have an active subscription to generate AI plans.", 0);
+            }
+
+            var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(activeSub.PlanId);
+            if (plan == null)
+            {
+                return (false, "Subscription plan details not found.", 0);
+            }
+
+            var generations = await _unitOfWork.Repository<AiProgramGeneration>().GetAllAsync();
+            var count = generations
+                .Count(g => g.UserId == userId &&
+                            g.ProgramType.Equals(programType, StringComparison.OrdinalIgnoreCase) &&
+                            g.CreatedAt >= activeSub.StartDate &&
+                            g.CreatedAt <= activeSub.EndDate);
+
+            int freeQuota = programType.Equals("Workout", StringComparison.OrdinalIgnoreCase) 
+                ? plan.FreeWorkoutPlans 
+                : plan.FreeNutritionPlans;
+
+            int extraCost = programType.Equals("Workout", StringComparison.OrdinalIgnoreCase)
+                ? plan.ExtraWorkoutPlanTokenCost
+                : plan.ExtraNutritionPlanTokenCost;
+
+            if (count < freeQuota)
+            {
+                return (true, $"Generation is free (used {count} of {freeQuota} free generations).", 0);
+            }
+
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+            if (user == null)
+            {
+                return (false, "User not found.", 0);
+            }
+
+            if (user.TokenBalance < extraCost)
+            {
+                return (false, $"Insufficient token balance. This generation costs {extraCost} tokens, but you only have {user.TokenBalance} tokens.", extraCost);
+            }
+
+            return (true, $"Generation will cost {extraCost} tokens (free quota of {freeQuota} exceeded).", extraCost);
+        }
+
+        public async Task<(bool success, string message)> DeductTokensForGenerationAsync(int userId, string programType, int cost)
+        {
+            if (cost <= 0) return (true, "No tokens charged.");
+
+            using var transaction = await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var dbUser = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+                if (dbUser == null) throw new InvalidOperationException("User not found");
+
+                if (dbUser.TokenBalance < cost)
+                {
+                    throw new InvalidOperationException("Insufficient token balance");
+                }
+
+                var balanceBefore = dbUser.TokenBalance;
+                var balanceAfter = balanceBefore - cost;
+
+                dbUser.TokenBalance = balanceAfter;
+                dbUser.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Repository<User>().Update(dbUser);
+
+                var tokenTx = new TokenTransaction
+                {
+                    UserId = userId,
+                    Amount = -cost,
+                    TransactionType = IntelliFit.Domain.Enums.TransactionType.Deduction,
+                    Description = $"AI {programType} plan generation beyond free quota",
+                    ReferenceType = "AIGeneration",
+                    BalanceBefore = balanceBefore,
+                    BalanceAfter = balanceAfter,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Repository<TokenTransaction>().AddAsync(tokenTx);
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return (true, $"Successfully deducted {cost} tokens.");
+            }
+            catch (Exception ex)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return (false, $"Failed to process token deduction: {ex.Message}");
+            }
         }
     }
 }

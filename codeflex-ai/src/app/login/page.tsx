@@ -3,7 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  HeartPulseIcon,
+  Dumbbell,
   ZapIcon,
   MailIcon,
   LockIcon,
@@ -102,7 +102,7 @@ export default function LoginPage() {
               aria-label="Go to homepage"
             >
               <div className="flex items-center justify-center size-9 rounded-xl bg-primary/15 text-primary shadow-md shadow-blue-500/20">
-                <HeartPulseIcon className="w-5 h-5" />
+                <Dumbbell className="w-5 h-5" />
               </div>
               <div>
                 <h1 className="text-[24px] leading-none font-black tracking-tight text-slate-900">

@@ -32,6 +32,25 @@ function AICoachContent() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Daily free messages limits state
+  const [limits, setLimits] = useState<{ freeLimit: number; sentToday: number; remainingFree: number } | null>(null);
+
+  const fetchLimits = async () => {
+    if (!user?.userId) return;
+    try {
+      const res = await aiApi.getCoachLimits(user.userId);
+      if (res.success && res.data) {
+        setLimits(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch coach limits:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLimits();
+  }, [user?.userId]);
+
   // Auto scroll to bottom on new messages or when AI is typing
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -214,6 +233,7 @@ function AICoachContent() {
 
         // Refresh user to update token balance
         await refreshUser();
+        fetchLimits();
 
         // Reload sessions to show the new one
         try {
@@ -307,7 +327,19 @@ function AICoachContent() {
               <h2 className="font-bold text-slate-900 dark:text-white">AI Fitness Coach</h2>
               <p className="text-xs text-green-600 font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                Online • 1 token per message
+                {limits ? (
+                  limits.freeLimit > 0 ? (
+                    limits.remainingFree > 0 ? (
+                      `Online • ${limits.remainingFree} / ${limits.freeLimit} free messages left today`
+                    ) : (
+                      "Online • Free limit reached (1 token per message)"
+                    )
+                  ) : (
+                    "Online • 1 token per message"
+                  )
+                ) : (
+                  "Online • Checking daily limits..."
+                )}
               </p>
             </div>
           </div>
