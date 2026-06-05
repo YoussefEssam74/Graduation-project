@@ -17,6 +17,8 @@ namespace Graduation_Project
     {
         public static void Main(string[] args)
         {
+            LoadDotEnv();
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add DbContext
@@ -57,6 +59,7 @@ namespace Graduation_Project
             });
             builder.Services.AddScoped<IWorkoutAIService, WorkoutAIService>();
             builder.Services.AddScoped<IWorkoutFeedbackService, WorkoutFeedbackService>();
+            builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 
             // Exercise RAG service (Gap 2 + Gap 3: exercise step-by-step instructions + keyword search)
             builder.Services.AddScoped<ServiceAbstraction.Services.IExerciseRagService, Service.Services.ExerciseRagService>();
@@ -299,6 +302,42 @@ namespace Graduation_Project
             app.MapHub<IntelliFit.Presentation.Hubs.ChatHub>("/hubs/chat");
 
             app.Run();
+        }
+
+        private static void LoadDotEnv()
+        {
+            var currentDir = System.IO.Directory.GetCurrentDirectory();
+            while (!string.IsNullOrEmpty(currentDir))
+            {
+                var envPath = System.IO.Path.Combine(currentDir, ".env");
+                if (System.IO.File.Exists(envPath))
+                {
+                    foreach (var line in System.IO.File.ReadLines(envPath))
+                    {
+                        if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
+                            continue;
+
+                        var index = line.IndexOf('=');
+                        if (index <= 0)
+                            continue;
+
+                        var key = line.Substring(0, index).Trim();
+                        var value = line.Substring(index + 1).Trim();
+
+                        if (value.StartsWith("\"") && value.EndsWith("\"") && value.Length >= 2)
+                            value = value.Substring(1, value.Length - 2);
+                        else if (value.StartsWith("'") && value.EndsWith("'") && value.Length >= 2)
+                            value = value.Substring(1, value.Length - 2);
+
+                        if (Environment.GetEnvironmentVariable(key) == null)
+                        {
+                            Environment.SetEnvironmentVariable(key, value);
+                        }
+                    }
+                    break;
+                }
+                currentDir = System.IO.Directory.GetParent(currentDir)?.FullName;
+            }
         }
     }
 }

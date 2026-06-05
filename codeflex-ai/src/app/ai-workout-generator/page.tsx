@@ -679,7 +679,7 @@ function AIWorkoutGeneratorContent() {
     const checkHealth = async () => {
       try {
         const response = await checkMLServiceHealth();
-        setMlServiceHealthy(response.success);
+        setMlServiceHealthy(response.success && response.data?.status === "healthy");
       } catch {
         setMlServiceHealthy(false);
       }
@@ -1026,6 +1026,15 @@ function AIWorkoutGeneratorContent() {
 
           /* PRE-GENERATION: Centered 3-Step Wizard */
           <div className="max-w-2xl mx-auto space-y-5">
+            {mlServiceHealthy === false && (
+              <div className="flex items-center gap-3 p-4 bg-red-50 border-l-4 border-red-500 rounded-xl">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-800 font-medium">
+                  The AI Workout Generator model is currently offline or waking up. Please try again in a few moments.
+                </p>
+              </div>
+            )}
+
             {!inbodyGenerationStatus.canGenerate && (
               <div className="flex items-center justify-between gap-3 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-xl">
                 <div className="flex items-center gap-3">

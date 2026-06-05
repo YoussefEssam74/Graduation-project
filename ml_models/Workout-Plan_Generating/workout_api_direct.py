@@ -1339,15 +1339,9 @@ def _pick_exercises_for_focus(focus_areas: List[str], goal: str, level: str,
         return goal_score + compound_bonus + equip_bonus
     unique.sort(key=_score, reverse=True)
 
-    # Add some variety: pick top candidates but shuffle a bit
-    pool = unique[:max(n * 3, 15)]
-    if len(pool) > n:
-        # Keep the top 2, shuffle the rest
-        top = pool[:2]
-        rest = pool[2:]
-        _rand.shuffle(rest)
-        pool = top + rest
-
+    # Add some variety: pick top candidates but shuffle them to avoid same plan every time
+    pool = unique[:max(n * 2, 10)]
+    _rand.shuffle(pool)
     selected = pool[:n]
 
     # Format them the same way the model does
@@ -1466,6 +1460,23 @@ async def generate_workout_plan_direct(
     UPPER_PULL_TARGET_MUSCLES = {
         "lats", "traps", "upper back", "biceps", "forearms", "levator scapulae", "spine"}
 
+    # Equipment normalization for validation matching
+    user_equipment = set()
+    if req_equipment:
+        for eq in req_equipment:
+            eq_low = eq.lower().strip()
+            user_equipment.add(eq_low)
+            if "dumbbell" in eq_low:
+                user_equipment.add("dumbbell")
+            if "barbell" in eq_low:
+                user_equipment.add("barbell")
+            if "cable" in eq_low:
+                user_equipment.add("cable")
+            if "machine" in eq_low:
+                user_equipment.update({"machine", "leverage machine", "smith machine"})
+    user_equipment.add("body weight")  # always available
+    user_equipment.add("bodyweight")
+
     for day in plan.get("days", []):
         focus_areas = day.get("focus_areas", [])
         if not focus_areas:
@@ -1522,6 +1533,19 @@ async def generate_workout_plan_direct(
                     db_entry.get("bodyParts", [])).lower()
                 ex_pattern = db_entry.get("movement_pattern", "").lower()
                 combined = f"{real_muscles} {body_parts_str} {ex_pattern}"
+
+                # Check equipment compatibility
+                if req_equipment:
+                    ex_equips = [e.lower() for e in db_entry.get("equipments", ["body weight"])]
+                    has_equip = any(
+                        ueq in ex_eq or ex_eq in ueq
+                        for ex_eq in ex_equips
+                        for ueq in user_equipment
+                    )
+                    if not has_equip:
+                        print(
+                            f"   ⚠️ Removed '{ex_name}' from '{day.get('day_name')}' (equipment mismatch: requires {ex_equips}, user has {req_equipment})")
+                        continue
 
                 # Check movement pattern exclusion
                 if excluded_patterns and any(excl in ex_pattern for excl in excluded_patterns):
