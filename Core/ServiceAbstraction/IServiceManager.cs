@@ -36,6 +36,6 @@ namespace ServiceAbstraction
         public ICouponService CouponService { get; }
         public IIngredientService IngredientService { get; }
         public IAllergyService AllergyService { get; }
-
+        public IStripeService StripeService { get; }
     }
 }

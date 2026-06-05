@@ -56,36 +56,19 @@ function ChangePlanContent() {
     }
     setSwitching(plan.planId);
     try {
-      // Create a payment record for the new plan
-      const paymentRes = await paymentApi.createPayment({
-        userId: user.userId,
-        amount: plan.price,
-        paymentMethod: "Cash",
-        paymentType: "Subscription",
-        packageId: plan.planId,
+      // Create Stripe Checkout Session
+      const originUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+      const sessionRes = await paymentApi.createStripeCheckoutSession({
+        planId: plan.planId,
+        flowType: "change-plan",
+        originUrl,
       });
 
-      if (!paymentRes.success || !paymentRes.data) {
-        showToast("Failed to process payment. Please try again.", "error");
-        return;
-      }
-
-      // Change the plan
-      const changeRes = await subscriptionApi.changePlan({
-        userId: user.userId,
-        newPlanId: plan.planId,
-        paymentId: paymentRes.data.paymentId,
-      });
-
-      if (changeRes.success) {
-        const startMsg = scheduledStartDate
-          ? ` starting ${scheduledStartDate.toLocaleDateString()}`
-          : "";
-        showToast(`${plan.planName} scheduled${startMsg}!`, "success");
-        await refreshSubscription();
-        router.push("/profile");
+      if (sessionRes.success && sessionRes.data?.url) {
+        // Redirect the user to Stripe Checkout
+        window.location.href = sessionRes.data.url;
       } else {
-        showToast(changeRes.message || "Failed to change plan", "error");
+        showToast(sessionRes.message || "Failed to initiate Stripe payment. Please try again.", "error");
       }
     } catch {
       showToast("An error occurred. Please try again.", "error");

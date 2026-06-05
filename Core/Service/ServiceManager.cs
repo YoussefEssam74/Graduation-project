@@ -64,6 +64,7 @@ namespace Service
         private readonly Lazy<IAchievementsService> _lazyAchievementsService;
         private readonly Lazy<IInvitationService> _lazyInvitationService;
         private readonly Lazy<ICouponService> _lazyCouponService;
+        private readonly Lazy<IStripeService> _lazyStripeService;
 
         public ServiceManager(
             IUnitOfWork unitOfWork,
@@ -130,6 +131,7 @@ namespace Service
             _lazyCouponService = new Lazy<ICouponService>(() => new CouponService(_unitOfWork));
             _lazyIngredientService = new Lazy<IIngredientService>(() => new IngredientService(_unitOfWork, _context));
             _lazyAllergyService = new Lazy<IAllergyService>(() => new AllergyService(_unitOfWork, _context));
+            _lazyStripeService = new Lazy<IStripeService>(() => new StripeService(_unitOfWork, _lazySubscriptionService.Value, _configuration, _loggerFactory.CreateLogger<StripeService>()));
         }
 
         // BookingService needs TokenTransactionService and EquipmentTimeSlotService - initialize with factory getter
@@ -172,6 +174,7 @@ namespace Service
         public ICouponService CouponService => _lazyCouponService.Value;
         public IIngredientService IngredientService => _lazyIngredientService.Value;
         public IAllergyService AllergyService => _lazyAllergyService.Value;
+        public IStripeService StripeService => _lazyStripeService.Value;
     }
 }
 

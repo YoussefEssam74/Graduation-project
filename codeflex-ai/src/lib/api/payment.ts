@@ -73,4 +73,27 @@ export const paymentApi = {
   async getAllPayments(limit = 100): Promise<ApiResponse<PaymentDto[]>> {
     return apiFetch<PaymentDto[]>(`/payment?limit=${limit}`);
   },
+
+  /**
+   * Create Stripe Checkout Session
+   */
+  async createStripeCheckoutSession(data: {
+    planId: number;
+    flowType: "subscribe" | "change-plan";
+    originUrl: string;
+  }): Promise<ApiResponse<{ sessionId: string; url: string }>> {
+    return apiFetch<{ sessionId: string; url: string }>("/stripe/create-checkout-session", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Verify Stripe Session
+   */
+  async verifyStripeSession(sessionId: string): Promise<ApiResponse<boolean>> {
+    return apiFetch<boolean>(`/stripe/verify-session?sessionId=${encodeURIComponent(sessionId)}`, {
+      method: "POST",
+    });
+  },
 };

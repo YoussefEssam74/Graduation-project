@@ -60,6 +60,7 @@ namespace Graduation_Project
             builder.Services.AddScoped<IWorkoutAIService, WorkoutAIService>();
             builder.Services.AddScoped<IWorkoutFeedbackService, WorkoutFeedbackService>();
             builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+            builder.Services.AddScoped<IStripeService, StripeService>();
 
             // Exercise RAG service (Gap 2 + Gap 3: exercise step-by-step instructions + keyword search)
             builder.Services.AddScoped<ServiceAbstraction.Services.IExerciseRagService, Service.Services.ExerciseRagService>();

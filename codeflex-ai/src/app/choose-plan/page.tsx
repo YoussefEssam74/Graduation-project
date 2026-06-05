@@ -42,32 +42,19 @@ export default function ChoosePlanPage() {
     }
     setSubscribing(plan.planId);
     try {
-      // Create payment record for the subscription
-      const paymentRes = await paymentApi.createPayment({
-        userId: user.userId,
-        amount: plan.price,
-        paymentMethod: "Cash",
-        paymentType: "Subscription",
-        packageId: plan.planId,
-      });
-
-      if (!paymentRes.success || !paymentRes.data) {
-        showToast("Failed to process payment. Please try again.", "error");
-        return;
-      }
-
-      // Create the subscription
-      const subRes = await subscriptionApi.createSubscription({
-        userId: user.userId,
+      // Create Stripe Checkout Session
+      const originUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+      const sessionRes = await paymentApi.createStripeCheckoutSession({
         planId: plan.planId,
-        paymentId: paymentRes.data.paymentId,
+        flowType: "subscribe",
+        originUrl,
       });
 
-      if (subRes.success) {
-        showToast(`Successfully subscribed to ${plan.planName}!`, "success");
-        router.push("/dashboard");
+      if (sessionRes.success && sessionRes.data?.url) {
+        // Redirect the user to Stripe Checkout
+        window.location.href = sessionRes.data.url;
       } else {
-        showToast(subRes.message || "Failed to create subscription", "error");
+        showToast(sessionRes.message || "Failed to initiate Stripe payment. Please try again.", "error");
       }
     } catch {
       showToast("An error occurred. Please try again.", "error");
