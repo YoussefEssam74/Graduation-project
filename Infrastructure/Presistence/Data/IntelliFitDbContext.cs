@@ -50,6 +50,12 @@ namespace IntelliFit.Infrastructure.Persistence
         public DbSet<Meal> Meals { get; set; }
         public DbSet<MealIngredient> MealIngredients { get; set; }
         public DbSet<Ingredient> Ingredients { get; set; }
+        public DbSet<DiseaseRule> DiseaseRules { get; set; }
+        public DbSet<DiseaseAvoidedIngredient> DiseaseAvoidedIngredients { get; set; }
+        public DbSet<DiseaseRecommendedIngredient> DiseaseRecommendedIngredients { get; set; }
+        public DbSet<Allergy> Allergies { get; set; }
+        public DbSet<IngredientAllergy> IngredientAllergies { get; set; }
+        public DbSet<MemberAllergy> MemberAllergies { get; set; }
 
         // AI / ML
         public DbSet<AiChatLog> AiChatLogs { get; set; }
@@ -130,6 +136,9 @@ namespace IntelliFit.Infrastructure.Persistence
             modelBuilder.Entity<Meal>().ToTable("meals");
             modelBuilder.Entity<MealIngredient>().ToTable("meal_ingredients");
             modelBuilder.Entity<Ingredient>().ToTable("ingredients");
+            modelBuilder.Entity<Allergy>().ToTable("allergies");
+            modelBuilder.Entity<IngredientAllergy>().ToTable("ingredient_allergies");
+            modelBuilder.Entity<MemberAllergy>().ToTable("member_allergies");
             modelBuilder.Entity<AiChatLog>().ToTable("ai_chat_logs");
             modelBuilder.Entity<AiProgramGeneration>().ToTable("ai_program_generations");
             modelBuilder.Entity<AiWorkflowJob>().ToTable("ai_workflow_jobs");
@@ -514,6 +523,107 @@ namespace IntelliFit.Infrastructure.Persistence
                 entity.Property(e => e.CarbsPer100g).HasPrecision(6, 2);
                 entity.Property(e => e.FatsPer100g).HasPrecision(6, 2);
                 entity.HasIndex(e => e.Name);
+            });
+
+            // DiseaseRule Configuration
+            modelBuilder.Entity<DiseaseRule>(entity =>
+            {
+                entity.ToTable("disease_rules");
+                entity.HasKey(e => e.DiseaseRuleId);
+                entity.Property(e => e.DiseaseRuleId).HasColumnName("disease_rule_id");
+                entity.Property(e => e.DiseaseKey).HasColumnName("disease_key");
+                entity.Property(e => e.DiseaseName).HasColumnName("disease_name");
+                entity.Property(e => e.MinKcal).HasColumnName("min_kcal");
+                entity.Property(e => e.MaxKcal).HasColumnName("max_kcal");
+                entity.Property(e => e.MedianKcal).HasColumnName("median_kcal");
+                entity.Property(e => e.CalorieSource).HasColumnName("calorie_source");
+                entity.Property(e => e.CalorieSampleSize).HasColumnName("calorie_sample_size");
+                entity.Property(e => e.ProteinPct).HasColumnName("protein_pct").HasPrecision(5, 2);
+                entity.Property(e => e.CarbsPct).HasColumnName("carbs_pct").HasPrecision(5, 2);
+                entity.Property(e => e.FatPct).HasColumnName("fat_pct").HasPrecision(5, 2);
+                entity.Property(e => e.ProteinGAvg).HasColumnName("protein_g_avg").HasPrecision(6, 2);
+                entity.Property(e => e.CarbsGAvg).HasColumnName("carbs_g_avg").HasPrecision(6, 2);
+                entity.Property(e => e.FatGAvg).HasColumnName("fat_g_avg").HasPrecision(6, 2);
+                entity.Property(e => e.MacroSource).HasColumnName("macro_source");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.HasIndex(e => e.DiseaseKey).IsUnique();
+            });
+
+            // DiseaseAvoidedIngredient Configuration
+            modelBuilder.Entity<DiseaseAvoidedIngredient>(entity =>
+            {
+                entity.ToTable("disease_avoided_ingredients");
+                entity.HasKey(e => new { e.DiseaseRuleId, e.IngredientId });
+                entity.Property(e => e.DiseaseRuleId).HasColumnName("disease_rule_id");
+                entity.Property(e => e.IngredientId).HasColumnName("ingredient_id");
+
+                entity.HasOne(e => e.DiseaseRule)
+                    .WithMany(r => r.AvoidedIngredients)
+                    .HasForeignKey(e => e.DiseaseRuleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Ingredient)
+                    .WithMany()
+                    .HasForeignKey(e => e.IngredientId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // DiseaseRecommendedIngredient Configuration
+            modelBuilder.Entity<DiseaseRecommendedIngredient>(entity =>
+            {
+                entity.ToTable("disease_recommended_ingredients");
+                entity.HasKey(e => new { e.DiseaseRuleId, e.IngredientId });
+                entity.Property(e => e.DiseaseRuleId).HasColumnName("disease_rule_id");
+                entity.Property(e => e.IngredientId).HasColumnName("ingredient_id");
+
+                entity.HasOne(e => e.DiseaseRule)
+                    .WithMany(r => r.RecommendedIngredients)
+                    .HasForeignKey(e => e.DiseaseRuleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Ingredient)
+                    .WithMany()
+                    .HasForeignKey(e => e.IngredientId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Allergy Configuration
+            modelBuilder.Entity<Allergy>(entity =>
+            {
+                entity.HasKey(e => e.AllergyId);
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // IngredientAllergy Configuration
+            modelBuilder.Entity<IngredientAllergy>(entity =>
+            {
+                entity.HasKey(e => new { e.IngredientId, e.AllergyId });
+
+                entity.HasOne(e => e.Ingredient)
+                    .WithMany(i => i.IngredientAllergies)
+                    .HasForeignKey(e => e.IngredientId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Allergy)
+                    .WithMany(a => a.IngredientAllergies)
+                    .HasForeignKey(e => e.AllergyId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // MemberAllergy Configuration
+            modelBuilder.Entity<MemberAllergy>(entity =>
+            {
+                entity.HasKey(e => new { e.MemberProfileId, e.AllergyId });
+
+                entity.HasOne(e => e.MemberProfile)
+                    .WithMany(m => m.MemberAllergies)
+                    .HasForeignKey(e => e.MemberProfileId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Allergy)
+                    .WithMany(a => a.MemberAllergies)
+                    .HasForeignKey(e => e.AllergyId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // AiChatLog Configuration

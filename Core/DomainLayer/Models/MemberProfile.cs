@@ -29,6 +29,7 @@ namespace IntelliFit.Domain.Models
         // Navigation properties
         public virtual User User { get; set; } = null!;
         public virtual SubscriptionPlan? SubscriptionPlan { get; set; }
+        public virtual ICollection<MemberAllergy> MemberAllergies { get; set; } = new List<MemberAllergy>();
     }
 }
 

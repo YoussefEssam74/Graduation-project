@@ -34,6 +34,8 @@ namespace ServiceAbstraction
         public IAchievementsService AchievementsService { get; }
         public IInvitationService InvitationService { get; }
         public ICouponService CouponService { get; }
+        public IIngredientService IngredientService { get; }
+        public IAllergyService AllergyService { get; }
 
     }
 }

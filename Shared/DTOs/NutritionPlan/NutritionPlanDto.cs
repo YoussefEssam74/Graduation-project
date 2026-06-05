@@ -1,3 +1,5 @@
+using IntelliFit.Shared.DTOs.Meal;
+
 namespace Shared.DTOs.NutritionPlan
 {
     public class NutritionPlanDto
@@ -36,6 +38,7 @@ namespace Shared.DTOs.NutritionPlan
         public int CarbsGrams { get; set; }
         public int FatGrams { get; set; }
         public int DayNumber { get; set; }
+        public List<MealIngredientDto> Ingredients { get; set; } = new List<MealIngredientDto>();
     }
 
     public class CoachEditNutritionPlanRequest
@@ -67,6 +70,31 @@ namespace Shared.DTOs.NutritionPlan
         public int CarbsGrams { get; set; }
         public int FatGrams { get; set; }
         public string? Description { get; set; }
+        public List<CoachEditPlanMealIngredientDto>? Ingredients { get; set; } = new();
+    }
+
+    public class CoachEditPlanMealIngredientDto
+    {
+        public int? MealIngredientId { get; set; }
+        public int IngredientId { get; set; }
+        public decimal Quantity { get; set; }
+        public string Unit { get; set; } = null!;
+
+        // Master ingredient properties to update/enrich if edited
+        public string? Name { get; set; }
+        public string? Category { get; set; }
+        public int? CaloriesPer100g { get; set; }
+        public decimal? ProteinPer100g { get; set; }
+        public decimal? CarbsPer100g { get; set; }
+        public decimal? FatsPer100g { get; set; }
+        public bool? ContainsDairy { get; set; }
+        public bool? ContainsGluten { get; set; }
+        public bool? ContainsNuts { get; set; }
+        public bool? ContainsSoy { get; set; }
+        public bool? ContainsEggs { get; set; }
+        public bool? ContainsFish { get; set; }
+        public string? FoodRole { get; set; }
+        public List<string>? Allergies { get; set; }
     }
 }
 

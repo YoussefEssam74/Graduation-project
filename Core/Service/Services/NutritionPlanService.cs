@@ -7,7 +7,7 @@ using DomainLayer.Contracts;
 using IntelliFit.Domain.Models;
 using Microsoft.Extensions.Logging;
 using ServiceAbstraction.Services;
-using Shared.DTOs.Meal;
+using IntelliFit.Shared.DTOs.Meal;
 using Shared.DTOs.NutritionPlan;
 
 namespace Service.Services
@@ -43,7 +43,37 @@ namespace Service.Services
                     }
                 }
 
-                var planMeals = await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId);
+                var planMeals = (await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId)).ToList();
+                var mealIds = planMeals.Select(m => m.MealId).ToList();
+
+                var mealIngredients = mealIds.Any()
+                    ? (await _unitOfWork.Repository<MealIngredient>().FindAsync(mi => mealIds.Contains(mi.MealId))).ToList()
+                    : new List<MealIngredient>();
+
+                var ingredientIds = mealIngredients.Select(mi => mi.IngredientId).Distinct().ToList();
+                var ingredients = ingredientIds.Any()
+                    ? (await _unitOfWork.Repository<Ingredient>().FindAsync(i => ingredientIds.Contains(i.IngredientId))).ToList()
+                    : new List<Ingredient>();
+
+                var ingredientDict = ingredients.ToDictionary(i => i.IngredientId);
+
+                var allAllergies = (await _unitOfWork.Repository<Allergy>().GetAllAsync()).ToDictionary(a => a.AllergyId);
+                var ingredientAllergies = ingredientIds.Any()
+                    ? (await _unitOfWork.Repository<IngredientAllergy>().FindAsync(ia => ingredientIds.Contains(ia.IngredientId))).ToList()
+                    : new List<IngredientAllergy>();
+                var ingredientAllergiesGrouped = ingredientAllergies
+                    .GroupBy(ia => ia.IngredientId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(ia => allAllergies.TryGetValue(ia.AllergyId, out var al) ? al.Name : null)
+                              .Where(name => name != null)
+                              .Select(name => name!)
+                              .ToList()
+                    );
+
+                var mealIngredientsGrouped = mealIngredients
+                    .GroupBy(mi => mi.MealId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
 
                 // Fall back to ai_program_generations.GeneratedPlan when AiPlanJson is not on the plan itself
                 var aiPlanJson = plan.AiPlanJson;
@@ -86,7 +116,35 @@ namespace Service.Services
                         ProteinGrams = m.ProteinGrams,
                         CarbsGrams = m.CarbsGrams,
                         FatGrams = m.FatsGrams,
-                        DayNumber = (int)m.RecommendedTime.TotalHours
+                        DayNumber = (int)m.RecommendedTime.TotalHours,
+                        Ingredients = mealIngredientsGrouped.TryGetValue(m.MealId, out var mis)
+                            ? mis.Select(mi => 
+                            {
+                                var hasIng = ingredientDict.TryGetValue(mi.IngredientId, out var ing);
+                                return new MealIngredientDto
+                                {
+                                    MealIngredientId = mi.MealIngredientId,
+                                    MealId = mi.MealId,
+                                    IngredientId = mi.IngredientId,
+                                    Quantity = mi.Quantity,
+                                    Unit = mi.Unit ?? "g",
+                                    IngredientName = hasIng ? ing!.Name : "Unknown",
+                                    Category = hasIng ? ing!.Category : null,
+                                    CaloriesPer100g = hasIng ? ing!.CaloriesPer100g : 0,
+                                    ProteinPer100g = hasIng ? ing!.ProteinPer100g : 0,
+                                    CarbsPer100g = hasIng ? ing!.CarbsPer100g : 0,
+                                    FatsPer100g = hasIng ? ing!.FatsPer100g : 0,
+                                    ContainsDairy = hasIng ? ing!.ContainsDairy : false,
+                                    ContainsGluten = hasIng ? ing!.ContainsGluten : false,
+                                    ContainsNuts = hasIng ? ing!.ContainsNuts : false,
+                                    ContainsSoy = hasIng ? ing!.ContainsSoy : false,
+                                    ContainsEggs = hasIng ? ing!.ContainsEggs : false,
+                                    ContainsFish = hasIng ? ing!.ContainsFish : false,
+                                    FoodRole = hasIng ? ing!.FoodRole : null,
+                                    Allergies = hasIng && ingredientAllergiesGrouped.TryGetValue(mi.IngredientId, out var algList) ? algList : new List<string>()
+                                };
+                            }).ToList()
+                            : new List<MealIngredientDto>()
                     }).ToList()
                 });
             }
@@ -112,7 +170,37 @@ namespace Service.Services
                 }
             }
 
-            var detailMeals = await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId);
+            var detailMeals = (await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId)).ToList();
+            var mealIds = detailMeals.Select(m => m.MealId).ToList();
+
+            var mealIngredients = mealIds.Any()
+                ? (await _unitOfWork.Repository<MealIngredient>().FindAsync(mi => mealIds.Contains(mi.MealId))).ToList()
+                : new List<MealIngredient>();
+
+            var ingredientIds = mealIngredients.Select(mi => mi.IngredientId).Distinct().ToList();
+            var ingredients = ingredientIds.Any()
+                ? (await _unitOfWork.Repository<Ingredient>().FindAsync(i => ingredientIds.Contains(i.IngredientId))).ToList()
+                : new List<Ingredient>();
+
+            var ingredientDict = ingredients.ToDictionary(i => i.IngredientId);
+
+            var allAllergies = (await _unitOfWork.Repository<Allergy>().GetAllAsync()).ToDictionary(a => a.AllergyId);
+            var ingredientAllergies = ingredientIds.Any()
+                ? (await _unitOfWork.Repository<IngredientAllergy>().FindAsync(ia => ingredientIds.Contains(ia.IngredientId))).ToList()
+                : new List<IngredientAllergy>();
+            var ingredientAllergiesGrouped = ingredientAllergies
+                .GroupBy(ia => ia.IngredientId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(ia => allAllergies.TryGetValue(ia.AllergyId, out var al) ? al.Name : null)
+                          .Where(name => name != null)
+                          .Select(name => name!)
+                          .ToList()
+                );
+
+            var mealIngredientsGrouped = mealIngredients
+                .GroupBy(mi => mi.MealId)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
             // Fall back to ai_program_generations.GeneratedPlan when AiPlanJson is not on the plan itself
             var detailAiPlanJson = plan.AiPlanJson;
@@ -155,7 +243,35 @@ namespace Service.Services
                     ProteinGrams = m.ProteinGrams,
                     CarbsGrams = m.CarbsGrams,
                     FatGrams = m.FatsGrams,
-                    DayNumber = (int)m.RecommendedTime.TotalHours
+                    DayNumber = (int)m.RecommendedTime.TotalHours,
+                    Ingredients = mealIngredientsGrouped.TryGetValue(m.MealId, out var mis)
+                        ? mis.Select(mi => 
+                        {
+                            var hasIng = ingredientDict.TryGetValue(mi.IngredientId, out var ing);
+                            return new MealIngredientDto
+                            {
+                                MealIngredientId = mi.MealIngredientId,
+                                MealId = mi.MealId,
+                                IngredientId = mi.IngredientId,
+                                Quantity = mi.Quantity,
+                                Unit = mi.Unit ?? "g",
+                                IngredientName = hasIng ? ing!.Name : "Unknown",
+                                Category = hasIng ? ing!.Category : null,
+                                CaloriesPer100g = hasIng ? ing!.CaloriesPer100g : 0,
+                                ProteinPer100g = hasIng ? ing!.ProteinPer100g : 0,
+                                CarbsPer100g = hasIng ? ing!.CarbsPer100g : 0,
+                                FatsPer100g = hasIng ? ing!.FatsPer100g : 0,
+                                ContainsDairy = hasIng ? ing!.ContainsDairy : false,
+                                ContainsGluten = hasIng ? ing!.ContainsGluten : false,
+                                ContainsNuts = hasIng ? ing!.ContainsNuts : false,
+                                ContainsSoy = hasIng ? ing!.ContainsSoy : false,
+                                ContainsEggs = hasIng ? ing!.ContainsEggs : false,
+                                ContainsFish = hasIng ? ing!.ContainsFish : false,
+                                FoodRole = hasIng ? ing!.FoodRole : null,
+                                Allergies = hasIng && ingredientAllergiesGrouped.TryGetValue(mi.IngredientId, out var algList) ? algList : new List<string>()
+                            };
+                        }).ToList()
+                        : new List<MealIngredientDto>()
                 }).ToList()
             };
         }
@@ -329,7 +445,37 @@ namespace Service.Services
                     }
                 }
 
-                var planMeals = await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId);
+                var planMeals = (await _unitOfWork.Repository<Meal>().FindAsync(m => m.NutritionPlanId == plan.PlanId)).ToList();
+                var mealIds = planMeals.Select(m => m.MealId).ToList();
+
+                var mealIngredients = mealIds.Any()
+                    ? (await _unitOfWork.Repository<MealIngredient>().FindAsync(mi => mealIds.Contains(mi.MealId))).ToList()
+                    : new List<MealIngredient>();
+
+                var ingredientIds = mealIngredients.Select(mi => mi.IngredientId).Distinct().ToList();
+                var ingredients = ingredientIds.Any()
+                    ? (await _unitOfWork.Repository<Ingredient>().FindAsync(i => ingredientIds.Contains(i.IngredientId))).ToList()
+                    : new List<Ingredient>();
+
+                var ingredientDict = ingredients.ToDictionary(i => i.IngredientId);
+
+                var allAllergies = (await _unitOfWork.Repository<Allergy>().GetAllAsync()).ToDictionary(a => a.AllergyId);
+                var ingredientAllergies = ingredientIds.Any()
+                    ? (await _unitOfWork.Repository<IngredientAllergy>().FindAsync(ia => ingredientIds.Contains(ia.IngredientId))).ToList()
+                    : new List<IngredientAllergy>();
+                var ingredientAllergiesGrouped = ingredientAllergies
+                    .GroupBy(ia => ia.IngredientId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(ia => allAllergies.TryGetValue(ia.AllergyId, out var al) ? al.Name : null)
+                              .Where(name => name != null)
+                              .Select(name => name!)
+                              .ToList()
+                    );
+
+                var mealIngredientsGrouped = mealIngredients
+                    .GroupBy(mi => mi.MealId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
 
                 var aiPlanJson = plan.AiPlanJson;
                 if (string.IsNullOrEmpty(aiPlanJson))
@@ -374,7 +520,35 @@ namespace Service.Services
                         ProteinGrams = m.ProteinGrams,
                         CarbsGrams = m.CarbsGrams,
                         FatGrams = m.FatsGrams,
-                        DayNumber = (int)m.RecommendedTime.TotalHours
+                        DayNumber = (int)m.RecommendedTime.TotalHours,
+                        Ingredients = mealIngredientsGrouped.TryGetValue(m.MealId, out var mis)
+                            ? mis.Select(mi => 
+                            {
+                                var hasIng = ingredientDict.TryGetValue(mi.IngredientId, out var ing);
+                                return new MealIngredientDto
+                                {
+                                    MealIngredientId = mi.MealIngredientId,
+                                    MealId = mi.MealId,
+                                    IngredientId = mi.IngredientId,
+                                    Quantity = mi.Quantity,
+                                    Unit = mi.Unit ?? "g",
+                                    IngredientName = hasIng ? ing!.Name : "Unknown",
+                                    Category = hasIng ? ing!.Category : null,
+                                    CaloriesPer100g = hasIng ? ing!.CaloriesPer100g : 0,
+                                    ProteinPer100g = hasIng ? ing!.ProteinPer100g : 0,
+                                    CarbsPer100g = hasIng ? ing!.CarbsPer100g : 0,
+                                    FatsPer100g = hasIng ? ing!.FatsPer100g : 0,
+                                    ContainsDairy = hasIng ? ing!.ContainsDairy : false,
+                                    ContainsGluten = hasIng ? ing!.ContainsGluten : false,
+                                    ContainsNuts = hasIng ? ing!.ContainsNuts : false,
+                                    ContainsSoy = hasIng ? ing!.ContainsSoy : false,
+                                    ContainsEggs = hasIng ? ing!.ContainsEggs : false,
+                                    ContainsFish = hasIng ? ing!.ContainsFish : false,
+                                    FoodRole = hasIng ? ing!.FoodRole : null,
+                                    Allergies = hasIng && ingredientAllergiesGrouped.TryGetValue(mi.IngredientId, out var algList) ? algList : new List<string>()
+                                };
+                            }).ToList()
+                            : new List<MealIngredientDto>()
                     }).ToList()
                 });
             }
@@ -446,9 +620,13 @@ namespace Service.Services
                     mealRepo.RemoveRange(toDelete);
                 }
 
+                var mealIngRepo = _unitOfWork.Repository<MealIngredient>();
+                var ingRepo = _unitOfWork.Repository<Ingredient>();
+
                 // Update or Add meals
                 foreach (var im in incomingMeals)
                 {
+                    Meal mealToSync;
                     if (im.Meal.MealId.HasValue)
                     {
                         var existingMeal = currentMeals.FirstOrDefault(cm => cm.MealId == im.Meal.MealId.Value);
@@ -462,6 +640,11 @@ namespace Service.Services
                             existingMeal.FatsGrams = im.Meal.FatGrams;
                             existingMeal.RecommendedTime = TimeSpan.FromHours(im.DayNumber);
                             mealRepo.Update(existingMeal);
+                            mealToSync = existingMeal;
+                        }
+                        else
+                        {
+                            continue;
                         }
                     }
                     else
@@ -479,6 +662,124 @@ namespace Service.Services
                             CreatedAt = DateTime.UtcNow
                         };
                         await mealRepo.AddAsync(newMeal);
+                        mealToSync = newMeal;
+                    }
+
+                    // Synchronize meal ingredients and master ingredients
+                    var currentMealIngredients = mealToSync.MealId > 0
+                        ? await mealIngRepo.FindAsync(mi => mi.MealId == mealToSync.MealId)
+                        : new List<MealIngredient>();
+
+                    var incomingIngredients = im.Meal.Ingredients ?? new List<CoachEditPlanMealIngredientDto>();
+
+                    // 1. Delete removed meal ingredients
+                    var incomingMealIngIds = incomingIngredients
+                        .Where(ii => ii.MealIngredientId.HasValue)
+                        .Select(ii => ii.MealIngredientId!.Value)
+                        .ToHashSet();
+
+                    var mealIngToDelete = currentMealIngredients
+                        .Where(cmi => !incomingMealIngIds.Contains(cmi.MealIngredientId))
+                        .ToList();
+
+                    if (mealIngToDelete.Any())
+                    {
+                        mealIngRepo.RemoveRange(mealIngToDelete);
+                    }
+
+                    // 2. Add or Update meal ingredients + update master ingredient properties if they changed
+                    foreach (var ii in incomingIngredients)
+                    {
+                        var ingredient = await ingRepo.GetByIdAsync(ii.IngredientId);
+                        if (ingredient != null)
+                        {
+                            bool ingredientChanged = false;
+                            if (ii.Name != null && ii.Name != ingredient.Name) { ingredient.Name = ii.Name; ingredientChanged = true; }
+                            if (ii.Category != null && ii.Category != ingredient.Category) { ingredient.Category = ii.Category; ingredientChanged = true; }
+                            if (ii.CaloriesPer100g.HasValue && ii.CaloriesPer100g.Value != ingredient.CaloriesPer100g) { ingredient.CaloriesPer100g = ii.CaloriesPer100g.Value; ingredientChanged = true; }
+                            if (ii.ProteinPer100g.HasValue && ii.ProteinPer100g.Value != ingredient.ProteinPer100g) { ingredient.ProteinPer100g = ii.ProteinPer100g.Value; ingredientChanged = true; }
+                            if (ii.CarbsPer100g.HasValue && ii.CarbsPer100g.Value != ingredient.CarbsPer100g) { ingredient.CarbsPer100g = ii.CarbsPer100g.Value; ingredientChanged = true; }
+                            if (ii.FatsPer100g.HasValue && ii.FatsPer100g.Value != ingredient.FatsPer100g) { ingredient.FatsPer100g = ii.FatsPer100g.Value; ingredientChanged = true; }
+                            if (ii.ContainsDairy.HasValue && ii.ContainsDairy.Value != ingredient.ContainsDairy) { ingredient.ContainsDairy = ii.ContainsDairy.Value; ingredientChanged = true; }
+                            if (ii.ContainsGluten.HasValue && ii.ContainsGluten.Value != ingredient.ContainsGluten) { ingredient.ContainsGluten = ii.ContainsGluten.Value; ingredientChanged = true; }
+                            if (ii.ContainsNuts.HasValue && ii.ContainsNuts.Value != ingredient.ContainsNuts) { ingredient.ContainsNuts = ii.ContainsNuts.Value; ingredientChanged = true; }
+                            if (ii.ContainsSoy.HasValue && ii.ContainsSoy.Value != ingredient.ContainsSoy) { ingredient.ContainsSoy = ii.ContainsSoy.Value; ingredientChanged = true; }
+                            if (ii.ContainsEggs.HasValue && ii.ContainsEggs.Value != ingredient.ContainsEggs) { ingredient.ContainsEggs = ii.ContainsEggs.Value; ingredientChanged = true; }
+                            if (ii.ContainsFish.HasValue && ii.ContainsFish.Value != ingredient.ContainsFish) { ingredient.ContainsFish = ii.ContainsFish.Value; ingredientChanged = true; }
+                            if (ii.FoodRole != null && ii.FoodRole != ingredient.FoodRole) { ingredient.FoodRole = ii.FoodRole; ingredientChanged = true; }
+
+                             if (ii.Allergies != null)
+                             {
+                                 var existingAllergies = await _unitOfWork.Repository<IngredientAllergy>()
+                                     .FindAsync(ia => ia.IngredientId == ingredient.IngredientId);
+                                 if (existingAllergies.Any())
+                                 {
+                                     _unitOfWork.Repository<IngredientAllergy>().RemoveRange(existingAllergies);
+                                 }
+
+                                 foreach (var name in ii.Allergies.Select(n => n.Trim()).Where(n => !string.IsNullOrEmpty(n)))
+                                 {
+                                     var allergy = await _unitOfWork.Repository<Allergy>()
+                                         .FirstOrDefaultAsync(a => a.Name.ToLower() == name.ToLower());
+                                     if (allergy == null)
+                                     {
+                                         allergy = new Allergy { Name = name };
+                                         await _unitOfWork.Repository<Allergy>().AddAsync(allergy);
+                                         await _unitOfWork.SaveChangesAsync();
+                                     }
+
+                                     await _unitOfWork.Repository<IngredientAllergy>().AddAsync(new IngredientAllergy
+                                     {
+                                         IngredientId = ingredient.IngredientId,
+                                         AllergyId = allergy.AllergyId
+                                     });
+                                 }
+
+                                 ingredient.ContainsDairy = ii.Allergies.Any(a => a.Equals("dairy", StringComparison.OrdinalIgnoreCase));
+                                 ingredient.ContainsGluten = ii.Allergies.Any(a => a.Equals("gluten", StringComparison.OrdinalIgnoreCase));
+                                 ingredient.ContainsNuts = ii.Allergies.Any(a => a.Equals("nuts", StringComparison.OrdinalIgnoreCase));
+                                 ingredient.ContainsSoy = ii.Allergies.Any(a => a.Equals("soy", StringComparison.OrdinalIgnoreCase));
+                                 ingredient.ContainsEggs = ii.Allergies.Any(a => a.Equals("eggs", StringComparison.OrdinalIgnoreCase));
+                                 ingredient.ContainsFish = ii.Allergies.Any(a => a.Equals("fish", StringComparison.OrdinalIgnoreCase));
+                                 ingredientChanged = true;
+                             }
+
+                             if (ingredientChanged)
+                             {
+                                 ingRepo.Update(ingredient);
+                             }
+                        }
+
+                        if (ii.MealIngredientId.HasValue)
+                        {
+                            var existingMi = currentMealIngredients.FirstOrDefault(cmi => cmi.MealIngredientId == ii.MealIngredientId.Value);
+                            if (existingMi != null)
+                            {
+                                existingMi.Quantity = ii.Quantity;
+                                existingMi.Unit = ii.Unit;
+                                existingMi.IngredientId = ii.IngredientId;
+                                mealIngRepo.Update(existingMi);
+                            }
+                        }
+                        else
+                        {
+                            var newMi = new MealIngredient
+                            {
+                                MealId = mealToSync.MealId,
+                                IngredientId = ii.IngredientId,
+                                Quantity = ii.Quantity,
+                                Unit = ii.Unit
+                            };
+
+                            if (mealToSync.MealId > 0)
+                            {
+                                await mealIngRepo.AddAsync(newMi);
+                            }
+                            else
+                            {
+                                mealToSync.Ingredients.Add(newMi);
+                            }
+                        }
                     }
                 }
 

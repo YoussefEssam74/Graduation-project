@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.SignalR;
 using IntelliFit.Presentation.Hubs;
 using AutoMapper;
 using Microsoft.Extensions.Caching.Memory;
+using IntelliFit.Infrastructure.Persistence;
 
 namespace Service
 {
@@ -25,6 +26,11 @@ namespace Service
         private readonly IMapper _mapper;
         private readonly IMemoryCache _memoryCache;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly IntelliFitDbContext _context;
+
+        // Lazy-loaded services
+        private readonly Lazy<IIngredientService> _lazyIngredientService;
+        private readonly Lazy<IAllergyService> _lazyAllergyService;
 
         // Lazy-loaded services
         private readonly Lazy<IAuthService> _lazyAuthService;
@@ -69,8 +75,10 @@ namespace Service
             IMemoryCache memoryCache,
                 ILoggerFactory loggerFactory,
                 IWorkoutAIService workoutAIService,
-                IExerciseRagService exerciseRagService)
+                IExerciseRagService exerciseRagService,
+                IntelliFitDbContext context)
         {
+            _context = context;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
             _configuration = configuration;
@@ -120,6 +128,8 @@ namespace Service
             _lazyAchievementsService = new Lazy<IAchievementsService>(() => new AchievementsService(_unitOfWork));
             _lazyInvitationService = new Lazy<IInvitationService>(() => new InvitationService(_unitOfWork));
             _lazyCouponService = new Lazy<ICouponService>(() => new CouponService(_unitOfWork));
+            _lazyIngredientService = new Lazy<IIngredientService>(() => new IngredientService(_unitOfWork, _context));
+            _lazyAllergyService = new Lazy<IAllergyService>(() => new AllergyService(_unitOfWork, _context));
         }
 
         // BookingService needs TokenTransactionService and EquipmentTimeSlotService - initialize with factory getter
@@ -160,6 +170,8 @@ namespace Service
         public IAchievementsService AchievementsService => _lazyAchievementsService.Value;
         public IInvitationService InvitationService => _lazyInvitationService.Value;
         public ICouponService CouponService => _lazyCouponService.Value;
+        public IIngredientService IngredientService => _lazyIngredientService.Value;
+        public IAllergyService AllergyService => _lazyAllergyService.Value;
     }
 }
 
