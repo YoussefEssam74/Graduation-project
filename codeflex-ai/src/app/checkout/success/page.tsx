@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   CheckCircle, 
@@ -16,7 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { paymentApi } from "@/lib/api/payment";
 import Link from "next/link";
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
@@ -195,5 +195,18 @@ export default function CheckoutSuccessPage() {
       </footer>
 
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
+        <p className="text-sm text-slate-400 font-medium animate-pulse">Loading secure checkout verification...</p>
+      </div>
+    }>
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }
