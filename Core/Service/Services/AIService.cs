@@ -271,6 +271,14 @@ public class AIService : IAIService
 
     private string BuildWorkoutPrompt(GenerateWorkoutPlanRequest request)
     {
+        string splitInstructions = request.WorkoutDaysPerWeek switch
+        {
+            3 => "You must structure this as a 3-Day Push/Pull/Legs (PPL) split: Day 1 (Push: Chest/Shoulders/Triceps), Day 2 (Pull: Back/Rear Delts/Biceps), and Day 3 (Legs/Abs).",
+            4 => "You must structure this as a 4-Day Upper/Lower split: Day 1 (Upper Body A), Day 2 (Lower Body A), Day 3 (Upper Body B), and Day 4 (Lower Body B).",
+            5 => "You must structure this as a 5-Day Split: Day 1 (Chest), Day 2 (Back), Day 3 (Shoulders), Day 4 (Legs), and Day 5 (Arms).",
+            _ => $"Structure the {request.WorkoutDaysPerWeek} days as a balanced training split targeting all major muscle groups."
+        };
+
         return $@"Create a {request.WorkoutDaysPerWeek}-day workout plan for a {request.Age} year old, {request.FitnessLevel} level person.
 
 User Profile:
@@ -281,6 +289,11 @@ User Profile:
 - Workout Days Per Week: {request.WorkoutDaysPerWeek}
 - Injuries/Limitations: {request.Injuries ?? "None"}
 - Equipment Access: {request.EquipmentAccess ?? "Full gym"}
+
+CRITICAL SPLIT & VOLUME REQUIREMENTS:
+1. Split Structure: {splitInstructions}
+2. Volume: Each workout day MUST contain AT LEAST 5 distinct strength/hypertrophy exercises (excluding warm-up and cool-down).
+3. Warm-up & Cool-down: Include 1 warm-up routine at the beginning and 1 cool-down routine at the end of each day (making a total of at least 7 routines per day).
 
 CRITICAL JSON FORMAT REQUIREMENTS:
 1. Return ONLY valid JSON - no markdown, no code blocks, no explanatory text
@@ -309,7 +322,6 @@ Requirements:
 - Progressive overload appropriate for {request.FitnessLevel} level
 - Target {request.FitnessGoal}
 - Respect injuries/limitations
-- Include warm-up and cool-down
 - Sets must be integers (e.g., 3, not ""3"" or ""3-4"")
 - Reps must be integers (e.g., 10, not ""10"" or ""8-12"")
 
