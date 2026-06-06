@@ -1,10 +1,10 @@
 import psycopg2
 
 conn = psycopg2.connect(
-    host="ep-purple-sun-ali1v059.c-3.eu-central-1.aws.neon.tech",
+    host="ep-fancy-sound-a2toab50.eu-central-1.aws.neon.tech",
     dbname="neondb",
     user="neondb_owner",
-    password="npg_JpaFCdHcU20O",
+    password="npg_C3Qm6VqSjUMu",
     sslmode="require"
 )
 cur = conn.cursor()

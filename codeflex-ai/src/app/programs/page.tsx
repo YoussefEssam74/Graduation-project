@@ -138,6 +138,9 @@ function EquipmentModal({
       return;
     }
 
+    const durationMinutes = Math.ceil((bookingEndTime.getTime() - bookingStartTime.getTime()) / 60000);
+    const totalCost = tokensCost * durationMinutes;
+
     try {
       setIsBooking(true);
       const response = await bookingsApi.createBooking({
@@ -150,7 +153,7 @@ function EquipmentModal({
       });
       if (response.success) {
         onBookSuccess(
-          `Booked ${equipmentName} — ${tokensCost || 0} tokens deducted`,
+          `Booked ${equipmentName} — ${totalCost} tokens deducted`,
         );
         onClose();
       } else {
@@ -295,7 +298,7 @@ function EquipmentModal({
                   {(eq.tokensCostPerHour || eq.tokensCost) && (
                     <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
                       <Ticket className="h-3 w-3" />
-                      {eq.tokensCostPerHour || eq.tokensCost} tokens/hr
+                      {eq.tokensCostPerHour || eq.tokensCost} tokens/min
                     </span>
                   )}
                 </div>

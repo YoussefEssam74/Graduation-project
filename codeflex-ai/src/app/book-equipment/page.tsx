@@ -283,7 +283,7 @@ function BookEquipmentContent() {
             return;
         }
 
-        const cost = selectedEquipment.tokensCost;
+        const cost = selectedEquipment.tokensCost * selectedDuration;
         if ((user.tokenBalance ?? 0) < cost) {
             showToast("Insufficient tokens", "error");
             return;
@@ -593,7 +593,7 @@ function BookEquipmentContent() {
                                             <div className="text-right">
                                                 <p className="text-lg font-bold text-primary">
                                                     {eq.tokensCost} T
-                                                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">/hr</span>
+                                                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">/min</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -887,7 +887,7 @@ function BookEquipmentContent() {
                                 <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-600">
                                     <span className="text-slate-500 dark:text-slate-400">Total Cost</span>
                                     <div className="flex items-center gap-1">
-                                        <span className="text-xl font-bold text-slate-900 dark:text-white">{selectedEquipment.tokensCost}</span>
+                                        <span className="text-xl font-bold text-slate-900 dark:text-white">{selectedEquipment.tokensCost * selectedDuration}</span>
                                         <Ticket className="h-4 w-4 text-primary" />
                                     </div>
                                 </div>

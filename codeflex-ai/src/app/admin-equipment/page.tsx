@@ -480,7 +480,7 @@ function AdminEquipmentContent() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Booking Cost:</span>
                     <span className="font-semibold">
-                      {item.tokensCostPerHour} tokens/hr
+                      {item.tokensCostPerHour} tokens/min
                     </span>
                   </div>
                 )}
@@ -607,7 +607,7 @@ function AdminEquipmentContent() {
                     </div>
 
                     <div className="space-y-1">
-                      <Label htmlFor="tokensCost">Token Cost Per Hour</Label>
+                      <Label htmlFor="tokensCost">Token Cost Per Minute</Label>
                       <Input
                         id="tokensCost"
                         type="number"

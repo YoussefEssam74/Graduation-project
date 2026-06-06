@@ -70,6 +70,9 @@ namespace Service.Services
 
         public async Task<BookingDto> CreateBookingAsync(CreateBookingDto createDto)
         {
+            createDto.StartTime = EnsureUtc(createDto.StartTime);
+            createDto.EndTime = EnsureUtc(createDto.EndTime);
+
             // ========== VALIDATION PHASE ==========
             
             // 1. Basic time validation
@@ -359,8 +362,9 @@ namespace Service.Services
                 throw new InvalidOperationException("Equipment is not available for the selected time slot. It may be booked by another user.");
             }
 
-            // Calculate token cost
-            int tokensCost = equipment.BookingCostTokens;
+            // Calculate token cost: tokens per minute * duration in minutes
+            double durationMinutes = (createDto.EndTime - createDto.StartTime).TotalMinutes;
+            int tokensCost = (int)Math.Ceiling(durationMinutes * equipment.BookingCostTokens);
 
             // Validate user has sufficient tokens
             var user = await _unitOfWork.Repository<User>().GetByIdAsync(createDto.UserId);
@@ -405,7 +409,7 @@ namespace Service.Services
                 {
                     Amount = -tokensCost,
                     TransactionType = "Deduction",
-                    Description = $"Booked {equipment.Name} - {(createDto.EndTime - createDto.StartTime).TotalHours:0.#}h"
+                    Description = $"Booked {equipment.Name} - {durationMinutes:0} min"
                 });
             }
 
@@ -526,6 +530,9 @@ namespace Service.Services
 
         public async Task<IEnumerable<BookingDto>> GetEquipmentBookingsAsync(int equipmentId, DateTime startDate, DateTime endDate)
         {
+            startDate = EnsureUtc(startDate);
+            endDate = EnsureUtc(endDate);
+
             var bookings = await _unitOfWork.Repository<Booking>()
                 .FindAsync(b => b.EquipmentId == equipmentId &&
                                b.StartTime >= startDate &&
@@ -546,6 +553,9 @@ namespace Service.Services
 
         public async Task<IEnumerable<BookingDto>> GetCoachBookingsAsync(int coachId, DateTime startDate, DateTime endDate)
         {
+            startDate = EnsureUtc(startDate);
+            endDate = EnsureUtc(endDate);
+
             // Convert User ID to CoachProfile ID
             var coachProfile = await _unitOfWork.Repository<CoachProfile>()
                 .FirstOrDefaultAsync(cp => cp.UserId == coachId);
@@ -720,6 +730,9 @@ namespace Service.Services
 
         public async Task<bool> IsCoachAvailableAsync(int coachId, DateTime startTime, DateTime endTime)
         {
+            startTime = EnsureUtc(startTime);
+            endTime = EnsureUtc(endTime);
+
             var overlappingBookings = await _unitOfWork.Repository<Booking>()
                 .AnyAsync(b => b.CoachId == coachId &&
                               b.Status != BookingStatus.Cancelled &&
@@ -734,6 +747,9 @@ namespace Service.Services
         /// </summary>
         public async Task<IEnumerable<BookingDto>> GetEquipmentBookedSlotsAsync(int equipmentId, DateTime startDate, DateTime endDate)
         {
+            startDate = EnsureUtc(startDate);
+            endDate = EnsureUtc(endDate);
+
             var bookings = await _unitOfWork.Repository<Booking>()
                 .FindAsync(b => b.EquipmentId == equipmentId &&
                               b.Status != BookingStatus.Cancelled &&
@@ -760,6 +776,9 @@ namespace Service.Services
         /// </summary>
         public async Task<bool> UserHasActiveCoachBookingAsync(int userId, DateTime startTime, DateTime endTime)
         {
+            startTime = EnsureUtc(startTime);
+            endTime = EnsureUtc(endTime);
+
             return await _unitOfWork.Repository<Booking>()
                 .AnyAsync(b => b.UserId == userId &&
                               b.CoachId.HasValue &&
@@ -827,6 +846,15 @@ namespace Service.Services
             dto.IsAiGenerated = booking.IsAiGenerated;
 
             return dto;
+        }
+
+        private static DateTime EnsureUtc(DateTime dt)
+        {
+            if (dt.Kind == DateTimeKind.Utc)
+                return dt;
+            if (dt.Kind == DateTimeKind.Local)
+                return dt.ToUniversalTime();
+            return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
         }
     }
 }

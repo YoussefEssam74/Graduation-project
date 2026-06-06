@@ -32,18 +32,21 @@ namespace Service.Services
 
         public async Task<IEnumerable<EquipmentTimeSlotDto>> GetAvailableSlotsAsync(int equipmentId, DateTime date)
         {
+            date = EnsureUtc(date);
             var allSlots = await GetAllSlotsAsync(equipmentId, date);
             return allSlots.Where(s => !s.IsBooked);
         }
 
         public async Task<IEnumerable<EquipmentTimeSlotDto>> GetBookedSlotsAsync(int equipmentId, DateTime date)
         {
+            date = EnsureUtc(date);
             var allSlots = await GetAllSlotsAsync(equipmentId, date);
             return allSlots.Where(s => s.IsBooked);
         }
 
         public async Task<IEnumerable<EquipmentTimeSlotDto>> GetAllSlotsAsync(int equipmentId, DateTime date)
         {
+            date = EnsureUtc(date);
             var cacheKey = GetCacheKey(equipmentId, date);
 
             if (_cache.TryGetValue(cacheKey, out IEnumerable<EquipmentTimeSlotDto>? cachedSlots) && cachedSlots != null)
@@ -66,11 +69,27 @@ namespace Service.Services
                 slotList = slots.ToList();
             }
 
+            var nextDay = dateOnly.AddDays(1);
+            var bookings = await _unitOfWork.Repository<Booking>()
+                .FindAsync(b => b.EquipmentId == equipmentId &&
+                               b.Status != BookingStatus.Cancelled &&
+                               b.Status != BookingStatus.Completed &&
+                               b.StartTime >= dateOnly &&
+                               b.StartTime < nextDay);
+            var bookingList = bookings.ToList();
+
             var equipment = await _unitOfWork.Repository<Equipment>().GetByIdAsync(equipmentId);
             var dtos = new List<EquipmentTimeSlotDto>();
 
             foreach (var slot in slotList.OrderBy(s => s.StartTime))
             {
+                var slotStart = dateOnly.Add(slot.StartTime);
+                var slotEnd = dateOnly.Add(slot.EndTime);
+
+                // Find any overlapping bookings for this specific hour slot
+                var overlappingBooking = bookingList.FirstOrDefault(b =>
+                    b.StartTime < slotEnd && b.EndTime > slotStart);
+
                 var dto = new EquipmentTimeSlotDto
                 {
                     SlotId = slot.SlotId,
@@ -79,16 +98,16 @@ namespace Service.Services
                     SlotDate = slot.SlotDate,
                     StartTime = slot.StartTime,
                     EndTime = slot.EndTime,
-                    IsBooked = slot.IsBooked,
-                    BookedByUserId = slot.BookedByUserId,
-                    BookingId = slot.BookingId,
-                    IsCoachSession = slot.IsCoachSession,
-                    BookedAt = slot.BookedAt
+                    IsBooked = overlappingBooking != null,
+                    BookedByUserId = overlappingBooking?.UserId,
+                    BookingId = overlappingBooking?.BookingId,
+                    IsCoachSession = overlappingBooking?.IsAutoBookedForCoachSession ?? false,
+                    BookedAt = overlappingBooking?.CreatedAt
                 };
 
-                if (slot.BookedByUserId.HasValue)
+                if (dto.BookedByUserId.HasValue)
                 {
-                    var user = await _unitOfWork.Repository<User>().GetByIdAsync(slot.BookedByUserId.Value);
+                    var user = await _unitOfWork.Repository<User>().GetByIdAsync(dto.BookedByUserId.Value);
                     dto.BookedByUserName = user?.Name;
                 }
 
@@ -101,21 +120,23 @@ namespace Service.Services
 
         public async Task<bool> IsTimeRangeAvailableAsync(int equipmentId, DateTime startTime, DateTime endTime)
         {
-            var date = startTime.Date;
-            var allSlots = await GetAllSlotsAsync(equipmentId, date);
+            startTime = EnsureUtc(startTime);
+            endTime = EnsureUtc(endTime);
 
-            var startTimeOfDay = startTime.TimeOfDay;
-            var endTimeOfDay = endTime.TimeOfDay;
+            // Check if there are any overlapping bookings in the database for the exact time range
+            var overlappingBookings = await _unitOfWork.Repository<Booking>()
+                .AnyAsync(b => b.EquipmentId == equipmentId &&
+                               b.Status != BookingStatus.Cancelled &&
+                               b.Status != BookingStatus.Completed &&
+                               ((b.StartTime < endTime && b.EndTime > startTime)));
 
-            // Check if any slot in the time range is already booked
-            var overlappingSlots = allSlots.Where(s =>
-                (s.StartTime < endTimeOfDay && s.EndTime > startTimeOfDay));
-
-            return !overlappingSlots.Any(s => s.IsBooked);
+            return !overlappingBookings;
         }
 
         public async Task<EquipmentTimeSlotDto> BookSlotAsync(int equipmentId, int userId, DateTime startTime, DateTime endTime, int bookingId, bool isCoachSession = false)
         {
+            startTime = EnsureUtc(startTime);
+            endTime = EnsureUtc(endTime);
             var date = startTime.Date;
             var startTimeOfDay = startTime.TimeOfDay;
             var endTimeOfDay = endTime.TimeOfDay;
@@ -144,16 +165,14 @@ namespace Service.Services
             // Book all overlapping slots
             foreach (var slot in slotList)
             {
-                if (slot.IsBooked)
-                {
-                    throw new InvalidOperationException($"Time slot {slot.StartTime}-{slot.EndTime} is already booked");
-                }
-
                 slot.IsBooked = true;
-                slot.BookedByUserId = userId;
-                slot.BookingId = bookingId;
-                slot.IsCoachSession = isCoachSession;
-                slot.BookedAt = DateTime.UtcNow;
+                if (!slot.BookedByUserId.HasValue)
+                {
+                    slot.BookedByUserId = userId;
+                    slot.BookingId = bookingId;
+                    slot.IsCoachSession = isCoachSession;
+                    slot.BookedAt = DateTime.UtcNow;
+                }
 
                 _unitOfWork.Repository<EquipmentTimeSlot>().Update(slot);
             }
@@ -214,6 +233,7 @@ namespace Service.Services
 
         public async Task GenerateDailySlotsAsync(DateTime date)
         {
+            date = EnsureUtc(date);
             var allEquipment = await _unitOfWork.Repository<Equipment>()
                 .FindAsync(e => e.IsActive && e.Status == EquipmentStatus.Available);
 
@@ -228,6 +248,7 @@ namespace Service.Services
 
         private async Task GenerateDailySlotsForEquipmentAsync(int equipmentId, DateTime date)
         {
+            date = EnsureUtc(date);
             var dateOnly = date.Date;
 
             // Check if slots already exist for this equipment and date
@@ -297,6 +318,8 @@ namespace Service.Services
 
         public async Task<IEnumerable<EquipmentAvailabilitySummaryDto>> GetEquipmentAvailabilitySummaryAsync(DateTime startDate, DateTime endDate)
         {
+            startDate = EnsureUtc(startDate);
+            endDate = EnsureUtc(endDate);
             var summaries = new List<EquipmentAvailabilitySummaryDto>();
 
             var allEquipment = await _unitOfWork.Repository<Equipment>()
@@ -348,6 +371,15 @@ namespace Service.Services
         {
             var cacheKey = GetCacheKey(equipmentId, date);
             _cache.Remove(cacheKey);
+        }
+
+        private static DateTime EnsureUtc(DateTime dt)
+        {
+            if (dt.Kind == DateTimeKind.Utc)
+                return dt;
+            if (dt.Kind == DateTimeKind.Local)
+                return dt.ToUniversalTime();
+            return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
         }
     }
 }
