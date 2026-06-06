@@ -12,7 +12,7 @@ namespace ServiceAbstraction.Services
         /// <param name="flowType">Flow type: "subscribe" or "change-plan"</param>
         /// <param name="originUrl">The frontend origin URL (e.g. http://localhost:3000)</param>
         /// <returns>A tuple containing SessionId and Checkout Url</returns>
-        Task<(string sessionId, string url)> CreateCheckoutSessionAsync(int userId, int planId, string flowType, string originUrl);
+        Task<(string sessionId, string url)> CreateCheckoutSessionAsync(int userId, int planId, string flowType, string originUrl, string? couponCode = null);
 
         /// <summary>
         /// Verifies the checkout session with Stripe and triggers database updates (Payment + UserSubscription)

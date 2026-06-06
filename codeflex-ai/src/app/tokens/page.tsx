@@ -102,7 +102,10 @@ export default function TokensPage() {
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      if (!user?.userId) return;
+      if (!user?.userId) {
+        setIsLoadingTransactions(false);
+        return;
+      }
 
       try {
         setIsLoadingTransactions(true);
@@ -146,7 +149,7 @@ export default function TokensPage() {
     };
 
     fetchTransactions();
-  }, [user?.userId, refreshUser]);
+  }, [user?.userId]);
 
   const handlePurchaseClick = (pkg: any) => {
     if (!user) {

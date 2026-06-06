@@ -204,13 +204,31 @@ public class ReceptionPaymentService : IReceptionPaymentService
         // If payment is for a subscription, create or renew the user's subscription
         if (paymentDto.PlanOrService.Contains("Subscription", StringComparison.OrdinalIgnoreCase))
         {
-            // Find a subscription plan matching the payment amount, or use the first active plan
-            var plan = (await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p =>
-                p.IsActive && p.Price == paymentDto.Amount))
-                .FirstOrDefault()
-                ?? (await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p => p.IsActive))
-                    .OrderBy(p => p.Price)
-                    .FirstOrDefault();
+            SubscriptionPlan? plan = null;
+
+            // Try to find the plan by matching name first if format is "Subscription - [PlanName]"
+            if (paymentDto.PlanOrService.Contains('-'))
+            {
+                var parts = paymentDto.PlanOrService.Split('-', 2);
+                if (parts.Length > 1)
+                {
+                    var planName = parts[1].Trim();
+                    plan = (await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p =>
+                        p.IsActive && p.PlanName.ToLower() == planName.ToLower()))
+                        .FirstOrDefault();
+                }
+            }
+
+            // Fallback to finding by price or first active plan
+            if (plan == null)
+            {
+                plan = (await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p =>
+                    p.IsActive && p.Price == paymentDto.Amount))
+                    .FirstOrDefault()
+                    ?? (await _unitOfWork.Repository<SubscriptionPlan>().FindAsync(p => p.IsActive))
+                        .OrderBy(p => p.Price)
+                        .FirstOrDefault();
+            }
 
             if (plan != null)
             {

@@ -373,7 +373,23 @@ namespace Service.Services
             var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(planId);
             if (plan == null) return false;
 
-            _unitOfWork.Repository<SubscriptionPlan>().Remove(plan);
+            // Check if any subscriptions are associated with this plan
+            var hasSubscriptions = await _unitOfWork.Repository<UserSubscription>()
+                .AnyAsync(s => s.PlanId == planId);
+
+            if (hasSubscriptions)
+            {
+                // Soft-delete: Mark as inactive so existing records remain intact
+                plan.IsActive = false;
+                plan.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Repository<SubscriptionPlan>().Update(plan);
+            }
+            else
+            {
+                // Hard-delete: Remove from database if never used
+                _unitOfWork.Repository<SubscriptionPlan>().Remove(plan);
+            }
+
             await _unitOfWork.SaveChangesAsync();
             return true;
         }

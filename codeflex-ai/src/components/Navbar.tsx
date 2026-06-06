@@ -58,6 +58,7 @@ export default function Navbar() {
   const getCoachNav = () => [
     { href: "/coach-dashboard", icon: LayoutDashboardIcon, label: "Dashboard" },
     { href: "/coach-clients", icon: Users2Icon, label: "Clients" },
+    { href: "/chat", icon: MessageSquareIcon, label: "Chat" },
     { href: "/coach-programs", icon: DumbbellIcon, label: "Programs" },
     { href: "/coach-schedule", icon: CalendarIcon, label: "Schedule" },
     { href: "/coach-profile", icon: UserIcon, label: "My Profile" },

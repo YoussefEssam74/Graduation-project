@@ -28,6 +28,7 @@ import { UserRole } from "@/types/gym";
 import { paymentsApi, type PaymentDto, type PaymentStatsDto } from "@/lib/api/payments";
 import { receptionApi } from "@/lib/api/reception";
 import { useToast } from "@/components/ui/toast";
+import { subscriptionApi, type SubscriptionPlanDto } from "@/lib/api/subscription";
 
 function ReceptionPaymentsContent() {
   const searchParams = useSearchParams();
@@ -42,6 +43,10 @@ function ReceptionPaymentsContent() {
   const [cardLastFour, setCardLastFour] = useState("");
   const [amount, setAmount] = useState("800");
   const [notes, setNotes] = useState("");
+  
+  // Subscription plans states
+  const [activePlans, setActivePlans] = useState<SubscriptionPlanDto[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlanDto | null>(null);
   
   // Real API states
   const [stats, setStats] = useState<PaymentStatsDto>({
@@ -96,9 +101,39 @@ function ReceptionPaymentsContent() {
     }
   };
 
+  // Load plans
+  const loadPlans = async () => {
+    try {
+      const res = await subscriptionApi.getActivePlans();
+      if (res.success && res.data) {
+        setActivePlans(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load active plans:", err);
+    }
+  };
+
   useEffect(() => {
     loadPaymentsData();
+    loadPlans();
   }, []);
+
+  // Auto-select plan matching member's current membership type if they have one
+  useEffect(() => {
+    if (selectedMember && paymentType === "Subscription" && activePlans.length > 0) {
+      const currentPlan = activePlans.find(
+        (p) => p.planName.toLowerCase() === selectedMember.membershipType.toLowerCase()
+      );
+      if (currentPlan) {
+        setSelectedPlan(currentPlan);
+        setAmount(currentPlan.price.toString());
+      } else {
+        setSelectedPlan(null);
+      }
+    } else if (!selectedMember) {
+      setSelectedPlan(null);
+    }
+  }, [selectedMember, paymentType, activePlans]);
 
   // Handle auto-selected member from URL query param
   useEffect(() => {
@@ -166,9 +201,23 @@ function ReceptionPaymentsContent() {
 
   const handlePaymentTypeChange = (type: string) => {
     setPaymentType(type);
-    const selectedType = paymentTypes.find((pt) => pt.id === type);
-    if (selectedType && selectedType.baseAmount > 0) {
-      setAmount(selectedType.baseAmount.toString());
+    if (type !== "Subscription") {
+      setSelectedPlan(null);
+      const selectedType = paymentTypes.find((pt) => pt.id === type);
+      if (selectedType && selectedType.baseAmount > 0) {
+        setAmount(selectedType.baseAmount.toString());
+      }
+    } else {
+      const currentPlan = activePlans.find(
+        (p) => selectedMember && p.planName.toLowerCase() === selectedMember.membershipType.toLowerCase()
+      );
+      if (currentPlan) {
+        setSelectedPlan(currentPlan);
+        setAmount(currentPlan.price.toString());
+      } else {
+        setSelectedPlan(null);
+        setAmount("800");
+      }
     }
   };
 
@@ -180,9 +229,13 @@ function ReceptionPaymentsContent() {
 
     setIsProcessing(true);
     try {
+      const planName = paymentType === "Subscription" && selectedPlan
+        ? `Subscription - ${selectedPlan.planName}`
+        : paymentType;
+
       const response = await paymentsApi.processPayment({
         userId: selectedMember.userId,
-        planOrService: paymentType,
+        planOrService: planName,
         amount: Number(amount),
         paymentMethod: paymentMethod,
         cardLastFour: paymentMethod === "Card" ? cardLastFour : undefined,
@@ -193,6 +246,7 @@ function ReceptionPaymentsContent() {
         showToast(`Payment of ${amount} EGP processed successfully`, "success");
         // Reset form
         setSelectedMember(null);
+        setSelectedPlan(null);
         setAmount("800");
         setPaymentType("Subscription");
         setPaymentMethod("Cash");
@@ -424,6 +478,37 @@ function ReceptionPaymentsContent() {
                 ))}
               </select>
             </div>
+
+            {/* Subscription Plan Selection */}
+            {paymentType === "Subscription" && activePlans.length > 0 && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <Label>Select Subscription Plan *</Label>
+                <select
+                  value={selectedPlan?.planId || ""}
+                  onChange={(e) => {
+                    const planId = Number(e.target.value);
+                    const plan = activePlans.find(p => p.planId === planId) || null;
+                    setSelectedPlan(plan);
+                    if (plan) {
+                      setAmount(plan.price.toString());
+                    }
+                  }}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground"
+                >
+                  <option value="" disabled>-- Select a Plan --</option>
+                  {activePlans.map((plan) => (
+                    <option key={plan.planId} value={plan.planId}>
+                      {plan.planName} ({plan.price} EGP)
+                    </option>
+                  ))}
+                </select>
+                {selectedMember && selectedMember.membershipType && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Member's Current Plan: <span className="font-semibold text-primary">{selectedMember.membershipType}</span>
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Amount */}
             <div className="space-y-2">

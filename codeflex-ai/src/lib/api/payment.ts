@@ -81,6 +81,7 @@ export const paymentApi = {
     planId: number;
     flowType: "subscribe" | "change-plan";
     originUrl: string;
+    couponCode?: string;
   }): Promise<ApiResponse<{ sessionId: string; url: string }>> {
     return apiFetch<{ sessionId: string; url: string }>("/stripe/create-checkout-session", {
       method: "POST",

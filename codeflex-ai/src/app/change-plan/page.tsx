@@ -10,6 +10,7 @@ import {
   Crown,
   Dumbbell,
   ArrowLeft,
+  Tag,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { useToast } from "@/components/ui/toast";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserRole } from "@/types/gym";
+import { couponsApi, type CouponDto } from "@/lib/api/coupons";
 import Link from "next/link";
 
 function ChangePlanContent() {
@@ -34,6 +36,12 @@ function ChangePlanContent() {
   const [plans, setPlans] = useState<SubscriptionPlanDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [switching, setSwitching] = useState<number | null>(null);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponDto | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [couponMessage, setCouponMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     subscriptionApi.getActivePlans().then((res) => {
@@ -49,6 +57,39 @@ function ChangePlanContent() {
     ? new Date(currentSubscription.endDate)
     : null;
 
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) {
+      setCouponMessage({ type: "error", text: "Please enter a coupon code." });
+      return;
+    }
+    setIsValidatingCoupon(true);
+    setCouponMessage(null);
+    try {
+      const res = await couponsApi.validateCoupon(couponInput.trim());
+      if (res.success && res.data) {
+        setAppliedCoupon(res.data);
+        setCouponMessage({
+          type: "success",
+          text: `Coupon "${res.data.code}" applied! (${res.data.discountType === 0 ? `${res.data.discountValue}%` : `${res.data.discountValue} EGP`} Off)`
+        });
+      } else {
+        setCouponMessage({ type: "error", text: res.message || "Invalid or expired coupon code." });
+        setAppliedCoupon(null);
+      }
+    } catch {
+      setCouponMessage({ type: "error", text: "Failed to validate coupon." });
+      setAppliedCoupon(null);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponMessage(null);
+  };
+
   const handleSwitchPlan = async (plan: SubscriptionPlanDto) => {
     if (!user) {
       router.push("/login");
@@ -62,6 +103,7 @@ function ChangePlanContent() {
         planId: plan.planId,
         flowType: "change-plan",
         originUrl,
+        couponCode: appliedCoupon?.code || undefined,
       });
 
       if (sessionRes.success && sessionRes.data?.url) {
@@ -131,6 +173,54 @@ function ChangePlanContent() {
         )}
       </div>
 
+      {/* Coupon Application */}
+      {!isLoading && plans.length > 0 && (
+        <div className="max-w-md mx-auto px-4 mb-8">
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="w-4 h-4 text-primary" />
+              <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Have a coupon code?</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. SUMMER50"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                disabled={!!appliedCoupon || isValidatingCoupon}
+                className="flex-1 px-3 py-2 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase placeholder:normal-case disabled:opacity-60 text-slate-900 dark:text-slate-100"
+              />
+              {appliedCoupon ? (
+                <Button
+                  variant="outline"
+                  onClick={handleRemoveCoupon}
+                  className="rounded-xl border-red-200 hover:bg-red-50 hover:text-red-600 text-red-500 text-xs h-9 px-4 dark:border-red-950 dark:hover:bg-red-950/20"
+                >
+                  Remove
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleApplyCoupon}
+                  disabled={isValidatingCoupon}
+                  className="rounded-xl text-xs h-9 px-5 bg-primary hover:bg-primary/90 text-white font-medium"
+                >
+                  {isValidatingCoupon ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    "Apply"
+                  )}
+                </Button>
+              )}
+            </div>
+            {couponMessage && (
+              <p className={`text-xs mt-2 font-medium ${couponMessage.type === "success" ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                {couponMessage.text}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Plans */}
       <div className="max-w-5xl mx-auto px-4 pb-16">
         {isLoading ? (
@@ -159,6 +249,16 @@ function ChangePlanContent() {
               const isCurrent =
                 currentSubscription?.planId === plan.planId &&
                 currentSubscription?.status === "Active";
+
+              // Calculate discounted price
+              let discountedPrice = plan.price;
+              if (appliedCoupon && !isCurrent) {
+                if (appliedCoupon.discountType === 0) { // Percentage
+                  discountedPrice = Math.max(0, plan.price * (1 - appliedCoupon.discountValue / 100));
+                } else { // FixedAmount
+                  discountedPrice = Math.max(0, plan.price - appliedCoupon.discountValue);
+                }
+              }
 
               return (
                 <Card
@@ -203,12 +303,28 @@ function ChangePlanContent() {
                   )}
 
                   <div className="mb-5">
-                    <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-                      {plan.price} EGP
-                    </span>
-                    <span className="text-slate-400 text-sm ml-1">
-                      /{plan.durationDays}d
-                    </span>
+                    {appliedCoupon && !isCurrent ? (
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-3xl font-extrabold text-primary dark:text-blue-400">
+                          {discountedPrice.toFixed(0)} EGP
+                        </span>
+                        <span className="text-slate-400 line-through text-sm">
+                          {plan.price} EGP
+                        </span>
+                        <span className="text-slate-400 text-xs ml-1">
+                          /{plan.durationDays}d
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                          {plan.price} EGP
+                        </span>
+                        <span className="text-slate-400 text-sm ml-1">
+                          /{plan.durationDays}d
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   {/* Features */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { User, UserRole } from "@/types/gym";
 import { authApi, getAuthToken } from "@/lib/api";
@@ -405,7 +405,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (!user?.userId) return;
 
     try {
@@ -423,7 +423,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to refresh user data:', error);
     }
-  };
+  }, [user?.userId]);
 
   const logout = () => {
     authApi.logout(); // Clear token from API client

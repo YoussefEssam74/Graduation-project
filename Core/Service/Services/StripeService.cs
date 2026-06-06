@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ServiceAbstraction.Services;
 using Shared.DTOs.Subscription;
+using Shared.Enums;
 using Stripe;
 using Stripe.Checkout;
 
@@ -47,7 +48,7 @@ namespace Service.Services
             }
         }
 
-        public async Task<(string sessionId, string url)> CreateCheckoutSessionAsync(int userId, int planId, string flowType, string originUrl)
+        public async Task<(string sessionId, string url)> CreateCheckoutSessionAsync(int userId, int planId, string flowType, string originUrl, string? couponCode = null)
         {
             var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(planId);
             if (plan == null)
@@ -61,6 +62,29 @@ namespace Service.Services
                 throw new KeyNotFoundException($"User with ID {userId} not found");
             }
 
+            decimal finalPrice = plan.Price;
+            if (!string.IsNullOrEmpty(couponCode))
+            {
+                var coupons = await _unitOfWork.Repository<IntelliFit.Domain.Models.Coupon>().FindAsync(c => c.Code == couponCode.ToUpperInvariant());
+                var coupon = coupons.FirstOrDefault();
+                if (coupon == null || !coupon.IsActive || coupon.ExpiryDate < DateTime.UtcNow || (coupon.MaxUsage.HasValue && coupon.CurrentUsage >= coupon.MaxUsage.Value))
+                {
+                    throw new InvalidOperationException("The coupon code is invalid, expired, or has reached its usage limit.");
+                }
+
+                decimal discount = 0;
+                if (coupon.DiscountType == DiscountType.Percentage)
+                {
+                    discount = plan.Price * (coupon.DiscountValue / 100m);
+                }
+                else if (coupon.DiscountType == DiscountType.FixedAmount)
+                {
+                    discount = coupon.DiscountValue;
+                }
+
+                finalPrice = Math.Max(0, plan.Price - discount);
+            }
+
             var options = new SessionCreateOptions
             {
                 PaymentMethodTypes = new List<string> { "card" },
@@ -71,12 +95,12 @@ namespace Service.Services
                     {
                         PriceData = new SessionLineItemPriceDataOptions
                         {
-                            UnitAmount = (long)(plan.Price * 100), // Amount in cents/piastres
+                            UnitAmount = (long)(finalPrice * 100), // Amount in cents/piastres
                             Currency = "egp",
                             ProductData = new SessionLineItemPriceDataProductDataOptions
                             {
                                 Name = plan.PlanName,
-                                Description = plan.Description ?? $"Subscription plan for {plan.DurationDays} days",
+                                Description = plan.Description ?? $"Subscription plan for {plan.DurationDays} days" + (string.IsNullOrEmpty(couponCode) ? "" : $" (Coupon {couponCode.ToUpperInvariant()} applied)"),
                             },
                         },
                         Quantity = 1,
@@ -91,7 +115,8 @@ namespace Service.Services
                 {
                     { "userId", userId.ToString() },
                     { "planId", planId.ToString() },
-                    { "flowType", flowType }
+                    { "flowType", flowType },
+                    { "couponCode", couponCode ?? "" }
                 }
             };
 
@@ -143,6 +168,12 @@ namespace Service.Services
                 return false;
             }
 
+            string? couponCode = null;
+            if (session.Metadata.TryGetValue("couponCode", out var code) && !string.IsNullOrEmpty(code))
+            {
+                couponCode = code;
+            }
+
             // Idempotency: Check if we have already processed this payment
             var existingPayments = await _unitOfWork.Repository<Payment>().FindAsync(p => p.TransactionReference == sessionId);
             if (existingPayments.Any())
@@ -166,7 +197,7 @@ namespace Service.Services
                 var payment = new Payment
                 {
                     UserId = userId,
-                    Amount = plan.Price,
+                    Amount = session.AmountTotal.HasValue ? (decimal)session.AmountTotal.Value / 100m : plan.Price,
                     PaymentMethod = "Stripe",
                     PaymentType = "Subscription",
                     Status = PaymentStatus.Completed,
@@ -180,6 +211,20 @@ namespace Service.Services
 
                 await _unitOfWork.Repository<Payment>().AddAsync(payment);
                 await _unitOfWork.SaveChangesAsync();
+
+                // Increment coupon usage if present
+                if (!string.IsNullOrEmpty(couponCode))
+                {
+                    var coupons = await _unitOfWork.Repository<IntelliFit.Domain.Models.Coupon>().FindAsync(c => c.Code == couponCode.ToUpperInvariant());
+                    var coupon = coupons.FirstOrDefault();
+                    if (coupon != null)
+                    {
+                        coupon.CurrentUsage++;
+                        coupon.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.Repository<IntelliFit.Domain.Models.Coupon>().Update(coupon);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
 
                 // 2. Activate or Change subscription using ISubscriptionService
                 if (flowType == "change-plan")

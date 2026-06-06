@@ -1,0 +1,8 @@
+Disease,Min_Calories_kcal,Max_Calories_kcal,Median_Calories_kcal,Protein_Percent,Carbs_Percent,Fat_Percent,Protein_g_avg,Carbs_g_avg,Fat_g_avg,Sample_Size,Key_Medical_Notes
+Diabetes,748,3370,1999,22.6,42.6,34.8,129.2,244.2,88.5,1019,"Focus on low GI foods, distribute carbs evenly, include fiber-rich foods (>25g/day), limit sodium <2300mg/day"
+Heart Disease,764,3324,2057,22.4,42.0,35.5,129.3,242.5,91.1,749,"Limit saturated fat <7%, eliminate trans fats, increase omega-3 (fish 2-3x/week), limit sodium <1500mg/day, include soluble fiber"
+Hypertension,745,3337,2033,22.0,43.3,34.8,129.0,253.9,90.7,693,"Follow DASH diet (high potassium/low sodium <1500mg/day), 8-10 servings fruits/vegetables daily, choose low-fat dairy, limit alcohol/caffeine"
+Kidney Disease,1200,2800,1900,18.0,50.0,32.0,95.0,280.0,75.0,189,"Restrict protein intake, monitor potassium/phosphorus levels, limit sodium, monitor fluid intake per nephrologist"
+Obesity,1200,2600,1800,20.0,45.0,35.0,110.0,230.0,85.0,496,"Create caloric deficit (500-750kcal/day), increase physical activity, avoid liquid calories, eat whole fruits not juice"
+Weight Gain,2500,4500,3200,18.0,40.0,42.0,150.0,350.0,165.0,1664,"Caloric surplus (300-500kcal/day), frequent meals (5-6x/day), limit cardio, prioritize strength training"
+Weight Loss,1500,2200,1800,25.0,50.0,25.0,120.0,230.0,60.0,1,"Create caloric deficit (300-500kcal/day), high protein (0.8-1g per lb), increase fiber, avoid liquid calories"

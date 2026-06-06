@@ -1,0 +1,11 @@
+Food_ID,Food_Name,Source,Calories_kcal,Protein_g,Fat_g,Carbs_g,Fiber_g,Sodium_mg,Calcium_mg,Iron_mg,Zinc_mg,Vitamin_A_ug,Vitamin_C_mg,Food_Role,Meal_Type
+egy_00000,Sahlab,egyptian,132.32,2.65,4.41,22.05,1.87,270.16,28.15,1.11,1.42,346.93,44.92,carb,"lunch, dinner"
+egy_00001,Labneh,egyptian,378.27,31.52,25.22,9.46,3.22,344.31,102.78,0.31,1.43,298.63,28.86,dairy,breakfast
+egy_00002,Mahshi Vine Leaves,egyptian,78.53,1.31,2.62,11.78,2.88,542.15,70.45,3.66,1.11,656.97,5.62,carb,lunch
+egy_00003,Ful Medames with Oil,egyptian,431.8,19.43,21.59,43.18,5.37,561.55,171.23,2.5,3.53,657.91,11.14,protein,breakfast
+egy_00004,Mango,egyptian,234.04,3.12,1.56,58.51,4.05,183.58,191.83,2.98,4.32,768.09,5.66,fruit,"lunch, dinner"
+egy_00005,Kofta,egyptian,550.07,42.31,38.08,10.58,3.78,518.69,141.88,2.38,3.69,624.52,52.14,protein,lunch
+egy_00006,Ghorayeba,egyptian,1465.85,15.27,97.72,85.51,7.78,0.00,0.00,0.00,0.00,0.00,0.00,fat,breakfast
+egy_00007,Molokhia with Chicken,egyptian,245.61,28.54,8.33,15.72,4.11,438.95,185.62,3.24,2.87,512.48,38.41,protein,"lunch, dinner"
+egy_00008,Koshari,egyptian,384.15,16.82,12.45,52.93,6.78,625.33,95.27,4.12,2.15,425.61,22.18,carb,lunch
+egy_00009,Tahina with Hummus,egyptian,562.89,19.73,45.62,28.41,8.92,512.74,158.93,3.67,3.42,185.23,15.74,fat,breakfast

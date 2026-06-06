@@ -70,24 +70,22 @@ function AICoachContent() {
       try {
         console.log("Loading chat sessions for user:", user.userId);
         const response = await aiApi.getChatSessions(user.userId);
-        // Backend returns { success: true, sessions: [...] } at root level
-        const res = response as any;
-        if (res.success && res.sessions) {
-          console.log("Chat sessions loaded:", res.sessions.length, "sessions");
-          setSessions(res.sessions);
+        if (response.success && response.data?.sessions) {
+          const sessionsList = response.data.sessions;
+          console.log("Chat sessions loaded:", sessionsList.length, "sessions");
+          setSessions(sessionsList);
 
           // Auto-load messages of the latest session if there is one
-          if (res.sessions.length > 0) {
-            const latestSessionId = res.sessions[0].sessionId;
+          if (sessionsList.length > 0) {
+            const latestSessionId = sessionsList[0].sessionId;
             setCurrentSessionId(latestSessionId);
             setIsLoading(true);
 
             try {
               const msgResponse = await aiApi.getSessionMessages(user.userId, latestSessionId);
-              const msgRes = msgResponse as any;
-              if (msgRes.success && msgRes.messages) {
+              if (msgResponse.success && msgResponse.data?.messages) {
                 const withAiResponses: DisplayMessage[] = [];
-                msgRes.messages.forEach((msg: AIChatLogDto) => {
+                msgResponse.data.messages.forEach((msg: AIChatLogDto) => {
                   withAiResponses.push({
                     id: `user-${msg.chatLogId}`,
                     role: "user",
@@ -136,12 +134,10 @@ function AICoachContent() {
 
     try {
       const response = await aiApi.getSessionMessages(user.userId, sessionId);
-      // Backend returns { success: true, messages: [...] } at root level
-      const res = response as any;
-      if (res.success && res.messages) {
+      if (response.success && response.data?.messages) {
         // Convert the messages to the display format
         const withAiResponses: DisplayMessage[] = [];
-        res.messages.forEach((msg: AIChatLogDto) => {
+        response.data.messages.forEach((msg: AIChatLogDto) => {
           withAiResponses.push({
             id: `user-${msg.chatLogId}`,
             role: "user",

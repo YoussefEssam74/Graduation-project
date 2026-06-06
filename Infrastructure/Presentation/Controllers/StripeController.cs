@@ -27,7 +27,8 @@ namespace Presentation.Controllers
                     userId, 
                     dto.PlanId, 
                     dto.FlowType, 
-                    dto.OriginUrl);
+                    dto.OriginUrl,
+                    dto.CouponCode);
 
                 return Ok(ApiResponse<object>.SuccessResponse(new { sessionId, url }, "Checkout session created successfully"));
             }

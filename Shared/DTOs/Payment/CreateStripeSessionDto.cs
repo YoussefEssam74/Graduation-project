@@ -12,5 +12,7 @@ namespace Shared.DTOs.Payment
 
         [Required]
         public string OriginUrl { get; set; } = null!;
+
+        public string? CouponCode { get; set; }
     }
 }
