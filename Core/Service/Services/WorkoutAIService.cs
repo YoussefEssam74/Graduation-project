@@ -532,6 +532,66 @@ public class WorkoutAIService : IWorkoutAIService
         await _unitOfWork.Repository<WorkoutPlan>().AddAsync(workoutPlan);
         await _unitOfWork.SaveChangesAsync();
 
+        // Save exercises for each day
+        if (planData?.Days != null)
+        {
+            int dayNumber = 1;
+            foreach (var dayData in planData.Days)
+            {
+                int orderIndex = 1;
+                if (dayData.Exercises != null)
+                {
+                    foreach (var exerciseData in dayData.Exercises)
+                    {
+                        // Try to find exercise by name, create placeholder if not found
+                        var exercise = (await _unitOfWork.Repository<Exercise>()
+                            .FindAsync(e => e.Name.ToLower() == exerciseData.Name.ToLower()))
+                            .FirstOrDefault();
+
+                        int exerciseId;
+                        if (exercise == null)
+                        {
+                            // Create a placeholder exercise for AI-generated names
+                            var newExercise = new Exercise
+                            {
+                                Name = exerciseData.Name,
+                                Category = exerciseData.ExerciseType ?? "Unknown",
+                                MuscleGroup = exerciseData.TargetMuscles?.FirstOrDefault() ?? "General",
+                                Description = $"AI-generated exercise: {exerciseData.Notes ?? ""}",
+                                DifficultyLevel = "Intermediate",
+                                IsActive = true,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            };
+                            await _unitOfWork.Repository<Exercise>().AddAsync(newExercise);
+                            await _unitOfWork.SaveChangesAsync();
+                            exerciseId = newExercise.ExerciseId;
+                        }
+                        else
+                        {
+                            exerciseId = exercise.ExerciseId;
+                        }
+
+                        var planExercise = new WorkoutPlanExercise
+                        {
+                            WorkoutPlanId = workoutPlan.PlanId,
+                            ExerciseId = exerciseId,
+                            DayNumber = dayData.DayNumber > 0 ? dayData.DayNumber : dayNumber,
+                            OrderInDay = orderIndex++,
+                            Sets = ParseSets(exerciseData.Sets ?? "3"),
+                            Reps = ParseReps(exerciseData.Reps ?? "10"),
+                            RestSeconds = exerciseData.RestSeconds ?? ParseRestSeconds(exerciseData.Rest ?? "60s"),
+                            Notes = exerciseData.Notes ?? ""
+                        };
+
+                        await _unitOfWork.Repository<WorkoutPlanExercise>().AddAsync(planExercise);
+                    }
+                }
+                await _unitOfWork.SaveChangesAsync();
+                dayNumber++;
+            }
+        }
+
         // Log AI generation in AiProgramGeneration
         var generation = new AiProgramGeneration
         {
@@ -1117,32 +1177,90 @@ public class WorkoutAIService : IWorkoutAIService
                         exerciseEntities[exId] = exercise;
                 }
 
-                var dayGroups = planExercises
-                    .GroupBy(pe => pe.DayNumber)
-                    .OrderBy(g => g.Key)
-                    .Select(g => new UserAIPlanDayDto
-                    {
-                        DayNumber = g.Key,
-                        DayName = $"Day {g.Key}",
-                        Exercises = g.Select(pe =>
+                List<UserAIPlanDayDto> dayGroups;
+
+                if (planExercises.Any())
+                {
+                    dayGroups = planExercises
+                        .GroupBy(pe => pe.DayNumber)
+                        .OrderBy(g => g.Key)
+                        .Select(g => new UserAIPlanDayDto
                         {
-                            var exEntity = exerciseEntities.TryGetValue(pe.ExerciseId, out var ex) ? ex : null;
-                            return new UserAIPlanExerciseDto
+                            DayNumber = g.Key,
+                            DayName = $"Day {g.Key}",
+                            Exercises = g.Select(pe =>
                             {
-                                WorkoutPlanExerciseId = pe.WorkoutPlanExerciseId,
-                                ExerciseId = pe.ExerciseId,
-                                ExerciseName = exEntity?.Name ?? "Exercise",
-                                DayNumber = pe.DayNumber,
-                                OrderInDay = pe.OrderInDay,
-                                Sets = pe.Sets,
-                                Reps = pe.Reps,
-                                RestSeconds = pe.RestSeconds,
-                                Notes = pe.Notes,
-                                MuscleGroup = exEntity?.MuscleGroup
-                            };
-                        }).ToList()
-                    })
-                    .ToList();
+                                var exEntity = exerciseEntities.TryGetValue(pe.ExerciseId, out var ex) ? ex : null;
+                                return new UserAIPlanExerciseDto
+                                {
+                                    WorkoutPlanExerciseId = pe.WorkoutPlanExerciseId,
+                                    ExerciseId = pe.ExerciseId,
+                                    ExerciseName = exEntity?.Name ?? "Exercise",
+                                    DayNumber = pe.DayNumber,
+                                    OrderInDay = pe.OrderInDay,
+                                    Sets = pe.Sets,
+                                    Reps = pe.Reps,
+                                    RestSeconds = pe.RestSeconds,
+                                    Notes = pe.Notes,
+                                    MuscleGroup = exEntity?.MuscleGroup
+                                };
+                            }).ToList()
+                        })
+                        .ToList();
+                }
+                else if (!string.IsNullOrEmpty(plan.PlanData))
+                {
+                    // ── Path B: Reconstruct from PlanData JSON ──
+                    dayGroups = new List<UserAIPlanDayDto>();
+                    try
+                    {
+                        var planData = JsonSerializer.Deserialize<AIGeneratedPlanData>(plan.PlanData, _snakeCaseOptions);
+                        if (planData?.Days != null)
+                        {
+                            foreach (var day in planData.Days)
+                            {
+                                var dayDto = new UserAIPlanDayDto
+                                {
+                                    DayNumber = day.DayNumber,
+                                    DayName = day.DayName ?? $"Day {day.DayNumber}",
+                                    Focus = day.Focus,
+                                    Exercises = new List<UserAIPlanExerciseDto>()
+                                };
+
+                                if (day.Exercises != null)
+                                {
+                                    int order = 1;
+                                    foreach (var ex in day.Exercises)
+                                    {
+                                        dayDto.Exercises.Add(new UserAIPlanExerciseDto
+                                        {
+                                            WorkoutPlanExerciseId = 0,
+                                            ExerciseId = ex.ExerciseId ?? 0,
+                                            ExerciseName = ex.Name ?? "Exercise",
+                                            DayNumber = day.DayNumber,
+                                            OrderInDay = order++,
+                                            Sets = ex.Sets != null ? ParseSets(ex.Sets) : (int?)null,
+                                            Reps = ParseReps(ex.Reps ?? "10"),
+                                            RestSeconds = ex.RestSeconds ?? ParseRestSeconds(ex.Rest ?? "60s"),
+                                            Notes = ex.Notes,
+                                            MuscleGroup = ex.TargetMuscles?.FirstOrDefault()
+                                        });
+                                    }
+                                }
+
+                                dayGroups.Add(dayDto);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to reconstruct exercises from PlanData for coach review plan {PlanId}", plan.PlanId);
+                    }
+                }
+                else
+                {
+                    dayGroups = new List<UserAIPlanDayDto>();
+                }
 
                 // Enrich day names and focus from PlanData JSON
                 if (!string.IsNullOrEmpty(plan.PlanData))
@@ -1221,9 +1339,9 @@ public class WorkoutAIService : IWorkoutAIService
             }
 
             var plan = await _unitOfWork.Repository<WorkoutPlan>().GetByIdAsync(planId);
-            if (plan == null || (plan.GeneratedByCoachId != null && plan.GeneratedByCoachId != coachProfile.Id))
+            if (plan == null)
             {
-                _logger.LogWarning("Plan {PlanId} not found or assigned to another coach", planId);
+                _logger.LogWarning("Plan {PlanId} not found", planId);
                 return false;
             }
 
@@ -1274,9 +1392,9 @@ public class WorkoutAIService : IWorkoutAIService
             }
 
             var plan = await _unitOfWork.Repository<WorkoutPlan>().GetByIdAsync(planId);
-            if (plan == null || (plan.GeneratedByCoachId != null && plan.GeneratedByCoachId != coachProfile.Id))
+            if (plan == null)
             {
-                _logger.LogWarning("Plan {PlanId} not found or assigned to another coach (Assigned: {AssignedCoachId}, Coach: {CoachId})", planId, plan?.GeneratedByCoachId, coachProfile.Id);
+                _logger.LogWarning("Plan {PlanId} not found", planId);
                 return false;
             }
 

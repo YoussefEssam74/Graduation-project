@@ -570,7 +570,7 @@ namespace Service.Services
                 }
 
                 var plan = await _unitOfWork.Repository<NutritionPlan>().GetByIdAsync(planId);
-                if (plan == null || (plan.GeneratedByCoachId != null && plan.GeneratedByCoachId != coachProfile.Id))
+                if (plan == null)
                 {
                     return false;
                 }
@@ -841,7 +841,7 @@ namespace Service.Services
                 }
 
                 var plan = await _unitOfWork.Repository<NutritionPlan>().GetByIdAsync(planId);
-                if (plan == null || (plan.GeneratedByCoachId != null && plan.GeneratedByCoachId != coachProfile.Id))
+                if (plan == null)
                 {
                     return false;
                 }
