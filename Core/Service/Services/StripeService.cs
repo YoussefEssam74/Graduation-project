@@ -62,6 +62,107 @@ namespace Service.Services
                 throw new KeyNotFoundException($"User with ID {userId} not found");
             }
 
+            // Check if Stripe is bypassed
+            var bypassConfig = _configuration["Stripe:Bypass"] ?? _configuration["Stripe__Bypass"] ?? Environment.GetEnvironmentVariable("Stripe__Bypass");
+            bool.TryParse(bypassConfig, out bool bypass);
+            if (bypass)
+            {
+                var mockSessionId = $"mock_session_{userId}_{planId}_{flowType}_{couponCode ?? "NONE"}";
+                
+                decimal bypassedFinalPrice = plan.Price;
+                if (!string.IsNullOrEmpty(couponCode))
+                {
+                    var coupons = await _unitOfWork.Repository<IntelliFit.Domain.Models.Coupon>().FindAsync(c => c.Code == couponCode.ToUpperInvariant());
+                    var coupon = coupons.FirstOrDefault();
+                    if (coupon == null || !coupon.IsActive || coupon.ExpiryDate < DateTime.UtcNow || (coupon.MaxUsage.HasValue && coupon.CurrentUsage >= coupon.MaxUsage.Value))
+                    {
+                        throw new InvalidOperationException("The coupon code is invalid, expired, or has reached its usage limit.");
+                    }
+
+                    decimal discount = 0;
+                    if (coupon.DiscountType == DiscountType.Percentage)
+                    {
+                        discount = plan.Price * (coupon.DiscountValue / 100m);
+                    }
+                    else if (coupon.DiscountType == DiscountType.FixedAmount)
+                    {
+                        discount = coupon.DiscountValue;
+                    }
+
+                    bypassedFinalPrice = Math.Max(0, plan.Price - discount);
+                }
+
+                // Start a database transaction for atomic safety
+                using var transaction = await _unitOfWork.BeginTransactionAsync();
+                try
+                {
+                    // 1. Create a Payment record in the database
+                    var payment = new Payment
+                    {
+                        UserId = userId,
+                        Amount = bypassedFinalPrice,
+                        PaymentMethod = "Bypassed (Stripe Mock)",
+                        PaymentType = "Subscription",
+                        Status = PaymentStatus.Completed,
+                        TransactionReference = mockSessionId,
+                        PackageId = null,
+                        InvoiceNumber = $"INV-STRIPE-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper()}",
+                        GatewayResponse = "Bypassed local mock payment (Direct Activation)",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.Repository<Payment>().AddAsync(payment);
+                    await _unitOfWork.SaveChangesAsync();
+
+                    // Increment coupon usage if present
+                    if (!string.IsNullOrEmpty(couponCode))
+                    {
+                        var coupons = await _unitOfWork.Repository<IntelliFit.Domain.Models.Coupon>().FindAsync(c => c.Code == couponCode.ToUpperInvariant());
+                        var coupon = coupons.FirstOrDefault();
+                        if (coupon != null)
+                        {
+                            coupon.CurrentUsage++;
+                            coupon.UpdatedAt = DateTime.UtcNow;
+                            _unitOfWork.Repository<IntelliFit.Domain.Models.Coupon>().Update(coupon);
+                            await _unitOfWork.SaveChangesAsync();
+                        }
+                    }
+
+                    // 2. Activate or Change subscription using ISubscriptionService
+                    if (flowType == "change-plan")
+                    {
+                        await _subscriptionService.ChangePlanAsync(new ChangePlanDto
+                        {
+                            UserId = userId,
+                            NewPlanId = planId,
+                            PaymentId = payment.PaymentId
+                        });
+                    }
+                    else
+                    {
+                        await _subscriptionService.CreateUserSubscriptionAsync(new CreateSubscriptionDto
+                        {
+                            UserId = userId,
+                            PlanId = planId,
+                            PaymentId = payment.PaymentId
+                        });
+                    }
+
+                    await _unitOfWork.CommitTransactionAsync();
+                    _logger.LogInformation("Successfully directly bypassed & processed session {SessionId} for User {UserId} with Plan {PlanId}", mockSessionId, userId, planId);
+                }
+                catch (Exception ex)
+                {
+                    await _unitOfWork.RollbackTransactionAsync();
+                    _logger.LogError(ex, "Error occurred while directly bypassing Stripe session in database.");
+                    throw;
+                }
+
+                var mockUrl = $"{originUrl.TrimEnd('/')}/dashboard?payment_success=true";
+                return (mockSessionId, mockUrl);
+            }
+
             decimal finalPrice = plan.Price;
             if (!string.IsNullOrEmpty(couponCode))
             {
@@ -127,51 +228,115 @@ namespace Service.Services
 
         public async Task<bool> VerifyCheckoutSessionAsync(string sessionId)
         {
-            var service = new SessionService();
-            Session session;
+            var bypassConfig = _configuration["Stripe:Bypass"] ?? _configuration["Stripe__Bypass"] ?? Environment.GetEnvironmentVariable("Stripe__Bypass");
+            bool.TryParse(bypassConfig, out bool bypass);
 
-            try
-            {
-                session = await service.GetAsync(sessionId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to retrieve Stripe session {SessionId}", sessionId);
-                return false;
-            }
-            
-            if (session == null)
-            {
-                _logger.LogWarning("Stripe session {SessionId} not found.", sessionId);
-                return false;
-            }
-
-            if (session.Status != "complete" && session.Status != "active")
-            {
-                _logger.LogWarning("Stripe session {SessionId} status is '{Status}', expected 'complete'.", sessionId, session.Status);
-                return false;
-            }
-
-            if (session.PaymentStatus != "paid")
-            {
-                _logger.LogWarning("Stripe session {SessionId} payment status is '{PaymentStatus}', expected 'paid'.", sessionId, session.PaymentStatus);
-                return false;
-            }
-
-            // Extract metadata
-            if (session.Metadata == null ||
-                !session.Metadata.TryGetValue("userId", out var userIdStr) || !int.TryParse(userIdStr, out var userId) ||
-                !session.Metadata.TryGetValue("planId", out var planIdStr) || !int.TryParse(planIdStr, out var planId) ||
-                !session.Metadata.TryGetValue("flowType", out var flowType))
-            {
-                _logger.LogError("Stripe session {SessionId} metadata is missing or invalid.", sessionId);
-                return false;
-            }
-
+            int userId = 0;
+            int planId = 0;
+            string flowType = "";
             string? couponCode = null;
-            if (session.Metadata.TryGetValue("couponCode", out var code) && !string.IsNullOrEmpty(code))
+            decimal amountTotal = 0;
+
+            if (sessionId.StartsWith("mock_session_") || bypass)
             {
-                couponCode = code;
+                if (sessionId.StartsWith("mock_session_"))
+                {
+                    var parts = sessionId.Split('_');
+                    if (parts.Length >= 6 && 
+                        int.TryParse(parts[2], out userId) && 
+                        int.TryParse(parts[3], out planId))
+                    {
+                        flowType = parts[4];
+                        couponCode = parts[5] == "NONE" ? null : parts[5];
+                    }
+                    else
+                    {
+                        _logger.LogError("Invalid mock session format: {SessionId}", sessionId);
+                        return false;
+                    }
+                }
+                else
+                {
+                    _logger.LogError("Stripe is bypassed but received non-mock session ID: {SessionId}", sessionId);
+                    return false;
+                }
+
+                var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(planId);
+                if (plan == null)
+                {
+                    _logger.LogError("Plan {PlanId} from mock session metadata not found.", planId);
+                    return false;
+                }
+                amountTotal = plan.Price;
+                if (!string.IsNullOrEmpty(couponCode))
+                {
+                    var coupons = await _unitOfWork.Repository<IntelliFit.Domain.Models.Coupon>().FindAsync(c => c.Code == couponCode.ToUpperInvariant());
+                    var coupon = coupons.FirstOrDefault();
+                    if (coupon != null && coupon.IsActive)
+                    {
+                        decimal discount = 0;
+                        if (coupon.DiscountType == DiscountType.Percentage)
+                        {
+                            discount = plan.Price * (coupon.DiscountValue / 100m);
+                        }
+                        else if (coupon.DiscountType == DiscountType.FixedAmount)
+                        {
+                            discount = coupon.DiscountValue;
+                        }
+                        amountTotal = Math.Max(0, plan.Price - discount);
+                    }
+                }
+            }
+            else
+            {
+                var service = new SessionService();
+                Session session;
+
+                try
+                {
+                    session = await service.GetAsync(sessionId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to retrieve Stripe session {SessionId}", sessionId);
+                    return false;
+                }
+                
+                if (session == null)
+                {
+                    _logger.LogWarning("Stripe session {SessionId} not found.", sessionId);
+                    return false;
+                }
+
+                if (session.Status != "complete" && session.Status != "active")
+                {
+                    _logger.LogWarning("Stripe session {SessionId} status is '{Status}', expected 'complete'.", sessionId, session.Status);
+                    return false;
+                }
+
+                if (session.PaymentStatus != "paid")
+                {
+                    _logger.LogWarning("Stripe session {SessionId} payment status is '{PaymentStatus}', expected 'paid'.", sessionId, session.PaymentStatus);
+                    return false;
+                }
+
+                // Extract metadata
+                if (session.Metadata == null ||
+                    !session.Metadata.TryGetValue("userId", out var userIdStr) || !int.TryParse(userIdStr, out userId) ||
+                    !session.Metadata.TryGetValue("planId", out var planIdStr) || !int.TryParse(planIdStr, out planId) ||
+                    !session.Metadata.TryGetValue("flowType", out var flowTypeStr))
+                {
+                    _logger.LogError("Stripe session {SessionId} metadata is missing or invalid.", sessionId);
+                    return false;
+                }
+                flowType = flowTypeStr;
+
+                if (session.Metadata.TryGetValue("couponCode", out var code) && !string.IsNullOrEmpty(code))
+                {
+                    couponCode = code;
+                }
+
+                amountTotal = session.AmountTotal.HasValue ? (decimal)session.AmountTotal.Value / 100m : 0;
             }
 
             // Idempotency: Check if we have already processed this payment
@@ -182,8 +347,8 @@ namespace Service.Services
                 return true; 
             }
 
-            var plan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(planId);
-            if (plan == null)
+            var actualPlan = await _unitOfWork.Repository<SubscriptionPlan>().GetByIdAsync(planId);
+            if (actualPlan == null)
             {
                 _logger.LogError("Plan {PlanId} from Stripe session metadata not found.", planId);
                 return false;
@@ -197,14 +362,14 @@ namespace Service.Services
                 var payment = new Payment
                 {
                     UserId = userId,
-                    Amount = session.AmountTotal.HasValue ? (decimal)session.AmountTotal.Value / 100m : plan.Price,
-                    PaymentMethod = "Stripe",
+                    Amount = amountTotal > 0 ? amountTotal : actualPlan.Price,
+                    PaymentMethod = sessionId.StartsWith("mock_session_") ? "Bypassed (Stripe Mock)" : "Stripe",
                     PaymentType = "Subscription",
                     Status = PaymentStatus.Completed,
                     TransactionReference = sessionId,
                     PackageId = null,
                     InvoiceNumber = $"INV-STRIPE-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper()}",
-                    GatewayResponse = $"Stripe Session ID: {sessionId}",
+                    GatewayResponse = sessionId.StartsWith("mock_session_") ? "Bypassed local mock payment" : $"Stripe Session ID: {sessionId}",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
