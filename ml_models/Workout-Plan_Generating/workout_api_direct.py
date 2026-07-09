@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from peft import PeftModel
+from safety_engine_v2 import PulseGymSafetyEngine
 import re
 import torch
 import sys
@@ -2476,13 +2477,12 @@ async def generate_direct(req: DirectWorkoutRequest) -> DirectWorkoutResponse:
                 print(
                     f"\u26a0\ufe0f InjuryRulesEngine error (non-fatal): {_ie}")
 
-        # 5b. Injury Post-Processing Filter — exercise name keyword blacklist (Layer 1)
-        # The small model can\'t reliably avoid exercises for injured areas,
-        # so we deterministically filter and replace them here.
-        if req.injuries:
-            print(
-                f"\U0001f6e1\ufe0f Applying injury keyword filter for: {req.injuries}")
-            plan = filter_exercises_for_injuries(plan, req.injuries)
+        # 5b. Safety Engine v2 — post-processing validation and correction
+        injuries_str = ", ".join(req.injuries) if req.injuries else "None"
+        equipment_str = ", ".join(req.equipment) if req.equipment else ""
+        safety_engine = PulseGymSafetyEngine(injuries=injuries_str, equipment=equipment_str)
+        plan, safety_report = safety_engine.process_json(plan)
+        print(f"🛡️ Safety Engine v2 completed. Score: {safety_report.score}/100, Violations: {len(safety_report.violations)}, Prehab: {safety_report.prehab_injected}")
 
         # 6. Attach warmup & cardio to every training day (from calisthenics dataset)
         if CALISTHENICS_DB:

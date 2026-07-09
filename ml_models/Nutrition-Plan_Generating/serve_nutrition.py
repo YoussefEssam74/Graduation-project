@@ -288,6 +288,7 @@ class NutritionRequest(BaseModel):
                                     pattern="^(sedentary|light|moderate|active|very_active)$")
     health_conditions:  list[str] = Field(default_factory=list)
     allergies:          list[str] = Field(default_factory=list)
+    dietary_preferences: list[str] = Field(default_factory=list)
     cuisine_preference: str = Field(
         "egyptian", pattern="^(egyptian|international)$")
     inbody:             Optional[InBodyData] = None
@@ -386,6 +387,7 @@ def build_prompt(req: NutritionRequest, daily_kcal: int,
     conditions_str = ", ".join(
         req.health_conditions) if req.health_conditions else "none"
     allergy_str = ", ".join(req.allergies) if req.allergies else "none"
+    pref_str = ", ".join(req.dietary_preferences) if req.dietary_preferences else "none"
 
     # Pull disease macro targets if known
     disease_notes = []
@@ -421,12 +423,46 @@ def build_prompt(req: NutritionRequest, daily_kcal: int,
         f"Goal: {req.goal.replace('_', ' ')}, activity: {req.activity_level}. "
         f"Health conditions: {conditions_str}. "
         f"Allergies: {allergy_str}. "
+        f"Dietary preferences: {pref_str}. "
         f"Cuisine preference: {req.cuisine_preference}. "
         + inbody_section
         + f"Daily calorie target: {daily_kcal} kcal. "
         f"Macro targets — protein: {protein_pct}%, carbs: {carbs_pct}%, fat: {fat_pct}%. "
         + (disease_notes_str + " " if disease_notes_str else "")
-        + "Return only a valid JSON 3-day nutrition plan with breakfast, lunch, dinner, and snack per day. "
+    )
+
+    # Append loud dietary rules
+    if req.dietary_preferences:
+        for pref in req.dietary_preferences:
+            pref_lower = pref.lower().strip()
+            if "vegan" in pref_lower:
+                user_msg += " IMPORTANT: The plan must be STRICTLY VEGAN. Absolutely NO meat, chicken, poultry, fish, seafood, eggs, milk, cheese, butter, yogurt, cream, or animal products in any meal. All meals and food items must be entirely plant-based."
+            elif "vegetarian" in pref_lower:
+                user_msg += " IMPORTANT: The plan must be VEGETARIAN. Absolutely NO meat, chicken, poultry, fish, or seafood in any meal. Dairy and eggs are allowed."
+            elif "pescatarian" in pref_lower:
+                user_msg += " IMPORTANT: The plan must be PESCATARIAN. Absolutely NO meat, chicken, or poultry. Fish and seafood are allowed."
+            elif "dairy" in pref_lower:
+                user_msg += " IMPORTANT: The plan must be STRICTLY DAIRY-FREE. Absolutely NO milk, cheese, butter, cream, yogurt, or dairy products in any meal."
+            elif "gluten" in pref_lower:
+                user_msg += " IMPORTANT: The plan must be STRICTLY GLUTEN-FREE. Absolutely NO wheat, barley, rye, bread, pasta, or gluten-containing ingredients."
+
+    # Append loud allergy rules
+    if req.allergies:
+        for allergy in req.allergies:
+            all_lower = allergy.lower().strip()
+            if "gluten" in all_lower or "wheat" in all_lower:
+                user_msg += " IMPORTANT: The user is ALLERGIC to gluten/wheat. You MUST NOT include any wheat, barley, rye, bread, pasta, flour, or gluten-containing ingredients in any meal."
+            elif "dairy" in all_lower or "milk" in all_lower or "lactose" in all_lower:
+                user_msg += " IMPORTANT: The user is ALLERGIC to dairy. You MUST NOT include any milk, cheese, butter, cream, yogurt, whey, or dairy products in any meal."
+            elif "egg" in all_lower:
+                user_msg += " IMPORTANT: The user is ALLERGIC to eggs. You MUST NOT include any eggs, egg whites, egg yolks, or egg-containing foods (like mayonnaise) in any meal."
+            elif "nut" in all_lower or "peanut" in all_lower:
+                user_msg += " IMPORTANT: The user is ALLERGIC to nuts. You MUST NOT include any peanuts, tree nuts, almonds, cashews, walnuts, or nut-based products in any meal."
+            elif "fish" in all_lower or "seafood" in all_lower or "shellfish" in all_lower:
+                user_msg += " IMPORTANT: The user is ALLERGIC to fish/seafood. You MUST NOT include any fish, shrimp, crab, lobster, or seafood in any meal."
+
+    user_msg += (
+        " Return only a valid JSON 3-day nutrition plan with breakfast, lunch, dinner, and snack per day. "
         "IMPORTANT: The plan must contain EXACTLY 3 days — stop after day 3."
     )
     return user_msg
@@ -573,6 +609,10 @@ def run_inference(req: NutritionRequest) -> dict:
     user_msg = build_prompt(req, daily_kcal, inbody_flags,
                             protein_pct, carbs_pct, fat_pct)
 
+    import random
+    seed = random.randint(1, 100000)
+    user_msg += f" Ensure meal variety and unique combinations. Seed: {seed}."
+
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user",   "content": user_msg},
@@ -595,7 +635,7 @@ def run_inference(req: NutritionRequest) -> dict:
         output_ids = _model.generate(
             **inputs,
             max_new_tokens=4500,
-            temperature=0.3,
+            temperature=0.8,
             top_p=0.9,
             do_sample=True,
             repetition_penalty=1.1,

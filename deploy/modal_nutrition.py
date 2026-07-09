@@ -75,6 +75,7 @@ class NutritionRequest(BaseModel):
     activity_level:     str             = Field("moderate", pattern="^(sedentary|light|moderate|active|very_active)$")
     health_conditions:  list[str]       = Field(default_factory=list)
     allergies:          list[str]       = Field(default_factory=list)
+    dietary_preferences: list[str]       = Field(default_factory=list)
     cuisine_preference: str             = Field("egyptian", pattern="^(egyptian|international)$")
     inbody:             Optional[InBodyData] = None
 
@@ -201,7 +202,7 @@ class NutritionService:
     # ── FastAPI ASGI app ──────────────────────────────────────────────────────
     @modal.asgi_app()
     def web(self):
-        import json, re, time, logging
+        import json, re, time, logging, random
         from datetime import datetime
         from fastapi import FastAPI, HTTPException
         from fastapi.middleware.cors import CORSMiddleware
@@ -269,8 +270,10 @@ class NutritionService:
                 out_ids = model.generate(
                     **inputs,
                     max_new_tokens=650,
-                    do_sample=False,
-                    repetition_penalty=1.1,
+                    do_sample=True,
+                    temperature=0.8,
+                    top_p=0.9,
+                    repetition_penalty=1.2,
                     eos_token_id=tok.eos_token_id,
                     pad_token_id=tok.eos_token_id,
                     stopping_criteria=StoppingCriteriaList([_JsonStop(tok, plen)]),
@@ -373,8 +376,10 @@ class NutritionService:
 
                 cond_str    = ", ".join(req.health_conditions) or "none"
                 allergy_str = ", ".join(req.allergies)         or "none"
+                pref_str    = ", ".join(req.dietary_preferences) or "none"
                 goal_str    = req.goal.replace("_", " ")
 
+                seed = random.randint(1, 100000)
                 user_msg = (
                     f"Create a 1-day halal nutrition plan for Day {day_num} "
                     f"for a {age}-year-old {req.gender}, "
@@ -382,12 +387,47 @@ class NutritionService:
                     f"Goal: {goal_str}, activity: {req.activity_level}. "
                     f"Conditions: {cond_str}. "
                     f"Allergies: {allergy_str}. "
+                    f"Dietary preferences: {pref_str}. "
                     f"Cuisine: {req.cuisine_preference}. "
                     + ib_sec
                     + f"Calories: {daily_kcal} kcal. Macros: protein {prot}%, carbs {carb}%, fat {fat}%. "
                     + (" ".join(dnotes) + " " if dnotes else "")
-                    + variety_hint
-                    + "Return only valid JSON 1-day plan with breakfast, lunch, dinner, snack."
+                )
+
+                # Append loud dietary rules
+                if req.dietary_preferences:
+                    for pref in req.dietary_preferences:
+                        pref_lower = pref.lower().strip()
+                        if "vegan" in pref_lower:
+                            user_msg += " IMPORTANT: The plan must be STRICTLY VEGAN. Absolutely NO meat, chicken, poultry, fish, seafood, eggs, milk, cheese, butter, yogurt, cream, or animal products in any meal. All meals and food items must be entirely plant-based."
+                        elif "vegetarian" in pref_lower:
+                            user_msg += " IMPORTANT: The plan must be VEGETARIAN. Absolutely NO meat, chicken, poultry, fish, or seafood in any meal. Dairy and eggs are allowed."
+                        elif "pescatarian" in pref_lower:
+                            user_msg += " IMPORTANT: The plan must be PESCATARIAN. Absolutely NO meat, chicken, or poultry. Fish and seafood are allowed."
+                        elif "dairy" in pref_lower:
+                            user_msg += " IMPORTANT: The plan must be STRICTLY DAIRY-FREE. Absolutely NO milk, cheese, butter, cream, yogurt, or dairy products in any meal."
+                        elif "gluten" in pref_lower:
+                            user_msg += " IMPORTANT: The plan must be STRICTLY GLUTEN-FREE. Absolutely NO wheat, barley, rye, bread, pasta, or gluten-containing ingredients."
+
+                # Append loud allergy rules
+                if req.allergies:
+                    for allergy in req.allergies:
+                        all_lower = allergy.lower().strip()
+                        if "gluten" in all_lower or "wheat" in all_lower:
+                            user_msg += " IMPORTANT: The user is ALLERGIC to gluten/wheat. You MUST NOT include any wheat, barley, rye, bread, pasta, flour, or gluten-containing ingredients in any meal."
+                        elif "dairy" in all_lower or "milk" in all_lower or "lactose" in all_lower:
+                            user_msg += " IMPORTANT: The user is ALLERGIC to dairy. You MUST NOT include any milk, cheese, butter, cream, yogurt, whey, or dairy products in any meal."
+                        elif "egg" in all_lower:
+                            user_msg += " IMPORTANT: The user is ALLERGIC to eggs. You MUST NOT include any eggs, egg whites, egg yolks, or egg-containing foods (like mayonnaise) in any meal."
+                        elif "nut" in all_lower or "peanut" in all_lower:
+                            user_msg += " IMPORTANT: The user is ALLERGIC to nuts. You MUST NOT include any peanuts, tree nuts, almonds, cashews, walnuts, or nut-based products in any meal."
+                        elif "fish" in all_lower or "seafood" in all_lower or "shellfish" in all_lower:
+                            user_msg += " IMPORTANT: The user is ALLERGIC to fish/seafood. You MUST NOT include any fish, shrimp, crab, lobster, or seafood in any meal."
+
+                user_msg += (
+                    variety_hint
+                    + f" Ensure variety. Seed: {seed}."
+                    + " Return only valid JSON 1-day plan with breakfast, lunch, dinner, snack."
                 )
 
                 messages = [

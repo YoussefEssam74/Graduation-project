@@ -772,7 +772,7 @@ function AIWorkoutGeneratorContent() {
 
     setIsGenerating(true);
     try {
-      const request: GenerateAIWorkoutPlanRequest = { userId: user.userId, fitnessLevel, goal, daysPerWeek, equipment, injuries, includeUserContext, forceRegenerate: false };
+      const request: GenerateAIWorkoutPlanRequest = { userId: user.userId, fitnessLevel, goal, daysPerWeek, equipment, injuries, includeUserContext, forceRegenerate: true };
       const response = await generateAIWorkoutPlan(request);
       if (response.success && response.data) {
         setGeneratedPlan(response.data);

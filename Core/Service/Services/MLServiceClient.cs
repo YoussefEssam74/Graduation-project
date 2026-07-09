@@ -34,7 +34,7 @@ public class MLServiceClient : IMLServiceClient
         };
 
         _httpClient.BaseAddress = new Uri(_baseUrl);
-        _httpClient.Timeout = TimeSpan.FromSeconds(360);
+        _httpClient.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
     }
 
     public async Task<MLWorkoutResponse?> GenerateWorkoutPlanAsync(MLWorkoutRequest request)
@@ -65,8 +65,8 @@ public class MLServiceClient : IMLServiceClient
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogError(ex, "HF Space request timed out");
-            return new MLWorkoutResponse { IsValidJson = false, Error = "HF Space request timed out (360s)" };
+            _logger.LogError(ex, "HF Space request timed out or was cancelled");
+            return new MLWorkoutResponse { IsValidJson = false, Error = "HF Space request timed out or was cancelled" };
         }
         catch (JsonException ex)
         {

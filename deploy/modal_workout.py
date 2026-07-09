@@ -325,6 +325,8 @@ class WorkoutService:
             parts.append(f"Equipment: {', '.join(equipment) if equipment else 'Full gym access'}.")
             for inj in injuries:
                 parts.append(f"INJURY [{inj}]: {INJURY_INSTRUCTIONS.get(inj, f'Avoid exercises stressing the {inj}.')}")
+            seed = random.randint(1, 100000)
+            parts.append(f"Ensure variety and unique exercise selections (seed: {seed}).")
             parts.append("Output valid JSON: plan_name, days array (day_name, focus_areas, exercises with name, sets, reps, rest).")
             return " ".join(parts)
 
@@ -457,11 +459,7 @@ class WorkoutService:
 
             unique.sort(key=_score, reverse=True)
             pool = unique[:max(n * 3, 15)]
-            if len(pool) > n:
-                top, rest = pool[:2], pool[2:]
-                random.shuffle(rest)
-                pool = top + rest
-
+            random.shuffle(pool)
             selected = pool[:n]
             formatted = []
             for ex in selected:
@@ -595,7 +593,16 @@ class WorkoutService:
                            req_equipment: List[str], prompt: str) -> Dict[str, Any]:
             inputs = self._tokenizer(prompt, return_tensors="pt", max_length=256, truncation=True).to("cuda")
             with torch.no_grad():
-                out = self._model.generate(**inputs, max_length=1024, num_beams=4, early_stopping=True)
+                out = self._model.generate(
+                    **inputs,
+                    max_length=1024,
+                    do_sample=True,
+                    temperature=0.8,
+                    top_p=0.9,
+                    repetition_penalty=1.2,
+                    eos_token_id=self._tokenizer.eos_token_id,
+                    pad_token_id=self._tokenizer.eos_token_id
+                )
             raw = self._tokenizer.decode(out[0], skip_special_tokens=True)
 
             plan = extract_workout_from_model_output(

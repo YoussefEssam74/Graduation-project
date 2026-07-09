@@ -14,10 +14,11 @@ import json
 import time
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from peft import PeftModel
+from safety_engine_v2 import PulseGymSafetyEngine
 
 # Set UTF-8 encoding for Windows console
 if sys.platform == 'win32':
@@ -161,6 +162,9 @@ def build_prompt(req: MLWorkoutRequest) -> str:
                 prompt_parts.append(
                     f"Well-developed: {', '.join(ctx.muscle_scan.strong_areas)}.")
 
+    import random
+    seed = random.randint(1, 100000)
+    prompt_parts.append(f"Ensure variety and unique exercise selections (seed: {seed}).")
     prompt_parts.append(
         "Output valid JSON with plan_name, days array (each with day_name, focus_areas, exercises with name, sets, reps, rest).")
 
@@ -692,9 +696,12 @@ def generate_workout_plan(prompt: str, req: 'MLWorkoutRequest' = None, max_lengt
             outputs = model.generate(
                 **inputs,
                 max_length=max_length,
-                num_beams=4,
-                early_stopping=True,
-                do_sample=False
+                do_sample=True,
+                temperature=0.8,
+                top_p=0.9,
+                repetition_penalty=1.2,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.eos_token_id
             )
 
         result = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -777,12 +784,12 @@ def predict(req: MLWorkoutRequest) -> MLWorkoutResponse:
                 error=error or "AI model failed to generate a valid workout plan"
             )
 
-        # ── Injury Post-Processing Filter ──
-        # The small model can't reliably avoid exercises for injured areas,
-        # so we deterministically filter and replace them here.
-        if req.injuries:
-            print(f"🛡️ Applying injury filter for: {req.injuries}")
-            plan = filter_exercises_for_injuries(plan, req.injuries)
+        # ── Safety Engine v2 post-processing ──
+        injuries_str = ", ".join(req.injuries) if req.injuries else "None"
+        equipment_str = ", ".join(req.equipment) if req.equipment else ""
+        safety_engine = PulseGymSafetyEngine(injuries=injuries_str, equipment=equipment_str)
+        plan, safety_report = safety_engine.process_json(plan)
+        print(f"🛡️ Safety Engine v2 completed. Score: {safety_report.score}/100, Violations: {len(safety_report.violations)}, Prehab: {safety_report.prehab_injected}")
 
         return MLWorkoutResponse(
             plan=plan,
@@ -835,26 +842,73 @@ class WorkoutRequest(BaseModel):
 
 
 @app.post("/generate")
-def generate_plan_legacy(req: WorkoutRequest):
-    """Legacy endpoint for direct prompt-based generation"""
+async def generate_endpoint(request: Request):
+    """
+    Dual-mode /generate endpoint.
+    Accepts structured request (MLWorkoutRequest) or legacy prompt request (WorkoutRequest).
+    """
     start_time = time.time()
-
     try:
-        prompt = req.prompt
-        if req.coach_feedback:
-            prompt = f"{req.prompt}\n\nIMPORTANT FEEDBACK FROM COACH: {req.coach_feedback}\nPlease adjust the workout plan based on this feedback."
-
-        plan, is_valid, error = generate_workout_plan(
-            prompt, None, req.max_length)
-        latency_ms = int((time.time() - start_time) * 1000)
-
-        if is_valid:
-            return {"success": True, "plan": plan, "latency_ms": latency_ms}
+        body = await request.json()
+        
+        # Check if it's a structured request
+        if any(k in body for k in ("days_per_week", "goal", "fitness_level")):
+            # Convert body to MLWorkoutRequest
+            req = MLWorkoutRequest(**body)
+            prompt = build_prompt(req)
+            plan, is_valid, error = generate_workout_plan(prompt, req)
+            
+            # Apply injury filtering
+            if is_valid and plan:
+                injuries_str = ", ".join(req.injuries) if req.injuries else "None"
+                equipment_str = ", ".join(req.equipment) if req.equipment else ""
+                safety_engine = PulseGymSafetyEngine(injuries=injuries_str, equipment=equipment_str)
+                plan, safety_report = safety_engine.process_json(plan)
+                print(f"🛡️ Safety Engine v2 completed. Score: {safety_report.score}/100, Violations: {len(safety_report.violations)}, Prehab: {safety_report.prehab_injected}")
+                
+            latency_ms = int((time.time() - start_time) * 1000)
+            return {
+                "plan": plan,
+                "is_valid_json": is_valid,
+                "model_version": MODEL_VERSION,
+                "generation_latency_ms": latency_ms,
+                "prompt_used": prompt,
+                "error": error
+            }
         else:
-            return {"success": False, "error": error, "latency_ms": latency_ms}
-
+            # Legacy prompt-based request
+            prompt = body.get("prompt", "")
+            coach_feedback = body.get("coach_feedback")
+            max_length = body.get("max_length", 1024)
+            
+            if coach_feedback:
+                prompt = f"{prompt}\n\nIMPORTANT FEEDBACK FROM COACH: {coach_feedback}\nPlease adjust the workout plan based on this feedback."
+                
+            plan, is_valid, error = generate_workout_plan(prompt, None, max_length)
+            latency_ms = int((time.time() - start_time) * 1000)
+            
+            # Return legacy keys for backward compatibility, but include MLWorkoutResponse keys too
+            return {
+                "success": is_valid,
+                "plan": plan,
+                "is_valid_json": is_valid,
+                "model_version": MODEL_VERSION,
+                "generation_latency_ms": latency_ms,
+                "latency_ms": latency_ms,
+                "prompt_used": prompt,
+                "error": error
+            }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"❌ /generate error: {e}")
+        return {
+            "plan": None,
+            "is_valid_json": False,
+            "model_version": MODEL_VERSION,
+            "generation_latency_ms": int((time.time() - start_time) * 1000),
+            "prompt_used": "",
+            "error": str(e),
+            "success": False
+        }
 
 
 if __name__ == "__main__":

@@ -38,6 +38,9 @@ public class NutritionAIRequest
     [JsonPropertyName("allergies")]
     public List<string> Allergies { get; set; } = new();
 
+    [JsonPropertyName("dietary_preferences")]
+    public List<string> DietaryPreferences { get; set; } = new();
+
     /// <summary>egyptian | international</summary>
     [JsonPropertyName("cuisine_preference")]
     public string CuisinePreference { get; set; } = "egyptian";
@@ -116,6 +119,8 @@ public class GenerateAINutritionPlanRequest
 
     public List<string> HealthConditions { get; set; } = new();
     public List<string> Allergies { get; set; } = new();
+
+    public List<string> DietaryPreferences { get; set; } = new();
 
     /// <summary>egyptian | international</summary>
     public string CuisinePreference { get; set; } = "egyptian";

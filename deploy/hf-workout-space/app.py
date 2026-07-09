@@ -276,11 +276,7 @@ def _pick_exercises_for_focus(focus_areas: List[str], goal: str, level: str,
 
     unique.sort(key=_score, reverse=True)
     pool = unique[:max(n * 3, 15)]
-    if len(pool) > n:
-        top, rest = pool[:2], pool[2:]
-        _rand.shuffle(rest)
-        pool = top + rest
-
+    _rand.shuffle(pool)
     selected = pool[:n]
     formatted: List[Dict[str, Any]] = []
     for ex in selected:
@@ -425,6 +421,8 @@ def build_prompt(req: dict, context: dict = None) -> str:
     parts.append(f"Equipment: {', '.join(equipment) if equipment else 'Full gym access'}.")
     for inj in injuries:
         parts.append(f"INJURY [{inj}]: {INJURY_INSTRUCTIONS.get(inj, f'Avoid exercises stressing the {inj}.')}")
+    seed = _rand.randint(1, 100000)
+    parts.append(f"Ensure variety and unique exercise selections (seed: {seed}).")
     parts.append("Output valid JSON: plan_name, days array (day_name, focus_areas, exercises with name, sets, reps, rest).")
     return " ".join(parts)
 
@@ -549,7 +547,16 @@ def extract_workout_from_model_output(text: str, req_days: int = 4, req_goal: st
 def run_model(prompt: str, max_len: int = 1024) -> str:
     inputs = tokenizer(prompt, return_tensors="pt", max_length=256, truncation=True).to(DEVICE)
     with torch.no_grad():
-        out = model.generate(**inputs, max_length=max_len, num_beams=4, early_stopping=True)
+        out = model.generate(
+            **inputs,
+            max_length=max_len,
+            do_sample=True,
+            temperature=0.8,
+            top_p=0.9,
+            repetition_penalty=1.2,
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.eos_token_id
+        )
     return tokenizer.decode(out[0], skip_special_tokens=True)
 
 

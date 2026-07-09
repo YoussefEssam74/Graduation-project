@@ -53,9 +53,8 @@ namespace Graduation_Project
             builder.Services.AddHttpClient<IMLServiceClient, MLServiceClient>(client =>
             {
                 var baseUrl = builder.Configuration["MLService:BaseUrl"] ?? "http://localhost:5300";
-                var timeout = int.Parse(builder.Configuration["MLService:TimeoutSeconds"] ?? "120");
                 client.BaseAddress = new Uri(baseUrl);
-                client.Timeout = TimeSpan.FromSeconds(timeout);
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
             });
             builder.Services.AddScoped<IWorkoutAIService, WorkoutAIService>();
             builder.Services.AddScoped<IWorkoutFeedbackService, WorkoutFeedbackService>();
@@ -69,9 +68,8 @@ namespace Graduation_Project
             builder.Services.AddHttpClient<ServiceAbstraction.Services.IWorkoutGeneratorService, Service.Services.WorkoutGeneratorService>(client =>
             {
                 var baseUrl = builder.Configuration["WorkoutGeneratorAPI:BaseUrl"] ?? "http://localhost:8000";
-                var timeout = int.Parse(builder.Configuration["WorkoutGeneratorAPI:TimeoutSeconds"] ?? "60");
                 client.BaseAddress = new Uri(baseUrl);
-                client.Timeout = TimeSpan.FromSeconds(timeout);
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
             });
 
             // Add Nutrition AI Service (Qwen2.5-3B on Hugging Face Spaces)
